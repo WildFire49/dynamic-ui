@@ -14,7 +14,7 @@ const Selector = ({ label, options, sx, ...props }) => {
   };
 
   return (
-    <FormControl fullWidth sx={{ ...sx, width: '100%' }} margin="normal">
+    <FormControl fullWidth sx={{ ...sx, width: '100%', minWidth: '250px' }} margin="normal">
       <InputLabel id={`${props.id}-label`}>{label}</InputLabel>
       <Select
         labelId={`${props.id}-label`}

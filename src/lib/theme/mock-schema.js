@@ -45,7 +45,7 @@ export const getActionSchema = () => [
         "desc_for_llm": "Screen for entering OTP sent to user's mobile number. OTP verification screen. Confirm OTP. Validate OTP",
         "action_type": "OTP_VERIFICATION_SCREEN",
         "next_err_action_id": "mobile-verification",
-        "next_success_action_id": "emi-screen",
+        "next_success_action_id": "customer-photo",
         "ui_id": "ui_otp_verification_001",
         "api_detail_id": "api_otp_verification_001"
     },
@@ -73,7 +73,7 @@ export const getActionSchema = () => [
         "desc_for_llm":"Screen to upload or capture Customer Photo",
         "action_type":"CUSTOMER_PHOTO_SCREEN",
         "next_err_action_id":"customer-photo",
-        "next_success_action_id":"review-screen", 
+        "next_success_action_id":"secondry-kyc-document-selector", 
         "ui_id":"ui_customer_photo_001"
     },
     {
@@ -395,6 +395,9 @@ export const getUiSchema = () => [
             {
                 "id": "main_container",
                 "component_type": "column",
+                "properties": {
+                    "alignItems": "center"
+                },
                 "children": [
                     {
                         "id": "customer_photo_capture",
@@ -426,12 +429,19 @@ export const getUiSchema = () => [
             {
                 "id": "main_container",
                 "component_type": "column",
+                "properties": {
+                    "padding": "16dp",
+                    "width": "100%",
+                    "alignItems": "center"
+                },
                 "children": [
                     {
                         "id": "kyc_selector",
                         "component_type": "selector",
                         "properties": {
                             "label": "Select Document Type",
+                            "width": "100%",
+                            "minWidth": "280dp",
                             "options": [
                                 { "value": "aadhar", "label": "Aadhar Card" },
                                 { "value": "drivers_license", "label": "Driver's License" },
