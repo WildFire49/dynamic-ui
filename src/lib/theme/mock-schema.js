@@ -206,22 +206,50 @@ export const getUiSchema = () => [
             {
                 "id": "main_container",
                 "component_type": "column",
+                "properties": {
+                    "alignItems": "center",
+                    "justifyContent": "center"
+                },
                 "children": [
+                    {
+                        "id": "avatar_image",
+                        "component_type": "image",
+                        "properties": {
+                            "uri": "/ai-chatbot.png",
+                            "width": "162dp",
+                            "height": "162dp",
+                            "align": "center",
+                            "border_radius": "30%"
+                        }
+                    },
                     {
                         "id": "welcome_text",
                         "component_type": "text",
                         "properties": {
-                            "text": "Welcome to the Future of Onboarding",
-                            "text_size": "24sp",
+                            "text": "Welcome to MiFiX AI",
+                            "text_size": "28sp",
                             "text_style": "bold",
-                            "margin_bottom": "16dp"
+                            "color": "#2563EB",
+                            "margin_bottom": "16dp",
+                            "text_align": "center"
+                        }
+                    },
+                    {
+                        "id": "welcome_description",
+                        "component_type": "text",
+                        "properties": {
+                            "text": "I'm here to help you with any questions or queries you might have. Feel free to ask me anything!",
+                            "text_size": "16sp",
+                            "margin_bottom": "32dp",
+                            "text_align": "center",
+                            "color": "#4B5563"
                         }
                     },
                     {
                         "id": "proceed_button",
                         "component_type": "button",
                         "properties": {
-                            "text": "Proceed",
+                            "text": "Get Started",
                             "action": {
                                 "type": "next_screen",
                                 "action_id": "welcome"
@@ -309,7 +337,7 @@ export const getUiSchema = () => [
                         "id": "mobile_input",
                         "component_type": "text_input",
                         "properties": {
-                            "hint": "Enter Mobile Number",
+                            "hint": "Enter Mobile No.",
                             "input_type": "number",
                             "margin_bottom": "16dp"
                         }

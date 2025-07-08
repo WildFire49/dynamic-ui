@@ -26,6 +26,8 @@
   align-self: flex-end;
   background-color: var(--mui-palette-primary-main);
   color: var(--mui-palette-primary-contrastText);
+  white-space: nowrap;
+  max-width: fit-content;
 }
 
 @keyframes slideIn {

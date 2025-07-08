@@ -5,9 +5,8 @@ const MuiButton = React.forwardRef(({ text, action, onAction, ...props }, ref) =
   const handleClick = () => {
     if (onAction && action) {
       // The action_id to proceed with is nested in the action object
-      const nextActionId = action.next_success_action_id || action.action_id;
-      if (nextActionId) {
-        onAction(nextActionId);
+      if (action) {
+        onAction(action, { text });
       }
     }
   };

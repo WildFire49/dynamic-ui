@@ -22,6 +22,8 @@ const toSxProps = (properties) => {
   // Layout & Spacing
   if (properties.padding) sx.p = unitToRem(properties.padding);
   if (properties.margin_bottom) sx.mb = unitToRem(properties.margin_bottom);
+  if (properties.justifyContent) sx.justifyContent = properties.justifyContent;
+  if (properties.alignItems) sx.alignItems = properties.alignItems;
 
   // Colors
   if (properties.background_color) sx.backgroundColor = properties.background_color;
@@ -44,7 +46,9 @@ const componentMap = {
   input: dynamic(() => import('@/components/mui/Input')),
   text_input: dynamic(() => import('@/components/mui/Input')),
   text: dynamic(() => import('@/components/mui/Text')),
+  chat: dynamic(() => import('@/components/mui/Chat')), // New MiFiX AI Chat component
   video: dynamic(() => import('@/components/mui/Video'), { ssr: false }),
+  image: dynamic(() => import('@/components/mui/Image')), // Image component for displaying images
   image_capture: dynamic(() => import('@/components/mui/ImageCapture'), { ssr: false }),
   selector: dynamic(() => import('@/components/mui/Selector')),
   checkbox: dynamic(() => import('@/components/mui/Checkbox')),

@@ -3,7 +3,7 @@ import MuiThemeProvider from '@/lib/theme/MuiThemeProvider';
 import EmotionRegistry from '@/lib/theme/EmotionRegistry';
 
 export const metadata = {
-  title: 'Dynamic UI with MUI',
+  title: 'MiFiX AI- Workflows',
   description: 'A dynamic UI generated with Material-UI',
 };
 

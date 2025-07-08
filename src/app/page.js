@@ -50,12 +50,17 @@ export default function HomePage() {
     }
   }, [setChatHistory, setIsTyping]);
 
-  const handleAction = useCallback((actionId) => {
-    if (!actionId) return;
+  const handleAction = useCallback((actionDetails, userMessage) => {
+    if (!actionDetails || !actionDetails.action_id) return;
 
-    const action = actionSchema.find(a => a.id === actionId);
+    if (userMessage && userMessage.text) {
+      const message = { type: 'user', content: { text: userMessage.text } };
+      setChatHistory(prev => [...prev, message]);
+    }
+
+    const action = actionSchema.find(a => a.id === actionDetails.action_id);
     if (!action) {
-      console.error(`Action with ID ${actionId} not found.`);
+      console.error(`Action with ID ${actionDetails.action_id} not found.`);
       return;
     }
 
@@ -114,7 +119,7 @@ export default function HomePage() {
         bgcolor: 'background.default',
       }}
     >
-      <AppBar position="static" elevation={1} sx={{ backgroundColor: 'background.paper' }}>
+      <AppBar position="static" elevation={1} sx={{ backgroundColor: 'background.default' }}>
         <Toolbar>
           <Image src={MifixLogo} alt="MiFiX AI Logo" width={32} height={32} style={{ marginRight: '12px' }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'text.primary', fontWeight: 'bold' }}>
