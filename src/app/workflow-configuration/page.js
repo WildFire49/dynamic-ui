@@ -11,14 +11,18 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  Chip
+  Chip,
+  AppBar,
+  Toolbar
 } from '@mui/material';
 import { 
   Send as SendIcon,
   CheckCircle as CheckIcon,
   SwapHoriz as SwapIcon,
-  ArrowForward as ArrowIcon
+  ArrowForward as ArrowIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
+import Image from 'next/image';
 import WorkflowModifier from '../../components/WorkflowModifier';
 
 const WorkflowConfigurationPage = () => {
@@ -174,45 +178,154 @@ const WorkflowConfigurationPage = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
-      <Container maxWidth={false} sx={{ px: 2, py: 3 }}>
-      {/* Header Section with Logos */}
-      <Paper elevation={3} sx={{ p: 4, mb: 4, borderRadius: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <img src="/ai-chatbot.png" alt="AI Assistant" width={60} height={60} style={{ borderRadius: '50%', border: '3px solid white' }} />
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                MiFiX AI Workflow Configurator
-              </Typography>
-             
-            </Box>
-            <img src="/mifix-logo.png" alt="Mifix" width={60} height={60} style={{ borderRadius: '12px', border: '2px solid white' }} />
+    <Box sx={{ 
+      height: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column',
+      backgroundColor: '#f8f9fa',
+      backgroundImage: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'
+    }}>
+      {/* Top Navigation Bar */}
+      <AppBar position="static" sx={{
+        backgroundColor: 'white',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        borderBottom: '1px solid #e0e0e0'
+      }}>
+        <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {step !== 'form' && (
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={resetForm}
+                sx={{ 
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '14px',
+                  color: '#1976d2',
+                  borderColor: '#e0e0e0',
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5',
+                    borderColor: '#1976d2'
+                  }
+                }}
+              >
+                New Configuration
+              </Button>
+            )}
           </Box>
-        </Box>
-       
-        <Typography variant="body2" align="center" sx={{ mt: 1, opacity: 0.8 }}>
-          Simply Describe your Workflow Modification and Watch MiFiX AI Generate the Changes Realtime
-        </Typography>
-      </Paper>
-
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1.5,
+              backgroundColor: '#f8f9fa',
+              borderRadius: 3,
+              px: 2,
+              py: 1
+            }}>
+              <Box sx={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <Image 
+                  src="/ai-chatbot.png" 
+                  alt="MiFiX AI" 
+                  width={40} 
+                  height={40} 
+                  style={{ borderRadius: '50%' }}
+                />
+                <Box sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: 12,
+                  height: 12,
+                  backgroundColor: '#4caf50',
+                  borderRadius: '50%',
+                  border: '2px solid white'
+                }} />
+              </Box>
+              <Box>
+                <Typography sx={{ 
+                  fontWeight: 'bold', 
+                  fontSize: '16px',
+                  color: '#1976d2',
+                  lineHeight: 1.2
+                }}>
+                  MiFiX AI
+                </Typography>
+                <Typography sx={{ 
+                  fontSize: '12px', 
+                  color: '#4caf50',
+                  lineHeight: 1
+                }}>
+                  Online
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Toolbar>
+      </AppBar>
+      
+      {/* Main Content Area */}
+      <Box sx={{ 
+        flexGrow: 1, 
+        overflowY: 'auto', 
+        py: 3,
+        px: 2
+      }}>
       {step === 'form' && (
-        <Box sx={{ maxWidth: 800, mx: 'auto' }}>
-          <Paper elevation={4} sx={{ borderRadius: 3, overflow: 'hidden', mb: 3 }}>
-            {/* Form Header */}
-            <Box sx={{ p: 3, bgcolor: 'primary.main', color: 'white' }}>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 2 }}>
-                <SwapIcon sx={{ fontSize: 28 }} />
-                Workflow Modification Request
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, opacity: 0.9 }}>
-                Describe the changes you want to make to your workflow
-              </Typography>
+        <Box sx={{ maxWidth: 630, mx: 'auto' }}>
+          <Paper 
+            elevation={6} 
+            sx={{ 
+              borderRadius: 4, 
+              overflow: 'hidden', 
+              mb: 3,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              position: 'relative'
+            }}
+          >
+            {/* Unified Header Section */}
+            <Box sx={{ p: 2.8, color: 'white', textAlign: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+                <Box>
+                <img src="/mifix-logo.png" alt="Mifix" width={70} height={70} style={{ borderRadius: '16px', }} />
+                  <Typography noWrap variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 1, textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>
+                    MiFiX AI Workflow Configurator
+                  </Typography>
+                  <Typography variant="h8" sx={{ opacity: 0.8, fontWeight: 'medium' }}>
+                    Simply Describe your Workflow Modification and <br/>Watch MiFiX AI Generate New Workflow Real-time
+                  </Typography>
+                </Box>
+                
+              </Box>
             </Box>
             
-            {/* Form Content */}
-            <Box sx={{ p: 4 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
+            {/* Seamless Form Section */}
+            <Box sx={{ 
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,1) 20%)',
+              p: 3.5,
+              position: 'relative'
+            }}>
+              {/* Form Header with Icon */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+                <SwapIcon sx={{ fontSize: 32, color: '#667eea', mr: 2 }} />
+                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#667eea' }}>
+                  Workflow Modification Request
+                </Typography>
+              </Box>
+              
+              {/* Form Fields */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5, mb: 3 }}>
                 <TextField
                   label="Bank Name"
                   value={formData.bank}
@@ -221,10 +334,19 @@ const WorkflowConfigurationPage = () => {
                   variant="outlined"
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
+                      borderRadius: 3,
+                      backgroundColor: 'rgba(102, 126, 234, 0.05)',
                       '&:hover fieldset': {
-                        borderColor: 'primary.main'
+                        borderColor: '#667eea',
+                        borderWidth: 2
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#667eea',
+                        borderWidth: 2
                       }
+                    },
+                    '& .MuiInputLabel-root.Mui-focused': {
+                      color: '#667eea'
                     }
                   }}
                 />
@@ -237,10 +359,19 @@ const WorkflowConfigurationPage = () => {
                   variant="outlined"
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
+                      borderRadius: 3,
+                      backgroundColor: 'rgba(102, 126, 234, 0.05)',
                       '&:hover fieldset': {
-                        borderColor: 'primary.main'
+                        borderColor: '#667eea',
+                        borderWidth: 2
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#667eea',
+                        borderWidth: 2
                       }
+                    },
+                    '& .MuiInputLabel-root.Mui-focused': {
+                      color: '#667eea'
                     }
                   }}
                 />
@@ -256,12 +387,21 @@ const WorkflowConfigurationPage = () => {
                 rows={3}
                 variant="outlined"
                 sx={{
-                  mb: 4,
+                  mb: 3.5,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
+                    borderRadius: 3,
+                    backgroundColor: 'rgba(102, 126, 234, 0.05)',
                     '&:hover fieldset': {
-                      borderColor: 'primary.main'
+                      borderColor: '#667eea',
+                      borderWidth: 2
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#667eea',
+                      borderWidth: 2
                     }
+                  },
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: '#667eea'
                   }
                 }}
               />
@@ -270,29 +410,31 @@ const WorkflowConfigurationPage = () => {
                 variant="contained"
                 onClick={sendWorkflowModification}
                 disabled={loading || !formData.bank || !formData.product || !formData.request}
-                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+                startIcon={loading ? <CircularProgress size={24} color="inherit" /> : <SendIcon />}
                 size="large"
                 fullWidth
                 sx={{
-                  py: 1.5,
-                  fontSize: '1.1rem',
+                  py: 2,
+                  fontSize: '1.2rem',
                   fontWeight: 'bold',
-                  borderRadius: 2,
-                  background: loading ? undefined : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
-                  boxShadow: '0 3px 5px 2px rgba(25, 118, 210, .3)',
+                  borderRadius: 3,
+                  background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)',
+                  textTransform: 'none',
                   '&:hover': {
-                    background: loading ? undefined : 'linear-gradient(45deg, #1565c0 30%, #1e88e5 90%)',
+                    background: loading ? '#ccc' : 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
                     transform: 'translateY(-2px)',
-                    boxShadow: '0 6px 10px 2px rgba(25, 118, 210, .3)'
+                    boxShadow: '0 12px 24px rgba(102, 126, 234, 0.4)'
                   },
                   '&:disabled': {
-                    background: '#ccc',
-                    color: '#666'
+                    background: '#e0e0e0',
+                    color: '#999',
+                    boxShadow: 'none'
                   },
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               >
-                {loading ? 'Processing Your Request...' : 'Send Modification Request'}
+                {loading ? 'Processing Your Request...' : 'Generate Workflow Modification'}
               </Button>
             </Box>
           </Paper>
@@ -495,7 +637,7 @@ const WorkflowConfigurationPage = () => {
           </pre>
         </Paper>
       )} */}
-      </Container>
+      </Box>
     </Box>
   );
 };
