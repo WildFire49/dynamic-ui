@@ -1,3 +1,5 @@
+// Enhanced Action Schema - Backend configurable flow definitions
+// Each action defines a stage in the user journey with navigation logic
 export const getActionSchema = () => [
     {
         "id": "welcome",
@@ -5,19 +7,12 @@ export const getActionSchema = () => [
         "desc_for_llm": "Simple welcome screen with app name and proceed button, hey, hello, goodmorning, I want to start Onboarding. I want to start journey",
         "action_type": "WELCOME_SCREEN",
         "next_err_action_id": "welcome",
-        "next_success_action_id": "select-flow",
-        "ui_id": "ui_welcome_screen_001",
-        "api_detail_id": null
-    },
-    {
-        "id": "select-flow",
-        "stage_name": "Select Flow",
-        "desc_for_llm": "select either the Onboarding or Collections flow ",
-        "action_type": "FLOW_SELECTION_SCREEN",
-        "next_err_action_id": "select-flow",
         "next_success_action_id": "video-consent",
-        "ui_id": "ui_select_flow_001",
-        "api_detail_id": "api_select_flow_001"
+        "ui_id": "ui_welcome_screen_001",
+        "api_detail_id": null,
+        "priority": 1,
+        "is_mandatory": true,
+        "flow_type": "onboarding"
     },
     {
         "id": "video-consent",
@@ -25,9 +20,30 @@ export const getActionSchema = () => [
         "desc_for_llm": "Consent screen with video component and a button to capture user agreement after viewing. User wants to wants to give consent for loan and agree to it.",
         "action_type": "VIDEO_CONSENT_SCREEN",
         "next_err_action_id": "video-consent",
-        "next_success_action_id": "mobile-verification",
+        "next_success_action_id": "select-flow",
         "ui_id": "ui_video_consent_001",
-        "api_detail_id": "api_video_consent_001"
+        "api_detail_id": "api_video_consent_001",
+        "priority": 2,
+        "is_mandatory": true,
+        "flow_type": "onboarding",
+        "validation_required": true
+    },
+    {
+        "id": "select-flow",
+        "stage_name": "Select Flow",
+        "desc_for_llm": "select either the Onboarding or Collections flow",
+        "action_type": "FLOW_SELECTION_SCREEN",
+        "next_err_action_id": "select-flow",
+        "next_success_action_id": "mobile-verification",
+        "ui_id": "ui_select_flow_001",
+        "api_detail_id": "api_select_flow_001",
+        "priority": 3,
+        "is_mandatory": true,
+        "flow_type": "both",
+        "conditional_next": {
+            "onboarding": "mobile-verification",
+            "collections": "customer-photo"
+        }
     },
     {
         "id": "mobile-verification",

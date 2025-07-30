@@ -23,11 +23,16 @@ const Selector = ({ label, options, sx, ...props }) => {
         label={label}
         onChange={handleChange}
       >
-        {(options || []).map((option) => (
-          <MenuItem key={option.value} value={option.value}>
-            {option.label}
-          </MenuItem>
-        ))}
+        {(options || []).map((option) => {
+          const isString = typeof option === 'string';
+          const value = isString ? option : option.value;
+          const label = isString ? option : option.label;
+          return (
+            <MenuItem key={value} value={value}>
+              {label}
+            </MenuItem>
+          );
+        })}
       </Select>
     </FormControl>
   );

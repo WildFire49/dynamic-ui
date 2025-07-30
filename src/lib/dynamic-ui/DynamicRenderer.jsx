@@ -42,30 +42,47 @@ const toSxProps = (properties) => {
 };
 
 const componentMap = {
+  // Capitalized versions (existing)
+  Button: dynamic(() => import('@/components/mui/Button')),
+  Input: dynamic(() => import('@/components/mui/Input')),
+  Text: dynamic(() => import('@/components/mui/Text')),
+  Selector: dynamic(() => import('@/components/mui/Selector')),
+  Checkbox: dynamic(() => import('@/components/mui/Checkbox')),
+  CheckboxList: dynamic(() => import('@/components/mui/CheckboxList')),
+  RadioGroup: dynamic(() => import('@/components/mui/RadioGroup')),
+  FileUpload: dynamic(() => import('@/components/mui/FileUpload')),
+  ImageCapture: dynamic(() => import('@/components/mui/ImageCapture')),
+  LocationCapture: dynamic(() => import('@/components/mui/LocationCapture')),
+  Video: dynamic(() => import('@/components/mui/Video')),
+  Image: dynamic(() => import('@/components/mui/Image')),
+  ReviewPanel: dynamic(() => import('@/components/mui/ReviewPanel')),
+  TextReviewPanel: dynamic(() => import('@/components/mui/TextReviewPanel')),
+  ReadOnlyText: dynamic(() => import('@/components/mui/ReadOnlyText')),
+  EmiDisplayPanel: dynamic(() => import('@/components/mui/EmiDisplayPanel')),
+  DashboardMetrics: dynamic(() => import('@/components/mui/DashboardMetrics')),
+  MultiSelectGrid: dynamic(() => import('@/components/mui/MultiSelectGrid')),
+  StatusNotification: dynamic(() => import('@/components/mui/StatusNotification')),
+  SuccessNotification: dynamic(() => import('@/components/mui/SuccessNotification')),
+  TypingIndicator: dynamic(() => import('@/components/mui/TypingIndicator')),
+  Chat: dynamic(() => import('@/components/mui/Chat')),
+  CameraIntegrationModal: dynamic(() => import('@/components/mui/CameraIntegrationModal')),
+  ConfirmationDialog: dynamic(() => import('@/components/mui/ConfirmationDialog')),
+  DataTable: dynamic(() => import('@/components/mui/DataTable')),
+  OTPInput: dynamic(() => import('@/components/mui/OTPInput')),
+  DatePicker: dynamic(() => import('@/components/mui/DatePicker')),
+  FingerprintScanner: dynamic(() => import('@/components/mui/FingerprintScanner')),
+  CustomerList: dynamic(() => import('@/components/mui/CustomerList')),
+  Container: Box,
+  
+  // Lowercase versions (for backend compatibility)
   button: dynamic(() => import('@/components/mui/Button')),
   input: dynamic(() => import('@/components/mui/Input')),
-  text_input: dynamic(() => import('@/components/mui/Input')),
   text: dynamic(() => import('@/components/mui/Text')),
-  chat: dynamic(() => import('@/components/mui/Chat')), // New MiFiX AI Chat component
-  video: dynamic(() => import('@/components/mui/Video'), { ssr: false }),
-  image: dynamic(() => import('@/components/mui/Image')), // Image component for displaying images
-  image_capture: dynamic(() => import('@/components/mui/ImageCapture'), { ssr: false }),
+  text_input: dynamic(() => import('@/components/mui/Input')),
   selector: dynamic(() => import('@/components/mui/Selector')),
   checkbox: dynamic(() => import('@/components/mui/Checkbox')),
-  radio_group: dynamic(() => import('@/components/mui/RadioGroup')),
-  file_upload: dynamic(() => import('@/components/mui/FileUpload'), { ssr: false }),
-  success_notification: dynamic(() => import('@/components/mui/SuccessNotification')),
-  location_capture: dynamic(() => import('@/components/mui/LocationCapture'), { ssr: false }),
-  read_only_text: dynamic(() => import('@/components/mui/ReadOnlyText')),
-  dashboard_metrics: dynamic(() => import('@/components/mui/DashboardMetrics')),
-  camera_modal: dynamic(() => import('@/components/mui/CameraIntegrationModal'), { ssr: false }),
-  text_review_panel: dynamic(() => import('@/components/mui/TextReviewPanel')),
-  checkbox_list: dynamic(() => import('@/components/mui/CheckboxList')),
-  multi_select_grid: dynamic(() => import('@/components/mui/MultiSelectGrid')),
-  status_notification: dynamic(() => import('@/components/mui/StatusNotification')),
-  emi_display_panel: dynamic(() => import('@/components/mui/EmiDisplayPanel')),
-  review_panel: dynamic(() => import('@/components/mui/ReviewPanel')),
-  // Structural components are handled directly in the renderer
+  
+  // Layout components
   column: Grid,
   row: Grid,
 };
@@ -124,29 +141,57 @@ const DynamicRenderer = ({ schema, onAction }) => {
     const sxProps = toSxProps(properties);
 
     // Handle container components
-    if (component_type === 'column' || component_type === 'row') {
+    if (component_type === 'Container' || component_type === 'column' || component_type === 'row') {
       return (
-        <Component
-          container
-          direction={component_type === 'column' ? 'column' : 'row'}
-          spacing={properties?.spacing || 2}
-          sx={sxProps}
-        >
+        <Box key={id} sx={{
+          display: (component_type === 'column' || component_type === 'row') ? 'flex' : 'block',
+          flexDirection: component_type === 'column' ? 'column' : 'row',
+          gap: (component_type === 'column' || component_type === 'row') ? (properties?.spacing || 2) : undefined,
+          ...sxProps
+        }}>
           {children && children.map(child => (
-            <Grid item key={child.id} {...(properties?.grid_props || {})}>
+            <React.Fragment key={child.id}>
               {renderComponent(child)}
-            </Grid>
+            </React.Fragment>
           ))}
-        </Component>
+        </Box>
       );
     }
 
     // Handle regular components
-    const componentProps = properties ? { ...properties, ...sxProps } : sxProps;
+    
+    // Filter out CSS properties that should only go to sx prop
+    const cssProperties = [
+      'background_color', 'backgroundColor', 'text_color', 'textColor', 
+      'border_radius', 'borderRadius', 'margin', 'padding', 'margin_bottom', 
+      'margin_top', 'margin_left', 'margin_right', 'padding_top', 'padding_bottom',
+      'padding_left', 'padding_right', 'text_size', 'fontSize', 'text_style',
+      'fontWeight', 'text_align', 'textAlign', 'corner_radius', 'width', 'height',
+      'vertical_arrangement', 'horizontal_alignment'
+    ];
+    
+    // Separate component props from CSS props
+    const componentProps = properties ? 
+      Object.fromEntries(
+        Object.entries(properties).filter(([key]) => !cssProperties.includes(key))
+      ) : {};
+    
+    // Interactive components that should receive onAction
+    const interactiveComponents = [
+      'button', 'input', 'text_input', 'selector', 'checkbox', 'radio_group', 'file_upload', 'image_capture',
+      'Button', 'Input', 'Selector', 'Checkbox', 'RadioGroup', 'FileUpload', 'ImageCapture', 'DatePicker', 'OTPInput', 'FingerprintScanner'
+    ];
+    const shouldPassOnAction = interactiveComponents.includes(component_type);
+    
+    const finalProps = {
+      ...componentProps,
+      sx: sxProps,
+      ...(shouldPassOnAction && { onAction })
+    };
 
     return (
       <Suspense fallback={<div key={id}>Loading...</div>}>
-        <Component {...componentProps} onAction={onAction} />
+        <Component {...finalProps} />
       </Suspense>
     );
   };
