@@ -1,8 +1,6 @@
 // Chat API Integration Service
 // Handles communication with backend chat API and manages conversation state
-
-const CHAT_API_BASE_URL = 'http://localhost:8000';
-const CHAT_ENDPOINT = '/chat';
+import { API_BASE_URL, CHAT_ENDPOINT } from '@/lib/config';
 
 /**
  * Chat API Service for Dynamic UI Workflow
@@ -32,7 +30,7 @@ class ChatApiService {
 
       console.log('Starting new conversation:', requestBody);
 
-      const response = await fetch(`${CHAT_API_BASE_URL}${CHAT_ENDPOINT}`, {
+      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,7 +91,7 @@ class ChatApiService {
 
       console.log('Continuing conversation:', requestBody);
 
-      const response = await fetch(`${CHAT_API_BASE_URL}${CHAT_ENDPOINT}`, {
+      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

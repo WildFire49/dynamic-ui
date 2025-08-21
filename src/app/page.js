@@ -16,14 +16,17 @@ import {
 import IconButton from '@mui/material/IconButton';
 import SendIcon from '@mui/icons-material/Send';
 import AddIcon from '@mui/icons-material/Add';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import TypingIndicator from '@/components/mui/TypingIndicator';
 import Zoom from '@mui/material/Zoom';
 import DynamicRenderer from '../lib/dynamic-ui/DynamicRenderer';
 import DataTable from '../components/mui/DataTable';
 import WorkflowModifier from '../components/WorkflowModifier';
+import DynamicDataVisualization from '../components/mui/DynamicDataVisualization';
 import styles from '@/styles/Chat.module.scss';
 import MifixLogo from '@/assets/Mifix.png';
 import ConfirmationDialog from '@/components/mui/ConfirmationDialog';
+import { API_BASE_URL, CHAT_ENDPOINT } from '@/lib/config';
 
 export default function HomePage() {
   const [chatHistory, setChatHistory] = useState([]);
@@ -102,6 +105,21 @@ export default function HomePage() {
       }
       botMessage = { type: 'user', content: { text: analysisText }, isBot: true };
     }
+    // Handle dynamic data visualization response (supports any data structure)
+    else if (
+      (data.response?.status === 'success' && Array.isArray(data.response.data) && data.response.data.length > 0) ||
+      (data?.status === 'success' && Array.isArray(data.data) && data.data.length > 0)
+    ) {
+      botMessage = {
+        type: 'dynamic_data',
+        isBot: true,
+        content: {
+          data: data.response?.data || data.data,
+          question: data.response?.question || data.question || 'Data Analysis',
+          title: 'Business Intelligence Dashboard'
+        }
+      };
+    }
     // Handle table data response
     else if (data.response?.result && Array.isArray(data.response.result)) {
       botMessage = { 
@@ -132,7 +150,7 @@ export default function HomePage() {
         requestBody.conversation_id = conversationId;
       }
 
-      const response = await fetch('http://localhost:8000/chat', {
+      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -528,6 +546,14 @@ export default function HomePage() {
                           <Typography variant="body1"><strong>Cloudiness:</strong> {message.weather.cloudiness}</Typography>
                         </Grid>
                       </Grid>
+                    </Box>
+                  ) : message.type === 'dynamic_data' ? (
+                    <Box sx={{ width: '100%', maxWidth: 'none' }}>
+                      <DynamicDataVisualization
+                        data={message.content.data}
+                        question={message.content.question}
+                        title={message.content.title}
+                      />
                     </Box>
                   ) : message.type === 'system' && message.workflow_modification ? (
                     <WorkflowModifier 

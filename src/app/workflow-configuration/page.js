@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import Image from 'next/image';
 import WorkflowModifier from '../../components/WorkflowModifier';
+import { API_BASE_URL, CHAT_ENDPOINT } from '@/lib/config';
 
 const WorkflowConfigurationPage = () => {
   const [formData, setFormData] = useState({
@@ -60,7 +61,7 @@ const WorkflowConfigurationPage = () => {
 
       console.log('Sending workflow modification payload:', payload);
 
-      const response = await fetch('http://localhost:8000/chat', {
+      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +110,7 @@ const WorkflowConfigurationPage = () => {
 
       console.log('Sending confirmation payload:', payload);
 
-      const response = await fetch('http://localhost:8000/chat', {
+      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +147,7 @@ const WorkflowConfigurationPage = () => {
 
         console.log('Sending cancel payload:', payload);
 
-        const response = await fetch('http://localhost:8000/chat', {
+        const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

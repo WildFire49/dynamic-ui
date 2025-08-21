@@ -5,7 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: newstreet/buddhi-ai:mifix-ai-ui-v1.0.1
     container_name: dynamic-ui-container
     ports:
       - "3500:3000"
     restart: unless-stopped
+    environment:
+      - NODE_ENV=production
