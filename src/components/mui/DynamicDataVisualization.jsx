@@ -37,6 +37,40 @@ import {
   CurrencyRupee
 } from '@mui/icons-material';
 
+// Utility function to convert week number to date range
+const getWeekDateRange = (weekNumber, year = new Date().getFullYear()) => {
+  // Get the first day of the year
+  const firstDayOfYear = new Date(year, 0, 1);
+  
+  // Calculate the first Monday of the year (ISO week standard)
+  const firstMonday = new Date(firstDayOfYear);
+  const dayOfWeek = firstDayOfYear.getDay();
+  const daysToAdd = dayOfWeek === 0 ? 1 : 8 - dayOfWeek; // If Sunday, add 1 day, else add days to get to Monday
+  firstMonday.setDate(firstDayOfYear.getDate() + daysToAdd);
+  
+  // Calculate the start date of the given week
+  const weekStartDate = new Date(firstMonday);
+  weekStartDate.setDate(firstMonday.getDate() + (weekNumber - 1) * 7);
+  
+  // Calculate the end date of the week (6 days later)
+  const weekEndDate = new Date(weekStartDate);
+  weekEndDate.setDate(weekStartDate.getDate() + 6);
+  
+  // Get month name and determine week position in month
+  const monthName = weekStartDate.toLocaleDateString('en-US', { month: 'long' });
+  const weekOfMonth = Math.ceil(weekStartDate.getDate() / 7);
+  const weekPositions = ['1st', '2nd', '3rd', '4th', '5th'];
+  const weekPosition = weekPositions[weekOfMonth - 1] || `${weekOfMonth}th`;
+  
+  return {
+    start: weekStartDate,
+    end: weekEndDate,
+    displayRange: `${weekStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+    monthWeek: `${monthName} ${weekPosition} week`,
+    shortDisplay: `Week ${weekNumber}`
+  };
+};
+
 const DynamicDataVisualization = ({ 
   data = [],
   question = "Data Analysis",
@@ -85,9 +119,11 @@ const DynamicDataVisualization = ({
       const firstItem = data[0];
       const keys = Object.keys(firstItem);
       
-      // Find x-axis (categorical field - weekday should be x-axis)
+      // Find x-axis (categorical field - weekday, week_number, or date should be x-axis)
       const xAxis = keys.find(key => 
         key.toLowerCase().includes('weekday') ||
+        key.toLowerCase().includes('week_number') ||
+        key.toLowerCase().includes('week') ||
         key.toLowerCase().includes('day') ||
         key.toLowerCase().includes('date')
       ) || keys[0];
@@ -109,7 +145,7 @@ const DynamicDataVisualization = ({
       // Generate display name for X-axis
       let displayName = xValue;
       
-      // Check if it's a weekday field first (higher priority)
+      // Check field type and format accordingly
       if (autoFieldMapping.xAxis.toLowerCase().includes('weekday')) {
         // Format weekday numbers to names
         const weekdayNames = {
@@ -117,6 +153,10 @@ const DynamicDataVisualization = ({
           5: 'Friday', 6: 'Saturday', 7: 'Sunday'
         };
         displayName = weekdayNames[xValue] || `Day ${xValue}`;
+      } else if (autoFieldMapping.xAxis.toLowerCase().includes('week_number') || autoFieldMapping.xAxis.toLowerCase().includes('week')) {
+        // Format week numbers to date ranges
+        const weekInfo = getWeekDateRange(xValue);
+        displayName = weekInfo.shortDisplay;
       } else if (autoFieldMapping.xAxis.toLowerCase().includes('date') || autoFieldMapping.xAxis.toLowerCase().includes('day')) {
         try {
           const date = new Date(xValue);
@@ -255,7 +295,7 @@ const DynamicDataVisualization = ({
                 <YAxis 
                   tickFormatter={(value) => `₹${(value / 100000).toFixed(0)}L`} 
                   fontSize={12}
-                  domain={[(dataMin) => Math.max(0, dataMin * 0.8), 'dataMax']}
+                  domain={[(dataMin) => Math.max(0, dataMin * 0.85), 'dataMax']}
                 />
                 <RechartsTooltip content={<CustomTooltip />} />
                 <Line 
@@ -440,6 +480,42 @@ const DynamicDataVisualization = ({
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
                                 {dayName}
+                              </Typography>
+                              {insights && processedData[index]?.amount === insights.highest.amount && (
+                                <Chip 
+                                  label="Peak" 
+                                  size="small" 
+                                  sx={{
+                                    backgroundColor: '#fbbf24',
+                                    color: '#92400e',
+                                    fontWeight: 600,
+                                    fontSize: '0.7rem'
+                                  }}
+                                />
+                              )}
+                              {insights && processedData[index]?.amount === insights.lowest.amount && (
+                                <Chip 
+                                  label="Low" 
+                                  size="small" 
+                                  sx={{
+                                    backgroundColor: '#3b82f6',
+                                    color: '#ffffff',
+                                    fontWeight: 600,
+                                    fontSize: '0.7rem'
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          );
+                        } else if (fieldKey.toLowerCase().includes('week_number') || fieldKey.toLowerCase().includes('week')) {
+                          // Convert week numbers to date ranges
+                          const weekInfo = getWeekDateRange(data[index][fieldKey]);
+                          const weekDisplay = weekInfo.monthWeek;
+                          
+                          return (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
+                                {weekDisplay}
                               </Typography>
                               {insights && processedData[index]?.amount === insights.highest.amount && (
                                 <Chip 
