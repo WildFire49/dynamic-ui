@@ -17,16 +17,23 @@ import IconButton from '@mui/material/IconButton';
 import SendIcon from '@mui/icons-material/Send';
 import AddIcon from '@mui/icons-material/Add';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import MicIcon from '@mui/icons-material/Mic';
+import StopIcon from '@mui/icons-material/Stop';
 import TypingIndicator from '@/components/mui/TypingIndicator';
 import Zoom from '@mui/material/Zoom';
 import DynamicRenderer from '../lib/dynamic-ui/DynamicRenderer';
 import DataTable from '../components/mui/DataTable';
 import WorkflowModifier from '../components/WorkflowModifier';
 import DynamicDataVisualization from '../components/mui/DynamicDataVisualization';
+import AnalysisResponse from '../components/mui/AnalysisResponse';
+import IncentiveRulesResponse from '../components/mui/IncentiveRulesResponse';
 import styles from '@/styles/Chat.module.scss';
 import MifixLogo from '@/assets/Mifix.png';
 import ConfirmationDialog from '@/components/mui/ConfirmationDialog';
 import { API_BASE_URL, CHAT_ENDPOINT } from '@/lib/config';
+import { uploadAudioFile, generateAudioFileName } from '../lib/audioUpload';
+import InputWithRecording from '../components/mui/InputWithRecording';
+import VoiceWaveform from '../components/mui/VoiceWaveform';
 
 export default function HomePage() {
   const [chatHistory, setChatHistory] = useState([]);
@@ -38,7 +45,11 @@ export default function HomePage() {
   const [conversationId, setConversationId] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [currentResponseData, setCurrentResponseData] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
   const chatEndRef = useRef(null);
+  const recordingTimerRef = useRef(null);
 
   const handleApiResponse = useCallback((data) => {
     console.log('API Response:', data);
@@ -126,6 +137,24 @@ export default function HomePage() {
         type: 'table', 
         content: { data: data.response.result, title: 'Query Results' }, 
         isBot: true 
+      };
+    }
+    // Handle analysis response
+    else if (data.response?.type === 'analysis' && data.response?.content) {
+      botMessage = {
+        type: 'analysis',
+        content: data.response.content,
+        source: data.response.source,
+        isBot: true
+      };
+    }
+    // Handle incentive rules response
+    else if (data.response?.type === 'incentive_rules' && data.response?.content) {
+      botMessage = {
+        type: 'incentive_rules',
+        content: data.response.content,
+        source: data.response.source,
+        isBot: true
       };
     }
     // Handle simple message response
@@ -221,22 +250,130 @@ export default function HomePage() {
     await callChatApi(requestBody);
   }, [currentResponseData, callChatApi, conversationId, sessionId]);
 
-  const handleSendMessage = useCallback(async () => {
-    if (inputValue.trim() === '') return;
+  const handleSendMessage = useCallback(async (messageText = null, audioFileUrl = null, audioKey = null) => {
+    const finalMessageText = messageText || inputValue;
+    if (finalMessageText.trim() === '' && !audioFileUrl) return;
 
-    const userMessage = { type: 'user', content: { text: inputValue } };
+    const userMessage = { type: 'user', content: { text: finalMessageText } };
     setChatHistory(prev => [...prev, userMessage]);
 
-    const messageText = inputValue;
     setInputValue('');
 
     const requestBody = {
       user_id: 'vaishakh_workflow1',
-      message: messageText,
+      message: finalMessageText,
     };
+
+    // Add audio parameters if provided
+    if (audioFileUrl) {
+      requestBody.audio_file = audioFileUrl;
+    }
+    if (audioKey) {
+      requestBody.audioKey = audioKey;
+    }
 
     await callChatApi(requestBody);
   }, [inputValue, callChatApi]);
+
+  const startRecording = useCallback(async (event) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const audioChunks = [];
+
+      setRecordingTime(0);
+
+      // Start recording timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
+      recorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        // Try different audio formats for better browser compatibility
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+        const fileName = generateAudioFileName();
+        
+        // Use recorded time directly as duration (most reliable approach)
+        const calculatedDuration = recordingTime;
+        console.log('Using recording duration:', calculatedDuration, 'seconds');
+        
+        // Create local blob URL as fallback for immediate playback
+        const localBlobUrl = URL.createObjectURL(audioBlob);
+        console.log('Created local blob URL:', localBlobUrl);
+        console.log('Audio blob size:', audioBlob.size, 'bytes');
+        console.log('Audio blob type:', audioBlob.type);
+        
+        // Add voice message to chat history with local blob URL and duration
+        const voiceMessage = { 
+          type: 'user', 
+          content: { 
+            text: '', 
+            audio_file: localBlobUrl,
+            fileName: fileName,
+            isLocalBlob: true,
+            duration: calculatedDuration
+          } 
+        };
+        setChatHistory(prev => [...prev, voiceMessage]);
+        
+        // Upload audio file in background
+        try {
+          const uploadResult = await uploadAudioFile(audioBlob, fileName);
+          
+          if (uploadResult.success && !uploadResult.isLocal) {
+            console.log('Audio uploaded successfully:', uploadResult.fileUrl);
+            
+            // Test if the server URL is accessible before replacing local blob
+            try {
+              const testResponse = await fetch(uploadResult.fileUrl, { method: 'HEAD' });
+              if (testResponse.ok) {
+                // Update the message with the server URL only if it's accessible
+                setChatHistory(prev => 
+                  prev.map(msg => 
+                    msg === voiceMessage 
+                      ? { ...msg, content: { ...msg.content, audio_file: uploadResult.fileUrl, isLocalBlob: false } }
+                      : msg
+                  )
+                );
+              } else {
+                console.warn('Server URL not accessible, keeping local blob URL');
+              }
+            } catch (testError) {
+              console.warn('Could not test server URL accessibility, keeping local blob URL');
+            }
+            
+            // Send message with audio file URL and audioKey
+            await handleSendMessage('', uploadResult.fileUrl, uploadResult.audioKey);
+          } else {
+            console.error('Failed to upload audio:', uploadResult.error);
+            // Keep the local blob URL if upload fails
+          }
+        } catch (error) {
+          console.error('Error during audio upload:', error);
+          // Keep the local blob URL if upload fails
+        }
+        
+      };
+
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+    }
+  }, [handleSendMessage, recordingTime]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setMediaRecorder(null);
+    }
+  }, [mediaRecorder, isRecording]);
 
   const handleDialogClose = () => {
     setDialogOpen(false);
@@ -577,6 +714,16 @@ export default function HomePage() {
                         callChatApi(cancelPayload);
                       }}
                     />
+                  ) : message.type === 'analysis' ? (
+                    <AnalysisResponse 
+                      data={message.content} 
+                      source={message.source}
+                    />
+                  ) : message.type === 'incentive_rules' ? (
+                    <IncentiveRulesResponse 
+                      data={message.content} 
+                      source={message.source}
+                    />
                   ) : message.type === 'table' ? (
                     <Box sx={{ width: '100%', overflow: 'hidden' }}>
                       <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
@@ -584,7 +731,13 @@ export default function HomePage() {
                       </Typography>
                       <DataTable data={message.content.data} />
                     </Box>
-                  ) : (
+                  ) : message.content.audio_file ? (
+                    <VoiceWaveform 
+                      audioUrl={message.content.audio_file}
+                      fileName={message.content.fileName || 'Voice Message'}
+                      duration={message.content.duration || 0}
+                    />
+                  ) : message.content.text ? (
                     <Typography 
                       variant="body1"
                       sx={{ 
@@ -595,7 +748,7 @@ export default function HomePage() {
                     >
                       {message.content.text}
                     </Typography>
-                  )}
+                  ) : null}
                 </Paper>
               </Box>
             );
@@ -644,90 +797,22 @@ export default function HomePage() {
         backgroundColor: '#ffffff', 
         borderTop: '1px solid #e9ecef'
       }}>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 0.5,
-          width: '100%',
-          maxWidth: '600px',
-          mx: 'auto'
-        }}>
-          <TextField
-            variant="outlined"
-            placeholder="Type your message here..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            disabled={isTyping}
-            multiline
-            maxRows={1}
-            sx={{
-              flex: 1,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '25px',
-                backgroundColor: '#f8f9fa',
-                border: '1px solid #e0e0e0',
-                minHeight: '36px',
-                '&:hover': {
-                  borderColor: '#bdbdbd'
-                },
-                '&.Mui-focused': {
-                  borderColor: '#1976d2',
-                  backgroundColor: '#ffffff'
-                },
-                '& fieldset': {
-                  border: 'none'
-                }
-              },
-              '& .MuiInputBase-input': {
-                py: 0.5,
-                px: 1.5,
-                fontSize: '14px',
-                lineHeight: 1.4,
-                textAlign: 'left',
-                '&::placeholder': {
-                  color: '#9e9e9e',
-                  opacity: 1
-                }
-              }
-            }}
-          />
-          
-          <Zoom in={inputValue.trim().length > 0}>
-            <IconButton
-              onClick={handleSendMessage}
-              disabled={isTyping || inputValue.trim().length === 0}
-              sx={{
-                backgroundColor: '#e0e0e0',
-                color: '#757575',
-                width: 36,
-                height: 36,
-                p: 1,
-                '&:hover': {
-                  backgroundColor: '#bdbdbd'
-                },
-                '&.Mui-disabled': {
-                  backgroundColor: '#f5f5f5',
-                  color: '#bdbdbd',
-                },
-                ...(inputValue.trim().length > 0 && {
-                  backgroundColor: '#1976d2',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: '#1565c0'
-                  }
-                })
-              }}
-            >
-              <SendIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Zoom>
-        </Box>
+        <InputWithRecording
+          inputValue={inputValue}
+          onInputChange={(e) => setInputValue(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSendMessage();
+            }
+          }}
+          onSendMessage={handleSendMessage}
+          onStartRecording={startRecording}
+          onStopRecording={stopRecording}
+          isRecording={isRecording}
+          recordingTime={recordingTime}
+          isTyping={isTyping}
+        />
       </Box>
       <ConfirmationDialog
         open={dialogOpen}
