@@ -164,7 +164,7 @@ const IncentiveRulesResponse = ({ data, source }) => {
         <Divider sx={{ mb: 3 }} />
 
         {/* Status Message */}
-        {message && (
+        {/* {message && (
           <Alert 
             severity="info" 
             icon={<Info />}
@@ -174,7 +174,7 @@ const IncentiveRulesResponse = ({ data, source }) => {
               {message}
             </Typography>
           </Alert>
-        )}
+        )} */}
 
         {/* Key Information */}
         {(keyInfo.userName || keyInfo.completionPercentage !== null || keyInfo.pointsEarned || keyInfo.status !== 'pending') && (

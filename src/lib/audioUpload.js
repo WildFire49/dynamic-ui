@@ -43,6 +43,7 @@ export const uploadAudioFile = async (audioBlob, fileName) => {
       success: true,
       fileUrl: fileUrl,
       fileName: fileName,
+      key: result.key || result.data?.minio_key || result.minio_key || fileName,
       audioKey: result.data?.minio_key || result.minio_key || result.key || fileName
     };
     

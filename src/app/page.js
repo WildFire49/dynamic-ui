@@ -27,6 +27,8 @@ import WorkflowModifier from '../components/WorkflowModifier';
 import DynamicDataVisualization from '../components/mui/DynamicDataVisualization';
 import AnalysisResponse from '../components/mui/AnalysisResponse';
 import IncentiveRulesResponse from '../components/mui/IncentiveRulesResponse';
+import AudioTranslationResponse from '../components/mui/AudioTranslationResponse';
+import SchedulerResponse from '../components/mui/SchedulerResponse';
 import styles from '@/styles/Chat.module.scss';
 import MifixLogo from '@/assets/Mifix.png';
 import ConfirmationDialog from '@/components/mui/ConfirmationDialog';
@@ -37,16 +39,24 @@ import VoiceWaveform from '../components/mui/VoiceWaveform';
 
 export default function HomePage() {
   const [chatHistory, setChatHistory] = useState([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogConfig, setDialogConfig] = useState({});
-  const [actionToConfirm, setActionToConfirm] = useState(null);
-  const [conversationId, setConversationId] = useState(null);
-  const [sessionId, setSessionId] = useState(null);
-  const [currentResponseData, setCurrentResponseData] = useState(null);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const [currentResponseData, setCurrentResponseData] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState('');
+  const [eventPollingInterval, setEventPollingInterval] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
+  const [inputValue, setInputValue] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState({ title: '', message: '' });
+  const [actionToConfirm, setActionToConfirm] = useState(null);
+
   const [recordingTime, setRecordingTime] = useState(0);
   const chatEndRef = useRef(null);
   const recordingTimerRef = useRef(null);
@@ -61,8 +71,26 @@ export default function HomePage() {
 
     let botMessage = null;
 
+    // New: Handle audio responses that also contain data (priority check)
+    if (data.response?.access_url && data.response?.data) {
+      botMessage = {
+        type: 'audio_translation',
+        content: {
+          originalText: data.response.original_question || '',
+          translatedText: data.response.question || data.response.translated_content,
+          detectedLanguage: data.response.detected_language,
+          audioUrl: data.response.access_url,
+          status: data.response.status,
+          errorMessage: data.response.error_message,
+          data: data.response.data,
+          rowCount: data.response.row_count,
+          executionTime: data.response.execution_time_ms
+        },
+        isBot: true
+      };
+    }
     // Handle workflow modification response
-    if (data.response && data.response.status === 'preview_ready' && data.response.modification_request) {
+    else if (data.response && data.response.status === 'preview_ready' && data.response.modification_request) {
       botMessage = {
         type: 'system',
         content: 'Workflow Modification Preview',
@@ -157,6 +185,38 @@ export default function HomePage() {
         isBot: true
       };
     }
+    // Handle audio-only responses (no data)
+    else if (data.response?.access_url) {
+      botMessage = {
+        type: 'audio_translation',
+        content: {
+          originalText: data.response.original_question || '',
+          translatedText: data.response.question || data.response.translated_content || data.response.content,
+          detectedLanguage: data.response.detected_language,
+          audioUrl: data.response.access_url,
+          status: data.response.status || (data.response.type === 'error' ? 'error' : 'success'),
+          errorMessage: data.response.error_message || (data.response.type === 'error' ? data.response.content : null),
+          data: null, // Explicitly set data to null
+        },
+        isBot: true
+      };
+    }
+    // Handle scheduler response
+    else if (data.response?.type === 'scheduler_response') {
+      botMessage = {
+        type: 'scheduler_response',
+        content: data.response,
+        isBot: true
+      };
+    }
+    // Handle event API scheduler response
+    else if (data.metadata?.response_type === 'downloadable_report') {
+      botMessage = {
+        type: 'scheduler_response',
+        content: data,
+        isBot: true
+      };
+    }
     // Handle simple message response
     else if (data.response?.message) {
       botMessage = { 
@@ -179,9 +239,17 @@ export default function HomePage() {
         requestBody.conversation_id = conversationId;
       }
 
+      // Check if this is a configurator API call
+      const isConfiguratorCall = body.message && body.message.includes('configurator');
+      if (isConfiguratorCall) {
+        setConfiguratorCallTime(Date.now());
+      }
+
       const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(requestBody),
       });
 
@@ -190,6 +258,7 @@ export default function HomePage() {
       }
 
       const data = await response.json();
+      console.log('Chat API Response:', data);
       handleApiResponse(data);
 
     } catch (error) {
@@ -252,10 +321,13 @@ export default function HomePage() {
 
   const handleSendMessage = useCallback(async (messageText = null, audioFileUrl = null, audioKey = null) => {
     const finalMessageText = messageText || inputValue;
-    if (finalMessageText.trim() === '' && !audioFileUrl) return;
+    if (finalMessageText.trim() === '' && !audioKey) return;
 
-    const userMessage = { type: 'user', content: { text: finalMessageText } };
-    setChatHistory(prev => [...prev, userMessage]);
+    // Only add chat bubble if there's text message, not for audio-only
+    if (finalMessageText.trim() !== '') {
+      const userMessage = { type: 'user', content: { text: finalMessageText } };
+      setChatHistory(prev => [...prev, userMessage]);
+    }
 
     setInputValue('');
 
@@ -264,12 +336,9 @@ export default function HomePage() {
       message: finalMessageText,
     };
 
-    // Add audio parameters if provided
-    if (audioFileUrl) {
-      requestBody.audio_file = audioFileUrl;
-    }
+    // Add audio key if provided (instead of audio file)
     if (audioKey) {
-      requestBody.audioKey = audioKey;
+      requestBody.key = audioKey;
     }
 
     await callChatApi(requestBody);
@@ -325,29 +394,13 @@ export default function HomePage() {
           const uploadResult = await uploadAudioFile(audioBlob, fileName);
           
           if (uploadResult.success && !uploadResult.isLocal) {
-            console.log('Audio uploaded successfully:', uploadResult.fileUrl);
+            console.log('Audio uploaded successfully, key:', uploadResult.key);
             
-            // Test if the server URL is accessible before replacing local blob
-            try {
-              const testResponse = await fetch(uploadResult.fileUrl, { method: 'HEAD' });
-              if (testResponse.ok) {
-                // Update the message with the server URL only if it's accessible
-                setChatHistory(prev => 
-                  prev.map(msg => 
-                    msg === voiceMessage 
-                      ? { ...msg, content: { ...msg.content, audio_file: uploadResult.fileUrl, isLocalBlob: false } }
-                      : msg
-                  )
-                );
-              } else {
-                console.warn('Server URL not accessible, keeping local blob URL');
-              }
-            } catch (testError) {
-              console.warn('Could not test server URL accessibility, keeping local blob URL');
-            }
+            // Keep the local blob URL for playback, don't update to server URL
+            // The VoiceWaveform component will use the local blob for playback
             
-            // Send message with audio file URL and audioKey
-            await handleSendMessage('', uploadResult.fileUrl, uploadResult.audioKey);
+            // Send message with audio key only (no file URL)
+            await handleSendMessage('', null, uploadResult.key);
           } else {
             console.error('Failed to upload audio:', uploadResult.error);
             // Keep the local blob URL if upload fails
@@ -371,7 +424,51 @@ export default function HomePage() {
     if (mediaRecorder && isRecording) {
       mediaRecorder.stop();
       setIsRecording(false);
+      setIsPaused(false);
       setMediaRecorder(null);
+    }
+  }, [mediaRecorder, isRecording]);
+
+  const pauseRecording = useCallback(() => {
+    if (mediaRecorder && isRecording && mediaRecorder.state === 'recording') {
+      mediaRecorder.pause();
+      setIsPaused(true);
+      // Pause the timer
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    }
+  }, [mediaRecorder, isRecording]);
+
+  const resumeRecording = useCallback(() => {
+    if (mediaRecorder && isRecording && mediaRecorder.state === 'paused') {
+      mediaRecorder.resume();
+      setIsPaused(false);
+      // Resume the timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    }
+  }, [mediaRecorder, isRecording]);
+
+  const cancelRecording = useCallback(() => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setIsPaused(false);
+      setRecordingTime(0);
+      setAudioChunks([]);
+      setMediaRecorder(null);
+      
+      // Clear the timer
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      
+      // Stop all tracks to release microphone
+      if (mediaRecorder.stream) {
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
     }
   }, [mediaRecorder, isRecording]);
 
@@ -393,13 +490,60 @@ export default function HomePage() {
     }
   };
 
+  const [configuratorCallTime, setConfiguratorCallTime] = useState(null);
+  const [schedulerDelayTimeout, setSchedulerDelayTimeout] = useState(null);
+
+  useEffect(() => {
+    const pollEvents = async () => {
+      try {
+        const response = await fetch(process.env.NEXT_PUBLIC_EVENT_API_URL);
+        if (response.ok) {
+          const events = await response.json();
+          if (events && events.length > 0) {
+            // Only show scheduler events if 2 minutes have passed since configurator call
+            const now = Date.now();
+            if (configuratorCallTime && (now - configuratorCallTime) >= 120000) { // 2 minutes
+              events.forEach(event => {
+                if (event.metadata?.response_type === 'downloadable_report') {
+                  handleApiResponse(event);
+                }
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Event polling error:', error);
+      }
+    };
+
+    // Start polling every 20 seconds
+    const interval = setInterval(pollEvents, 20000);
+    setEventPollingInterval(interval);
+
+    // Cleanup on unmount
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [handleApiResponse, configuratorCallTime]);
+
+  useEffect(() => {
+    return () => {
+      if (eventPollingInterval) {
+        clearInterval(eventPollingInterval);
+      }
+    };
+  }, [eventPollingInterval]);
+
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [chatHistory, isTyping]);
+  }, [chatHistory]);
+
 
   return (
     <Box
@@ -724,6 +868,14 @@ export default function HomePage() {
                       data={message.content} 
                       source={message.source}
                     />
+                  ) : message.type === 'audio_translation' ? (
+                    <AudioTranslationResponse 
+                      content={message.content}
+                    />
+                  ) : message.type === 'scheduler_response' ? (
+                    <SchedulerResponse 
+                      content={message.content}
+                    />
                   ) : message.type === 'table' ? (
                     <Box sx={{ width: '100%', overflow: 'hidden' }}>
                       <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
@@ -809,7 +961,11 @@ export default function HomePage() {
           onSendMessage={handleSendMessage}
           onStartRecording={startRecording}
           onStopRecording={stopRecording}
+          onPauseRecording={pauseRecording}
+          onResumeRecording={resumeRecording}
+          onCancelRecording={cancelRecording}
           isRecording={isRecording}
+          isPaused={isPaused}
           recordingTime={recordingTime}
           isTyping={isTyping}
         />

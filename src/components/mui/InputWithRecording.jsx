@@ -9,7 +9,10 @@ import {
 import {
   Mic as MicIcon,
   Stop as StopIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Pause as PauseIcon,
+  PlayArrow as PlayIcon,
+  Close as CancelIcon
 } from '@mui/icons-material';
 
 const InputWithRecording = ({
@@ -19,7 +22,11 @@ const InputWithRecording = ({
   onSendMessage,
   onStartRecording,
   onStopRecording,
+  onPauseRecording,
+  onResumeRecording,
+  onCancelRecording,
   isRecording,
+  isPaused,
   recordingTime,
   isTyping
 }) => {
@@ -65,6 +72,9 @@ const InputWithRecording = ({
   };
 
   if (isRecording) {
+    const recordingColor = isPaused ? '#ff9800' : '#f44336';
+    const recordingColorRgb = isPaused ? '255, 152, 0' : '244, 67, 54';
+    
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -74,30 +84,37 @@ const InputWithRecording = ({
         maxWidth: '600px',
         mx: 'auto',
         p: 2,
-        backgroundColor: '#f44336',
-        borderRadius: '25px',
+        background: `linear-gradient(135deg, ${recordingColor} 0%, ${isPaused ? '#f57c00' : '#d32f2f'} 100%)`,
+        borderRadius: '28px',
         color: 'white',
-        minHeight: '56px',
-        boxShadow: '0 4px 16px rgba(244, 67, 54, 0.3)',
-        animation: 'recordingPulse 2s ease-in-out infinite',
+        minHeight: '64px',
+        boxShadow: `0 8px 32px rgba(${recordingColorRgb}, 0.4)`,
+        animation: isPaused ? 'pausedPulse 3s ease-in-out infinite' : 'recordingPulse 2s ease-in-out infinite',
         '@keyframes recordingPulse': {
-          '0%': { transform: 'scale(1)', boxShadow: '0 4px 16px rgba(244, 67, 54, 0.3)' },
-          '50%': { transform: 'scale(1.02)', boxShadow: '0 6px 24px rgba(244, 67, 54, 0.4)' },
-          '100%': { transform: 'scale(1)', boxShadow: '0 4px 16px rgba(244, 67, 54, 0.3)' },
+          '0%': { transform: 'scale(1)', boxShadow: `0 8px 32px rgba(${recordingColorRgb}, 0.4)` },
+          '50%': { transform: 'scale(1.02)', boxShadow: `0 12px 40px rgba(${recordingColorRgb}, 0.5)` },
+          '100%': { transform: 'scale(1)', boxShadow: `0 8px 32px rgba(${recordingColorRgb}, 0.4)` },
+        },
+        '@keyframes pausedPulse': {
+          '0%': { transform: 'scale(1)', opacity: 1 },
+          '50%': { transform: 'scale(1.01)', opacity: 0.9 },
+          '100%': { transform: 'scale(1)', opacity: 1 },
         },
       }}>
         {/* Animated Microphone */}
         <Box sx={{ position: 'relative' }}>
           <Box
             sx={{
-              width: { xs: 36, sm: 40 },
-              height: { xs: 36, sm: 40 },
+              width: { xs: 44, sm: 48 },
+              height: { xs: 44, sm: 48 },
               borderRadius: '50%',
-              backgroundColor: 'rgba(255,255,255,0.2)',
+              background: 'rgba(255,255,255,0.15)',
+              backdropFilter: 'blur(10px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              animation: 'micPulse 1.5s ease-in-out infinite',
+              animation: isPaused ? 'none' : 'micPulse 1.5s ease-in-out infinite',
+              border: '2px solid rgba(255,255,255,0.2)',
               '@keyframes micPulse': {
                 '0%': { transform: 'scale(1)', opacity: 1 },
                 '50%': { transform: 'scale(1.1)', opacity: 0.8 },
@@ -105,29 +122,31 @@ const InputWithRecording = ({
               },
             }}
           >
-            <MicIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
+            <MicIcon sx={{ fontSize: { xs: 22, sm: 24 } }} />
           </Box>
         </Box>
 
         {/* Recording Status */}
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           <Typography 
-            variant="body2" 
+            variant="body1" 
             sx={{ 
-              fontWeight: 600,
-              fontSize: { xs: '0.875rem', sm: '1rem' }
+              fontWeight: 700,
+              fontSize: { xs: '1rem', sm: '1.1rem' },
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
             }}
           >
-            Recording...
+            {isPaused ? 'Paused' : 'Recording...'}
           </Typography>
           <Typography 
-            variant="caption" 
+            variant="body2" 
             sx={{ 
               fontFamily: 'monospace', 
-              fontSize: { xs: '0.875rem', sm: '0.9rem' },
-              opacity: 0.9,
-              fontWeight: 500,
-              letterSpacing: '0.5px'
+              fontSize: { xs: '0.9rem', sm: '1rem' },
+              opacity: 0.95,
+              fontWeight: 600,
+              letterSpacing: '1px',
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
             }}
           >
             {formatTime(recordingTime)}
@@ -135,25 +154,74 @@ const InputWithRecording = ({
         </Box>
 
         {/* Animated Waveform Bars */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mr: 1 }}>
-          {generateWaveformBars()}
-        </Box>
+        {!isPaused && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, mr: 2 }}>
+            {generateWaveformBars()}
+          </Box>
+        )}
 
-        {/* Stop Button */}
-        <IconButton
-          onClick={onStopRecording}
-          sx={{
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            color: 'white',
-            width: { xs: 36, sm: 40 },
-            height: { xs: 36, sm: 40 },
-            '&:hover': {
-              backgroundColor: 'rgba(255,255,255,0.3)',
-            },
-          }}
-        >
-          <StopIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
-        </IconButton>
+        {/* Control Buttons */}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {/* Cancel Button */}
+          <IconButton
+            onClick={onCancelRecording}
+            sx={{
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              width: { xs: 40, sm: 44 },
+              height: { xs: 40, sm: 44 },
+              border: '1px solid rgba(255,255,255,0.2)',
+              '&:hover': {
+                backgroundColor: 'rgba(255,255,255,0.25)',
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <CancelIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+          </IconButton>
+
+          {/* Pause/Resume Button */}
+          <IconButton
+            onClick={isPaused ? onResumeRecording : onPauseRecording}
+            sx={{
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              width: { xs: 40, sm: 44 },
+              height: { xs: 40, sm: 44 },
+              border: '1px solid rgba(255,255,255,0.2)',
+              '&:hover': {
+                backgroundColor: 'rgba(255,255,255,0.25)',
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {isPaused ? <PlayIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> : <PauseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
+          </IconButton>
+
+          {/* Stop Button */}
+          <IconButton
+            onClick={onStopRecording}
+            sx={{
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              width: { xs: 44, sm: 48 },
+              height: { xs: 44, sm: 48 },
+              border: '2px solid rgba(255,255,255,0.3)',
+              '&:hover': {
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <StopIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
+          </IconButton>
+        </Box>
       </Box>
     );
   }

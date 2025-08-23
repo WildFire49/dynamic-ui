@@ -435,7 +435,11 @@ const DynamicDataVisualization = ({
                                              fieldKey.toLowerCase().includes('day') ||
                                              fieldKey.toLowerCase().includes('date');
                         
-                        const isCurrencyField = !isWeekdayField && (
+                        const isCountField = fieldKey.toLowerCase().includes('customer') ||
+                                           fieldKey.toLowerCase().includes('count') ||
+                                           fieldKey.toLowerCase().includes('unique');
+                        
+                        const isCurrencyField = !isWeekdayField && !isCountField && (
                           (fieldMapping && fieldKey === fieldMapping.yAxis) || 
                           fieldKey.toLowerCase().includes('disbursement') ||
                           fieldKey.toLowerCase().includes('amount') ||
@@ -605,7 +609,11 @@ const DynamicDataVisualization = ({
                                              fieldKey.toLowerCase().includes('day') ||
                                              fieldKey.toLowerCase().includes('date');
                         
-                        const isCurrencyField = !isWeekdayField && (
+                        const isCountField = fieldKey.toLowerCase().includes('customer') ||
+                                           fieldKey.toLowerCase().includes('count') ||
+                                           fieldKey.toLowerCase().includes('unique');
+                        
+                        const isCurrencyField = !isWeekdayField && !isCountField && (
                           (fieldMapping && fieldKey === fieldMapping.yAxis) || 
                           fieldKey.toLowerCase().includes('disbursement') ||
                           fieldKey.toLowerCase().includes('amount') ||
