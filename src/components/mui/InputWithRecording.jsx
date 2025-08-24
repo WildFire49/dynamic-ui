@@ -2,9 +2,11 @@ import React from 'react';
 import {
   Box,
   TextField,
-  Typography,
   IconButton,
-  Zoom
+  Typography,
+  Zoom,
+  Fade,
+  Grow
 } from '@mui/material';
 import {
   Mic as MicIcon,
@@ -12,7 +14,8 @@ import {
   Send as SendIcon,
   Pause as PauseIcon,
   PlayArrow as PlayIcon,
-  Close as CancelIcon
+  Close as CancelIcon,
+  SmartToy as BotIcon
 } from '@mui/icons-material';
 
 const InputWithRecording = ({
@@ -248,84 +251,101 @@ const InputWithRecording = ({
         sx={{
           flex: 1,
           '& .MuiOutlinedInput-root': {
-            borderRadius: '25px',
-            backgroundColor: '#f8f9fa',
-            border: '1px solid #e0e0e0',
-            minHeight: '36px',
+            borderRadius: '24px',
+            backgroundColor: '#ffffff',
+            border: '2px solid #f0f0f0',
+            minHeight: '48px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
-              borderColor: '#bdbdbd'
+              borderColor: '#e0e0e0',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+              transform: 'translateY(-1px)'
             },
             '&.Mui-focused': {
               borderColor: '#1976d2',
-              backgroundColor: '#ffffff'
+              backgroundColor: '#ffffff',
+              boxShadow: '0 4px 24px rgba(25,118,210,0.15)',
+              transform: 'translateY(-1px)'
             },
             '& fieldset': {
               border: 'none'
             }
           },
           '& .MuiInputBase-input': {
-            py: 0.5,
-            px: 1.5,
-            fontSize: '14px',
-            lineHeight: 1.4,
-            textAlign: 'left',
+            py: 1,
+            px: 2,
+            fontSize: '15px',
+            lineHeight: 1.5,
+            fontWeight: 400,
             '&::placeholder': {
               color: '#9e9e9e',
-              opacity: 1
+              opacity: 1,
+              fontSize: '15px'
             }
           }
         }}
       />
       
-      <IconButton
-        onClick={onStartRecording}
-        disabled={isTyping}
-        sx={{
-          backgroundColor: '#e0e0e0',
-          color: '#757575',
-          width: 36,
-          height: 36,
-          p: 1,
-          mr: 0.5,
-          '&:hover': {
-            backgroundColor: '#bdbdbd'
-          },
-          '&.Mui-disabled': {
-            backgroundColor: '#f5f5f5',
-            color: '#bdbdbd',
-          }
-        }}
-      >
-        <MicIcon sx={{ fontSize: 18 }} />
-      </IconButton>
+      <Grow in={true} timeout={300}>
+        <IconButton
+          onClick={onStartRecording}
+          disabled={isTyping}
+          sx={{
+            backgroundColor: '#ffffff',
+            color: '#666666',
+            width: 44,
+            height: 44,
+            ml: 1,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+            border: '2px solid #f0f0f0',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              backgroundColor: '#f8f9fa',
+              color: '#1976d2',
+              transform: 'scale(1.05)',
+              boxShadow: '0 4px 20px rgba(25,118,210,0.15)'
+            },
+            '&.Mui-disabled': {
+              backgroundColor: '#f5f5f5',
+              color: '#bdbdbd',
+            }
+          }}
+        >
+          <MicIcon sx={{ fontSize: 20 }} />
+        </IconButton>
+      </Grow>
       
-      <Zoom in={inputValue.trim().length > 0}>
+      <Zoom in={inputValue.trim().length > 0} timeout={200}>
         <IconButton
           onClick={() => onSendMessage(inputValue)}
           disabled={isTyping || inputValue.trim().length === 0}
           sx={{
-            backgroundColor: '#e0e0e0',
-            color: '#757575',
-            width: 36,
-            height: 36,
-            p: 1,
+            backgroundColor: '#1976d2',
+            color: 'white',
+            width: 44,
+            height: 44,
+            ml: 1,
+            boxShadow: '0 4px 16px rgba(25,118,210,0.3)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
-              backgroundColor: '#bdbdbd'
+              backgroundColor: '#1565c0',
+              transform: 'scale(1.05) rotate(15deg)',
+              boxShadow: '0 6px 24px rgba(25,118,210,0.4)'
             },
             '&.Mui-disabled': {
               backgroundColor: '#f5f5f5',
               color: '#bdbdbd',
             },
-            ...(inputValue.trim().length > 0 && {
-              backgroundColor: '#1976d2',
-              color: 'white',
-              '&:hover': {
-                backgroundColor: '#1565c0'
-              }
-            })
+            '&:active': {
+              transform: 'scale(0.95)'
+            }
           }}
         >
-          <SendIcon sx={{ fontSize: 18 }} />
+          <SendIcon sx={{ 
+            fontSize: 20,
+            transition: 'transform 0.2s ease'
+          }} />
         </IconButton>
       </Zoom>
     </Box>
