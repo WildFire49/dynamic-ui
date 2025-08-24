@@ -26,15 +26,17 @@ import DataTable from '../components/mui/DataTable';
 import WorkflowModifier from '../components/WorkflowModifier';
 import DynamicDataVisualization from '../components/mui/DynamicDataVisualization';
 import AnalysisResponse from '../components/mui/AnalysisResponse';
-import IncentiveRulesResponse from '../components/mui/IncentiveRulesResponse';
+import InputWithRecording from '../components/mui/InputWithRecording';
 import AudioTranslationResponse from '../components/mui/AudioTranslationResponse';
 import SchedulerResponse from '../components/mui/SchedulerResponse';
+import ModernAudioPlayer from '../components/mui/ModernAudioPlayer';
+import PDFNotificationPopup from '../components/mui/PDFNotificationPopup';
+import IncentiveRulesResponse from '../components/mui/IncentiveRulesResponse';
 import styles from '@/styles/Chat.module.scss';
 import MifixLogo from '@/assets/Mifix.png';
 import ConfirmationDialog from '@/components/mui/ConfirmationDialog';
 import { API_BASE_URL, CHAT_ENDPOINT } from '@/lib/config';
 import { uploadAudioFile, generateAudioFileName } from '../lib/audioUpload';
-import InputWithRecording from '../components/mui/InputWithRecording';
 import VoiceWaveform from '../components/mui/VoiceWaveform';
 
 export default function HomePage() {
@@ -58,8 +60,12 @@ export default function HomePage() {
   const [actionToConfirm, setActionToConfirm] = useState(null);
 
   const [recordingTime, setRecordingTime] = useState(0);
+  const [scheduledTasks, setScheduledTasks] = useState(new Map());
   const chatEndRef = useRef(null);
   const recordingTimerRef = useRef(null);
+  const taskPollingRef = useRef(null);
+  const [pdfPopupOpen, setPdfPopupOpen] = useState(false);
+  const [pdfPopupData, setPdfPopupData] = useState(null);
 
   const handleApiResponse = useCallback((data) => {
     console.log('API Response:', data);
@@ -208,6 +214,66 @@ export default function HomePage() {
         content: data.response,
         isBot: true
       };
+      
+      // Track scheduled tasks for automatic completion display
+      if (data.response?.data?.job_id && data.response?.data?.schedule_details?.params?.run_date) {
+        const jobId = data.response.data.job_id;
+        const runDate = new Date(data.response.data.schedule_details.params.run_date);
+        
+        setScheduledTasks(prev => {
+          const newTasks = new Map(prev);
+          newTasks.set(jobId, {
+            runDate,
+            title: data.response.content || 'Scheduled Task',
+            conversationId: data.conversation_id
+          });
+          return newTasks;
+        });
+        
+        // Fetch events data 2 minutes after scheduling
+        setTimeout(async () => {
+          try {
+            const response = await fetch('http://15.207.209.61:8400/executor/events');
+            if (response.ok) {
+              const eventsData = await response.json();
+              
+              // Get the first object from the events response
+              if (eventsData && eventsData.length > 0) {
+                const firstEvent = eventsData[0];
+                
+                // Add completed message to chat
+                const completedMessage = {
+                  type: 'scheduler_response',
+                  content: firstEvent,
+                  isBot: true,
+                  timestamp: new Date().toISOString()
+                };
+                
+                setChatHistory(prev => [...prev, completedMessage]);
+                
+                // Show PDF popup if download URL exists
+                if (firstEvent.download_url) {
+                  setPdfPopupData({
+                    title: firstEvent.title || data.response.content,
+                    download_url: firstEvent.download_url,
+                    metadata: firstEvent.metadata
+                  });
+                  setPdfPopupOpen(true);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching events data:', error);
+          }
+          
+          // Remove from scheduled tasks
+          setScheduledTasks(prev => {
+            const newTasks = new Map(prev);
+            newTasks.delete(jobId);
+            return newTasks;
+          });
+        }, 120000); // 2 minutes delay
+      }
     }
     // Handle event API scheduler response
     else if (data.metadata?.response_type === 'downloadable_report') {
@@ -216,6 +282,16 @@ export default function HomePage() {
         content: data,
         isBot: true
       };
+      
+      // Show PDF popup for completed downloadable reports
+      if (data.status === 'completed' && data.download_url) {
+        setPdfPopupData({
+          title: data.title || 'Scheduled Report',
+          download_url: data.download_url,
+          metadata: data.metadata
+        });
+        setPdfPopupOpen(true);
+      }
     }
     // Handle simple message response
     else if (data.response?.message) {
@@ -320,7 +396,7 @@ export default function HomePage() {
   }, [currentResponseData, callChatApi, conversationId, sessionId]);
 
   const handleSendMessage = useCallback(async (messageText = null, audioFileUrl = null, audioKey = null) => {
-    const finalMessageText = messageText || inputValue;
+    const finalMessageText = String(messageText || inputValue || '');
     if (finalMessageText.trim() === '' && !audioKey) return;
 
     // Only add chat bubble if there's text message, not for audio-only
@@ -418,7 +494,93 @@ export default function HomePage() {
     } catch (error) {
       console.error('Error starting recording:', error);
     }
-  }, [handleSendMessage, recordingTime]);
+  }, []);
+
+  // PDF Popup handlers
+  const handleClosePdfPopup = useCallback(() => {
+    setPdfPopupOpen(false);
+    setPdfPopupData(null);
+  }, []);
+
+  // Add these functions for scheduler task polling
+  const startTaskPolling = useCallback(async (jobId) => {
+    const pollTask = async () => {
+      try {
+        const response = await fetch(`http://15.207.209.61:8400/executor/events/scheduler/status/${jobId}`);
+        if (response.ok) {
+          const taskData = await response.json();
+          
+          // Check if task is completed and has results
+          if (taskData.status === 'completed' && taskData.result) {
+            const scheduledTask = scheduledTasks.get(jobId);
+            
+            // Create a new message for the completed task
+            const completedMessage = {
+              type: 'scheduler_response',
+              content: {
+                type: 'scheduler_response',
+                content: `✅ Scheduled task "${scheduledTask?.title || 'Task'}" completed successfully!`,
+                data: {
+                  job_id: jobId,
+                  status: 'completed',
+                  result: taskData.result,
+                  schedule_details: {
+                    params: {
+                      run_date: scheduledTask?.runDate?.toISOString()
+                    }
+                  }
+                }
+              },
+              isBot: true,
+              timestamp: new Date().toISOString()
+            };
+            
+            // Add the completed task message to chat
+            setMessages(prev => [...prev, completedMessage]);
+            
+            // Show PDF popup if there's a download URL
+            if (taskData.result.pdf_url || taskData.result.download_url) {
+              setPdfPopupData({
+                title: scheduledTask?.title || 'Scheduled Task',
+                download_url: taskData.result.pdf_url || taskData.result.download_url,
+                metadata: {
+                  data: taskData.result.data || taskData.result.tabular_data || [],
+                  message: taskData.result.message || 'PDF generated successfully',
+                  success: true
+                }
+              });
+              setPdfPopupOpen(true);
+            }
+            
+            // Remove from scheduled tasks and stop polling
+            setScheduledTasks(prev => {
+              const newTasks = new Map(prev);
+              newTasks.delete(jobId);
+              return newTasks;
+            });
+            
+            clearInterval(taskPollingRef.current);
+            taskPollingRef.current = null;
+          }
+        }
+      } catch (error) {
+        console.error('Error polling task status:', error);
+      }
+    };
+    
+    // Poll every 10 seconds
+    taskPollingRef.current = setInterval(pollTask, 10000);
+    
+    // Also check immediately
+    pollTask();
+  }, [scheduledTasks]);
+
+  const stopTaskPolling = useCallback(() => {
+    if (taskPollingRef.current) {
+      clearInterval(taskPollingRef.current);
+      taskPollingRef.current = null;
+    }
+  }, []);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorder && isRecording) {
@@ -976,6 +1138,11 @@ export default function HomePage() {
         handleConfirm={handleDialogConfirm}
         title={dialogConfig.title}
         message={dialogConfig.message}
+      />
+      <PDFNotificationPopup
+        open={pdfPopupOpen}
+        onClose={handleClosePdfPopup}
+        data={pdfPopupData}
       />
     </Box>
   );

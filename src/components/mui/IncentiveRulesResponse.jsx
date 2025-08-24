@@ -148,7 +148,7 @@ const IncentiveRulesResponse = ({ data, source }) => {
           <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
             {getActionIcon(action)}
             <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#00468e' }}>
-              Incentive Rules
+              Results
             </Typography>
             {/* <Chip 
               label={action?.toUpperCase() || 'RULES'} 

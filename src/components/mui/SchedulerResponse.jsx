@@ -10,7 +10,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Chip
+  Chip,
+  Stack
 } from '@mui/material';
 import {
   Schedule as ScheduleIcon,
@@ -19,14 +20,41 @@ import {
 } from '@mui/icons-material';
 
 const SchedulerResponse = ({ content }) => {
-  const {
-    title,
-    metadata,
-    download_url,
-    status
-  } = content;
-
-  const { data, message, success } = metadata || {};
+  // Handle both old format (from events API) and new format (from chat API)
+  const isNewFormat = content?.type === 'scheduler_response' || content?.data;
+  
+  let title, metadata, download_url, status, data, message, success, job_id, schedule_details, result, isCompleted;
+  
+  if (isNewFormat) {
+    // Extract data based on format
+    const responseData = isNewFormat ? (content.data || content) : content;
+    title = isNewFormat ? content.content : (content.title || 'Scheduler Response');
+    job_id = responseData.job_id;
+    status = responseData.status || 'pending';
+    schedule_details = responseData.schedule_details;
+    result = responseData.result;
+    
+    // Check if this is a completed task with results
+    isCompleted = status === 'completed' && result;
+    
+    // For completed tasks, extract data and download URL from result
+    if (isCompleted && result) {
+      data = result.data || result.tabular_data;
+      download_url = result.pdf_url || result.download_url;
+      message = result.message;
+    }
+  } else {
+    // Old format from events API
+    title = content.title;
+    metadata = content.metadata;
+    download_url = content.download_url;
+    status = content.status;
+    const metaData = metadata || {};
+    data = metaData.data;
+    message = metaData.message;
+    success = metaData.success;
+    isCompleted = status === 'completed';
+  }
 
   const handleDownload = () => {
     if (download_url) {
@@ -66,10 +94,44 @@ const SchedulerResponse = ({ content }) => {
           {title}
         </Typography>
 
+        {/* Job ID */}
+        {job_id && (
+          <Typography variant="body2" sx={{ 
+            color: 'text.secondary',
+            mb: 1,
+            fontFamily: 'monospace',
+            fontSize: '0.75rem'
+          }}>
+            Job ID: {job_id}
+          </Typography>
+        )}
+
+        {/* Schedule Details */}
+        {schedule_details && (
+          <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(76, 175, 80, 0.1)', borderRadius: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 'medium', mb: 0.5 }}>
+              Schedule Details:
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Type: {schedule_details.type}
+            </Typography>
+            {schedule_details.params?.run_date && (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Run Date: {new Date(schedule_details.params.run_date).toLocaleString()}
+              </Typography>
+            )}
+            {schedule_details.timezone && (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Timezone: {schedule_details.timezone}
+              </Typography>
+            )}
+          </Box>
+        )}
+
         {/* Status */}
         <Chip 
           label={status} 
-          color={status === 'completed' ? 'success' : 'default'}
+          color={status === 'completed' ? 'success' : status === 'scheduled' ? 'info' : status === 'failed' ? 'error' : 'default'}
           size="small"
           sx={{ mb: 2 }}
         />

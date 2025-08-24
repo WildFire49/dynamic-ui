@@ -243,7 +243,8 @@ const InputWithRecording = ({
         onKeyPress={onKeyPress}
         disabled={isTyping}
         multiline
-        maxRows={1}
+        maxRows={4}
+        minRows={1}
         sx={{
           flex: 1,
           '& .MuiOutlinedInput-root': {
@@ -300,7 +301,7 @@ const InputWithRecording = ({
       
       <Zoom in={inputValue.trim().length > 0}>
         <IconButton
-          onClick={onSendMessage}
+          onClick={() => onSendMessage(inputValue)}
           disabled={isTyping || inputValue.trim().length === 0}
           sx={{
             backgroundColor: '#e0e0e0',
