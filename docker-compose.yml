@@ -5,10 +5,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: newstreet/buddhi-ai:mifix-ai-ui-v1.0.1
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+      cache_from:
+        - newstreet/buddhi-ai:mifix-ai-ui-v1.0.2
+    image: newstreet/buddhi-ai:mifix-ai-ui-v1.0.2
     container_name: dynamic-ui-container
     ports:
       - "3500:3000"
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
