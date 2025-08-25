@@ -130,7 +130,7 @@ const SchedulerResponse = ({ content }) => {
 
         {/* Status */}
         <Chip 
-          label={status} 
+          label={"Report will be sent to your WhatsApp"} 
           color={status === 'completed' ? 'success' : status === 'scheduled' ? 'info' : status === 'failed' ? 'error' : 'default'}
           size="small"
           sx={{ mb: 2 }}
