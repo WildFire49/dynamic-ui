@@ -29,8 +29,9 @@ const AnalysisResponse = ({ data, source }) => {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
       
-      // Check for section headers
-      if (trimmedLine.startsWith('- **') && trimmedLine.includes('**:')) {
+      // Check for section headers (both formats: "**Title**:" and "- **Title**:")
+      if ((trimmedLine.startsWith('**') && trimmedLine.includes('**:')) || 
+          (trimmedLine.startsWith('- **') && trimmedLine.includes('**:'))) {
         if (currentSection) {
           sections.push(currentSection);
         }
@@ -40,11 +41,25 @@ const AnalysisResponse = ({ data, source }) => {
           icon: getSectionIcon(title),
           content: []
         };
+      } else if (currentSection && trimmedLine.startsWith('  - **')) {
+        // Sub-bullet point with bold text
+        const text = trimmedLine.substring(4);
+        currentSection.content.push({
+          type: 'sub-bullet',
+          text: text
+        });
       } else if (currentSection && trimmedLine.startsWith('  - ')) {
         // Sub-bullet point
         currentSection.content.push({
-          type: 'bullet',
+          type: 'sub-bullet',
           text: trimmedLine.substring(4)
+        });
+      } else if (currentSection && trimmedLine.startsWith('- **')) {
+        // Main bullet point with bold text
+        const text = trimmedLine.substring(2);
+        currentSection.content.push({
+          type: 'bullet',
+          text: text
         });
       } else if (currentSection && trimmedLine.startsWith('- ')) {
         // Main bullet point
@@ -182,9 +197,33 @@ const AnalysisResponse = ({ data, source }) => {
                             lineHeight: 1.6,
                             color: 'text.primary'
                           }}
-                        >
-                          {item.text.replace(/\*\*(.*?)\*\*/g, '$1')}
-                        </Typography>
+                          dangerouslySetInnerHTML={{
+                            __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                          }}
+                        />
+                      </Box>
+                    ) : item.type === 'sub-bullet' ? (
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, ml: 2 }}>
+                        <Box 
+                          sx={{ 
+                            width: 4, 
+                            height: 4, 
+                            borderRadius: '50%', 
+                            backgroundColor: 'secondary.main',
+                            mt: 1.2,
+                            flexShrink: 0
+                          }} 
+                        />
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            lineHeight: 1.6,
+                            color: 'text.primary'
+                          }}
+                          dangerouslySetInnerHTML={{
+                            __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                          }}
+                        />
                       </Box>
                     ) : (
                       <Typography 
@@ -194,9 +233,10 @@ const AnalysisResponse = ({ data, source }) => {
                           color: 'text.secondary',
                           fontStyle: item.text.startsWith('Would you like') ? 'italic' : 'normal'
                         }}
-                      >
-                        {item.text.replace(/\*\*(.*?)\*\*/g, '$1')}
-                      </Typography>
+                        dangerouslySetInnerHTML={{
+                          __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        }}
+                      />
                     )}
                   </Box>
                 ))}

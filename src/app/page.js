@@ -61,6 +61,7 @@ export default function HomePage() {
 
   const [recordingTime, setRecordingTime] = useState(0);
   const [scheduledTasks, setScheduledTasks] = useState(new Map());
+  const [activeJobIds, setActiveJobIds] = useState(new Set());
   const chatEndRef = useRef(null);
   const recordingTimerRef = useRef(null);
   const taskPollingRef = useRef(null);
@@ -178,7 +179,7 @@ export default function HomePage() {
       botMessage = {
         type: 'analysis',
         content: data.response.content,
-        source: data.response.source,
+        source: data.response.source || 'buddi_agent',
         isBot: true
       };
     }
@@ -220,6 +221,9 @@ export default function HomePage() {
         const jobId = data.response.data.job_id;
         const runDate = new Date(data.response.data.schedule_details.params.run_date);
         
+        // Store job_id for tracking
+        setActiveJobIds(prev => new Set([...prev, jobId]));
+        
         setScheduledTasks(prev => {
           const newTasks = new Map(prev);
           newTasks.set(jobId, {
@@ -237,28 +241,41 @@ export default function HomePage() {
             if (response.ok) {
               const eventsData = await response.json();
               
-              // Get the first object from the events response
+              // Find event that matches any of our active job IDs
               if (eventsData && eventsData.length > 0) {
-                const firstEvent = eventsData[0];
+                const matchingEvent = eventsData.find(event => 
+                  activeJobIds.has(event.id) && 
+                  event.status === 'completed' && 
+                  event.metadata?.response_type === 'downloadable_report'
+                );
                 
-                // Add completed message to chat
-                const completedMessage = {
-                  type: 'scheduler_response',
-                  content: firstEvent,
-                  isBot: true,
-                  timestamp: new Date().toISOString()
-                };
-                
-                setChatHistory(prev => [...prev, completedMessage]);
-                
-                // Show PDF popup if download URL exists
-                if (firstEvent.download_url) {
-                  setPdfPopupData({
-                    title: firstEvent.title || data.response.content,
-                    download_url: firstEvent.download_url,
-                    metadata: firstEvent.metadata
+                if (matchingEvent) {
+                  // Add completed message to chat
+                  const completedMessage = {
+                    type: 'scheduler_response',
+                    content: matchingEvent,
+                    isBot: true,
+                    timestamp: new Date().toISOString()
+                  };
+                  
+                  setChatHistory(prev => [...prev, completedMessage]);
+                  
+                  // Show PDF popup if download URL exists
+                  if (matchingEvent.download_url) {
+                    setPdfPopupData({
+                      title: matchingEvent.title || data.response.content,
+                      download_url: matchingEvent.download_url,
+                      metadata: matchingEvent.metadata
+                    });
+                    setPdfPopupOpen(true);
+                  }
+                  
+                  // Remove completed job ID from active tracking
+                  setActiveJobIds(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(matchingEvent.id);
+                    return newSet;
                   });
-                  setPdfPopupOpen(true);
                 }
               }
             }
@@ -305,7 +322,7 @@ export default function HomePage() {
     if (botMessage) {
       setChatHistory(prev => [...prev, botMessage]);
     }
-  }, []);
+  }, [activeJobIds]);
 
   const callChatApi = useCallback(async (body) => {
     setIsTyping(true);
@@ -665,11 +682,24 @@ export default function HomePage() {
             // Only show scheduler events if 2 minutes have passed since configurator call
             const now = Date.now();
             if (configuratorCallTime && (now - configuratorCallTime) >= 120000) { // 2 minutes
-              events.forEach(event => {
-                if (event.metadata?.response_type === 'downloadable_report') {
+              // Find events that match our active job IDs
+              if (events && events.length > 0) {
+                const matchingEvents = events.filter(event => 
+                  activeJobIds.has(event.id) && 
+                  event.status === 'completed' && 
+                  event.metadata?.response_type === 'downloadable_report'
+                );
+                
+                matchingEvents.forEach(event => {
                   handleApiResponse(event);
-                }
-              });
+                  // Remove completed job ID from active tracking
+                  setActiveJobIds(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(event.id);
+                    return newSet;
+                  });
+                });
+              }
             }
           }
         }
@@ -688,7 +718,7 @@ export default function HomePage() {
         clearInterval(interval);
       }
     };
-  }, [handleApiResponse, configuratorCallTime]);
+  }, [handleApiResponse, configuratorCallTime, activeJobIds]);
 
   useEffect(() => {
     return () => {
@@ -1109,7 +1139,10 @@ export default function HomePage() {
       <Box sx={{ 
         p: 1, 
         backgroundColor: '#ffffff', 
-        borderTop: '1px solid #e9ecef'
+        borderTop: '1px solid #e9ecef',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
       }}>
         <InputWithRecording
           inputValue={inputValue}
