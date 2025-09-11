@@ -3,18 +3,26 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import {
   Box,
-  TextField,
   Typography,
   Paper,
-  Stack,
+  Card,
+  CardContent,
+  IconButton,
+  CircularProgress,
+  Tooltip,
+  Chip,
   AppBar,
   Toolbar,
-  Grid,
-  CircularProgress,
-  Button
+  Button,
+  Grid
 } from '@mui/material';
-import IconButton from '@mui/material/IconButton';
-import SendIcon from '@mui/icons-material/Send';
+import {
+  Send as SendIcon,
+  AttachFile as AttachFileIcon,
+  Analytics as AnalyticsIcon,
+  Description as DocumentIcon,
+  TableChart as ExcelIcon
+} from '@mui/icons-material';
 import AddIcon from '@mui/icons-material/Add';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import MicIcon from '@mui/icons-material/Mic';
@@ -38,6 +46,7 @@ import ConfirmationDialog from '@/components/mui/ConfirmationDialog';
 import { API_BASE_URL, CHAT_ENDPOINT } from '@/lib/config';
 import { uploadAudioFile, generateAudioFileName } from '../lib/audioUpload';
 import VoiceWaveform from '../components/mui/VoiceWaveform';
+import { dataAnalysisApi } from '../lib/api/dataAnalysisApi';
 
 export default function HomePage() {
   const [chatHistory, setChatHistory] = useState([]);
@@ -58,6 +67,11 @@ export default function HomePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({ title: '', message: '' });
   const [actionToConfirm, setActionToConfirm] = useState(null);
+  
+  // Data Analysis states
+  const [uploadedDocuments, setUploadedDocuments] = useState([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const CONNECTION_ID = '2f90a714-70b8-4848-b347-f9afa093d079';
 
   const [recordingTime, setRecordingTime] = useState(0);
   const [scheduledTasks, setScheduledTasks] = useState(new Map());
@@ -412,6 +426,119 @@ export default function HomePage() {
     await callChatApi(requestBody);
   }, [currentResponseData, callChatApi, conversationId, sessionId]);
 
+  // File upload handler
+  const handleFileUpload = useCallback(async (file) => {
+    try {
+      setIsLoading(true);
+      const response = await dataAnalysisApi.uploadDocument(CONNECTION_ID, file, 'Document uploaded via chat');
+      
+      const newDoc = {
+        document_key: response.document_key,
+        filename: response.message.split('" uploaded')[0].split('"')[1] || file.name,
+        shape: response.shape,
+        columns: response.columns,
+        upload_time: new Date().toISOString()
+      };
+      
+      setUploadedDocuments(prev => [...prev, newDoc]);
+      
+      // Add professional upload success card and helpful prompt to chat
+      const successMessage = {
+        type: 'upload_success',
+        content: { 
+          filename: newDoc.filename,
+          shape: newDoc.shape,
+          uploadTime: newDoc.upload_time
+        },
+        isBot: true
+      };
+      
+      setChatHistory(prev => [...prev, successMessage]);
+      
+      return response;
+    } catch (error) {
+      console.error('File upload error:', error);
+      const errorMessage = {
+        type: 'user',
+        content: { text: `❌ Upload failed: ${error.message}` },
+        isBot: true,
+        isError: true
+      };
+      setChatHistory(prev => [...prev, errorMessage]);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  // Check if message is an analysis question
+  const isAnalysisQuestion = useCallback((message) => {
+    const analysisKeywords = [
+      'analyze', 'analysis', 'distribution', 'show me', 'visualize', 'chart', 'graph',
+      'breakdown', 'summary', 'statistics', 'report', 'dashboard', 'insights',
+      'how many', 'what percentage', 'compare', 'trend', 'pattern', 'top issues',
+      'success rate', 'failure rate', 'performance', 'metrics', 'overview',
+      'list', 'give me', 'find', 'filter', 'where', 'score', 'branches', 'less than',
+      'greater than', 'equal to', 'count', 'total', 'sum'
+    ];
+    return analysisKeywords.some(keyword => 
+      message.toLowerCase().includes(keyword.toLowerCase())
+    );
+  }, []);
+  
+  // Handle data analysis
+  const handleDataAnalysis = useCallback(async (question) => {
+    if (uploadedDocuments.length === 0) {
+      const errorMessage = {
+        type: 'user',
+        content: { text: '📊 Please upload a document first before asking analysis questions.' },
+        isBot: true,
+        isError: true
+      };
+      setChatHistory(prev => [...prev, errorMessage]);
+      return;
+    }
+    
+    const latestDocument = uploadedDocuments[uploadedDocuments.length - 1];
+    
+    try {
+      setIsAnalyzing(true);
+      setIsTyping(true);
+      
+      const analysisResult = await dataAnalysisApi.analyzeData(
+        CONNECTION_ID,
+        latestDocument.document_key,
+        question,
+        'Analysis via chat interface'
+      );
+      
+      // Add analysis result to chat
+      const analysisMessage = {
+        type: 'data_analysis',
+        content: {
+          question: question,
+          analysisResult: analysisResult
+        },
+        isBot: true
+      };
+      
+      setChatHistory(prev => [...prev, analysisMessage]);
+      
+    } catch (error) {
+      console.error('Analysis error:', error);
+      const errorMessage = {
+        type: 'user',
+        content: { text: `🔍 Analysis failed: ${error.message}` },
+        isBot: true,
+        isError: true
+      };
+      setChatHistory(prev => [...prev, errorMessage]);
+    } finally {
+      setIsAnalyzing(false);
+      setIsTyping(false);
+    }
+  }, [uploadedDocuments]);
+
   const handleSendMessage = useCallback(async (messageText = null, audioFileUrl = null, audioKey = null) => {
     const finalMessageText = String(messageText || inputValue || '');
     if (finalMessageText.trim() === '' && !audioKey) return;
@@ -420,6 +547,13 @@ export default function HomePage() {
     if (finalMessageText.trim() !== '') {
       const userMessage = { type: 'user', content: { text: finalMessageText } };
       setChatHistory(prev => [...prev, userMessage]);
+      
+      // Check if this is an analysis question
+      if (isAnalysisQuestion(finalMessageText)) {
+        setInputValue('');
+        await handleDataAnalysis(finalMessageText);
+        return;
+      }
     }
 
     setInputValue('');
@@ -435,7 +569,7 @@ export default function HomePage() {
     }
 
     await callChatApi(requestBody);
-  }, [inputValue, callChatApi]);
+  }, [inputValue, callChatApi, isAnalysisQuestion, handleDataAnalysis]);
 
   const startRecording = useCallback(async (event) => {
     try {
@@ -672,53 +806,54 @@ export default function HomePage() {
   const [configuratorCallTime, setConfiguratorCallTime] = useState(null);
   const [schedulerDelayTimeout, setSchedulerDelayTimeout] = useState(null);
 
-  useEffect(() => {
-    const pollEvents = async () => {
-      try {
-        const response = await fetch(process.env.NEXT_PUBLIC_EVENT_API_URL);
-        if (response.ok) {
-          const events = await response.json();
-          if (events && events.length > 0) {
-            // Only show scheduler events if 2 minutes have passed since configurator call
-            const now = Date.now();
-            if (configuratorCallTime && (now - configuratorCallTime) >= 120000) { // 2 minutes
-              // Find events that match our active job IDs
-              if (events && events.length > 0) {
-                const matchingEvents = events.filter(event => 
-                  activeJobIds.has(event.id) && 
-                  event.status === 'completed' && 
-                  event.metadata?.response_type === 'downloadable_report'
-                );
-                
-                matchingEvents.forEach(event => {
-                  handleApiResponse(event);
-                  // Remove completed job ID from active tracking
-                  setActiveJobIds(prev => {
-                    const newSet = new Set(prev);
-                    newSet.delete(event.id);
-                    return newSet;
-                  });
-                });
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Event polling error:', error);
-      }
-    };
+  // Disabled event polling as requested
+  // useEffect(() => {
+  //   const pollEvents = async () => {
+  //     try {
+  //       const response = await fetch(process.env.NEXT_PUBLIC_EVENT_API_URL);
+  //       if (response.ok) {
+  //         const events = await response.json();
+  //         if (events && events.length > 0) {
+  //           // Only show scheduler events if 2 minutes have passed since configurator call
+  //           const now = Date.now();
+  //           if (configuratorCallTime && (now - configuratorCallTime) >= 120000) { // 2 minutes
+  //             // Find events that match our active job IDs
+  //             if (events && events.length > 0) {
+  //               const matchingEvents = events.filter(event => 
+  //                 activeJobIds.has(event.id) && 
+  //                 event.status === 'completed' && 
+  //                 event.metadata?.response_type === 'downloadable_report'
+  //               );
+  //               
+  //               matchingEvents.forEach(event => {
+  //                 handleApiResponse(event);
+  //                 // Remove completed job ID from active tracking
+  //                 setActiveJobIds(prev => {
+  //                   const newSet = new Set(prev);
+  //                   newSet.delete(event.id);
+  //                   return newSet;
+  //                 });
+  //               });
+  //             }
+  //           }
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Event polling error:', error);
+  //     }
+  //   };
 
-    // Start polling every 20 seconds
-    const interval = setInterval(pollEvents, 20000);
-    setEventPollingInterval(interval);
+  //   // Start polling every 20 seconds
+  //   const interval = setInterval(pollEvents, 20000);
+  //   setEventPollingInterval(interval);
 
-    // Cleanup on unmount
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [handleApiResponse, configuratorCallTime, activeJobIds]);
+  //   // Cleanup on unmount
+  //   return () => {
+  //     if (interval) {
+  //       clearInterval(interval);
+  //     }
+  //   };
+  // }, [handleApiResponse, configuratorCallTime, activeJobIds]);
 
   useEffect(() => {
     return () => {
@@ -958,7 +1093,7 @@ export default function HomePage() {
                   elevation={1}
                   sx={{
                     maxWidth: { xs: '85%', sm: '70%', md: '60%' },
-                    minWidth: '120px',
+                    minWidth: '130px',
                     p: 2,
                     borderRadius: 2,
                     backgroundColor: isUser 
@@ -1021,11 +1156,106 @@ export default function HomePage() {
                       </Grid>
                     </Box>
                   ) : message.type === 'dynamic_data' ? (
-                    <Box sx={{ width: '100%', maxWidth: 'none' }}>
+                    <Box sx={{ 
+                      width: '100%', 
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      boxSizing: 'border-box'
+                    }}>
                       <DynamicDataVisualization
                         data={message.content.data}
                         question={message.content.question}
                         title={message.content.title}
+                      />
+                    </Box>
+                  ) : message.type === 'upload_success' ? (
+                    <Box sx={{ 
+                      width: '100%', 
+                      maxWidth: 'none',
+                      animation: 'slideInUp 0.5s ease-out'
+                    }}>
+                      <Card sx={{
+                        background: 'linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%)',
+                        border: '1px solid #4caf50',
+                        borderRadius: 3,
+                        overflow: 'hidden',
+                        position: 'relative',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '4px',
+                          background: 'linear-gradient(90deg, #4caf50, #66bb6a, #4caf50)',
+                          animation: 'shimmer 2s ease-in-out infinite'
+                        }
+                      }}>
+                        <CardContent sx={{ p: 4 }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 3,
+                            mb: 2
+                          }}>
+                            <Box sx={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #4caf50, #66bb6a)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              animation: 'pulse 2s ease-in-out infinite',
+                              boxShadow: '0 8px 32px rgba(76, 175, 80, 0.3)'
+                            }}>
+                              <Image 
+                                src="/excel.png" 
+                                alt="Excel file" 
+                                width={32} 
+                                height={32}
+                                style={{
+                                  animation: 'bounce 1s ease-in-out'
+                                }}
+                              />
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="h6" sx={{ 
+                                fontWeight: 600,
+                                color: '#2e7d32',
+                                mb: 0.5,
+                                fontSize: '1.25rem'
+                              }}>
+                                ✅ File Uploaded Successfully!
+                              </Typography>
+                              <Typography variant="body1" sx={{ 
+                                color: '#388e3c',
+                                fontWeight: 500,
+                                fontSize: '1rem'
+                              }}>
+                                {message.content.filename}
+                              </Typography>
+                              <Typography variant="body2" sx={{ 
+                                color: '#4caf50',
+                                mt: 1,
+                                fontSize: '0.875rem'
+                              }}>
+                                {message.content.shape} • Ready for analysis
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Box>
+                  ) : message.type === 'data_analysis' ? (
+                    <Box sx={{ width: '100%', maxWidth: 'none' }}>
+                      <DynamicDataVisualization
+                        data={message.content.analysisResult?.analysis_result?.supporting_data || []}
+                        question={message.content.question}
+                        title="Data Analysis Results"
+                        analysisResult={message.content.analysisResult}
+                        showPieChart={true}
+                        uploadSuccess={false}
                       />
                     </Box>
                   ) : message.type === 'system' && message.workflow_modification ? (
@@ -1082,16 +1312,53 @@ export default function HomePage() {
                       duration={message.content.duration || 0}
                     />
                   ) : message.content.text ? (
-                    <Typography 
-                      variant="body1"
-                      sx={{ 
-                        color: isUser ? '#ffffff' : isError ? '#d32f2f' : 'inherit',
-                        wordBreak: 'break-word',
-                        lineHeight: 1.4
-                      }}
-                    >
-                      {message.content.text}
-                    </Typography>
+                    <>
+                      <Typography 
+                        variant="body1"
+                        sx={{ 
+                          color: isUser ? '#ffffff' : isError ? '#d32f2f' : 'inherit',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.4
+                        }}
+                      >
+                        {message.content.text}
+                      </Typography>
+                      
+                      {/* Clickable Suggestions */}
+                      {message.content.suggestions && (
+                        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          {message.content.suggestions.map((suggestion, index) => (
+                            <Chip
+                              key={index}
+                              label={suggestion}
+                              variant="outlined"
+                              clickable
+                              onClick={() => {
+                                setInputValue(suggestion);
+                                setTimeout(() => handleSendMessage(), 100);
+                              }}
+                              sx={{
+                                justifyContent: 'flex-start',
+                                height: 'auto',
+                                py: 1,
+                                px: 2,
+                                borderColor: '#1976d2',
+                                color: '#1976d2',
+                                fontSize: '0.875rem',
+                                '&:hover': {
+                                  backgroundColor: '#e3f2fd',
+                                  borderColor: '#1565c0'
+                                },
+                                '& .MuiChip-label': {
+                                  whiteSpace: 'normal',
+                                  textAlign: 'left'
+                                }
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      )}
+                    </>
                   ) : null}
                 </Paper>
               </Box>
@@ -1141,29 +1408,88 @@ export default function HomePage() {
         backgroundColor: '#ffffff', 
         borderTop: '1px solid #e9ecef',
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center'
+        justifyContent: 'center'
       }}>
-        <InputWithRecording
-          inputValue={inputValue}
-          onInputChange={(e) => setInputValue(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage();
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          width: '100%',
+          maxWidth: '800px'
+        }}>
+        {/* File Upload Button */}
+        <input
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          style={{ display: 'none' }}
+          id="file-upload-input"
+          onChange={async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              await handleFileUpload(file);
+              e.target.value = ''; // Reset input
             }
           }}
-          onSendMessage={handleSendMessage}
-          onStartRecording={startRecording}
-          onStopRecording={stopRecording}
-          onPauseRecording={pauseRecording}
-          onResumeRecording={resumeRecording}
-          onCancelRecording={cancelRecording}
-          isRecording={isRecording}
-          isPaused={isPaused}
-          recordingTime={recordingTime}
-          isTyping={isTyping}
         />
+        <IconButton
+          component="label"
+          htmlFor="file-upload-input"
+          sx={{
+            color: uploadedDocuments.length > 0 ? '#4caf50' : '#666',
+            backgroundColor: uploadedDocuments.length > 0 ? '#e8f5e9' : '#f5f5f5',
+            '&:hover': {
+              backgroundColor: uploadedDocuments.length > 0 ? '#c8e6c9' : '#e0e0e0'
+            },
+            borderRadius: '12px',
+            width: 44,
+            height: 44,
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <CircularProgress size={20} />
+          ) : uploadedDocuments.length > 0 ? (
+            <Image 
+              src="/excel.png" 
+              alt="Excel file" 
+              width={24} 
+              height={24}
+              style={{
+                animation: 'bounce 0.6s ease-in-out'
+              }}
+            />
+          ) : (
+            <DocumentIcon />
+          )}
+        </IconButton>
+        
+        
+          <Box sx={{ flexGrow: 1 }}>
+            <InputWithRecording
+              inputValue={inputValue}
+              onInputChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              onSendMessage={handleSendMessage}
+              onStartRecording={startRecording}
+              onStopRecording={stopRecording}
+              onPauseRecording={pauseRecording}
+              onResumeRecording={resumeRecording}
+              onCancelRecording={cancelRecording}
+              isRecording={isRecording}
+              isPaused={isPaused}
+              recordingTime={recordingTime}
+              isTyping={isTyping || isAnalyzing}
+              placeholder={uploadedDocuments.length > 0 ? "Ask me about your data... Try: 'Show me top issues' or 'What's the success rate?'" : "Type your message here..."}
+            />
+          </Box>
+        </Box>
       </Box>
       <ConfirmationDialog
         open={dialogOpen}
