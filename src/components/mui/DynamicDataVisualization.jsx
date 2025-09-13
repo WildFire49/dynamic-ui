@@ -251,20 +251,33 @@ const DynamicDataVisualization = ({
     }
     
     // Check for Target vs Achievement data (RM performance)
-    const hasTargetField = fields.some(field => field.toLowerCase().includes('tar'));
-    const hasAchievementField = fields.some(field => field.toLowerCase().includes('ach'));
+    const hasTargetField = fields.some(field => 
+      field.toLowerCase().includes('tar') || field.toLowerCase().includes('target')
+    );
+    const hasAchievementField = fields.some(field => 
+      field.toLowerCase().includes('ach') || field.toLowerCase().includes('achieved')
+    );
     const hasRMField = fields.some(field => field.toLowerCase().includes('rm') || field.toLowerCase().includes('name'));
     
-    console.log('🔍 [DEBUG] Target field check:', hasTargetField, fields.filter(f => f.toLowerCase().includes('tar')));
-    console.log('🔍 [DEBUG] Achievement field check:', hasAchievementField, fields.filter(f => f.toLowerCase().includes('ach')));
-    console.log('🔍 [DEBUG] RM field check:', hasRMField, fields.filter(f => f.toLowerCase().includes('rm')));
+    console.log('🔍 [DEBUG] All fields:', fields);
+    console.log('🔍 [DEBUG] Target field check:', hasTargetField, fields.filter(f => 
+      f.toLowerCase().includes('tar') || f.toLowerCase().includes('target')
+    ));
+    console.log('🔍 [DEBUG] Achievement field check:', hasAchievementField, fields.filter(f => 
+      f.toLowerCase().includes('ach') || f.toLowerCase().includes('achieved')
+    ));
+    console.log('🔍 [DEBUG] RM field check:', hasRMField, fields.filter(f => f.toLowerCase().includes('rm') || f.toLowerCase().includes('name')));
     
     if (hasTargetField && hasAchievementField && hasRMField) {
       console.log('🔍 [DEBUG] ✅ DETECTED AS RM PERFORMANCE DATA!');
       
-      // Find the actual field names dynamically
-      const targetField = fields.find(f => f.toLowerCase().includes('tar')) || 'DB_Tar';
-      const achievementField = fields.find(f => f.toLowerCase().includes('ach')) || 'DB_Ach';
+      // Find the actual field names dynamically with more flexible matching
+      const targetField = fields.find(f => 
+        f.toLowerCase().includes('tar') || f.toLowerCase().includes('target')
+      ) || 'Collection_Target_Lakhs';
+      const achievementField = fields.find(f => 
+        f.toLowerCase().includes('ach') || f.toLowerCase().includes('achieved')
+      ) || 'Collection_Achieved_Lakhs';
       const nameField = fields.find(f => f.includes('RM_Name') || f.includes('Name')) || 'RM_Name';
       
       const result = {
@@ -517,6 +530,8 @@ const DynamicDataVisualization = ({
   // Process RM performance data for interactive selection
   const processRMPerformanceData = (supportingData, targetField, achievementField, nameField) => {
     console.log('🎯 [DEBUG] Processing RM Performance Data for Interactive Selection');
+    console.log('🎯 [DEBUG] Field names:', { targetField, achievementField, nameField });
+    console.log('🎯 [DEBUG] Sample data:', supportingData.slice(0, 3));
     
     // Process all RMs with targets > 0
     const allRMs = supportingData
@@ -529,6 +544,10 @@ const DynamicDataVisualization = ({
         achievementRate: ((parseFloat(item[achievementField]) || 0) / (parseFloat(item[targetField]) || 1)) * 100
       }))
       .sort((a, b) => b.achievement - a.achievement);
+
+    console.log('🎯 [DEBUG] Processed RMs:', allRMs.length);
+    console.log('🎯 [DEBUG] RMs with achievement > 0:', allRMs.filter(rm => rm.achievement > 0).length);
+    console.log('🎯 [DEBUG] Top 5 performers:', allRMs.filter(rm => rm.achievement > 0).slice(0, 5));
 
     // Categorize RMs
     const rmsWithAchievement = allRMs.filter(rm => rm.achievement > 0);
