@@ -3,7 +3,7 @@
  * Provides functions to interact with the data analysis endpoints
  */
 
-const BASE_URL = '/api/v1/data-analysis';
+const BASE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis`;
 
 class DataAnalysisApiError extends Error {
   constructor(message, status, response) {

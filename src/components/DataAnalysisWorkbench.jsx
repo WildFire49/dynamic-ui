@@ -119,7 +119,7 @@ const DataAnalysisWorkbench = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`/api/v1/data-analysis/upload/${connectionId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis/upload/${connectionId}`, {
         method: 'POST',
         body: formData,
       });
@@ -151,7 +151,7 @@ const DataAnalysisWorkbench = () => {
     
     setLoadingDocuments(true);
     try {
-      const response = await fetch(`/api/v1/data-analysis/documents/${connectionId}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis/documents/${connectionId}`);
       const result = await response.json();
       
       if (result.success) {
@@ -167,7 +167,7 @@ const DataAnalysisWorkbench = () => {
   // Delete document
   const handleDeleteDocument = async (documentKey) => {
     try {
-      const response = await fetch(`/api/v1/data-analysis/documents/${connectionId}/${documentKey}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis/documents/${connectionId}/${documentKey}`, {
         method: 'DELETE'
       });
 
@@ -208,7 +208,7 @@ const DataAnalysisWorkbench = () => {
     setError('');
     
     try {
-      const response = await fetch(`/api/v1/data-analysis/analyze/${connectionId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis/analyze/${connectionId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
