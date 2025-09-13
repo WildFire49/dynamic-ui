@@ -55,6 +55,16 @@ import {
   CheckBox,
   CheckBoxOutlineBlank
 } from '@mui/icons-material';
+import RMPerformanceOverview from './RMPerformanceOverview';
+import RMPerformanceComparison from './RMPerformanceComparison';
+import RMComparisonChart from './RMComparisonChart';
+import { 
+  PieChartComponent,
+  BarChartComponent,
+  WaterfallChartComponent,
+  StackedBarChartComponent,
+  DataGridComponent
+} from '../charts';
 
 // Color definitions for various chart elements
 const colors = {
@@ -97,7 +107,13 @@ const getStageColor = (index, total) => {
 
 const DynamicDataVisualization = ({ 
   analysisResult,
-  loading = false
+  loading = false,
+  isFromDashboard = false,
+  savedCharts = null,
+  savedDataGrid = null,
+  savedRMPerformanceData = null,
+  savedRMPerformanceOverview = null,
+  savedRMPerformanceComparisonChart = null
 }) => {
   // State for selected RMs
   const [selectedRMs, setSelectedRMs] = useState([]);
@@ -112,19 +128,37 @@ const DynamicDataVisualization = ({
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const exportMenuOpen = Boolean(exportAnchorEl);
 
-  // Filter functions for search
-  const getFilteredTopPerformers = () => {
-    if (!chartData?.rmPerformanceData?.topPerformers) return [];
+  // Get all RMs from supporting data for infinite scroll
+  const getAllRMsFromData = () => {
+    if (!analysisResult?.analysis_result?.supporting_data) return [];
     
-    return chartData.rmPerformanceData.topPerformers.filter(rm =>
+    return analysisResult.analysis_result.supporting_data
+      .map(rm => ({
+        id: rm.RM_ID || rm['R M I D'] || rm.id,
+        name: rm.RM_Name || rm['R M Name'] || rm.name,
+        target: parseFloat(rm.D_B_Target || rm['D B Target'] || rm.target || 0),
+        achievement: parseFloat(rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0),
+        achievementRate: rm.target > 0 ? (rm.achievement / rm.target) * 100 : 0
+      }))
+      .filter(rm => rm.name && rm.id)
+      .sort((a, b) => b.achievementRate - a.achievementRate);
+  };
+
+  // Filter functions for search with infinite data
+  const getFilteredTopPerformers = () => {
+    const allRMs = getAllRMsFromData();
+    const topPerformers = allRMs.filter(rm => rm.achievementRate >= 50);
+    
+    return topPerformers.filter(rm =>
       rm.name.toLowerCase().includes(topPerformersSearch.toLowerCase())
     );
   };
 
   const getFilteredLowPerformers = () => {
-    if (!chartData?.rmPerformanceData?.lowPerformers) return [];
+    const allRMs = getAllRMsFromData();
+    const lowPerformers = allRMs.filter(rm => rm.achievementRate < 50);
     
-    return chartData.rmPerformanceData.lowPerformers.filter(rm =>
+    return lowPerformers.filter(rm =>
       rm.name.toLowerCase().includes(lowPerformersSearch.toLowerCase())
     );
   };
@@ -219,7 +253,7 @@ const DynamicDataVisualization = ({
     // Check for Target vs Achievement data (RM performance)
     const hasTargetField = fields.some(field => field.toLowerCase().includes('tar'));
     const hasAchievementField = fields.some(field => field.toLowerCase().includes('ach'));
-    const hasRMField = fields.some(field => field.toLowerCase().includes('rm'));
+    const hasRMField = fields.some(field => field.toLowerCase().includes('rm') || field.toLowerCase().includes('name'));
     
     console.log('🔍 [DEBUG] Target field check:', hasTargetField, fields.filter(f => f.toLowerCase().includes('tar')));
     console.log('🔍 [DEBUG] Achievement field check:', hasAchievementField, fields.filter(f => f.toLowerCase().includes('ach')));
@@ -227,16 +261,23 @@ const DynamicDataVisualization = ({
     
     if (hasTargetField && hasAchievementField && hasRMField) {
       console.log('🔍 [DEBUG] ✅ DETECTED AS RM PERFORMANCE DATA!');
+      
+      // Find the actual field names dynamically
+      const targetField = fields.find(f => f.toLowerCase().includes('tar')) || 'DB_Tar';
+      const achievementField = fields.find(f => f.toLowerCase().includes('ach')) || 'DB_Ach';
+      const nameField = fields.find(f => f.includes('RM_Name') || f.includes('Name')) || 'RM_Name';
+      
       const result = {
         type: 'performance',
-        scoreField: 'DB_Ach', // Achievement field for primary metric
-        targetField: 'DB_Tar', // Target field
-        achievementField: 'DB_Ach', // Achievement field
-        nameField: 'RM_Name', // Name field for identification
+        scoreField: achievementField, // Achievement field for primary metric
+        targetField: targetField, // Target field
+        achievementField: achievementField, // Achievement field
+        nameField: nameField, // Name field for identification
         isTargetVsAchievement: true,
         pipelineStages: []
       };
       console.log('🔍 [DEBUG] Returning RM performance config:', result);
+      console.log('🔍 [DEBUG] Dynamic fields:', { targetField, achievementField, nameField });
       return result;
     }
     
@@ -299,8 +340,10 @@ const DynamicDataVisualization = ({
 
       const stackedData = regionsWithPipeline.map(regionData => {
         const dataPoint = {
+          name: regionData.Region, // Required for BarChartComponent
           region: regionData.Region,
-          totalPipeline: parseFloat(regionData.Total_Pipeline) || 0
+          totalPipeline: parseFloat(regionData.Total_Pipeline) || 0,
+          value: parseFloat(regionData.Total_Pipeline) || 0 // Primary field for BarChartComponent
         };
         
         stages.forEach((stage, index) => {
@@ -415,9 +458,11 @@ const DynamicDataVisualization = ({
       name: rm.name.length > 12 ? rm.name.substring(0, 10) + '..' : rm.name,
       fullName: rm.name,
       rmId: rm.rmId,
+      value: parseFloat(rm.achievementRate.toFixed(1)), // Primary field for BarChartComponent
       Target: parseFloat(rm.target.toFixed(2)),
       Achievement: Math.max(parseFloat(rm.achievement.toFixed(2)), 0.1), // Minimum 0.1 for visibility
-      'Achievement %': parseFloat(rm.achievementRate.toFixed(1))
+      'Achievement %': parseFloat(rm.achievementRate.toFixed(1)),
+      achievementRate: parseFloat(rm.achievementRate.toFixed(1)) // Alternative field name
     }));
 
     console.log('🎯 [DEBUG] Final Comparison Data for Chart (first 3):', comparisonData.slice(0, 3));
@@ -486,8 +531,18 @@ const DynamicDataVisualization = ({
       .sort((a, b) => b.achievement - a.achievement);
 
     // Categorize RMs
-    const topPerformers = allRMs.filter(rm => rm.achievement > 0).slice(0, 10);
-    const lowPerformers = allRMs.filter(rm => rm.achievement === 0).slice(0, 10);
+    const rmsWithAchievement = allRMs.filter(rm => rm.achievement > 0);
+    const rmsWithoutAchievement = allRMs.filter(rm => rm.achievement === 0);
+    
+    // Top performers: RMs with any achievement, sorted by achievement rate
+    const topPerformers = rmsWithAchievement
+      .sort((a, b) => b.achievementRate - a.achievementRate)
+      .slice(0, 15); // Show more top performers
+    
+    // Low performers: RMs with 0 achievement, sorted by target (show highest targets first)
+    const lowPerformers = rmsWithoutAchievement
+      .sort((a, b) => b.target - a.target)
+      .slice(0, 50); // Show more low performers for selection
     
     // Calculate summary
     const totalTarget = allRMs.reduce((sum, rm) => sum + rm.target, 0);
@@ -508,9 +563,51 @@ const DynamicDataVisualization = ({
     };
   };
 
-  // Generate chart data based on data type
+  // Generate chart data based on data type - MODULAR APPROACH
   const chartData = useMemo(() => {
     console.log('📊 [DEBUG] ✅ STARTING chartData generation...');
+    console.log('📊 [DEBUG] Props received:', {
+      isFromDashboard,
+      hasSavedCharts: !!savedCharts,
+      hasSavedRMPerformanceData: !!savedRMPerformanceData,
+      hasSavedRMPerformanceOverview: !!savedRMPerformanceOverview,
+      hasSavedRMPerformanceComparisonChart: !!savedRMPerformanceComparisonChart
+    });
+    
+    // DASHBOARD MODE: Load saved data with priority system
+    if (isFromDashboard) {
+      // Priority 1: RM Performance data (Overview + Comparison Chart)
+      if (savedRMPerformanceOverview || savedRMPerformanceComparisonChart) {
+        console.log('📊 [DEBUG] Loading RM Performance data from dashboard');
+        return { 
+          rmPerformanceData: {
+            summary: savedRMPerformanceOverview || {
+              totalTarget: '₹0.0L',
+              totalAchievement: '₹0.0L', 
+              achievementRate: '0.0%',
+              activeRMs: '0/0'
+            }
+          },
+          rmPerformanceComparisonChart: savedRMPerformanceComparisonChart
+        };
+      }
+      
+      // Priority 2: Legacy RM Performance data
+      if (savedRMPerformanceData) {
+        console.log('📊 [DEBUG] Loading legacy RM Performance data from dashboard');
+        return { rmPerformanceData: savedRMPerformanceData };
+      }
+      
+      // Priority 3: Standard charts (only if they have actual data)
+      if (savedCharts && Object.values(savedCharts).some(chart => chart !== null && chart !== undefined)) {
+        console.log('📊 [DEBUG] Loading standard charts from dashboard:', savedCharts);
+        return savedCharts;
+      }
+      
+      // If dashboard mode but no saved data, return empty structure
+      return { pieChart: null, barChart: null, branchChart: null, waterfallChart: null };
+    }
+    
     console.log('📊 [DEBUG] Input conditions:', {
       hasAnalysisResult: !!analysisResult?.analysis_result?.supporting_data,
       dataType,
@@ -556,7 +653,8 @@ const DynamicDataVisualization = ({
         isTargetVsAchievement,
         hasTargetField: !!targetField,
         hasAchievementField: !!achievementField,
-        hasNameField: !!nameField
+        hasNameField: !!nameField,
+        dataAnalysis
       });
     }
     
@@ -588,7 +686,7 @@ const DynamicDataVisualization = ({
         
         // For percentage fields, only include non-null values
         if (scoreField.toLowerCase().includes('percentage')) {
-          if (score !== null && score !== undefined && !isNaN(parseFloat(score))) {
+          if (score !== null && score !== undefined && score !== "NULL" && !isNaN(parseFloat(score)) && parseFloat(score) > 0) {
             stateData[state].validScores.push(parseFloat(score));
             stateData[state].totalScore += parseFloat(score);
             stateData[state].count++;
@@ -636,7 +734,7 @@ const DynamicDataVisualization = ({
         
         // For percentage fields, only include non-null values
         if (scoreField.toLowerCase().includes('percentage')) {
-          if (score !== null && score !== undefined && !isNaN(parseFloat(score))) {
+          if (score !== null && score !== undefined && score !== "NULL" && !isNaN(parseFloat(score)) && parseFloat(score) > 0) {
             if (!regionScores[region]) {
               regionScores[region] = [];
               regionCounts[region] = 0;
@@ -662,8 +760,10 @@ const DynamicDataVisualization = ({
         .map(([region, scores]) => {
           const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
           return {
+            name: region.length > 8 ? region.substring(0, 8) + '...' : region, // BarChartComponent expects 'name'
             region: region.length > 8 ? region.substring(0, 8) + '...' : region,
-            avgScore: Number(avgScore.toFixed(2)), // Ensure 2 decimal places
+            value: Number(avgScore.toFixed(2)), // BarChartComponent expects 'value'
+            avgScore: Number(avgScore.toFixed(2)),
             count: regionCounts[region],
             // Dynamic coloring based on field type and value range
             fill: scoreField.toLowerCase().includes('percentage') ?
@@ -780,10 +880,14 @@ const DynamicDataVisualization = ({
             return item[branchField] && (typeof item[scoreField] === 'number' || !isNaN(parseFloat(item[scoreField])));
           })
           .map(item => ({
+            name: item[branchField].length > 12 ? 
+                  item[branchField].substring(0, 12) + '...' : 
+                  item[branchField],
             branch: item[branchField].length > 12 ? 
                      item[branchField].substring(0, 12) + '...' : 
                      item[branchField],
             fullName: item[branchField],
+            value: Number(parseFloat(item[scoreField]).toFixed(2)), // Primary field for BarChartComponent
             score: Number(parseFloat(item[scoreField]).toFixed(2)),
             region: (item.Region || 'Unknown').trim(),
             state: item.State || 'Unknown',
@@ -828,7 +932,7 @@ const DynamicDataVisualization = ({
     }
     
     return { pieChart, barChart, branchChart, waterfallChart: null };
-  }, [analysisResult, scoreField, dataType, pipelineStages]);
+  }, [analysisResult, scoreField, dataType, pipelineStages, isFromDashboard, savedCharts, savedRMPerformanceData, savedRMPerformanceOverview, savedRMPerformanceComparisonChart]);
 
   // Generate regional summary data for branch performance
   const regionalSummary = useMemo(() => {
@@ -901,6 +1005,12 @@ const DynamicDataVisualization = ({
   }, [analysisResult]);
 
   const { gridColumns, gridRows } = useMemo(() => {
+    // If we're in dashboard mode and have saved data grid, use that instead
+    if (isFromDashboard && savedDataGrid) {
+      console.log('📊 [DEBUG] Using saved data grid from dashboard:', savedDataGrid);
+      return savedDataGrid;
+    }
+    
     if (!analysisResult || !analysisResult.analysis_result?.supporting_data || analysisResult.analysis_result.supporting_data.length === 0) {
       return { gridColumns: [], gridRows: [] };
     }
@@ -1195,6 +1305,136 @@ const DynamicDataVisualization = ({
     setExportAnchorEl(null);
   };
 
+  const handleSaveAll = () => {
+    try {
+      const id = Date.now().toString();
+      const supportingData = analysisResult?.analysis_result?.supporting_data || [];
+      
+      console.log('💾 [SAVE DEBUG] Saving visualization data:', {
+        question: analysisResult?.question,
+        supportingDataLength: supportingData.length,
+        chartData: Object.keys(chartData),
+        gridRowsLength: gridRows.length,
+        hasRMPerformanceData: !!chartData.rmPerformanceData,
+        rmPerformanceDataKeys: chartData.rmPerformanceData ? Object.keys(chartData.rmPerformanceData) : null
+      });
+      
+      // Create standardized visualization data structure
+      const visualizationData = {
+        id,
+        title: analysisResult?.question || `Analysis - ${new Date().toLocaleDateString()}`,
+        timestamp: new Date().toISOString(),
+        type: 'pipeline',
+        question: analysisResult?.question || 'Unknown Query',
+        
+        // Store supporting data with multiple property names for compatibility
+        supporting_data: supportingData,
+        supportingData: supportingData,
+        pipelineData: supportingData,
+        
+        // Store charts data
+        charts: {
+          pieChart: chartData.pieChart,
+          barChart: chartData.barChart,
+          branchChart: chartData.branchChart,
+          waterfallChart: chartData.waterfallChart
+        },
+        
+        // Store RM Performance data if it exists
+        rmPerformanceData: chartData.rmPerformanceData || null,
+        
+        // Store RM Performance Overview and Comparison Chart if we have RM performance data
+        rmPerformanceOverview: chartData.rmPerformanceData ? {
+          totalTarget: chartData.rmPerformanceData.summary?.totalTarget || '₹0.0L',
+          totalAchievement: chartData.rmPerformanceData.summary?.totalAchievement || '₹0.0L', 
+          achievementRate: chartData.rmPerformanceData.summary?.achievementRate || '0.0%',
+          activeRMs: chartData.rmPerformanceData.summary?.activeRMs || '0/0'
+        } : null,
+        
+        // Store RM Performance Comparison Chart with top performing RMs
+        rmPerformanceComparisonChart: chartData.rmPerformanceData ? (() => {
+          const allRMs = analysisResult?.analysis_result?.supporting_data
+            ?.map(rm => {
+              const target = parseFloat(rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0);
+              const achievement = parseFloat(rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0);
+              const achievementRate = target > 0 ? ((achievement / target) * 100) : 0;
+              
+              return {
+                id: rm.RM_ID || rm['R M I D'] || rm.id,
+                name: rm.RM_Name || rm['R M Name'] || rm.name,
+                target,
+                achievement,
+                achievementRate
+              };
+            }) || [];
+
+          // Get top 6 performing RMs for the chart
+          const topRMs = allRMs
+            .filter(rm => rm.target > 0)
+            .sort((a, b) => b.achievementRate - a.achievementRate)
+            .slice(0, 6);
+
+          return {
+            title: `Top RM Performance Comparison (${topRMs.length} RMs)`,
+            data: topRMs.map(rm => ({
+              name: rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
+              fullName: rm.name,
+              value: rm.achievementRate,
+              achievementRate: rm.achievementRate,
+              avgScore: rm.achievementRate,
+              region: rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
+              target: rm.target,
+              achievement: rm.achievement,
+              fill: rm.achievementRate > 0 ? '#059669' : '#dc2626'
+            })),
+            summary: {
+              totalTarget: topRMs.reduce((sum, rm) => sum + rm.target, 0),
+              totalAchievement: topRMs.reduce((sum, rm) => sum + rm.achievement, 0),
+              avgAchievementRate: topRMs.length > 0 ? 
+                (topRMs.reduce((sum, rm) => sum + rm.achievementRate, 0) / topRMs.length) : 0
+            }
+          };
+        })() : null,
+        
+        // Store data grid
+        dataGrid: {
+          gridColumns,
+          gridRows
+        },
+        
+        // Store overview data if it exists (for RM performance)
+        overview: chartData.pieChart?.overview || chartData.rmPerformanceData?.summary || null
+      };
+
+      console.log('💾 [SAVE DEBUG] Final visualization data structure:', visualizationData);
+
+      const existing = JSON.parse(localStorage.getItem('dashboardVisualizations') || '[]');
+      const updated = [visualizationData, ...existing];
+      localStorage.setItem('dashboardVisualizations', JSON.stringify(updated));
+      
+      console.log('💾 [SAVE DEBUG] Saved to localStorage. Total items:', updated.length);
+      
+      setSnackbar({
+        open: true,
+        message: 'All visualizations saved to dashboard successfully!',
+        severity: 'success'
+      });
+
+      setTimeout(() => {
+        const dashboardUrl = `${window.location.origin}/dashboard`;
+        window.open(dashboardUrl, '_blank');
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error saving all visualizations:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error saving visualizations. Please try again.',
+        severity: 'error'
+      });
+    }
+  };
+
   const handleSaveToDashboard = () => {
     try {
       // Generate a unique ID for this visualization
@@ -1203,13 +1443,17 @@ const DynamicDataVisualization = ({
       // Create the visualization data object
       const visualizationData = {
         id,
-        title: `Analysis - ${new Date().toLocaleDateString()}`,
+        title: analysisResult?.question || `Analysis - ${new Date().toLocaleDateString()}`,
         timestamp: new Date().toISOString(),
+        type: 'pipeline',
         question: analysisResult?.question || 'Unknown Query',
+        supportingData: analysisResult?.analysis_result?.supporting_data || [],
+        pipelineData: analysisResult?.analysis_result?.supporting_data || [],
         charts: {
           pieChart: chartData.pieChart,
           barChart: chartData.barChart,
-          branchChart: chartData.branchChart
+          branchChart: chartData.branchChart,
+          waterfallChart: chartData.waterfallChart
         },
         dataGrid: {
           gridColumns,
@@ -1229,7 +1473,7 @@ const DynamicDataVisualization = ({
       // Show success message
       setSnackbar({
         open: true,
-        message: 'Visualization saved to dashboard successfully!',
+        message: 'All visualizations saved to dashboard successfully!',
         severity: 'success'
       });
 
@@ -1244,6 +1488,105 @@ const DynamicDataVisualization = ({
       setSnackbar({
         open: true,
         message: 'Failed to save visualization. Please try again.',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleSaveTable = () => {
+    try {
+      const id = Date.now().toString();
+      const supportingData = analysisResult?.analysis_result?.supporting_data || [];
+      
+      const visualizationData = {
+        id,
+        title: `Table - ${analysisResult?.question || new Date().toLocaleDateString()}`,
+        timestamp: new Date().toISOString(),
+        type: 'table',
+        question: analysisResult?.question || 'Unknown Query',
+        
+        // Store supporting data with multiple property names for compatibility
+        supporting_data: supportingData,
+        supportingData: supportingData,
+        pipelineData: supportingData,
+        
+        dataGrid: {
+          gridColumns,
+          gridRows
+        }
+      };
+
+      const existing = JSON.parse(localStorage.getItem('dashboardVisualizations') || '[]');
+      const updated = [visualizationData, ...existing];
+      localStorage.setItem('dashboardVisualizations', JSON.stringify(updated));
+      
+      setSnackbar({
+        open: true,
+        message: 'Table saved successfully!',
+        severity: 'success'
+      });
+
+      setTimeout(() => {
+        const dashboardUrl = `${window.location.origin}/dashboard`;
+        window.open(dashboardUrl, '_blank');
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error saving table:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error saving table. Please try again.',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleSaveChart = (chartType, chartTitle) => {
+    try {
+      const id = Date.now().toString();
+      const supportingData = analysisResult?.analysis_result?.supporting_data || [];
+      
+      const charts = {};
+      charts[chartType] = chartData[chartType];
+      
+      const visualizationData = {
+        id,
+        title: `${chartTitle} - ${analysisResult?.question || new Date().toLocaleDateString()}`,
+        timestamp: new Date().toISOString(),
+        type: chartType === 'pieChart' ? 'pie' : chartType === 'waterfallChart' ? 'waterfall' : 'pipeline',
+        question: analysisResult?.question || 'Unknown Query',
+        
+        // Store supporting data with multiple property names for compatibility
+        supporting_data: supportingData,
+        supportingData: supportingData,
+        pipelineData: supportingData,
+        
+        charts,
+        
+        // Store overview data if it exists (for RM performance)
+        overview: chartData.pieChart?.overview || chartData.rmPerformanceData?.summary || null
+      };
+
+      const existing = JSON.parse(localStorage.getItem('dashboardVisualizations') || '[]');
+      const updated = [visualizationData, ...existing];
+      localStorage.setItem('dashboardVisualizations', JSON.stringify(updated));
+      
+      setSnackbar({
+        open: true,
+        message: `${chartTitle} saved successfully!`,
+        severity: 'success'
+      });
+
+      setTimeout(() => {
+        const dashboardUrl = `${window.location.origin}/dashboard`;
+        window.open(dashboardUrl, '_blank');
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error saving chart:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error saving chart. Please try again.',
         severity: 'error'
       });
     }
@@ -1320,7 +1663,20 @@ const DynamicDataVisualization = ({
     );
   }
 
-  if (!analysisResult?.analysis_result?.supporting_data || analysisResult.analysis_result.supporting_data.length === 0) {
+  // MODULAR DATA VALIDATION - Check if we have any renderable content
+  const hasLiveData = analysisResult?.analysis_result?.supporting_data?.length > 0;
+  const hasSavedCharts = isFromDashboard && savedCharts && Object.values(savedCharts).some(chart => chart !== null && chart !== undefined);
+  const hasSavedDataGrid = isFromDashboard && savedDataGrid && (savedDataGrid.gridRows?.length > 0);
+  const hasSavedRMPerformanceData = isFromDashboard && savedRMPerformanceData;
+  const hasSavedRMPerformanceOverview = isFromDashboard && savedRMPerformanceOverview;
+  const hasSavedRMPerformanceComparisonChart = isFromDashboard && savedRMPerformanceComparisonChart;
+  
+  // Determine if we have ANY renderable content
+  const hasAnyRenderableContent = hasLiveData || hasSavedCharts || hasSavedDataGrid || 
+                                  hasSavedRMPerformanceData || hasSavedRMPerformanceOverview || 
+                                  hasSavedRMPerformanceComparisonChart;
+  
+  if (!hasAnyRenderableContent) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -1346,6 +1702,31 @@ const DynamicDataVisualization = ({
       overflow: 'hidden',
       boxSizing: 'border-box'
     }}>
+      {/* Save All to Dashboard Button */}
+      {!isFromDashboard && (
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<TableChart />}
+            onClick={handleSaveAll}
+            sx={{ 
+              textTransform: 'none',
+              backgroundColor: '#059669',
+              px: 6,
+              py: 1.5,
+              fontSize: '1rem',
+              fontWeight: 600,
+              '&:hover': {
+                backgroundColor: '#047857'
+              }
+            }}
+          >
+            Save All to Dashboard
+          </Button>
+        </Box>
+      )}
+
       {/* 1. Data Table */}
       {gridRows.length > 0 && (
         <Card sx={{ border: '1px solid #e0e0e0', mb: 4 }}>
@@ -1355,21 +1736,23 @@ const DynamicDataVisualization = ({
                 Table Results ({gridRows.length} records)
               </Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<TableChart />}
-                  onClick={handleSaveToDashboard}
-                  sx={{ 
-                    textTransform: 'none',
-                    backgroundColor: '#1976d2',
-                    '&:hover': {
-                      backgroundColor: '#1565c0'
-                    }
-                  }}
-                >
-                  Save to Dashboard
-                </Button>
+                {!isFromDashboard && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<TableChart />}
+                    onClick={handleSaveTable}
+                    sx={{ 
+                      textTransform: 'none',
+                      backgroundColor: '#1976d2',
+                      '&:hover': {
+                        backgroundColor: '#1565c0'
+                      }
+                    }}
+                  >
+                    Save Table
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   size="small"
@@ -1389,41 +1772,14 @@ const DynamicDataVisualization = ({
                 </Button>
               </Box>
             </Box>
-            <Box sx={{ 
-              height: gridRows.length <= 3 ? 'auto' : 560, 
-              minHeight: gridRows.length <= 3 ? 200 : 560,
-              width: '100%' 
-            }}>
-              <DataGrid
+            <Box sx={{ mt: 4 }}>
+              <DataGridComponent
                 rows={gridRows}
                 columns={gridColumns}
-                pageSize={gridRows.length <= 5 ? gridRows.length : 10}
-                rowsPerPageOptions={[5, 10, 25]}
-                disableSelectionOnClick
-                autoHeight={gridRows.length <= 3}
-                hideFooter={gridRows.length <= 5}
-                sx={{
-                  border: 'none',
-                  '& .MuiDataGrid-cell': {
-                    borderBottom: '1px solid #f3f4f6',
-                    fontSize: '0.875rem'
-                  },
-                  '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f9fafb',
-                    borderBottom: '1px solid #e5e7eb',
-                    fontSize: '0.875rem',
-                    fontWeight: 600
-                  },
-                  '& .MuiDataGrid-row:hover': {
-                    backgroundColor: '#f8fafc'
-                  },
-                  '& .MuiDataGrid-footerContainer': {
-                    minHeight: gridRows.length <= 5 ? '0px' : '40px'
-                  },
-                  '& .MuiDataGrid-virtualScroller': {
-                    minHeight: gridRows.length <= 3 ? 'auto' : '300px'
-                  }
-                }}
+                title=""
+                showSaveButton={false}
+                onExport={handleExportClick}
+                height={400}
               />
             </Box>
           </CardContent>
@@ -1440,11 +1796,207 @@ const DynamicDataVisualization = ({
         maxWidth: '100%',
         overflow: 'hidden'
       }}>
+        {/* Interactive RM Performance Selection */}
+        {chartData.rmPerformanceData && (
+          <Box sx={{ width: '100%' }}>
+            <RMPerformanceOverview chartData={chartData} />
+            <RMPerformanceComparison 
+              analysisResult={analysisResult}
+              selectedRMs={selectedRMs}
+              setSelectedRMs={setSelectedRMs}
+            />
+            
+            <RMComparisonChart 
+              selectedRMs={selectedRMs}
+              analysisResult={analysisResult}
+              onSaveToDashboard={() => {
+                // Create chart data for saving
+                const allRMs = analysisResult?.analysis_result?.supporting_data
+                  ?.map(rm => {
+                    const target = parseFloat(rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0);
+                    const achievement = parseFloat(rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0);
+                    const achievementRate = target > 0 ? ((achievement / target) * 100) : 0;
+                    
+                    return {
+                      id: rm.RM_ID || rm['R M I D'] || rm.id,
+                      name: rm.RM_Name || rm['R M Name'] || rm.name,
+                      target,
+                      achievement,
+                      achievementRate
+                    };
+                  }) || [];
+
+                const selectedRMsData = allRMs.filter(rm => selectedRMs.includes(rm.id));
+                
+                // Calculate overall stats from all RMs
+                const overallStats = {
+                  totalTarget: allRMs.reduce((sum, rm) => sum + rm.target, 0),
+                  totalAchievement: allRMs.reduce((sum, rm) => sum + rm.achievement, 0),
+                  achievementRate: allRMs.length > 0 ? 
+                    (allRMs.reduce((sum, rm) => sum + rm.achievement, 0) / allRMs.reduce((sum, rm) => sum + rm.target, 0) * 100) : 0,
+                  activeRMs: `${allRMs.filter(rm => rm.achievement > 0).length}/${allRMs.length}`
+                };
+                
+                console.log('Debug - Selected RM data for chart:', selectedRMsData);
+                
+                const chartData = {
+                  barChart: {
+                    title: `RM Performance Comparison (${selectedRMsData.length} RMs)`,
+                    data: selectedRMsData.map(rm => ({
+                      name: rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
+                      fullName: rm.name,
+                      // Include all possible field names for maximum compatibility
+                      value: rm.achievementRate,  // Primary field for BarChartComponent
+                      achievementRate: rm.achievementRate,
+                      avgScore: rm.achievementRate,  // Dashboard looks for this field
+                      region: rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,  // Alternative field name
+                      target: rm.target,
+                      achievement: rm.achievement,
+                      fill: rm.achievementRate > 0 ? '#059669' : '#dc2626'
+                    })),
+                    summary: {
+                      totalTarget: selectedRMsData.reduce((sum, rm) => sum + rm.target, 0),
+                      totalAchievement: selectedRMsData.reduce((sum, rm) => sum + rm.achievement, 0),
+                      avgAchievementRate: selectedRMsData.length > 0 ? 
+                        (selectedRMsData.reduce((sum, rm) => sum + rm.achievementRate, 0) / selectedRMsData.length) : 0
+                    }
+                  }
+                };
+
+                const saveData = {
+                  id: Date.now(),
+                  title: analysisResult.question || `RM Performance Analysis - ${new Date().toLocaleDateString()}`,
+                  timestamp: new Date().toISOString(),
+                  type: 'rmPerformance',
+                  overview: {
+                    totalTarget: `₹${overallStats.totalTarget.toFixed(1)}L`,
+                    totalAchievement: `₹${overallStats.totalAchievement.toFixed(1)}L`,
+                    achievementRate: `${overallStats.achievementRate.toFixed(1)}%`,
+                    activeRMs: overallStats.activeRMs
+                  },
+                  charts: chartData,
+                  dataGrid: {
+                    gridRows: selectedRMsData.map((rm, index) => ({
+                      id: index,
+                      rmName: rm.name,
+                      target: `${rm.target.toFixed(1)}L`,
+                      achievement: `${rm.achievement.toFixed(1)}L`,
+                      achievementRate: `${rm.achievementRate.toFixed(1)}%`
+                    })),
+                    gridColumns: [
+                      { field: 'rmName', headerName: 'RM Name', width: 200 },
+                      { field: 'target', headerName: 'Target', width: 120 },
+                      { field: 'achievement', headerName: 'Achievement', width: 120 },
+                      { field: 'achievementRate', headerName: 'Achievement %', width: 120 }
+                    ]
+                  }
+                };
+
+                // Add debug flag to localStorage for debugging
+                window.localStorage.debug = true;
+                
+                // Log the data before saving for debugging
+                console.log('Saving to dashboard:', saveData);
+                console.log('Chart data being saved:', saveData.charts.barChart);
+                console.log('Chart data values:', saveData.charts.barChart.data);
+                
+                const existing = JSON.parse(localStorage.getItem('dashboardVisualizations') || '[]');
+                existing.push(saveData);
+                localStorage.setItem('dashboardVisualizations', JSON.stringify(existing));
+                
+                // Store a debug copy separately for analysis
+                localStorage.setItem('lastSavedVisualization', JSON.stringify(saveData));
+                
+                setSnackbar({ 
+                  open: true, 
+                  message: 'Analysis saved to dashboard successfully!', 
+                  severity: 'success' 
+                });
+                
+                // Open dashboard in new tab
+                window.open('/dashboard', '_blank');
+              }}
+            />
+          </Box>
+        )}
+
+        {/* Bar Chart - Pipeline and Other Performance Data */}
+        {chartData.barChart && !chartData.rmPerformanceData && chartData.barChart.data && chartData.barChart.data.length > 0 && (
+          <Box sx={{ 
+            flex: chartData.pieChart ? '0 0 calc(50% - 8px)' : '1 1 100%',
+            minWidth: 0,
+            maxWidth: chartData.pieChart ? 'calc(50% - 8px)' : '100%'
+          }}>
+            <Card sx={{ 
+              height: '100%', 
+              minHeight: 520,
+              border: 'none',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+              borderRadius: 3,
+              overflow: 'hidden'
+            }}>
+              <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                {chartData.barChart.isStacked ? (
+                  <StackedBarChartComponent
+                    data={chartData.barChart.data}
+                    title={chartData.barChart.title}
+                    subtitle={dataType === 'pipeline' ? 'Pending cases by pipeline stage' : 'Performance metrics by region'}
+                    stageNames={chartData.barChart.stageNames || []}
+                    height={400}
+                    xAxisKey="region"
+                    yAxisLabel={dataType === 'pipeline' ? 'Pending Cases' : 'Score'}
+                  />
+                ) : (
+                  <BarChartComponent
+                    data={chartData.barChart.data}
+                    title={chartData.barChart.title}
+                    subtitle="Performance metrics"
+                    height={400}
+                    showLegend={true}
+                  />
+                )}
+                
+                {/* Save Chart Button */}
+                <Box sx={{ 
+                  p: 3, 
+                  pt: 2,
+                  borderTop: '1px solid #f3f4f6',
+                  display: 'flex',
+                  justifyContent: 'center'
+                }}>
+                  {!isFromDashboard && (
+                    <Button
+                      variant="contained"
+                      size="medium"
+                      startIcon={<TableChart />}
+                      onClick={() => handleSaveChart('barChart', chartData.barChart.title || 'Bar Chart')}
+                      sx={{ 
+                        textTransform: 'none',
+                        backgroundColor: '#1976d2',
+                        '&:hover': {
+                          backgroundColor: '#1565c0'
+                        },
+                        borderRadius: 2,
+                        px: 3,
+                        py: 1,
+                        fontWeight: 600,
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      Save Chart
+                    </Button>
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+        )}
+
         {/* State Distribution - Premium Pie Chart */}
-        {chartData.pieChart && (
+        {chartData.pieChart && chartData.pieChart.data && chartData.pieChart.data.length > 0 && (
           <Box sx={{ 
             flex: chartData.barChart ? '0 0 calc(50% - 8px)' : '1 1 100%',
-            minWidth: 0, // Prevents flex item from overflowing
+            minWidth: 0,
             maxWidth: chartData.barChart ? 'calc(50% - 8px)' : '100%'
           }}>
             <Card sx={{ 
@@ -1456,118 +2008,40 @@ const DynamicDataVisualization = ({
               overflow: 'hidden'
             }}>
               <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                {/* Header */}
+                <PieChartComponent
+                  data={chartData.pieChart.data}
+                  title={chartData.pieChart.title}
+                  subtitle="Distribution by state"
+                  height={400}
+                />
+                
+                {/* Save Chart Button */}
                 <Box sx={{ 
                   p: 3, 
-                  pb: 2,
-                  borderBottom: '1px solid #f3f4f6',
-                  flexShrink: 0
-                }}>
-                  <Typography variant="h6" sx={{ 
-                    fontWeight: 500,
-                    color: '#1a1a1a',
-                    fontSize: '1.125rem',
-                    letterSpacing: '-0.025em'
-                  }}>
-                    {chartData.pieChart.title}
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: '#6b7280',
-                    mt: 0.5,
-                    fontSize: '0.875rem'
-                  }}>
-                    {scoreField && scoreField.toLowerCase().includes('percentage') ? 
-                      'Average collection percentage by state' : 
-                      'Performance metrics by state'
-                    }
-                  </Typography>
-                </Box>
-                
-                {/* Chart */}
-                <Box sx={{ 
-                  flex: 1, 
-                  p: 2, 
+                  pt: 2,
+                  borderTop: '1px solid #f3f4f6',
                   display: 'flex',
-                  flexDirection: 'column'
+                  justifyContent: 'center'
                 }}>
-                  <Box sx={{ width: '100%', height: 300, mb: 2 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                        <Pie
-                          data={chartData.pieChart.data}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius="40%"
-                          outerRadius="70%"
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          {chartData.pieChart.data.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                            fontSize: '14px'
-                          }}
-                          formatter={(value, name, props) => {
-                            const isPercentage = scoreField && scoreField.toLowerCase().includes('percentage');
-                            const displayValue = isPercentage ? `${Number(value).toFixed(2)}%` : Number(value).toFixed(2);
-                            return [displayValue, `${name} (${props.payload.count} branches)`];
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-                  
-                  {/* Custom Legend with Values */}
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: 1,
-                    px: 2
-                  }}>
-                    {chartData.pieChart.data.map((entry, index) => (
-                      <Box key={index} sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between',
-                        p: 1,
-                        borderRadius: 1,
-                        backgroundColor: '#f8fafc'
-                      }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '50%',
-                            backgroundColor: entry.fill
-                          }} />
-                          <Typography variant="body2" sx={{ 
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            color: '#374151'
-                          }}>
-                            {entry.name}
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ 
-                          fontSize: '0.875rem',
-                          fontWeight: 600,
-                          color: '#1f2937'
-                        }}>
-                          {scoreField && scoreField.toLowerCase().includes('percentage') ? 
-                            `${Number(entry.value).toFixed(2)}%` : 
-                            `${Number(entry.value).toFixed(2)} (${entry.count} branches)`
-                          }
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
+                  {!isFromDashboard && (
+                    <Button
+                      variant="contained"
+                      size="medium"
+                      startIcon={<TableChart />}
+                      onClick={() => handleSaveChart('pieChart', chartData.pieChart.title || 'Pie Chart')}
+                      sx={{ 
+                        textTransform: 'none',
+                        backgroundColor: '#1976d2',
+                        px: 4,
+                        py: 1,
+                        '&:hover': {
+                          backgroundColor: '#1565c0'
+                        }
+                      }}
+                    >
+                      Save Chart
+                    </Button>
+                  )}
                 </Box>
               </CardContent>
             </Card>
@@ -1575,7 +2049,7 @@ const DynamicDataVisualization = ({
         )}
 
         {/* Pipeline Waterfall Chart */}
-        {chartData.waterfallChart && (
+        {chartData.waterfallChart && chartData.waterfallChart.data && chartData.waterfallChart.data.length > 0 && (
           <Box sx={{ 
             flex: '1 1 100%',
             minWidth: 0,
@@ -1591,892 +2065,143 @@ const DynamicDataVisualization = ({
               overflow: 'hidden'
             }}>
               <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                {/* Header */}
+                <WaterfallChartComponent
+                  data={chartData.waterfallChart.data}
+                  title={chartData.waterfallChart.title}
+                  totalPipeline={chartData.waterfallChart.totalPipeline}
+                  height={350}
+                  showSummaryCards={true}
+                />
+                
+                {/* Save Chart Button for Pipeline Charts */}
                 <Box sx={{ 
                   p: 3, 
-                  pb: 2,
-                  borderBottom: '1px solid #f3f4f6',
-                  flexShrink: 0
-                }}>
-                  <Typography variant="h6" sx={{ 
-                    fontWeight: 600,
-                    color: '#1a1a1a',
-                    fontSize: '1.25rem',
-                    letterSpacing: '-0.025em'
-                  }}>
-                    {chartData.waterfallChart.title}
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: '#6b7280',
-                    mt: 0.5,
-                    fontSize: '0.875rem'
-                  }}>
-                    Total Pipeline: {chartData.waterfallChart.totalPipeline} cases across {chartData.waterfallChart.data.length} stages
-                  </Typography>
-                </Box>
-
-                {/* Waterfall Chart */}
-                <Box sx={{ flex: 1, p: 3 }}>
-                  <Box sx={{ width: '100%', height: 350 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={chartData.waterfallChart.data}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                      >
-                        <CartesianGrid 
-                          strokeDasharray="3 3" 
-                          stroke="#e5e7eb"
-                          strokeWidth={0.5}
-                        />
-                        <XAxis 
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ 
-                            fontSize: 11, 
-                            fill: '#6b7280',
-                            fontWeight: 500
-                          }}
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                        />
-                        <YAxis 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ 
-                            fontSize: 12, 
-                            fill: '#6b7280',
-                            fontWeight: 500
-                          }}
-                          width={50}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: '#ffffff',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '12px',
-                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                            fontSize: '14px'
-                          }}
-                          formatter={(value, name) => [
-                            `${value} cases`,
-                            'Pending Cases'
-                          ]}
-                          labelFormatter={(label) => `Stage: ${label}`}
-                        />
-                        <Bar 
-                          dataKey="value" 
-                          radius={[4, 4, 0, 0]}
-                          maxBarSize={60}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Box>
-                  
-                  {/* Pipeline Flow Summary */}
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexWrap: 'wrap',
-                    gap: 2,
-                    mt: 3,
-                    pt: 3,
-                    borderTop: '1px solid #f3f4f6'
-                  }}>
-                    {chartData.waterfallChart.data.map((stage, index) => (
-                      <Box key={index} sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 1,
-                        p: 2,
-                        borderRadius: 2,
-                        backgroundColor: '#f8fafc',
-                        borderLeft: `4px solid ${stage.fill}`,
-                        minWidth: 160
-                      }}>
-                        <Box>
-                          <Typography variant="body2" sx={{ 
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            color: '#374151',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em'
-                          }}>
-                            {stage.name}
-                          </Typography>
-                          <Typography variant="h6" sx={{ 
-                            fontSize: '1.25rem',
-                            fontWeight: 700,
-                            color: '#111827'
-                          }}>
-                            {stage.value}
-                          </Typography>
-                          <Typography variant="caption" sx={{ 
-                            fontSize: '0.75rem',
-                            color: '#6b7280'
-                          }}>
-                            cases pending
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Box>
-        )}
-
-        {/* Interactive RM Performance Selection */}
-        {chartData.rmPerformanceData && (
-          <Box sx={{ width: '100%' }}>
-            {/* Overview Statistics Card */}
-            <Card sx={{ 
-              border: 'none',
-              boxShadow: '0 2px 8px 0 rgba(0, 0, 0, 0.1)',
-              borderRadius: 3,
-              background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-              mb: 3
-            }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{
-                  fontWeight: 600,
-                  mb: 3,
-                  fontSize: '1.25rem',
-                  textAlign: 'center'
-                }}>
-                  RM Performance Overview
-                </Typography>
-                <Grid container spacing={2} justifyContent="center">
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" sx={{ 
-                        color: '#1e293b',
-                        fontWeight: 700,
-                        fontSize: '1.875rem',
-                        mb: 0.5
-                      }}>
-                        {chartData.rmPerformanceData.summary.totalTarget}
-                      </Typography>
-                      <Typography variant="body2" sx={{ 
-                        color: '#64748b',
-                        fontSize: '0.875rem',
-                        fontWeight: 500
-                      }}>
-                        Total Target
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" sx={{ 
-                        color: '#059669',
-                        fontWeight: 700,
-                        fontSize: '1.875rem',
-                        mb: 0.5
-                      }}>
-                        {chartData.rmPerformanceData.summary.totalAchievement}
-                      </Typography>
-                      <Typography variant="body2" sx={{ 
-                        color: '#64748b',
-                        fontSize: '0.875rem',
-                        fontWeight: 500
-                      }}>
-                        Total Achievement
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" sx={{ 
-                        color: '#d97706',
-                        fontWeight: 700,
-                        fontSize: '1.875rem',
-                        mb: 0.5
-                      }}>
-                        {chartData.rmPerformanceData.summary.achievementRate}
-                      </Typography>
-                      <Typography variant="body2" sx={{ 
-                        color: '#64748b',
-                        fontSize: '0.875rem',
-                        fontWeight: 500
-                      }}>
-                        Achievement Rate
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" sx={{ 
-                        color: '#1e293b',
-                        fontWeight: 700,
-                        fontSize: '1.875rem',
-                        mb: 0.5
-                      }}>
-                        {chartData.rmPerformanceData.summary.activeRMs}
-                      </Typography>
-                      <Typography variant="body2" sx={{ 
-                        color: '#64748b',
-                        fontSize: '0.875rem',
-                        fontWeight: 500
-                      }}>
-                        Active RMs
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-            {/* RM Selection Interface */}
-            <Box sx={{ mt: 3, px: 2 }}>
-              <Typography variant="h6" sx={{
-                fontWeight: 600,
-                mb: 3,
-                fontSize: '1.25rem',
-                textAlign: 'center'
-              }}>
-                RM Performance Comparison
-              </Typography>
-              
-              <Grid container spacing={3} justifyContent="center">
-                {/* Top Performers Search */}
-                <Grid item xs={12} lg={6}>
-                  <Card sx={{ 
-                    height: '500px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    border: '2px solid #059669',
-                    borderRadius: 2
-                  }}>
-                    <Box sx={{ 
-                      p: 2,
-                      backgroundColor: '#f0fdf4',
-                      borderBottom: '1px solid #059669'
-                    }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <TrendingUp sx={{ color: '#059669' }} />
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#059669' }}>
-                          Top Performers
-                        </Typography>
-                      </Box>
-                      <TextField
-                        fullWidth
-                        placeholder="Search RM by name..."
-                        value={topPerformersSearch}
-                        onChange={(e) => setTopPerformersSearch(e.target.value)}
-                        size="small"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Search sx={{ color: '#6b7280' }} />
-                            </InputAdornment>
-                          )
-                        }}
-                      />
-                    </Box>
-                    <Box sx={{ 
-                      flex: 1,
-                      overflowY: 'auto',
-                      p: 1
-                    }}>
-                      {getFilteredTopPerformers().map((rm) => (
-                        <Box key={rm.id} sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          p: 2,
-                          mb: 1,
-                          borderRadius: 2,
-                          backgroundColor: selectedRMs.includes(rm.id) ? '#f0fdf4' : '#ffffff',
-                          border: selectedRMs.includes(rm.id) ? '2px solid #059669' : '1px solid #e5e7eb',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            backgroundColor: '#f8fafc',
-                            borderColor: '#059669'
-                          }
-                        }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
-                              {rm.name}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#6b7280', display: 'block' }}>
-                              Target: ₹{rm.target}L
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                              Achievement: ₹{rm.achievement}L ({rm.achievementRate.toFixed(1)}%)
-                            </Typography>
-                          </Box>
-                          <Button
-                            variant={selectedRMs.includes(rm.id) ? "contained" : "outlined"}
-                            size="small"
-                            color={selectedRMs.includes(rm.id) ? "success" : "primary"}
-                            onClick={() => {
-                              if (selectedRMs.includes(rm.id)) {
-                                setSelectedRMs(selectedRMs.filter(id => id !== rm.id));
-                              } else {
-                                setSelectedRMs([...selectedRMs, rm.id]);
-                              }
-                            }}
-                            sx={{ minWidth: '80px' }}
-                          >
-                            {selectedRMs.includes(rm.id) ? 'Remove' : 'Add'}
-                          </Button>
-                        </Box>
-                      ))}
-                      {getFilteredTopPerformers().length === 0 && (
-                        <Box sx={{ textAlign: 'center', py: 4 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            No RMs found matching your search
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  </Card>
-                </Grid>
-                
-                {/* Low Performers Search */}
-                <Grid item xs={12} lg={6}>
-                  <Card sx={{ 
-                    height: '500px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    border: '2px solid #dc2626',
-                    borderRadius: 2
-                  }}>
-                    <Box sx={{ 
-                      p: 2,
-                      backgroundColor: '#fef2f2',
-                      borderBottom: '1px solid #dc2626'
-                    }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <TrendingDown sx={{ color: '#dc2626' }} />
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#dc2626' }}>
-                          Low Performers
-                        </Typography>
-                      </Box>
-                      <TextField
-                        fullWidth
-                        placeholder="Search RM by name..."
-                        value={lowPerformersSearch}
-                        onChange={(e) => setLowPerformersSearch(e.target.value)}
-                        size="small"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Search sx={{ color: '#6b7280' }} />
-                            </InputAdornment>
-                          )
-                        }}
-                      />
-                    </Box>
-                    <Box sx={{ 
-                      flex: 1,
-                      overflowY: 'auto',
-                      p: 1
-                    }}>
-                      {getFilteredLowPerformers().map((rm) => (
-                        <Box key={rm.id} sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          p: 2,
-                          mb: 1,
-                          borderRadius: 2,
-                          backgroundColor: selectedRMs.includes(rm.id) ? '#fef2f2' : '#ffffff',
-                          border: selectedRMs.includes(rm.id) ? '2px solid #dc2626' : '1px solid #e5e7eb',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            backgroundColor: '#f8fafc',
-                            borderColor: '#dc2626'
-                          }
-                        }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
-                              {rm.name}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#6b7280', display: 'block' }}>
-                              Target: ₹{rm.target}L
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                              Achievement: ₹{rm.achievement}L ({rm.achievementRate ? rm.achievementRate.toFixed(1) : '0.0'}%)
-                            </Typography>
-                          </Box>
-                          <Button
-                            variant={selectedRMs.includes(rm.id) ? "contained" : "outlined"}
-                            size="small"
-                            color={selectedRMs.includes(rm.id) ? "error" : "primary"}
-                            onClick={() => {
-                              if (selectedRMs.includes(rm.id)) {
-                                setSelectedRMs(selectedRMs.filter(id => id !== rm.id));
-                              } else {
-                                setSelectedRMs([...selectedRMs, rm.id]);
-                              }
-                            }}
-                            sx={{ minWidth: '80px' }}
-                          >
-                            {selectedRMs.includes(rm.id) ? 'Remove' : 'Add'}
-                          </Button>
-                        </Box>
-                      ))}
-                      {getFilteredLowPerformers().length === 0 && (
-                        <Box sx={{ textAlign: 'center', py: 4 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            No RMs found matching your search
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  </Card>
-                </Grid>
-              </Grid>
-            </Box>
-            
-            {/* Chart for Selected RMs */}
-            {selectedRMs.length > 0 && (
-              <Card sx={{ 
-                mt: 3,
-                border: 'none',
-                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-                borderRadius: 3
-              }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      Target vs Achievement Comparison ({selectedRMs.length} RMs)
-                    </Typography>
-                    <Button 
-                      variant="outlined" 
-                      size="small"
-                      onClick={() => setSelectedRMs([])}
-                      sx={{ textTransform: 'none' }}
-                    >
-                      Clear Selection
-                    </Button>
-                  </Box>
-                  
-                  <Box sx={{ width: '100%', height: 400 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={chartData.rmPerformanceData.allRMs
-                          .filter(rm => selectedRMs.includes(rm.id))
-                          .map(rm => ({
-                            name: rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
-                            fullName: rm.name,
-                            Target: rm.target,
-                            Achievement: rm.achievement,
-                            'Achievement %': rm.achievementRate
-                          }))}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis 
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ 
-                            fontSize: 12, 
-                            fill: '#64748b',
-                            fontWeight: 500
-                          }}
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                        />
-                        <YAxis 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ 
-                            fontSize: 12, 
-                            fill: '#64748b',
-                            fontWeight: 500
-                          }}
-                          width={60}
-                          tickFormatter={(value) => `₹${value}L`}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
-                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                            fontSize: '14px'
-                          }}
-                          formatter={(value, name, props) => {
-                            if (name === 'Achievement %') {
-                              return [`${value.toFixed(1)}%`, 'Achievement Rate'];
-                            }
-                            return [`₹${value}L`, name];
-                          }}
-                          labelFormatter={(label, payload) => {
-                            const entry = payload?.[0]?.payload;
-                            return entry ? `RM: ${entry.fullName}` : `RM: ${label}`;
-                          }}
-                        />
-                        <Bar 
-                          dataKey="Target"
-                          fill="#94a3b8"
-                          radius={[4, 4, 0, 0]}
-                          maxBarSize={40}
-                          name="Target"
-                        />
-                        <Bar 
-                          dataKey="Achievement"
-                          fill="#059669"
-                          radius={[4, 4, 0, 0]}
-                          maxBarSize={40}
-                          name="Achievement"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </CardContent>
-              </Card>
-            )}
-          </Box>
-        )}
-
-        {/* Bar Chart - Pipeline and Other Performance Data */}
-        {chartData.barChart && !chartData.rmPerformanceData && (
-          <Box sx={{ 
-            flex: chartData.pieChart ? '0 0 calc(50% - 8px)' : '1 1 100%',
-            minWidth: 0,
-            maxWidth: chartData.pieChart ? 'calc(50% - 8px)' : '100%',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <Card sx={{ 
-              height: '100%', 
-              minHeight: 500,
-              border: 'none',
-              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-              borderRadius: 3,
-              overflow: 'hidden'
-            }}>
-              <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                {/* Header */}
-                <Box sx={{ 
-                  p: 3, 
-                  pb: 2,
-                  borderBottom: '1px solid #f3f4f6',
-                  flexShrink: 0
-                }}>
-                  <Typography variant="h6" sx={{ 
-                    fontWeight: 500,
-                    color: '#1a1a1a',
-                    fontSize: '1.125rem',
-                    letterSpacing: '-0.025em'
-                  }}>
-                    {chartData.barChart.title}
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: '#6b7280',
-                    mt: 0.5,
-                    fontSize: '0.875rem'
-                  }}>
-                    {dataType === 'pipeline' ? 'Pending cases by pipeline stage' : 'Average performance scores by region'}
-                  </Typography>
-                </Box>
-                
-                {/* Chart */}
-                <Box sx={{ 
-                  flex: 1, 
-                  p: 1,
+                  pt: 2,
+                  borderTop: '1px solid #f3f4f6',
                   display: 'flex',
-                  flexDirection: 'column'
+                  justifyContent: 'center'
                 }}>
-                  <Box sx={{ width: '100%', height: 550, mb: -10 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={chartData.barChart.data}
-                        margin={{ top: 10, right: 10, left: 10, bottom: 120 }}
-                      >
-                        <CartesianGrid 
-                          strokeDasharray="3 3" 
-                          stroke="#f3f4f6"
-                          vertical={false}
-                        />
-                        <XAxis 
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ 
-                            fontSize: 11, 
-                            fill: '#6b7280',
-                            fontWeight: 500
-                          }}
-                          height={chartData.barChart.isStacked ? 100 : 40}
-                          interval={0}
-                          angle={chartData.barChart.isStacked ? -45 : 0}
-                          textAnchor={chartData.barChart.isStacked ? "end" : "middle"}
-                        />
-                        <YAxis 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ 
-                            fontSize: 12, 
-                            fill: '#6b7280',
-                            fontWeight: 500
-                          }}
-                          width={80}
-                          domain={dataType === 'pipeline' ? [0, 'dataMax'] : [-1.1, 0.1]}
-                          tickFormatter={(value) => dataType === 'pipeline' ? value.toString() : value.toFixed(1)}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                            fontSize: '14px'
-                          }}
-                          formatter={(value, name) => [
-                            dataType === 'pipeline' ? `${value} cases` : `Score: ${value}`,
-                            dataType === 'pipeline' ? (chartData.barChart.isStacked ? name : 'Pending Cases') : 'Average Score'
-                          ]}
-                          labelFormatter={(label) => 
-                            dataType === 'pipeline' ? (chartData.barChart.isStacked ? `Region: ${label}` : `Stage: ${label}`) : `Region: ${label}`
-                          }
-                        />
-                        {chartData.barChart.isStacked && dataType === 'pipeline' ? 
-                          // Render stacked bars for multi-region pipeline data
-                          chartData.barChart.stageNames.map((stageName, index) => (
-                            <Bar 
-                              key={stageName}
-                              dataKey={stageName}
-                              stackId="pipeline"
-                              fill={getStageColor(index, chartData.barChart.stageNames.length)}
-                              radius={index === chartData.barChart.stageNames.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                            />
-                          ))
-                          :
-                          // Regular single bar for non-stacked data
-                          <Bar 
-                            dataKey={dataType === 'pipeline' ? "value" : "avgScore"}
-                            radius={[4, 4, 0, 0]}
-                            maxBarSize={50}
-                          />
+                  {!isFromDashboard && (
+                    <Button
+                      variant="contained"
+                      size="medium"
+                      startIcon={<TableChart />}
+                      onClick={() => handleSaveChart('waterfallChart', chartData.waterfallChart.title || 'Pipeline Summary')}
+                      sx={{ 
+                        textTransform: 'none',
+                        backgroundColor: '#1976d2',
+                        px: 4,
+                        py: 1,
+                        '&:hover': {
+                          backgroundColor: '#1565c0'
                         }
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Box>
-                  
-                  {/* Legend */}
-                  {!chartData.barChart.isTargetVsAchievement && (
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: 0.5,
-                      px: 2,
-                      py: 1
-                    }}>
-                      <Typography variant="subtitle2" sx={{ 
-                        fontWeight: 600,
-                        color: '#374151',
-                        mb: 1
-                      }}>
-                        {dataType === 'pipeline' ? (chartData.barChart.isStacked ? 'Legend' : 'Pipeline Stages') : 'Regional Scores'}
-                      </Typography>
-                      {chartData.barChart.isStacked && dataType === 'pipeline' ? (
-                        <>
-                          {/* Stage color legend */}
-                          <Box sx={{ mb: 1 }}>
-                            <Typography variant="body2" sx={{ 
-                              fontSize: '0.8rem',
-                              fontWeight: 600,
-                              color: '#6b7280',
-                              mb: 1,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.5px'
-                            }}>
-                              Pipeline Stages
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                              {chartData.barChart.stageNames.map((stageName, index) => (
-                                <Box key={index} sx={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: 1,
-                                  px: 2,
-                                  py: 0.5,
-                                  borderRadius: 1,
-                                  backgroundColor: '#f8fafc',
-                                  border: `2px solid ${getStageColor(index, chartData.barChart.stageNames.length)}`
-                                }}>
-                                  <Box sx={{
-                                    width: 12,
-                                    height: 12,
-                                    borderRadius: '50%',
-                                    backgroundColor: getStageColor(index, chartData.barChart.stageNames.length)
-                                  }} />
-                                  <Typography variant="body2" sx={{ 
-                                    fontSize: '0.75rem',
-                                    fontWeight: 500,
-                                    color: '#374151'
-                                  }}>
-                                    {stageName.replace(/Total_|_Pending/g, '').replace(/_/g, ' ')}
-                                  </Typography>
-                                </Box>
-                              ))}
-                            </Box>
-                          </Box>
-                          
-                          {/* Region data breakdown */}
-                          <Box>
-                            <Typography variant="body2" sx={{ 
-                              fontSize: '0.8rem',
-                              fontWeight: 600,
-                              color: '#6b7280',
-                              mb: 1,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.5px'
-                            }}>
-                              Regions & Total Cases
-                            </Typography>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 0.5 }}>
-                              {chartData.barChart.data.map((entry, index) => (
-                                <Box key={index} sx={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  justifyContent: 'space-between',
-                                  p: 1.5,
-                                  borderRadius: 2,
-                                  backgroundColor: '#f8fafc',
-                                  border: '1px solid #e2e8f0'
-                                }}>
-                                  <Typography variant="body2" sx={{ 
-                                    fontSize: '0.85rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    flex: 1
-                                  }}>
-                                    {entry.name}
-                                  </Typography>
-                                  <Typography variant="body2" sx={{ 
-                                    fontSize: '0.875rem',
-                                    fontWeight: 600,
-                                    color: '#059669',
-                                    minWidth: '60px',
-                                    textAlign: 'right'
-                                  }}>
-                                    {entry.Total_Pipeline || 0} cases
-                                  </Typography>
-                                </Box>
-                              ))}
-                            </Box>
-                          </Box>
-                        </>
-                      ) : (
-                        // Show region/stage legend for non-stacked bars
-                        chartData.barChart.data.map((entry, index) => (
-                          <Box key={index} sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'space-between',
-                            p: 1,
-                            borderRadius: 1,
-                            backgroundColor: '#f8fafc',
-                            borderLeft: `3px solid ${entry.fill || getStageColor(index, chartData.barChart.data.length)}`
-                          }}>
-                            <Typography variant="body2" sx={{ 
-                              fontSize: '0.875rem',
-                              fontWeight: 500,
-                              color: '#374151'
-                            }}>
-                              {dataType === 'pipeline' ? (entry.region || entry.name) : entry.region}
-                            </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              {dataType === 'pipeline' ? (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                  <Typography variant="body2" sx={{ 
-                                    fontSize: '0.875rem',
-                                    fontWeight: 600,
-                                    color: '#374151'
-                                  }}>
-                                    {entry.value} cases
-                                  </Typography>
-                                  {entry.stage && (
-                                    <Typography variant="caption" sx={{ 
-                                      fontSize: '0.75rem',
-                                      color: '#6b7280'
-                                    }}>
-                                      {entry.stage}
-                                    </Typography>
-                                  )}
-                                </Box>
-                              ) : (
-                                <>
-                                  <Typography variant="body2" sx={{ 
-                                    fontSize: '0.75rem',
-                                    color: '#6b7280'
-                                  }}>
-                                    {entry.count} branches
-                                  </Typography>
-                                  <Typography variant="body2" sx={{ 
-                                    fontSize: '0.875rem',
-                                    fontWeight: 600,
-                                    color: entry.avgScore === -1.0 ? '#dc2626' : '#374151',
-                                    minWidth: '40px',
-                                    textAlign: 'right'
-                                  }}>
-                                    {entry.avgScore}
-                                  </Typography>
-                                </>
-                              )}
-                            </Box>
-                          </Box>
-                        ))
-                      )}
-                    </Box>
-                  )}
-                  
-                  {/* Simple Legend for RM Performance */}
-                  {chartData.barChart.isTargetVsAchievement && (
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'center',
-                      gap: 4,
-                      px: 2,
-                      py: 1
-                    }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box sx={{ 
-                          width: 16, 
-                          height: 16, 
-                          backgroundColor: '#d1d5db',
-                          borderRadius: 1,
-                          border: '1px solid #9ca3af'
-                        }} />
-                        <Typography variant="body2" sx={{ 
-                          fontSize: '0.875rem',
-                          color: '#374151',
-                          fontWeight: 500
-                        }}>
-                          Target
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box sx={{ 
-                          width: 16, 
-                          height: 16, 
-                          backgroundColor: '#059669',
-                          borderRadius: 1,
-                          border: '1px solid #047857'
-                        }} />
-                        <Typography variant="body2" sx={{ 
-                          fontSize: '0.875rem',
-                          color: '#374151',
-                          fontWeight: 500
-                        }}>
-                          Achievement
-                        </Typography>
-                      </Box>
-                    </Box>
+                      }}
+                    >
+                      Save Chart
+                    </Button>
                   )}
                 </Box>
               </CardContent>
             </Card>
           </Box>
         )}
+        
+        {/* Render saved RM Performance Comparison Chart from Dashboard */}
+        {isFromDashboard && chartData.rmPerformanceComparisonChart && (
+          <Card sx={{ border: '1px solid #e0e0e0', mb: 4, width: '100%' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#1f2937' }}>
+                  {chartData.rmPerformanceComparisonChart.title}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ 
+                height: 600, 
+                width: '100%', 
+                minHeight: 550,
+                maxWidth: '100%',
+                overflow: 'visible',
+                '& .recharts-wrapper': {
+                  width: '100% !important',
+                  height: '100% !important'
+                },
+                '& .recharts-cartesian-axis-tick-value': {
+                  fontSize: '11px !important',
+                  fill: '#374151 !important'
+                },
+                '& .recharts-cartesian-axis': {
+                  '& text': {
+                    fontSize: '11px',
+                    fill: '#374151'
+                  }
+                }
+              }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData.rmPerformanceComparisonChart.data}
+                    margin={{ top: 20, right: 30, left: 40, bottom: 120 }}
+                  >
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="#f3f4f6"
+                      strokeWidth={0.5}
+                    />
+                    <XAxis 
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ 
+                        fontSize: 10, 
+                        fill: '#374151',
+                        fontWeight: 500
+                      }}
+                      height={100}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ 
+                        fontSize: 11, 
+                        fill: '#374151',
+                        fontWeight: 500
+                      }}
+                      label={{ 
+                        value: 'Achievement Rate (%)', 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        style: { textAnchor: 'middle', fill: '#374151', fontSize: '12px' }
+                      }}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        fontSize: '12px'
+                      }}
+                      formatter={(value, name) => [`${value.toFixed(1)}%`, 'Achievement Rate']}
+                      labelFormatter={(label, payload) => {
+                        const data = payload?.[0]?.payload;
+                        return data?.fullName ? `RM: ${data.fullName}` : `RM: ${label}`;
+                      }}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {chartData.rmPerformanceComparisonChart.data.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill || '#059669'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+      </Box>
 
         {/* Branch Performance - Worst Performing Branches */}
         {chartData.branchChart && chartData.branchChart.data && chartData.branchChart.data.length > 0 && (
@@ -2655,7 +2380,6 @@ const DynamicDataVisualization = ({
             </Card>
           </Box>
         )}
-      </Box>
 
       {/* 3. Regional Performance Summary */}
       {regionalSummary.length > 0 && (
@@ -2802,7 +2526,7 @@ const DynamicDataVisualization = ({
         open={snackbar.open} 
         autoHideDuration={4000} 
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert 
           onClose={() => setSnackbar({ ...snackbar, open: false })} 
