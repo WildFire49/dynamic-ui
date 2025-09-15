@@ -30,8 +30,8 @@ const RMPerformanceComparison = ({
       .map(rm => ({
         id: rm.RM_ID || rm['R M I D'] || rm.id,
         name: rm.RM_Name || rm['R M Name'] || rm.name,
-        target: parseFloat(rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0),
-        achievement: parseFloat(rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0),
+        target: parseFloat(rm.Disbursement_Target || rm.Collection_Target_Lakhs || rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0),
+        achievement: parseFloat(rm.Disbursement_Achieved || rm.Collection_Achieved_Lakhs || rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0),
         get achievementRate() { return this.target > 0 ? (this.achievement / this.target) * 100 : 0; }
       }))
       .filter(rm => rm.name && rm.id)

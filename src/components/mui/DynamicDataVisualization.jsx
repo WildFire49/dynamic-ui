@@ -119,6 +119,14 @@ const DynamicDataVisualization = ({
   const [selectedRMs, setSelectedRMs] = useState([]);
   const [showTopPerformers, setShowTopPerformers] = useState(true);
   const [showLowPerformers, setShowLowPerformers] = useState(false);
+
+  // Restore selectedRMs from saved data when loading from dashboard
+  useEffect(() => {
+    if (isFromDashboard && savedRMPerformanceData?.selectedRMs) {
+      console.log('🔄 [DEBUG] Restoring selectedRMs from dashboard:', savedRMPerformanceData.selectedRMs);
+      setSelectedRMs(savedRMPerformanceData.selectedRMs);
+    }
+  }, [isFromDashboard, savedRMPerformanceData]);
   
   // Search states
   const [topPerformersSearch, setTopPerformersSearch] = useState('');
@@ -252,19 +260,23 @@ const DynamicDataVisualization = ({
     
     // Check for Target vs Achievement data (RM performance)
     const hasTargetField = fields.some(field => 
-      field.toLowerCase().includes('tar') || field.toLowerCase().includes('target')
+      field.toLowerCase().includes('tar') || field.toLowerCase().includes('target') || 
+      field.toLowerCase().includes('disbursement_target') || field.toLowerCase().includes('collection_target')
     );
     const hasAchievementField = fields.some(field => 
-      field.toLowerCase().includes('ach') || field.toLowerCase().includes('achieved')
+      field.toLowerCase().includes('ach') || field.toLowerCase().includes('achieved') || 
+      field.toLowerCase().includes('disbursement_achieved') || field.toLowerCase().includes('collection_achieved')
     );
     const hasRMField = fields.some(field => field.toLowerCase().includes('rm') || field.toLowerCase().includes('name'));
     
     console.log('🔍 [DEBUG] All fields:', fields);
     console.log('🔍 [DEBUG] Target field check:', hasTargetField, fields.filter(f => 
-      f.toLowerCase().includes('tar') || f.toLowerCase().includes('target')
+      f.toLowerCase().includes('tar') || f.toLowerCase().includes('target') || 
+      f.toLowerCase().includes('disbursement_target') || f.toLowerCase().includes('collection_target')
     ));
     console.log('🔍 [DEBUG] Achievement field check:', hasAchievementField, fields.filter(f => 
-      f.toLowerCase().includes('ach') || f.toLowerCase().includes('achieved')
+      f.toLowerCase().includes('ach') || f.toLowerCase().includes('achieved') || 
+      f.toLowerCase().includes('disbursement_achieved') || f.toLowerCase().includes('collection_achieved')
     ));
     console.log('🔍 [DEBUG] RM field check:', hasRMField, fields.filter(f => f.toLowerCase().includes('rm') || f.toLowerCase().includes('name')));
     
@@ -273,11 +285,13 @@ const DynamicDataVisualization = ({
       
       // Find the actual field names dynamically with more flexible matching
       const targetField = fields.find(f => 
-        f.toLowerCase().includes('tar') || f.toLowerCase().includes('target')
-      ) || 'Collection_Target_Lakhs';
+        f.toLowerCase().includes('tar') || f.toLowerCase().includes('target') || 
+        f.toLowerCase().includes('disbursement_target') || f.toLowerCase().includes('collection_target')
+      ) || 'Disbursement_Target_Lakhs';
       const achievementField = fields.find(f => 
-        f.toLowerCase().includes('ach') || f.toLowerCase().includes('achieved')
-      ) || 'Collection_Achieved_Lakhs';
+        f.toLowerCase().includes('ach') || f.toLowerCase().includes('achieved') || 
+        f.toLowerCase().includes('disbursement_achieved') || f.toLowerCase().includes('collection_achieved')
+      ) || 'Disbursement_Achieved_Lakhs';
       const nameField = fields.find(f => f.includes('RM_Name') || f.includes('Name')) || 'RM_Name';
       
       const result = {
@@ -548,6 +562,7 @@ const DynamicDataVisualization = ({
     console.log('🎯 [DEBUG] Processed RMs:', allRMs.length);
     console.log('🎯 [DEBUG] RMs with achievement > 0:', allRMs.filter(rm => rm.achievement > 0).length);
     console.log('🎯 [DEBUG] Top 5 performers:', allRMs.filter(rm => rm.achievement > 0).slice(0, 5));
+    console.log('🎯 [DEBUG] Sample achievement values:', allRMs.slice(0, 10).map(rm => ({ name: rm.name, achievement: rm.achievement, target: rm.target })));
 
     // Categorize RMs
     const rmsWithAchievement = allRMs.filter(rm => rm.achievement > 0);
@@ -573,6 +588,7 @@ const DynamicDataVisualization = ({
       allRMs,
       topPerformers,
       lowPerformers,
+      selectedRMs: [], // Initialize empty, will be populated by user selection or restored from saved data
       summary: {
         totalTarget: `₹${totalTarget.toFixed(1)}L`,
         totalAchievement: `₹${totalAchievement.toFixed(1)}L`,
@@ -1359,8 +1375,11 @@ const DynamicDataVisualization = ({
           waterfallChart: chartData.waterfallChart
         },
         
-        // Store RM Performance data if it exists
-        rmPerformanceData: chartData.rmPerformanceData || null,
+        // Store RM Performance data if it exists (including current selectedRMs state)
+        rmPerformanceData: chartData.rmPerformanceData ? {
+          ...chartData.rmPerformanceData,
+          selectedRMs: selectedRMs // Include current selectedRMs state
+        } : null,
         
         // Store RM Performance Overview and Comparison Chart if we have RM performance data
         rmPerformanceOverview: chartData.rmPerformanceData ? {
@@ -1370,47 +1389,61 @@ const DynamicDataVisualization = ({
           activeRMs: chartData.rmPerformanceData.summary?.activeRMs || '0/0'
         } : null,
         
-        // Store RM Performance Comparison Chart with top performing RMs
+        // Store RM Performance Comparison Chart with actual selected RMs
         rmPerformanceComparisonChart: chartData.rmPerformanceData ? (() => {
-          const allRMs = analysisResult?.analysis_result?.supporting_data
-            ?.map(rm => {
-              const target = parseFloat(rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0);
-              const achievement = parseFloat(rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0);
-              const achievementRate = target > 0 ? ((achievement / target) * 100) : 0;
-              
-              return {
-                id: rm.RM_ID || rm['R M I D'] || rm.id,
-                name: rm.RM_Name || rm['R M Name'] || rm.name,
-                target,
-                achievement,
-                achievementRate
-              };
-            }) || [];
+          // Use the current selectedRMs state, not from chartData
+          const selectedRMIds = selectedRMs; // Use current state
+          const allRMs = analysisResult?.analysis_result?.supporting_data || [];
+          
+          // Filter to only include the actually selected RMs
+          const selectedRMsData = allRMs.filter(rm => {
+            const rmId = rm.RM_ID || rm['R M I D'] || rm.id;
+            return selectedRMIds.includes(rmId);
+          }).map(rm => {
+            // Use the updated field names that support both disbursement and collection
+            const target = parseFloat(
+              rm.Disbursement_Target || rm.Collection_Target_Lakhs || 
+              rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0
+            );
+            const achievement = parseFloat(
+              rm.Disbursement_Achieved || rm.Collection_Achieved_Lakhs || 
+              rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0
+            );
+            const achievementRate = target > 0 ? ((achievement / target) * 100) : 0;
+            
+            return {
+              id: rm.RM_ID || rm['R M I D'] || rm.id,
+              name: rm.RM_Name || rm['R M Name'] || rm.name,
+              target,
+              achievement,
+              achievementRate
+            };
+          });
 
-          // Get top 6 performing RMs for the chart
-          const topRMs = allRMs
-            .filter(rm => rm.target > 0)
-            .sort((a, b) => b.achievementRate - a.achievementRate)
-            .slice(0, 6);
+          console.log('💾 [DEBUG] Saving RM comparison chart:', {
+            selectedRMIds,
+            selectedRMsDataLength: selectedRMsData.length,
+            selectedRMsData: selectedRMsData.map(rm => ({ id: rm.id, name: rm.name }))
+          });
 
           return {
-            title: `Top RM Performance Comparison (${topRMs.length} RMs)`,
-            data: topRMs.map(rm => ({
-              name: rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
+            title: `RM Performance Comparison (${selectedRMsData.length} RMs)`,
+            data: selectedRMsData.map(rm => ({
+              name: rm.name && rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
               fullName: rm.name,
               value: rm.achievementRate,
               achievementRate: rm.achievementRate,
               avgScore: rm.achievementRate,
-              region: rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
+              region: rm.name && rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
               target: rm.target,
               achievement: rm.achievement,
               fill: rm.achievementRate > 0 ? '#059669' : '#dc2626'
             })),
             summary: {
-              totalTarget: topRMs.reduce((sum, rm) => sum + rm.target, 0),
-              totalAchievement: topRMs.reduce((sum, rm) => sum + rm.achievement, 0),
-              avgAchievementRate: topRMs.length > 0 ? 
-                (topRMs.reduce((sum, rm) => sum + rm.achievementRate, 0) / topRMs.length) : 0
+              totalTarget: selectedRMsData.reduce((sum, rm) => sum + rm.target, 0),
+              totalAchievement: selectedRMsData.reduce((sum, rm) => sum + rm.achievement, 0),
+              avgAchievementRate: selectedRMsData.length > 0 ? 
+                (selectedRMsData.reduce((sum, rm) => sum + rm.achievementRate, 0) / selectedRMsData.length) : 0
             }
           };
         })() : null,
@@ -1815,8 +1848,8 @@ const DynamicDataVisualization = ({
         maxWidth: '100%',
         overflow: 'hidden'
       }}>
-        {/* Interactive RM Performance Selection */}
-        {chartData.rmPerformanceData && (
+        {/* Interactive RM Performance Selection - Show when we have RM performance data and not showing saved chart */}
+        {chartData.rmPerformanceData && !savedRMPerformanceComparisonChart && (
           <Box sx={{ width: '100%' }}>
             <RMPerformanceOverview chartData={chartData} />
             <RMPerformanceComparison 
@@ -1832,8 +1865,15 @@ const DynamicDataVisualization = ({
                 // Create chart data for saving
                 const allRMs = analysisResult?.analysis_result?.supporting_data
                   ?.map(rm => {
-                    const target = parseFloat(rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0);
-                    const achievement = parseFloat(rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0);
+                    // Use the updated field names that support both disbursement and collection
+                    const target = parseFloat(
+                      rm.Disbursement_Target || rm.Collection_Target_Lakhs || 
+                      rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0
+                    );
+                    const achievement = parseFloat(
+                      rm.Disbursement_Achieved || rm.Collection_Achieved_Lakhs || 
+                      rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0
+                    );
                     const achievementRate = target > 0 ? ((achievement / target) * 100) : 0;
                     
                     return {
@@ -1887,6 +1927,41 @@ const DynamicDataVisualization = ({
                   title: analysisResult.question || `RM Performance Analysis - ${new Date().toLocaleDateString()}`,
                   timestamp: new Date().toISOString(),
                   type: 'rmPerformance',
+                  question: analysisResult.question || 'RM Performance Analysis',
+                  
+                  // Include supporting data - this is crucial!
+                  supporting_data: analysisResult?.analysis_result?.supporting_data || [],
+                  supportingData: analysisResult?.analysis_result?.supporting_data || [],
+                  pipelineData: analysisResult?.analysis_result?.supporting_data || [],
+                  
+                  // Include RM performance data with selected RMs
+                  rmPerformanceData: {
+                    selectedRMs: selectedRMs,
+                    allRMs: allRMs,
+                    summary: {
+                      totalTarget: `₹${overallStats.totalTarget.toFixed(1)}L`,
+                      totalAchievement: `₹${overallStats.totalAchievement.toFixed(1)}L`,
+                      achievementRate: `${overallStats.achievementRate.toFixed(1)}%`,
+                      activeRMs: overallStats.activeRMs
+                    }
+                  },
+                  
+                  // Include saved comparison chart
+                  rmPerformanceComparisonChart: {
+                    title: `RM Performance Comparison (${selectedRMsData.length} RMs)`,
+                    data: selectedRMsData.map(rm => ({
+                      name: rm.name && rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
+                      fullName: rm.name,
+                      value: rm.achievementRate,
+                      achievementRate: rm.achievementRate,
+                      avgScore: rm.achievementRate,
+                      region: rm.name && rm.name.length > 15 ? rm.name.substring(0, 12) + '...' : rm.name,
+                      target: rm.target,
+                      achievement: rm.achievement,
+                      fill: rm.achievementRate > 0 ? '#059669' : '#dc2626'
+                    }))
+                  },
+                  
                   overview: {
                     totalTarget: `₹${overallStats.totalTarget.toFixed(1)}L`,
                     totalAchievement: `₹${overallStats.totalAchievement.toFixed(1)}L`,
@@ -2126,12 +2201,21 @@ const DynamicDataVisualization = ({
         )}
         
         {/* Render saved RM Performance Comparison Chart from Dashboard */}
-        {isFromDashboard && chartData.rmPerformanceComparisonChart && (
+        {(() => {
+          console.log('🔍 [DEBUG] Dashboard chart render check:', {
+            isFromDashboard,
+            hasSavedChart: !!savedRMPerformanceComparisonChart,
+            savedChartData: savedRMPerformanceComparisonChart?.data,
+            savedChartDataLength: savedRMPerformanceComparisonChart?.data?.length,
+            selectedRMsLength: selectedRMs.length
+          });
+          return isFromDashboard && savedRMPerformanceComparisonChart && savedRMPerformanceComparisonChart.data && savedRMPerformanceComparisonChart.data.length > 0;
+        })() && (
           <Card sx={{ border: '1px solid #e0e0e0', mb: 4, width: '100%' }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 700, color: '#1f2937' }}>
-                  {chartData.rmPerformanceComparisonChart.title}
+                  {`RM Performance Comparison (${selectedRMs.length} RMs)`}
                 </Typography>
               </Box>
               
@@ -2158,7 +2242,7 @@ const DynamicDataVisualization = ({
               }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={chartData.rmPerformanceComparisonChart.data}
+                    data={savedRMPerformanceComparisonChart.data}
                     margin={{ top: 20, right: 30, left: 40, bottom: 120 }}
                   >
                     <CartesianGrid 
@@ -2210,7 +2294,7 @@ const DynamicDataVisualization = ({
                       }}
                     />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {chartData.rmPerformanceComparisonChart.data.map((entry, index) => (
+                      {savedRMPerformanceComparisonChart.data.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill || '#059669'} />
                       ))}
                     </Bar>

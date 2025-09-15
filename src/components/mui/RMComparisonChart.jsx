@@ -51,8 +51,8 @@ const RMComparisonChart = ({
     console.log('Filtered RMs:', filteredRMs);
 
     const chartData = filteredRMs.map(rm => {
-      const target = parseFloat(rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0);
-      const achievement = parseFloat(rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0);
+      const target = parseFloat(rm.Disbursement_Target || rm.Collection_Target_Lakhs || rm.DB_Tar || rm.D_B_Target || rm['D B Target'] || rm.target || 0);
+      const achievement = parseFloat(rm.Disbursement_Achieved || rm.Collection_Achieved_Lakhs || rm.DB_Ach || rm.D_B_Achievement || rm['D B Achievement'] || rm.achievement || 0);
       const achievementRate = target > 0 ? ((achievement / target) * 100) : 0;
       
       const fullName = rm.RM_Name || rm['R M Name'] || rm.name || 'Unknown RM';
