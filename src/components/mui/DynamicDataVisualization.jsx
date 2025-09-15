@@ -1752,23 +1752,31 @@ const DynamicDataVisualization = ({
       width: '100%', 
       maxWidth: '100%',
       overflow: 'hidden',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      px: { xs: 0.5, sm: 1, md: 2 },
+      py: { xs: 1, sm: 2 }
     }}>
       {/* Save All to Dashboard Button */}
       {!isFromDashboard && (
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+        <Box sx={{ 
+          mb: { xs: 2, sm: 3 }, 
+          display: 'flex', 
+          justifyContent: 'center',
+          px: { xs: 1, sm: 0 }
+        }}>
           <Button
             variant="contained"
-            size="large"
+            size="medium"
             startIcon={<TableChart />}
             onClick={handleSaveAll}
             sx={{ 
               textTransform: 'none',
               backgroundColor: '#059669',
-              px: 6,
-              py: 1.5,
-              fontSize: '1rem',
+              px: { xs: 3, sm: 4, md: 6 },
+              py: { xs: 1, sm: 1.2, md: 1.5 },
+              fontSize: { xs: '0.875rem', sm: '0.95rem', md: '1rem' },
               fontWeight: 600,
+              minWidth: { xs: '200px', sm: 'auto' },
               '&:hover': {
                 backgroundColor: '#047857'
               }
@@ -1781,13 +1789,35 @@ const DynamicDataVisualization = ({
 
       {/* 1. Data Table */}
       {gridRows.length > 0 && (
-        <Card sx={{ border: '1px solid #e0e0e0', mb: 4 }}>
+        <Card sx={{ 
+          border: '1px solid #e0e0e0', 
+          mb: { xs: 3, sm: 4 },
+          mx: { xs: 0.5, sm: 0 }
+        }}>
           <CardContent sx={{ p: 0 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, px: 3, py: 2 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: '#1f2937' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              mb: 2, 
+              px: { xs: 2, sm: 3 }, 
+              py: { xs: 1.5, sm: 2 },
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 2, sm: 0 }
+            }}>
+              <Typography variant="h5" sx={{ 
+                fontWeight: 700, 
+                color: '#1f2937',
+                fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
+              }}>
                 Table Results ({gridRows.length} records)
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: { xs: 1, sm: 1 },
+                flexDirection: { xs: 'column', sm: 'row' },
+                width: { xs: '100%', sm: 'auto' }
+              }}>
                 {!isFromDashboard && (
                   <Button
                     variant="contained"
@@ -1797,6 +1827,7 @@ const DynamicDataVisualization = ({
                     sx={{ 
                       textTransform: 'none',
                       backgroundColor: '#1976d2',
+                      fontSize: { xs: '0.875rem', sm: '0.8125rem' },
                       '&:hover': {
                         backgroundColor: '#1565c0'
                       }
@@ -1814,6 +1845,7 @@ const DynamicDataVisualization = ({
                     textTransform: 'none',
                     borderColor: '#d1d5db',
                     color: '#6b7280',
+                    fontSize: { xs: '0.875rem', sm: '0.8125rem' },
                     '&:hover': {
                       borderColor: '#9ca3af',
                       backgroundColor: '#f9fafb'
@@ -1824,14 +1856,14 @@ const DynamicDataVisualization = ({
                 </Button>
               </Box>
             </Box>
-            <Box sx={{ mt: 4 }}>
+            <Box sx={{ mt: { xs: 2, sm: 4 } }}>
               <DataGridComponent
                 rows={gridRows}
                 columns={gridColumns}
                 title=""
                 showSaveButton={false}
                 onExport={handleExportClick}
-                height={400}
+                height={{ xs: 300, sm: 350, md: 400 }}
               />
             </Box>
           </CardContent>
@@ -1841,12 +1873,13 @@ const DynamicDataVisualization = ({
       {/* 2. Graph Metrics */}
       <Box sx={{ 
         display: 'flex', 
-        gap: 2, 
-        mb: 4,
+        gap: { xs: 1, sm: 2 }, 
+        mb: { xs: 3, sm: 4 },
         flexWrap: 'wrap',
         width: '100%',
         maxWidth: '100%',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        px: { xs: 0.5, sm: 0 }
       }}>
         {/* Interactive RM Performance Selection - Show when we have RM performance data and not showing saved chart */}
         {chartData.rmPerformanceData && !savedRMPerformanceComparisonChart && (
@@ -2017,13 +2050,20 @@ const DynamicDataVisualization = ({
         {/* Bar Chart - Pipeline and Other Performance Data */}
         {chartData.barChart && !chartData.rmPerformanceData && chartData.barChart.data && chartData.barChart.data.length > 0 && (
           <Box sx={{ 
-            flex: chartData.pieChart ? '0 0 calc(50% - 8px)' : '1 1 100%',
+            flex: { 
+              xs: '1 1 100%', 
+              md: chartData.pieChart ? '0 0 calc(50% - 8px)' : '1 1 100%' 
+            },
             minWidth: 0,
-            maxWidth: chartData.pieChart ? 'calc(50% - 8px)' : '100%'
+            maxWidth: { 
+              xs: '100%', 
+              md: chartData.pieChart ? 'calc(50% - 8px)' : '100%' 
+            },
+            width: '100%'
           }}>
             <Card sx={{ 
               height: '100%', 
-              minHeight: 520,
+              minHeight: { xs: 400, sm: 460, md: 520 },
               border: 'none',
               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
               borderRadius: 3,
@@ -2036,7 +2076,7 @@ const DynamicDataVisualization = ({
                     title={chartData.barChart.title}
                     subtitle={dataType === 'pipeline' ? 'Pending cases by pipeline stage' : 'Performance metrics by region'}
                     stageNames={chartData.barChart.stageNames || []}
-                    height={400}
+                    height={{ xs: 300, sm: 350, md: 400 }}
                     xAxisKey="region"
                     yAxisLabel={dataType === 'pipeline' ? 'Pending Cases' : 'Score'}
                   />
@@ -2045,15 +2085,15 @@ const DynamicDataVisualization = ({
                     data={chartData.barChart.data}
                     title={chartData.barChart.title}
                     subtitle="Performance metrics"
-                    height={400}
+                    height={{ xs: 300, sm: 350, md: 400 }}
                     showLegend={true}
                   />
                 )}
                 
                 {/* Save Chart Button */}
                 <Box sx={{ 
-                  p: 3, 
-                  pt: 2,
+                  p: { xs: 2, sm: 3 }, 
+                  pt: { xs: 1.5, sm: 2 },
                   borderTop: '1px solid #f3f4f6',
                   display: 'flex',
                   justifyContent: 'center'
@@ -2061,7 +2101,7 @@ const DynamicDataVisualization = ({
                   {!isFromDashboard && (
                     <Button
                       variant="contained"
-                      size="medium"
+                      size="small"
                       startIcon={<TableChart />}
                       onClick={() => handleSaveChart('barChart', chartData.barChart.title || 'Bar Chart')}
                       sx={{ 
@@ -2089,13 +2129,20 @@ const DynamicDataVisualization = ({
         {/* State Distribution - Premium Pie Chart */}
         {chartData.pieChart && chartData.pieChart.data && chartData.pieChart.data.length > 0 && (
           <Box sx={{ 
-            flex: chartData.barChart ? '0 0 calc(50% - 8px)' : '1 1 100%',
+            flex: { 
+              xs: '1 1 100%', 
+              md: chartData.barChart ? '0 0 calc(50% - 8px)' : '1 1 100%' 
+            },
             minWidth: 0,
-            maxWidth: chartData.barChart ? 'calc(50% - 8px)' : '100%'
+            maxWidth: { 
+              xs: '100%', 
+              md: chartData.barChart ? 'calc(50% - 8px)' : '100%' 
+            },
+            width: '100%'
           }}>
             <Card sx={{ 
               height: '100%', 
-              minHeight: 520,
+              minHeight: { xs: 400, sm: 460, md: 520 },
               border: 'none',
               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
               borderRadius: 3,
@@ -2106,13 +2153,13 @@ const DynamicDataVisualization = ({
                   data={chartData.pieChart.data}
                   title={chartData.pieChart.title}
                   subtitle="Distribution by state"
-                  height={400}
+                  height={{ xs: 300, sm: 350, md: 400 }}
                 />
                 
                 {/* Save Chart Button */}
                 <Box sx={{ 
-                  p: 3, 
-                  pt: 2,
+                  p: { xs: 2, sm: 3 }, 
+                  pt: { xs: 1.5, sm: 2 },
                   borderTop: '1px solid #f3f4f6',
                   display: 'flex',
                   justifyContent: 'center'
@@ -2120,14 +2167,15 @@ const DynamicDataVisualization = ({
                   {!isFromDashboard && (
                     <Button
                       variant="contained"
-                      size="medium"
+                      size="small"
                       startIcon={<TableChart />}
                       onClick={() => handleSaveChart('pieChart', chartData.pieChart.title || 'Pie Chart')}
                       sx={{ 
                         textTransform: 'none',
                         backgroundColor: '#1976d2',
-                        px: 4,
+                        px: { xs: 3, sm: 4 },
                         py: 1,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' },
                         '&:hover': {
                           backgroundColor: '#1565c0'
                         }
@@ -2148,11 +2196,12 @@ const DynamicDataVisualization = ({
             flex: '1 1 100%',
             minWidth: 0,
             maxWidth: '100%',
-            mb: 2
+            mb: { xs: 1.5, sm: 2 },
+            mx: { xs: 0.5, sm: 0 }
           }}>
             <Card sx={{ 
               height: '100%', 
-              minHeight: 520,
+              minHeight: { xs: 400, sm: 460, md: 520 },
               border: 'none',
               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
               borderRadius: 3,
@@ -2163,14 +2212,14 @@ const DynamicDataVisualization = ({
                   data={chartData.waterfallChart.data}
                   title={chartData.waterfallChart.title}
                   totalPipeline={chartData.waterfallChart.totalPipeline}
-                  height={350}
+                  height={{ xs: 280, sm: 320, md: 350 }}
                   showSummaryCards={true}
                 />
                 
                 {/* Save Chart Button for Pipeline Charts */}
                 <Box sx={{ 
-                  p: 3, 
-                  pt: 2,
+                  p: { xs: 2, sm: 3 }, 
+                  pt: { xs: 1.5, sm: 2 },
                   borderTop: '1px solid #f3f4f6',
                   display: 'flex',
                   justifyContent: 'center'
@@ -2178,14 +2227,15 @@ const DynamicDataVisualization = ({
                   {!isFromDashboard && (
                     <Button
                       variant="contained"
-                      size="medium"
+                      size="small"
                       startIcon={<TableChart />}
                       onClick={() => handleSaveChart('waterfallChart', chartData.waterfallChart.title || 'Pipeline Summary')}
                       sx={{ 
                         textTransform: 'none',
                         backgroundColor: '#1976d2',
-                        px: 4,
+                        px: { xs: 3, sm: 4 },
                         py: 1,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' },
                         '&:hover': {
                           backgroundColor: '#1565c0'
                         }
@@ -2211,18 +2261,34 @@ const DynamicDataVisualization = ({
           });
           return isFromDashboard && savedRMPerformanceComparisonChart && savedRMPerformanceComparisonChart.data && savedRMPerformanceComparisonChart.data.length > 0;
         })() && (
-          <Card sx={{ border: '1px solid #e0e0e0', mb: 4, width: '100%' }}>
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: '#1f2937' }}>
+          <Card sx={{ 
+            border: '1px solid #e0e0e0', 
+            mb: { xs: 3, sm: 4 }, 
+            width: '100%',
+            mx: { xs: 0.5, sm: 0 }
+          }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                mb: { xs: 2, sm: 3 },
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: { xs: 1, sm: 0 }
+              }}>
+                <Typography variant="h5" sx={{ 
+                  fontWeight: 700, 
+                  color: '#1f2937',
+                  fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
+                }}>
                   {`RM Performance Comparison (${selectedRMs.length} RMs)`}
                 </Typography>
               </Box>
               
               <Box sx={{ 
-                height: 600, 
+                height: { xs: 400, sm: 500, md: 600 }, 
                 width: '100%', 
-                minHeight: 550,
+                minHeight: { xs: 350, sm: 450, md: 550 },
                 maxWidth: '100%',
                 overflow: 'visible',
                 '& .recharts-wrapper': {
@@ -2230,12 +2296,12 @@ const DynamicDataVisualization = ({
                   height: '100% !important'
                 },
                 '& .recharts-cartesian-axis-tick-value': {
-                  fontSize: '11px !important',
+                  fontSize: { xs: '9px !important', sm: '10px !important', md: '11px !important' },
                   fill: '#374151 !important'
                 },
                 '& .recharts-cartesian-axis': {
                   '& text': {
-                    fontSize: '11px',
+                    fontSize: { xs: '9px', sm: '10px', md: '11px' },
                     fill: '#374151'
                   }
                 }
@@ -2243,7 +2309,12 @@ const DynamicDataVisualization = ({
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={savedRMPerformanceComparisonChart.data}
-                    margin={{ top: 20, right: 30, left: 40, bottom: 120 }}
+                    margin={{ 
+                      top: 20, 
+                      right: { xs: 15, sm: 20, md: 30 }, 
+                      left: { xs: 25, sm: 35, md: 40 }, 
+                      bottom: { xs: 80, sm: 100, md: 120 }
+                    }}
                   >
                     <CartesianGrid 
                       strokeDasharray="3 3" 
@@ -2255,11 +2326,11 @@ const DynamicDataVisualization = ({
                       axisLine={false}
                       tickLine={false}
                       tick={{ 
-                        fontSize: 10, 
+                        fontSize: { xs: 8, sm: 9, md: 10 }, 
                         fill: '#374151',
                         fontWeight: 500
                       }}
-                      height={100}
+                      height={{ xs: 70, sm: 85, md: 100 }}
                       interval={0}
                       angle={-45}
                       textAnchor="end"
@@ -2268,7 +2339,7 @@ const DynamicDataVisualization = ({
                       axisLine={false}
                       tickLine={false}
                       tick={{ 
-                        fontSize: 11, 
+                        fontSize: { xs: 9, sm: 10, md: 11 }, 
                         fill: '#374151',
                         fontWeight: 500
                       }}
@@ -2276,7 +2347,11 @@ const DynamicDataVisualization = ({
                         value: 'Achievement Rate (%)', 
                         angle: -90, 
                         position: 'insideLeft',
-                        style: { textAnchor: 'middle', fill: '#374151', fontSize: '12px' }
+                        style: { 
+                          textAnchor: 'middle', 
+                          fill: '#374151', 
+                          fontSize: { xs: '10px', sm: '11px', md: '12px' }
+                        }
                       }}
                     />
                     <Tooltip 
@@ -2285,7 +2360,7 @@ const DynamicDataVisualization = ({
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                        fontSize: '12px'
+                        fontSize: { xs: '10px', sm: '11px', md: '12px' }
                       }}
                       formatter={(value, name) => [`${value.toFixed(1)}%`, 'Achievement Rate']}
                       labelFormatter={(label, payload) => {
@@ -2311,11 +2386,12 @@ const DynamicDataVisualization = ({
           <Box sx={{ 
             flex: '1 1 100%',
             minWidth: 0,
-            maxWidth: '100%'
+            maxWidth: '100%',
+            mx: { xs: 0.5, sm: 0 }
           }}>
             <Card sx={{ 
               height: '100%', 
-              minHeight: 600,
+              minHeight: { xs: 450, sm: 520, md: 600 },
               border: 'none',
               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
               borderRadius: 3,
@@ -2324,22 +2400,22 @@ const DynamicDataVisualization = ({
               <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
                 {/* Header */}
                 <Box sx={{ 
-                  px: 3, 
-                  py: 2.5, 
+                  px: { xs: 2, sm: 3 }, 
+                  py: { xs: 2, sm: 2.5 }, 
                   borderBottom: '1px solid #f1f5f9',
                   background: 'linear-gradient(135deg, #fef2f2 0%, #fef7f7 100%)'
                 }}>
                   <Typography variant="h6" sx={{ 
                     fontWeight: 700, 
                     color: '#dc2626',
-                    fontSize: '1.125rem'
+                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.125rem' }
                   }}>
                     {chartData.branchChart.title}
                   </Typography>
                   <Typography variant="body2" sx={{ 
                     color: '#6b7280',
                     mt: 0.5,
-                    fontSize: '0.875rem'
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
                   }}>
                     {chartData.branchChart.totalCount ? 
                       `Showing top 25 of ${chartData.branchChart.totalCount} branches requiring attention` :
@@ -2351,16 +2427,25 @@ const DynamicDataVisualization = ({
                 {/* Chart */}
                 <Box sx={{ 
                   flex: 1, 
-                  p: 1,
-                  py:2,
+                  p: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.5, sm: 2 },
                   display: 'flex',
                   flexDirection: 'column'
                 }}>
-                  <Box sx={{ width: '100%', height: 400, mb: 2 }}>
+                  <Box sx={{ 
+                    width: '100%', 
+                    height: { xs: 300, sm: 350, md: 400 }, 
+                    mb: { xs: 1.5, sm: 2 }
+                  }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={chartData.branchChart.data}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                        margin={{ 
+                          top: 20, 
+                          right: { xs: 15, sm: 20, md: 30 }, 
+                          left: { xs: 10, sm: 15, md: 20 }, 
+                          bottom: { xs: 60, sm: 70, md: 80 }
+                        }}
                       >
                         <CartesianGrid 
                           strokeDasharray="3 3" 
@@ -2373,20 +2458,20 @@ const DynamicDataVisualization = ({
                           axisLine={false}
                           tickLine={false}
                           tick={{ 
-                            fontSize: 10, 
+                            fontSize: { xs: 8, sm: 9, md: 10 }, 
                             fill: '#6b7280',
                             fontWeight: 500
                           }}
                           angle={-45}
                           textAnchor="end"
-                          height={80}
+                          height={{ xs: 60, sm: 70, md: 80 }}
                           interval={0}
                         />
                         <YAxis 
                           axisLine={false}
                           tickLine={false}
                           tick={{ 
-                            fontSize: 12, 
+                            fontSize: { xs: 10, sm: 11, md: 12 }, 
                             fill: '#6b7280',
                             fontWeight: 500
                           }}
@@ -2399,7 +2484,7 @@ const DynamicDataVisualization = ({
                             border: '1px solid #e5e7eb',
                             borderRadius: '8px',
                             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                            fontSize: '14px'
+                            fontSize: { xs: '12px', sm: '13px', md: '14px' }
                           }}
                           formatter={(value, name) => [
                             `Score: ${value}`,
@@ -2429,15 +2514,16 @@ const DynamicDataVisualization = ({
                   <Box sx={{ 
                     display: 'flex', 
                     flexDirection: 'column', 
-                    gap: 1.5,
-                    px: 3,
-                    maxHeight: 200,
+                    gap: { xs: 1, sm: 1.5 },
+                    px: { xs: 2, sm: 3 },
+                    maxHeight: { xs: 150, sm: 180, md: 200 },
                     overflowY: 'auto'
                   }}>
                     <Typography variant="subtitle2" sx={{ 
                       fontWeight: 600,
                       color: '#374151',
-                      mb: 1
+                      mb: 1,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' }
                     }}>
                       Branch Details
                     </Typography>
@@ -2446,31 +2532,31 @@ const DynamicDataVisualization = ({
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'space-between',
-                        p: 1,
+                        p: { xs: 0.75, sm: 1 },
                         borderRadius: 1,
                         backgroundColor: '#fef2f2',
                         borderLeft: `3px solid ${entry.fill}`
                       }}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                           <Typography variant="body2" sx={{ 
-                            fontSize: '0.875rem',
+                            fontSize: { xs: '0.8rem', sm: '0.875rem' },
                             fontWeight: 600,
                             color: '#374151'
                           }}>
                             {entry.fullName}
                           </Typography>
                           <Typography variant="caption" sx={{ 
-                            fontSize: '0.75rem',
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' },
                             color: '#6b7280'
                           }}>
                             {entry.region} • {entry.state}
                           </Typography>
                         </Box>
                         <Typography variant="body2" sx={{ 
-                          fontSize: '0.875rem',
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' },
                           fontWeight: 700,
                           color: '#dc2626',
-                          minWidth: '40px',
+                          minWidth: { xs: '35px', sm: '40px' },
                           textAlign: 'right'
                         }}>
                           {entry.score}
@@ -2486,42 +2572,64 @@ const DynamicDataVisualization = ({
 
       {/* 3. Regional Performance Summary */}
       {regionalSummary.length > 0 && (
-        <Card sx={{ border: '1px solid #e0e0e0', mb: 4 }}>
-          <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#374151' }}>
+        <Card sx={{ 
+          border: '1px solid #e0e0e0', 
+          mb: { xs: 3, sm: 4 },
+          mx: { xs: 0.5, sm: 0 }
+        }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <Typography variant="h6" sx={{ 
+              mb: { xs: 2, sm: 3 }, 
+              fontWeight: 600, 
+              color: '#374151',
+              fontSize: { xs: '1.1rem', sm: '1.25rem' }
+            }}>
               Regional Performance Summary
             </Typography>
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               {regionalSummary.map((region, index) => (
                 <Grid item xs={12} sm={6} md={4} key={index}>
                   <Card sx={{ 
                     border: '1px solid #e5e7eb',
                     backgroundColor: region.averageScore < -0.5 ? '#fef2f2' : '#f8fafc',
-                    borderLeft: `4px solid ${region.averageScore < -0.5 ? '#ef4444' : '#0078d7'}`
+                    borderLeft: `4px solid ${region.averageScore < -0.5 ? '#ef4444' : '#0078d7'}`,
+                    height: '100%'
                   }}>
-                    <CardContent sx={{ p: 2 }}>
+                    <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                       <Typography variant="h6" sx={{ 
-                        fontSize: '1rem', 
+                        fontSize: { xs: '0.95rem', sm: '1rem' }, 
                         fontWeight: 600, 
                         color: '#374151',
-                        mb: 1
+                        mb: { xs: 0.75, sm: 1 }
                       }}>
                         {region.region}
                       </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        mb: { xs: 0.75, sm: 1 }
+                      }}>
+                        <Typography variant="body2" color="text.secondary" sx={{
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                        }}>
                           Branches:
                         </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                        }}>
                           {region.branchCount}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" sx={{
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                        }}>
                           Avg Score:
                         </Typography>
                         <Typography variant="body2" sx={{ 
                           fontWeight: 600,
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' },
                           color: region.averageScore < -0.5 ? '#ef4444' : '#10b981'
                         }}>
                           {region.averageScore}
@@ -2538,44 +2646,67 @@ const DynamicDataVisualization = ({
 
       {/* 4. Analysis Insights */}
       {analysisResult?.analysis_result?.analysis && (
-        <Card sx={{ mb: 3, border: '1px solid #e3f2fd' }}>
-          <CardContent sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        <Card sx={{ 
+          mb: { xs: 2, sm: 3 }, 
+          border: '1px solid #e3f2fd',
+          mx: { xs: 0.5, sm: 0 }
+        }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: { xs: 'flex-start', sm: 'center' }, 
+              gap: { xs: 1.5, sm: 2 }, 
+              mb: { xs: 2, sm: 3 },
+              flexDirection: { xs: 'column', sm: 'row' }
+            }}>
               <Box sx={{
-                width: 48,
-                height: 48,
+                width: { xs: 40, sm: 48 },
+                height: { xs: 40, sm: 48 },
                 backgroundColor: '#0078d7',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                alignSelf: { xs: 'center', sm: 'flex-start' }
               }}>
-                <Typography variant="h6">💡</Typography>
+                <Typography variant="h6" sx={{ 
+                  fontSize: { xs: '1.2rem', sm: '1.25rem' }
+                }}>💡</Typography>
               </Box>
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: '#0078d7' }}>
+              <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                <Typography variant="h5" sx={{ 
+                  fontWeight: 600, 
+                  color: '#0078d7',
+                  fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
+                }}>
                   Analysis Insights
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                }}>
                   Key findings from your data
                 </Typography>
               </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: { xs: 1.5, sm: 2 }
+            }}>
               {analysisResult.analysis_result.analysis.map((insight, index) => (
                 <Box key={index} sx={{
                   display: 'flex',
                   alignItems: 'flex-start',
-                  gap: 2,
-                  p: 2,
+                  gap: { xs: 1.5, sm: 2 },
+                  p: { xs: 1.5, sm: 2 },
                   backgroundColor: '#f8f9fa',
                   borderRadius: 2,
                   border: '1px solid #e9ecef'
                 }}>
                   <Box sx={{
-                    width: 24,
-                    height: 24,
+                    width: { xs: 20, sm: 24 },
+                    height: { xs: 20, sm: 24 },
                     backgroundColor: '#0078d7',
                     borderRadius: '50%',
                     display: 'flex',
@@ -2584,11 +2715,18 @@ const DynamicDataVisualization = ({
                     flexShrink: 0,
                     mt: 0.5
                   }}>
-                    <Typography variant="caption" sx={{ color: 'white', fontWeight: 600 }}>
+                    <Typography variant="caption" sx={{ 
+                      color: 'white', 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                    }}>
                       {index + 1}
                     </Typography>
                   </Box>
-                  <Typography variant="body1" sx={{ lineHeight: 1.6 }}>
+                  <Typography variant="body1" sx={{ 
+                    lineHeight: 1.6,
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }}>
                     {insight}
                   </Typography>
                 </Box>
