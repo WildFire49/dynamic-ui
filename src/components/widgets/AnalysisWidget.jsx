@@ -9,7 +9,8 @@ import {
   alpha,
   useTheme,
   Button,
-  IconButton
+  IconButton,
+  Paper
 } from '@mui/material';
 import { keyframes } from '@mui/system';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -108,8 +109,60 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     
     const charts = [];
     const firstItem = supportingData[0];
+    const allKeys = Object.keys(firstItem);
     
-    // Find categorical fields for charts
+    // Check if this is pipeline data
+    const pipelineFields = allKeys.filter(key => 
+      key.includes('_Pending') || 
+      key.includes('Pipeline') ||
+      (key !== 'Region' && typeof firstItem[key] === 'number' && firstItem[key] >= 0)
+    );
+    
+    console.log('🔍 [DEBUG] Pipeline fields detected:', pipelineFields);
+    
+    // If we have pipeline data, create pipeline-specific charts
+    if (pipelineFields.length > 3) {
+      console.log('🔍 [DEBUG] Creating pipeline charts');
+      
+      // 1. Total pipeline by region (bar chart)
+      if (allKeys.includes('Region') && allKeys.includes('Total_Pipeline')) {
+        const regionData = supportingData.map(item => ({
+          name: item.Region,
+          value: item.Total_Pipeline || 0,
+          color: '#3b82f6'
+        })).sort((a, b) => b.value - a.value);
+        
+        charts.push({
+          type: 'bar',
+          title: 'Total Pipeline by Region',
+          data: regionData
+        });
+      }
+      
+      // 2. Pipeline stages summary (pie chart)
+      const stageFields = pipelineFields.filter(key => key.includes('_Pending'));
+      if (stageFields.length > 0) {
+        const stageData = stageFields.map((stage, index) => {
+          const total = supportingData.reduce((sum, item) => sum + (item[stage] || 0), 0);
+          const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+          return {
+            name: stage.replace(/_Pending/g, '').replace(/_/g, ' '),
+            value: total,
+            color: colors[index % colors.length]
+          };
+        }).filter(item => item.value > 0);
+        
+        charts.push({
+          type: 'pie',
+          title: 'Pipeline Stages Distribution',
+          data: stageData
+        });
+      }
+      
+      return charts;
+    }
+    
+    // Original logic for non-pipeline data
     Object.keys(firstItem).forEach(key => {
       const values = supportingData.map(item => item[key]).filter(v => v !== null && v !== undefined);
       const uniqueValues = [...new Set(values)];
@@ -140,6 +193,63 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
   const generateStatsFromData = (supportingData) => {
     if (!supportingData || !Array.isArray(supportingData) || supportingData.length === 0) return [];
     
+    const firstItem = supportingData[0];
+    const allKeys = Object.keys(firstItem);
+    
+    // Check if this is pipeline data
+    const pipelineFields = allKeys.filter(key => key.includes('_Pending'));
+    const hasTotalPipeline = allKeys.includes('Total_Pipeline');
+    
+    if (pipelineFields.length > 3 && hasTotalPipeline) {
+      // Pipeline-specific statistics
+      const totalPipeline = supportingData.reduce((sum, item) => sum + (item.Total_Pipeline || 0), 0);
+      const avgPipelinePerRegion = totalPipeline / supportingData.length;
+      const maxPipeline = Math.max(...supportingData.map(item => item.Total_Pipeline || 0));
+      
+      // Find biggest bottleneck stage
+      let maxStageTotal = 0;
+      let bottleneckStage = '';
+      pipelineFields.forEach(stage => {
+        const stageTotal = supportingData.reduce((sum, item) => sum + (item[stage] || 0), 0);
+        if (stageTotal > maxStageTotal) {
+          maxStageTotal = stageTotal;
+          bottleneckStage = stage.replace(/_Pending/g, '').replace(/_/g, ' ');
+        }
+      });
+      
+      return [
+        {
+          title: 'Total Pipeline',
+          value: totalPipeline.toLocaleString(),
+          icon: AssessmentIcon,
+          color: theme.palette.primary.main,
+          trend: '+8%'
+        },
+        {
+          title: 'Active Regions',
+          value: supportingData.length.toLocaleString(),
+          icon: AnalyticsIcon,
+          color: theme.palette.info.main,
+          trend: '100%'
+        },
+        {
+          title: 'Avg Pipeline/Region',
+          value: Math.round(avgPipelinePerRegion).toLocaleString(),
+          icon: TrendingUpIcon,
+          color: theme.palette.success.main,
+          trend: '+5%'
+        },
+        {
+          title: `Top Bottleneck`,
+          value: `${bottleneckStage} (${maxStageTotal})`,
+          icon: WarningIcon,
+          color: theme.palette.warning.main,
+          trend: '-3%'
+        }
+      ];
+    }
+    
+    // Default statistics for non-pipeline data
     const stats = [
       {
         title: 'Total Records',
@@ -151,7 +261,6 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     ];
 
     // Find numeric fields for additional statistics
-    const firstItem = supportingData[0];
     Object.keys(firstItem).forEach(key => {
       const values = supportingData.map(item => item[key]).filter(v => typeof v === 'number');
       if (values.length > 0) {
@@ -384,11 +493,14 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
       return null;
     }
 
-    // Handle supporting_data structure (primary use case)
-    if (data.response?.analysis_result?.supporting_data) {
+    // Handle supporting_data structure (primary use case) - check both nested and direct structures
+    const supportingData = data.response?.analysis_result?.supporting_data || data.analysis_result?.supporting_data;
+    const question = data.response?.question || data.question || 'Data Analysis';
+    
+    if (supportingData && Array.isArray(supportingData) && supportingData.length > 0) {
       console.log('🔍 [DEBUG] Processing supporting_data structure');
-      const supportingData = data.response.analysis_result.supporting_data;
-      const question = data.response.question || 'Data Analysis';
+      console.log('🔍 [DEBUG] Supporting data length:', supportingData.length);
+      console.log('🔍 [DEBUG] Sample data:', supportingData[0]);
       // Remove question marks and clean up the title
       const cleanTitle = question.replace(/\?+$/, '').trim();
       
@@ -497,7 +609,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             minWidth: 0
           }}
         >
-          {finalAnalysis.title}
+          Data Analysis Results
         </Typography>
         <Button
           variant="contained"

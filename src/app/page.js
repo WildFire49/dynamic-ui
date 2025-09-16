@@ -22,6 +22,7 @@ import InputWithRecording from '../components/mui/InputWithRecording';
 import PDFNotificationPopup from '../components/mui/PDFNotificationPopup';
 import { generateAudioFileName, uploadAudioFile } from '../lib/audioUpload';
 import { API_BASE_URL, CHAT_ENDPOINT } from '../lib/config';
+import { dataAnalysisApi } from '../lib/api/dataAnalysisApi';
 
 export default function HomePage() {
   const [chatHistory, setChatHistory] = useState([]);
@@ -46,7 +47,7 @@ export default function HomePage() {
   // Data Analysis states
   const [uploadedDocuments, setUploadedDocuments] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const CONNECTION_ID = '2f90a714-70b8-4848-b347-f9afa093d079';
+  const CONNECTION_ID = process.env.NEXT_PUBLIC_CONNECTION_ID || 'a949f2cc-37ae-4db2-9702-a28148ec741f';
 
   const [recordingTime, setRecordingTime] = useState(0);
   const [scheduledTasks, setScheduledTasks] = useState(new Map());
@@ -454,7 +455,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [CONNECTION_ID]);
   
   // Check if message is an analysis question
   const isAnalysisQuestion = useCallback((message) => {
@@ -536,7 +537,7 @@ export default function HomePage() {
       setIsAnalyzing(false);
       setIsTyping(false);
     }
-  }, [uploadedDocuments]);
+  }, [uploadedDocuments, CONNECTION_ID]);
 
   const handleSendMessage = useCallback(async (messageText = null, audioFileUrl = null, audioKey = null) => {
     const finalMessageText = String(messageText || inputValue || '');

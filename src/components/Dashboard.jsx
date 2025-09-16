@@ -95,8 +95,12 @@ const Dashboard = () => {
     localStorage.setItem('savedAnalyses', JSON.stringify(savedAnalyses));
   }, [savedAnalyses]);
 
-  // Calculate dashboard statistics
-  const allItems = [...savedVisualizations, ...savedAnalyses];
+  // Calculate dashboard statistics - sort by latest timestamp (newest first)
+  const allItems = [...savedVisualizations, ...savedAnalyses].sort((a, b) => {
+    const timeA = new Date(a.timestamp).getTime();
+    const timeB = new Date(b.timestamp).getTime();
+    return timeB - timeA; // Descending order (newest first)
+  });
   const dashboardStats = {
     totalVisualizations: allItems.length,
     totalRecords: allItems.reduce((sum, item) => {
