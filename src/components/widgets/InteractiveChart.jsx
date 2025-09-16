@@ -207,8 +207,8 @@ const InteractiveChart = ({
                 data={data}
                 cx="50%"
                 cy="50%"
-                outerRadius={chartType === 'donut' ? 120 : 100}
-                innerRadius={chartType === 'donut' ? 60 : 0}
+                outerRadius={chartType === 'donut' ? 160 : 140}
+                innerRadius={chartType === 'donut' ? 80 : 0}
                 fill="#8884d8"
                 dataKey="value"
                 animationDuration={1000}
@@ -306,7 +306,7 @@ const InteractiveChart = ({
       case 'radar':
         return (
           <ResponsiveContainer key={animationKey} width="100%" height={height}>
-            <RadarChart {...chartProps} cx="50%" cy="50%" outerRadius="80%">
+            <RadarChart {...chartProps} cx="50%" cy="45%" outerRadius="85%" margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
               <PolarGrid stroke={alpha(theme.palette.text.primary, 0.2)} />
               <PolarAngleAxis 
                 dataKey="name" 

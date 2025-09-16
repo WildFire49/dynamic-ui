@@ -112,46 +112,43 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     const allKeys = Object.keys(firstItem);
     
     // Check if this is pipeline data
-    const pipelineFields = allKeys.filter(key => 
-      key.includes('_Pending') || 
-      key.includes('Pipeline') ||
-      (key !== 'Region' && typeof firstItem[key] === 'number' && firstItem[key] >= 0)
-    );
+    const pipelineFields = allKeys.filter(key => key.includes('_Pending'));
+    const hasTotalPipeline = allKeys.includes('Total_Pipeline');
     
-    console.log('🔍 [DEBUG] Pipeline fields detected:', pipelineFields);
-    
-    // If we have pipeline data, create pipeline-specific charts
-    if (pipelineFields.length > 3) {
-      console.log('🔍 [DEBUG] Creating pipeline charts');
+    if (pipelineFields.length > 3 && hasTotalPipeline) {
+      console.log('🔍 [ANALYSIS] Detected pipeline data, generating pipeline charts');
       
-      // 1. Total pipeline by region (bar chart)
-      if (allKeys.includes('Region') && allKeys.includes('Total_Pipeline')) {
-        const regionData = supportingData.map(item => ({
-          name: item.Region,
+      // 1. Total Pipeline by Region (Bar Chart)
+      const regionData = supportingData.map((item, index) => {
+        const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
+        return {
+          name: item.Region_Name || `Region ${index + 1}`,
           value: item.Total_Pipeline || 0,
-          color: '#3b82f6'
-        })).sort((a, b) => b.value - a.value);
-        
-        charts.push({
-          type: 'bar',
-          title: 'Total Pipeline by Region',
-          data: regionData
-        });
-      }
+          color: colors[index % colors.length]
+        };
+      });
       
-      // 2. Pipeline stages summary (pie chart)
-      const stageFields = pipelineFields.filter(key => key.includes('_Pending'));
-      if (stageFields.length > 0) {
-        const stageData = stageFields.map((stage, index) => {
-          const total = supportingData.reduce((sum, item) => sum + (item[stage] || 0), 0);
-          const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
-          return {
+      charts.push({
+        type: 'bar',
+        title: 'Total Pipeline by Region',
+        data: regionData
+      });
+      
+      // 2. Pipeline Stages Distribution (Pie Chart)
+      let stageData = [];
+      pipelineFields.forEach((stage, index) => {
+        const stageTotal = supportingData.reduce((sum, item) => sum + (item[stage] || 0), 0);
+        const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
+        if (stageTotal > 0) {
+          stageData.push({
             name: stage.replace(/_Pending/g, '').replace(/_/g, ' '),
-            value: total,
+            value: stageTotal,
             color: colors[index % colors.length]
-          };
-        }).filter(item => item.value > 0);
-        
+          });
+        }
+      });
+      
+      if (stageData.length > 0) {
         charts.push({
           type: 'pie',
           title: 'Pipeline Stages Distribution',
@@ -162,7 +159,121 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
       return charts;
     }
     
-    // Original logic for non-pipeline data
+    // Check if this is branch collection data
+    const hasBranches = allKeys.includes('Branches_afer_merger') || allKeys.includes('Branches_after_merger');
+    const hasRegion = allKeys.includes('Region');
+    const hasState = allKeys.includes('State');
+    const hasCollectionPercentage = allKeys.includes('Collection_Percentage');
+    
+    if (hasBranches && hasRegion && hasState && hasCollectionPercentage) {
+      console.log('🔍 [ANALYSIS] Detected branch collection data, generating collection charts');
+      
+      // 1. State Distribution (Pie Chart)
+      const stateData = {};
+      supportingData.forEach(item => {
+        const state = item.State;
+        if (state && state !== 'NULL') {
+          stateData[state] = (stateData[state] || 0) + 1;
+        }
+      });
+      
+      const stateChartData = Object.entries(stateData).map(([state, count], index) => {
+        const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'];
+        return {
+          name: state,
+          value: count,
+          color: colors[index % colors.length]
+        };
+      });
+      
+      charts.push({
+        type: 'pie',
+        title: 'STATE Distribution',
+        data: stateChartData
+      });
+      
+      // 2. Region Distribution (Donut Chart)
+      const regionData = {};
+      supportingData.forEach(item => {
+        const region = item.Region?.trim();
+        if (region && region !== 'NULL') {
+          regionData[region] = (regionData[region] || 0) + 1;
+        }
+      });
+      
+      const regionChartData = Object.entries(regionData).map(([region, count], index) => {
+        const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#84cc16', '#64748b'];
+        return {
+          name: region,
+          value: count,
+          color: colors[index % colors.length]
+        };
+      });
+      
+      charts.push({
+        type: 'donut',
+        title: 'REGION Distribution',
+        data: regionChartData
+      });
+      
+      // 3. Top Performing Branches (Bar Chart)
+      const validBranches = supportingData
+        .filter(item => item.Collection_Percentage !== null && item.Collection_Percentage !== 'NULL' && !isNaN(item.Collection_Percentage))
+        .sort((a, b) => (b.Collection_Percentage || 0) - (a.Collection_Percentage || 0))
+        .slice(0, 10); // Top 10 branches
+      
+      const branchChartData = validBranches.map((item, index) => {
+        const colors = ['#10b981', '#06b6d4', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316', '#ec4899'];
+        return {
+          name: item.Branches_afer_merger || item.Branches_after_merger || 'Unknown',
+          value: Math.round((item.Collection_Percentage || 0) * 100) / 100,
+          color: colors[index % colors.length]
+        };
+      });
+      
+      if (branchChartData.length > 0) {
+        charts.push({
+          type: 'bar',
+          title: 'TOP Performing Branches (Collection %)',
+          data: branchChartData
+        });
+      }
+      
+      // 4. Collection Performance by State (Area Chart)
+      const statePerformance = {};
+      supportingData.forEach(item => {
+        const state = item.State;
+        const collectionPct = item.Collection_Percentage;
+        if (state && state !== 'NULL' && collectionPct !== null && collectionPct !== 'NULL' && !isNaN(collectionPct)) {
+          if (!statePerformance[state]) {
+            statePerformance[state] = [];
+          }
+          statePerformance[state].push(collectionPct);
+        }
+      });
+      
+      const stateAvgData = Object.entries(statePerformance).map(([state, percentages], index) => {
+        const avgPercentage = percentages.reduce((sum, pct) => sum + pct, 0) / percentages.length;
+        const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'];
+        return {
+          name: state,
+          value: Math.round(avgPercentage * 100) / 100,
+          color: colors[index % colors.length]
+        };
+      });
+      
+      if (stateAvgData.length > 0) {
+        charts.push({
+          type: 'area',
+          title: 'AVERAGE Collection % by State',
+          data: stateAvgData
+        });
+      }
+      
+      return charts;
+    }
+    
+    // Original logic for other data types
     Object.keys(firstItem).forEach(key => {
       const values = supportingData.map(item => item[key]).filter(v => v !== null && v !== undefined);
       const uniqueValues = [...new Set(values)];
@@ -249,6 +360,74 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
       ];
     }
     
+    // Check if this is branch collection data
+    const hasBranches = allKeys.includes('Branches_afer_merger') || allKeys.includes('Branches_after_merger');
+    const hasRegion = allKeys.includes('Region');
+    const hasState = allKeys.includes('State');
+    const hasCollectionPercentage = allKeys.includes('Collection_Percentage');
+    
+    if (hasBranches && hasRegion && hasState && hasCollectionPercentage) {
+      // Branch collection-specific statistics
+      const validCollections = supportingData.filter(item => 
+        item.Collection_Percentage !== null && 
+        item.Collection_Percentage !== 'NULL' && 
+        !isNaN(item.Collection_Percentage)
+      );
+      
+      const totalBranches = supportingData.length;
+      const avgCollectionPct = validCollections.length > 0 
+        ? validCollections.reduce((sum, item) => sum + item.Collection_Percentage, 0) / validCollections.length 
+        : 0;
+      
+      const maxCollection = validCollections.length > 0 
+        ? Math.max(...validCollections.map(item => item.Collection_Percentage)) 
+        : 0;
+      const minCollection = validCollections.length > 0 
+        ? Math.min(...validCollections.map(item => item.Collection_Percentage)) 
+        : 0;
+      
+      // Count unique states and regions
+      const uniqueStates = [...new Set(supportingData.map(item => item.State).filter(s => s && s !== 'NULL'))];
+      const uniqueRegions = [...new Set(supportingData.map(item => item.Region?.trim()).filter(r => r && r !== 'NULL'))];
+      
+      // Find top performing branch
+      const topBranch = validCollections.reduce((max, item) =>
+        item.Collection_Percentage > (max.Collection_Percentage || 0) ? item : max, 
+        { Collection_Percentage: 0 }
+      );
+      
+      return [
+        {
+          title: 'Total Records',
+          value: totalBranches.toLocaleString(),
+          icon: AssessmentIcon,
+          color: theme.palette.primary.main,
+          trend: '+0%'
+        },
+        {
+          title: 'States',
+          value: uniqueStates.length.toLocaleString(),
+          icon: AnalyticsIcon,
+          color: theme.palette.info.main,
+          trend: '100%'
+        },
+        {
+          title: 'Avg Collection Percentage',
+          value: `${Math.round(avgCollectionPct * 100) / 100}%`,
+          icon: TrendingUpIcon,
+          color: avgCollectionPct > 20 ? theme.palette.success.main : theme.palette.warning.main,
+          trend: avgCollectionPct > 15 ? '+5%' : '-2%'
+        },
+        {
+          title: 'Collection Percentage Range',
+          value: `${Math.round(minCollection * 100) / 100} - ${Math.round(maxCollection * 100) / 100}%`,
+          icon: WarningIcon,
+          color: theme.palette.error.main,
+          trend: maxCollection > 40 ? '+15%' : '-5%'
+        }
+      ];
+    }
+    
     // Default statistics for non-pipeline data
     const stats = [
       {
@@ -328,10 +507,20 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     let totalMismatches = 0;
     let totalMissingRecords = 0;
     let totalDataBreaks = 0;
+    let individualRecordCounts = null;
 
     Object.keys(result).forEach(key => {
       const item = result[key];
       if (item.summary) {
+        // Check for individual record counts first
+        if (item.summary.total_ktp_records || item.summary.total_xmm_records || item.summary.total_sam_records) {
+          individualRecordCounts = {
+            ktp: item.summary.total_ktp_records || 0,
+            xmm: item.summary.total_xmm_records || 0,
+            sam: item.summary.total_sam_records || 0
+          };
+        }
+        
         totalMatches += item.summary.full_matches || 0;
         totalMismatches += item.summary.mismatches || 0;
         totalMissingRecords += (item.summary.missing_in_xmm || 0) + (item.summary.missing_in_ktp || 0) + (item.summary.missing_in_sam || 0);
@@ -342,6 +531,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     const totalRecords = totalMatches + totalMismatches + totalMissingRecords;
     const matchRate = totalRecords > 0 ? (totalMatches / totalRecords * 100) : 0;
 
+
     return [
       {
         title: 'Match Rate',
@@ -349,13 +539,6 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         icon: CheckCircleIcon,
         color: matchRate > 80 ? theme.palette.success.main : matchRate > 60 ? theme.palette.warning.main : theme.palette.error.main,
         trend: matchRate > 80 ? '+2%' : '-5%'
-      },
-      {
-        title: 'Total Records',
-        value: totalRecords.toLocaleString(),
-        icon: AssessmentIcon,
-        color: theme.palette.primary.main,
-        trend: '+8%'
       },
       {
         title: 'Mismatches',
@@ -370,7 +553,28 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         icon: WarningIcon,
         color: theme.palette.warning.main,
         trend: totalDataBreaks > 0 ? '+1%' : '0%'
-      }
+      },
+      {
+        title: 'KTP Records',
+        value: individualRecordCounts.ktp.toLocaleString(),
+        icon: AssessmentIcon,
+        color: theme.palette.primary.main,
+        trend: '+0%'
+      },
+      {
+        title: 'XMM Records',
+        value: individualRecordCounts.xmm.toLocaleString(),
+        icon: AnalyticsIcon,
+        color: theme.palette.info.main,
+        trend: '+0%'
+      },
+      {
+        title: 'SAM Records',
+        value: individualRecordCounts.sam.toLocaleString(),
+        icon: TrendingUpIcon,
+        color: theme.palette.success.main,
+        trend: '+0%'
+      },
     ];
   };
 
@@ -496,11 +700,13 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     // Handle supporting_data structure (primary use case) - check both nested and direct structures
     const supportingData = data.response?.analysis_result?.supporting_data || data.analysis_result?.supporting_data;
     const question = data.response?.question || data.question || 'Data Analysis';
+    const analysisText = data.response?.analysis_result?.analysis || data.analysis_result?.analysis || data.analysis;
     
     if (supportingData && Array.isArray(supportingData) && supportingData.length > 0) {
       console.log('🔍 [DEBUG] Processing supporting_data structure');
       console.log('🔍 [DEBUG] Supporting data length:', supportingData.length);
       console.log('🔍 [DEBUG] Sample data:', supportingData[0]);
+      console.log('🔍 [DEBUG] Analysis text present:', !!analysisText);
       // Remove question marks and clean up the title
       const cleanTitle = question.replace(/\?+$/, '').trim();
       
@@ -509,6 +715,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         title: cleanTitle,
         totalRecords: supportingData.length,
         data: supportingData,
+        analysis: analysisText,
         charts: generateChartsFromData(supportingData),
         stats: generateStatsFromData(supportingData),
         tables: [{ title: 'Detailed Results', data: supportingData }]
@@ -667,6 +874,80 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         </Box>
       </Fade>
 
+      {/* Analysis Insights Section */}
+      {finalAnalysis.analysis && finalAnalysis.analysis.length > 0 && (
+        <Fade in={currentSection >= 1} timeout={800}>
+          <Box sx={{ mb: 5 }}>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                mb: 3, 
+                fontWeight: 600, 
+                color: theme.palette.text.primary,
+                animation: `${fadeInUp} 0.6s ease-out 0.3s both`,
+                textAlign: 'center'
+              }}
+            >
+              Analysis Insights
+            </Typography>
+            
+            <Grid container spacing={3} justifyContent="center">
+              <Grid item xs={12} lg={10}>
+                <Paper sx={{
+                  p: 4,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.secondary.main, 0.02)} 100%)`,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  animation: `${slideIn} 0.6s ease-out 0.4s both`
+                }}>
+                  {finalAnalysis.analysis.map((insight, index) => {
+                    // Clean up the insight text - remove JSON formatting and quotes
+                    let cleanInsight = insight;
+                    if (typeof insight === 'string') {
+                      cleanInsight = insight
+                        .replace(/^```json$/, '')
+                        .replace(/^"/, '')
+                        .replace(/",?$/, '')
+                        .replace(/\\"/g, '"')
+                        .trim();
+                    }
+                    
+                    // Skip empty or JSON-only lines
+                    if (!cleanInsight || cleanInsight === '```json' || cleanInsight === '```') {
+                      return null;
+                    }
+                    
+                    return (
+                      <Box key={index} sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                        <Box sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                          mt: 1,
+                          flexShrink: 0
+                        }} />
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            color: theme.palette.text.primary,
+                            lineHeight: 1.6,
+                            fontSize: '1rem',
+                            fontWeight: 400
+                          }}
+                        >
+                          {cleanInsight}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Paper>
+              </Grid>
+            </Grid>
+          </Box>
+        </Fade>
+      )}
+
       {/* Visual Analytics Section */}
       {finalAnalysis.charts && finalAnalysis.charts.length > 0 && (
         <Fade in={currentSection >= 1} timeout={800}>
@@ -724,16 +1005,19 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
                 gap: 1
               }}
             >
-              Detailed Data
+              Tabular Results
             </Typography>
             
             {finalAnalysis.tables.map((table, index) => (
               <Box key={index} sx={{ mb: 4 }}>
                 {/* Table Header with Audit Report Button */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-                    {table.title}
-                  </Typography>
+                  {/* Hide the secondary table title for supporting_data tables */}
+                  {!(table.title === 'Detailed Results' && finalAnalysis.type === 'supporting_data') && (
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+                      {table.title}
+                    </Typography>
+                  )}
                   {table.type === 'mismatched_records' && (
                     <Button
                       variant="outlined"
