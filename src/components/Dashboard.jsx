@@ -41,19 +41,24 @@ import {
   Bookmark as BookmarkIcon,
   Schedule as ScheduleIcon,
   Visibility as VisibilityIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  AccountBalance as AccountBalanceIcon
 } from '@mui/icons-material';
 import DynamicDataVisualization from './mui/DynamicDataVisualization';
+import DataGridComponent from './charts/DataGridComponent';
+import AnalysisWidget from './widgets/AnalysisWidget';
 
 const Dashboard = () => {
   const theme = useTheme();
   const [savedVisualizations, setSavedVisualizations] = useState([]);
+  const [savedAnalyses, setSavedAnalyses] = useState([]);
   const [editDialog, setEditDialog] = useState({ open: false, item: null });
   const [fullscreenView, setFullscreenView] = useState({ open: false, item: null });
   const [hoveredCard, setHoveredCard] = useState(null);
 
-  // Load saved visualizations from localStorage on mount
+  // Load saved visualizations and analyses from localStorage on mount
   useEffect(() => {
+    // Load old visualizations
     const saved = localStorage.getItem('dashboardVisualizations');
     if (saved) {
       try {
@@ -65,31 +70,59 @@ const Dashboard = () => {
         setSavedVisualizations([]);
       }
     }
+    
+    // Load new analyses
+    const savedAnalysesData = localStorage.getItem('savedAnalyses');
+    if (savedAnalysesData) {
+      try {
+        const parsedAnalyses = JSON.parse(savedAnalysesData);
+        console.log('📊 [DASHBOARD] Loaded analyses:', parsedAnalyses.length);
+        setSavedAnalyses(parsedAnalyses);
+      } catch (error) {
+        console.error('Error loading saved analyses:', error);
+        setSavedAnalyses([]);
+      }
+    }
   }, []);
 
   // Save visualizations to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('dashboardVisualizations', JSON.stringify(savedVisualizations));
   }, [savedVisualizations]);
+  
+  // Save analyses to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('savedAnalyses', JSON.stringify(savedAnalyses));
+  }, [savedAnalyses]);
 
   // Calculate dashboard statistics
+  const allItems = [...savedVisualizations, ...savedAnalyses];
   const dashboardStats = {
-    totalVisualizations: savedVisualizations.length,
-    totalRecords: savedVisualizations.reduce((sum, item) => {
+    totalVisualizations: allItems.length,
+    totalRecords: allItems.reduce((sum, item) => {
       const supportingData = item.supporting_data || item.supportingData || item.pipelineData || [];
+      if (item.data?.response?.analysis_result?.supporting_data) {
+        return sum + item.data.response.analysis_result.supporting_data.length;
+      }
       return sum + supportingData.length;
     }, 0),
-    chartTypes: new Set(savedVisualizations.map(item => item.type)).size,
-    lastUpdated: savedVisualizations.length > 0 ? 
-      Math.max(...savedVisualizations.map(item => new Date(item.timestamp).getTime())) : null
+    chartTypes: new Set(allItems.map(item => item.type)).size,
+    lastUpdated: allItems.length > 0 ? 
+      Math.max(...allItems.map(item => new Date(item.timestamp).getTime())) : null
   };
 
   const handleDeleteVisualization = (id) => {
     setSavedVisualizations(prev => prev.filter(item => item.id !== id));
+    setSavedAnalyses(prev => prev.filter(item => item.id !== id));
   };
 
   const handleEditTitle = (id, newTitle) => {
     setSavedVisualizations(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, title: newTitle } : item
+      )
+    );
+    setSavedAnalyses(prev => 
       prev.map(item => 
         item.id === id ? { ...item, title: newTitle } : item
       )
@@ -102,15 +135,81 @@ const Dashboard = () => {
       id: item.id,
       title: item.title,
       type: item.type,
+      hasAnalysis: !!item.analysis,
+      hasData: !!item.data,
       hasCharts: !!item.charts,
       hasDataGrid: !!item.dataGrid,
+      hasReconciliationData: !!item.reconciliationData,
       supportingDataLength: (item.supporting_data || item.supportingData || item.pipelineData || []).length
     });
+
+    // If this is a new AnalysisWidget item (analysis_widget type)
+    if (item.type === 'analysis_widget') {
+      console.log('📊 [DASHBOARD] Rendering AnalysisWidget with data:', {
+        hasAnalysis: !!item.analysis,
+        hasData: !!item.data,
+        title: item.title,
+        fullItem: item
+      });
+      
+      // Use the saved data or create a compatible data structure
+      const analysisData = item.data || {
+        response: {
+          result: item.analysis?.data || {},
+          question: item.title
+        },
+        result: item.analysis?.data || {}
+      };
+      
+      return (
+        <Box key={`analysis-${item.id}`} sx={{ width: '100%' }}>
+          <AnalysisWidget
+            data={analysisData}
+            title={item.title}
+            onSave={() => {}} // No save needed in dashboard view
+          />
+        </Box>
+      );
+    }
 
     // Get supporting data from any available property
     const supportingData = item.supporting_data || item.supportingData || item.pipelineData || [];
     
-    // Create the exact same structure that DynamicDataVisualization expects
+    // If we have supporting data, render both visualization and data grid
+    if (supportingData && supportingData.length > 0) {
+      const analysisResult = {
+        question: item.question || item.title,
+        analysis_result: {
+          supporting_data: supportingData
+        }
+      };
+      
+      return (
+        <Box key={`viz-${item.id}`} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Original visualization component */}
+          <DynamicDataVisualization 
+            analysisResult={analysisResult}
+            isFromDashboard={true}
+            savedCharts={item.charts}
+            savedDataGrid={item.dataGrid}
+            savedRMPerformanceData={item.rmPerformanceData}
+            savedRMPerformanceOverview={item.rmPerformanceOverview}
+            savedRMPerformanceComparisonChart={item.rmPerformanceComparisonChart}
+          />
+          
+          {/* Enhanced DataGrid with dynamic columns and CSV export */}
+          <DataGridComponent
+            data={supportingData}
+            title={`${item.question || item.title} - Detailed Data`}
+            height={400}
+            autoGenerateColumns={true}
+            showSaveButton={false}
+          />
+        </Box>
+      );
+    }
+    
+    // Fallback for items without supporting data
     const analysisResult = {
       question: item.question || item.title,
       analysis_result: {
@@ -136,6 +235,7 @@ const Dashboard = () => {
     switch (type) {
       case 'rmPerformance': return <AssessmentIcon />;
       case 'pipeline': return <TimelineIcon />;
+      case 'reconciliation': return <AccountBalanceIcon />;
       case 'bar': return <InsertChartIcon />;
       case 'pie': return <DataUsageIcon />;
       default: return <AnalyticsIcon />;
@@ -146,6 +246,7 @@ const Dashboard = () => {
     switch (type) {
       case 'rmPerformance': return 'RM Performance';
       case 'pipeline': return 'Pipeline Analysis';
+      case 'reconciliation': return 'Bank Reconciliation';
       case 'bar': return 'Bar Chart';
       case 'pie': return 'Pie Chart';
       default: return 'Analytics';
@@ -156,6 +257,7 @@ const Dashboard = () => {
     switch (type) {
       case 'rmPerformance': return 'linear-gradient(90deg, #3b82f6, #2563eb)';
       case 'pipeline': return 'linear-gradient(90deg, #10b981, #059669)';
+      case 'reconciliation': return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
       case 'bar': return 'linear-gradient(90deg, #f59e0b, #d97706)';
       case 'pie': return 'linear-gradient(90deg, #ef4444, #dc2626)';
       default: return 'linear-gradient(90deg, #6b7280, #4b5563)';
@@ -165,7 +267,8 @@ const Dashboard = () => {
   const getAnalysisTypeColor = (type) => {
     switch (type) {
       case 'rmPerformance': return '#37527e';
-      case 'pipeline': return '#f1641f';
+      case 'pipeline': return '#f1641f';  
+      case 'reconciliation': return '#667eea';
       case 'bar': return '#37527e';
       case 'pie': return '#f1641f';
       default: return '#6b7280';
@@ -492,8 +595,71 @@ const Dashboard = () => {
         marginRight: '-50vw',
         minHeight: '80vh'
       }}>
+        {/* Quick Stats Section */}
+        <Box sx={{ 
+          px: 4,
+          py: 4,
+          background: '#ffffff',
+          borderBottom: '1px solid #e2e8f0'
+        }}>
+          <Typography variant="h4" sx={{ 
+            fontWeight: 700,
+            color: '#0f172a',
+            mb: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <AnalyticsIcon sx={{ color: theme.palette.primary.main }} />
+            Dashboard Overview
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                  {dashboardStats.totalVisualizations}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Total Analyses
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.success.main }}>
+                  {dashboardStats.totalRecords.toLocaleString()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Records Analyzed
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.warning.main }}>
+                  {dashboardStats.chartTypes}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Chart Types
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.info.main }}>
+                  {dashboardStats.lastUpdated ? new Date(dashboardStats.lastUpdated).toLocaleDateString() : 'N/A'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Last Updated
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Box>
+
         {/* Visualizations */}
-        {savedVisualizations.length === 0 ? (
+        {allItems.length === 0 ? (
           <Fade in={true} timeout={1200}>
             <Box sx={{ 
               textAlign: 'center', 
@@ -533,7 +699,7 @@ const Dashboard = () => {
                 mx: 'auto',
                 lineHeight: 1.6
               }}>
-                Your analytics workspace is ready. Start creating powerful visualizations and save them here to build your command center.
+                Use the main chat to perform analysis, create visualizations, and save them here to build your command center.
               </Typography>
               
               <Button 
@@ -579,7 +745,7 @@ const Dashboard = () => {
                 gap: 1
               }}>
                 <BookmarkIcon sx={{ color: theme.palette.primary.main }} />
-                Saved Analysis ({savedVisualizations.length})
+                Saved Analysis ({allItems.length})
               </Typography>
               
               <Chip 
@@ -595,7 +761,11 @@ const Dashboard = () => {
               />
             </Box>
             
-            {savedVisualizations.map((item, index) => renderVisualizationCard(item, index))}
+            {allItems.map((item, index) => (
+              <React.Fragment key={`analysis-card-${item.id}-${index}`}>
+                {renderVisualizationCard(item, index)}
+              </React.Fragment>
+            ))}
           </Box>
         )}
       </Box>

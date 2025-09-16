@@ -1,53 +1,27 @@
 "use client";
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import Image from 'next/image';
+import ConfirmationDialog from '@/components/mui/ConfirmationDialog';
+import TypingIndicator from '@/components/mui/TypingIndicator';
 import {
-  Box,
-  Typography,
-  Paper,
-  Card,
-  CardContent,
-  IconButton,
-  CircularProgress,
-  Tooltip,
-  Chip,
-  AppBar,
-  Toolbar,
-  Button,
-  Grid
-} from '@mui/material';
-import {
-  Send as SendIcon,
-  AttachFile as AttachFileIcon,
-  Analytics as AnalyticsIcon,
-  Description as DocumentIcon,
-  TableChart as ExcelIcon
+  Description as DocumentIcon
 } from '@mui/icons-material';
 import AddIcon from '@mui/icons-material/Add';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import MicIcon from '@mui/icons-material/Mic';
-import StopIcon from '@mui/icons-material/Stop';
-import TypingIndicator from '@/components/mui/TypingIndicator';
-import Zoom from '@mui/material/Zoom';
-import DynamicRenderer from '../lib/dynamic-ui/DynamicRenderer';
-import DataTable from '../components/mui/DataTable';
-import WorkflowModifier from '../components/WorkflowModifier';
-import DynamicDataVisualization from '../components/mui/DynamicDataVisualization';
-import AnalysisResponse from '../components/mui/AnalysisResponse';
-import InputWithRecording from '../components/mui/InputWithRecording';
-import AudioTranslationResponse from '../components/mui/AudioTranslationResponse';
-import SchedulerResponse from '../components/mui/SchedulerResponse';
-import ModernAudioPlayer from '../components/mui/ModernAudioPlayer';
-import PDFNotificationPopup from '../components/mui/PDFNotificationPopup';
-import IncentiveRulesResponse from '../components/mui/IncentiveRulesResponse';
-import styles from '@/styles/Chat.module.scss';
-import MifixLogo from '@/assets/Mifix.png';
-import ConfirmationDialog from '@/components/mui/ConfirmationDialog';
-import { API_BASE_URL, CHAT_ENDPOINT } from '@/lib/config';
-import { uploadAudioFile, generateAudioFileName } from '../lib/audioUpload';
-import VoiceWaveform from '../components/mui/VoiceWaveform';
-import { dataAnalysisApi } from '../lib/api/dataAnalysisApi';
+import {
+  AppBar,
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Paper,
+  Toolbar,
+  Typography
+} from '@mui/material';
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ChatMessage from '../components/mui/ChatMessage';
+import InputWithRecording from '../components/mui/InputWithRecording';
+import PDFNotificationPopup from '../components/mui/PDFNotificationPopup';
+import { generateAudioFileName, uploadAudioFile } from '../lib/audioUpload';
+import { API_BASE_URL, CHAT_ENDPOINT } from '../lib/config';
 
 export default function HomePage() {
   const [chatHistory, setChatHistory] = useState([]);
@@ -179,6 +153,16 @@ export default function HomePage() {
           question: data.response?.question || data.question || 'Data Analysis',
           title: 'Business Intelligence Dashboard'
         }
+      };
+    }
+    // Handle reconciliation response
+    else if (data.response?.result && 
+             (data.response.result.KTP_vs_XMM || data.response.result.XMM_vs_SAM || data.response.result.KTP_vs_XMM_vs_SAM)) {
+      console.log('Detected reconciliation response:', data.response.result);
+      botMessage = {
+        type: 'reconciliation',
+        content: data.response.result,
+        isBot: true
       };
     }
     // Handle table data response
@@ -489,40 +473,54 @@ export default function HomePage() {
   
   // Handle data analysis
   const handleDataAnalysis = useCallback(async (question) => {
-    if (uploadedDocuments.length === 0) {
-      const errorMessage = {
-        type: 'user',
-        content: { text: '📊 Please upload a document first before asking analysis questions.' },
-        isBot: true,
-        isError: true
-      };
-      setChatHistory(prev => [...prev, errorMessage]);
-      return;
-    }
-    
-    const latestDocument = uploadedDocuments[uploadedDocuments.length - 1];
+    const latestDocument = uploadedDocuments.length > 0 ? uploadedDocuments[uploadedDocuments.length - 1] : null;
     
     try {
       setIsAnalyzing(true);
       setIsTyping(true);
       
-      const analysisResult = await dataAnalysisApi.analyzeData(
-        CONNECTION_ID,
-        latestDocument.document_key,
-        question,
-        'Analysis via chat interface'
-      );
+      // If document is available, use data analysis API, otherwise use chat endpoint
+      let analysisResult;
+      if (latestDocument) {
+        analysisResult = await dataAnalysisApi.analyzeData(
+          CONNECTION_ID,
+          latestDocument.document_key,
+          question,
+          'Analysis via chat interface'
+        );
+      } else {
+        // Use chat endpoint when no document is available (via Next.js API route to avoid CORS)
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: "vaishakh_configurator3",
+            message: question,
+            conversation_id: CONNECTION_ID
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Chat API error: ${response.status}`);
+        }
+        
+        const chatResult = await response.json();
+        console.log('🔍 [DEBUG] Chat API Result:', chatResult);
+        
+        // Pass through the original API response structure
+        analysisResult = chatResult;
+      }
       
-      // Add analysis result to chat
+      // Add analysis result to chat - pass the full API response
       const analysisMessage = {
         type: 'data_analysis',
-        content: {
-          question: question,
-          analysisResult: analysisResult
-        },
+        content: analysisResult, // Pass the full API response directly
         isBot: true
       };
       
+      console.log('🔍 [DEBUG] Adding analysis message to chat:', analysisMessage);
       setChatHistory(prev => [...prev, analysisMessage]);
       
     } catch (error) {

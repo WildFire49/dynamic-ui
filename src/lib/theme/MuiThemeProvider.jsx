@@ -4,7 +4,7 @@ import * as React from 'react';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
-// A custom theme for this app - styled to match MiFiX AI look and feel
+// A custom theme for this app - sleek and professional financial dashboard
 const theme = createTheme({
   palette: {
     mode: 'light',
@@ -14,24 +14,47 @@ const theme = createTheme({
       light: '#4ca6ff', // Lighter blue
       contrastText: '#ffffff',
     },
-    secondary: {
-      main: '#f5f5f5', // Light grey for UI elements
-      dark: '#d7d7d7',
-      light: '#ffffff',
+    tertiary: {
+      main: '#37527e', // Deep blue for performance metrics
+      dark: '#2a3f60',
+      light: '#5a6f94',
+      contrastText: '#ffffff',
     },
     background: {
-      default: '#f7fafc', // Light gray background
-      paper: '#ffffff',  // White for cards and panels
+      default: '#f8fafc', // Clean light background
+      paper: '#ffffff',   // Pure white for cards and panels
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Professional gradient
       chat: {
         bot: '#0078d7',   // Blue for bot chat bubbles
         user: '#f1f1f1', // Light grey for user chat bubbles
       }
     },
     text: {
-      primary: '#000000',
-      secondary: '#5f6368',
-      bot: '#ffffff',     // White text for bot messages
-      user: '#000000',    // Black text for user messages
+      primary: '#1a202c',    // Dark professional text
+      secondary: '#4a5568',  // Muted secondary text
+      disabled: '#a0aec0',   // Disabled text
+      bot: '#ffffff',        // White text for bot messages
+      user: '#1a202c',       // Dark text for user messages
+    },
+    success: {
+      main: '#48bb78',   // Professional green
+      dark: '#38a169',
+      light: '#68d391',
+    },
+    warning: {
+      main: '#ed8936',   // Professional orange
+      dark: '#dd6b20',
+      light: '#f6ad55',
+    },
+    error: {
+      main: '#f56565',   // Professional red
+      dark: '#e53e3e',
+      light: '#fc8181',
+    },
+    info: {
+      main: '#0078d7',   // Blue for information
+      dark: '#00468e',
+      light: '#4ca6ff',
     },
     action: {
       active: '#0078d7',

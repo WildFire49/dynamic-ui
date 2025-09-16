@@ -1,23 +1,25 @@
 "use client";
-import React from 'react';
 import {
   Box,
-  Typography,
-  Paper,
   Card,
   CardContent,
-  Grid
+  Grid,
+  keyframes,
+  Paper,
+  Typography
 } from '@mui/material';
-import { keyframes } from '@mui/material';
 import Image from 'next/image';
 import DynamicRenderer from '../../lib/dynamic-ui/DynamicRenderer';
-import DynamicDataVisualization from './DynamicDataVisualization';
+
+import DataGridComponent from '../charts/DataGridComponent';
 import AnalysisResponse from './AnalysisResponse';
 import AudioTranslationResponse from './AudioTranslationResponse';
-import SchedulerResponse from './SchedulerResponse';
-import IncentiveRulesResponse from './IncentiveRulesResponse';
 import DataTable from './DataTable';
+import DynamicDataVisualization from './DynamicDataVisualization';
+import IncentiveRulesResponse from './IncentiveRulesResponse';
+import SchedulerResponse from './SchedulerResponse';
 import VoiceWaveform from './VoiceWaveform';
+import AnalysisWidget from '../widgets/AnalysisWidget';
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -174,6 +176,15 @@ const styles = {
 };
 
 const ChatMessage = ({ message, index, onAction }) => {
+  // Handle saving analysis to dashboard
+  const handleSaveAnalysis = (analysisData) => {
+    const savedData = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
+    savedData.push(analysisData);
+    localStorage.setItem('savedAnalyses', JSON.stringify(savedData));
+    
+    // Show success notification (you can enhance this with a proper notification system)
+    console.log('Analysis saved to dashboard:', analysisData.title);
+  };
   const isUser = message.type === 'user' && !message.isBot;
   const isBot = message.isBot || message.type === 'schema' || message.type === 'table';
   const isError = message.isError;
@@ -320,6 +331,26 @@ const ChatMessage = ({ message, index, onAction }) => {
     }
 
     if (message.type === 'data_analysis') {
+      console.log('🔍 [DEBUG] Data analysis message content:', message.content);
+      
+      // Check if we have supporting_data structure
+      const apiResponse = message.content.response || message.content;
+      const analysisResult = apiResponse.analysis_result || apiResponse;
+      
+      if (analysisResult && analysisResult.supporting_data && Array.isArray(analysisResult.supporting_data)) {
+        console.log('🔍 [DEBUG] Using AnalysisWidget for data_analysis type with supporting_data');
+        return (
+          <Box sx={{ width: '100%', maxWidth: 'none' }}>
+            <AnalysisWidget
+              data={message.content}
+              title={apiResponse.question || 'Data Analysis'}
+              onSave={handleSaveAnalysis}
+            />
+          </Box>
+        );
+      }
+      
+      // Fall back to old component for legacy data
       return (
         <DynamicDataVisualization
           analysisResult={message.content.analysisResult}
@@ -327,6 +358,61 @@ const ChatMessage = ({ message, index, onAction }) => {
           isFromDashboard={false}
         />
       );
+    }
+
+    // Handle API responses with new dynamic AnalysisWidget
+    if (message.content && typeof message.content === 'object') {
+      console.log('🔍 [DEBUG] ChatMessage full content:', JSON.stringify(message.content, null, 2));
+      
+      // Check for reconciliation data structure - either nested in result or direct properties
+      const result = message.content.result || message.content.response?.result;
+      const contentKeys = Object.keys(message.content);
+      const isDirectReconciliation = contentKeys.some(key => 
+        key.includes('_vs_') || 
+        (message.content[key]?.reconciliation_pair || message.content[key]?.reconciliation_type)
+      );
+      
+      if ((result && typeof result === 'object') || isDirectReconciliation) {
+        console.log('🔍 [DEBUG] Found reconciliation data', isDirectReconciliation ? '(direct)' : '(nested)');
+        // This is reconciliation data - use AnalysisWidget
+        const reconciliationData = isDirectReconciliation ? 
+          { response: { result: message.content } } : 
+          message.content;
+          
+        return (
+          <Box sx={{ width: '100%', maxWidth: 'none' }}>
+            <AnalysisWidget
+              data={reconciliationData}
+              title="Reconciliation Analysis"
+              onSave={handleSaveAnalysis}
+            />
+          </Box>
+        );
+      }
+      
+      // Check for supporting_data structure - handle API response
+      const apiResponse = message.content.response || message.content;
+      const analysisResult = apiResponse.analysis_result || apiResponse;
+      
+      console.log('🔍 [DEBUG] API response:', apiResponse);
+      console.log('🔍 [DEBUG] Analysis result:', analysisResult);
+      console.log('🔍 [DEBUG] Has supporting_data:', !!analysisResult?.supporting_data);
+      console.log('🔍 [DEBUG] Supporting data length:', analysisResult?.supporting_data?.length);
+      
+      if (analysisResult && analysisResult.supporting_data && Array.isArray(analysisResult.supporting_data)) {
+        console.log('🔍 [DEBUG] Using AnalysisWidget for supporting_data');
+        return (
+          <Box sx={{ width: '100%', maxWidth: 'none' }}>
+            <AnalysisWidget
+              data={message.content}
+              title={apiResponse.question || 'Data Analysis'}
+              onSave={handleSaveAnalysis}
+            />
+          </Box>
+        );
+      }
+      
+      console.log('🔍 [DEBUG] No matching condition, falling through to old component');
     }
 
     // Handle voice messages
@@ -337,7 +423,7 @@ const ChatMessage = ({ message, index, onAction }) => {
     // Default text message
     return (
       <Typography sx={styles.typography}>
-        {message.content.text || message.content}
+        {typeof message.content === 'string' ? message.content : (message.content.text || JSON.stringify(message.content, null, 2))}
       </Typography>
     );
   };

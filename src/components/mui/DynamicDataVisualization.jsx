@@ -1,70 +1,46 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import {
+  Download,
+  FileDownload,
+  GetApp,
+  TableChart
+} from '@mui/icons-material';
+import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Grid,
   Chip,
-  Button,
+  Grid,
+  ListItemIcon,
+  ListItemText,
   Menu,
   MenuItem,
-  Checkbox,
-  FormControlLabel,
-  FormGroup,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  IconButton,
   Skeleton,
   Snackbar,
-  Alert,
-  TextField,
-  InputAdornment
+  Typography
 } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
-  Legend,
-  CartesianGrid,
   XAxis,
   YAxis
 } from 'recharts';
-import { 
-  FileDownload, 
-  GetApp, 
-  TableChart,
-  CurrencyRupee,
-  Download,
-  ExpandMore,
-  Person,
-  TrendingUp,
-  Search,
-  TrendingDown,
-  CheckBox,
-  CheckBoxOutlineBlank
-} from '@mui/icons-material';
-import RMPerformanceOverview from './RMPerformanceOverview';
-import RMPerformanceComparison from './RMPerformanceComparison';
-import RMComparisonChart from './RMComparisonChart';
-import { 
-  PieChartComponent,
+import {
   BarChartComponent,
-  WaterfallChartComponent,
+  DataGridComponent,
+  PieChartComponent,
   StackedBarChartComponent,
-  DataGridComponent
+  WaterfallChartComponent
 } from '../charts';
+import RMComparisonChart from './RMComparisonChart';
+import RMPerformanceComparison from './RMPerformanceComparison';
+import RMPerformanceOverview from './RMPerformanceOverview';
 
 // Color definitions for various chart elements
 const colors = {
@@ -195,6 +171,28 @@ const DynamicDataVisualization = ({
   // Detect data type and main field for visualization
   const dataAnalysis = useMemo(() => {
     console.log('🔍 [DEBUG] Starting dataAnalysis...');
+    
+    // Check for reconciliation data first
+    if (analysisResult && typeof analysisResult === 'object') {
+      const keys = Object.keys(analysisResult);
+      const hasReconciliationPattern = keys.some(key => 
+        key.includes('_vs_') || 
+        key.includes('reconciliation') || 
+        analysisResult[key]?.reconciliation_pair ||
+        analysisResult[key]?.summary?.full_matches !== undefined
+      );
+      
+      if (hasReconciliationPattern) {
+        console.log('🔍 [DEBUG] Detected as reconciliation data');
+        return {
+          type: 'reconciliation',
+          scoreField: null,
+          pipelineStages: [],
+          isTargetVsAchievement: false,
+          reconciliationData: analysisResult
+        };
+      }
+    }
     
     if (!analysisResult?.analysis_result?.supporting_data) {
       console.log('🔍 [DEBUG] No supporting data found, returning unknown');
@@ -2644,7 +2642,9 @@ const DynamicDataVisualization = ({
         </Card>
       )}
 
-      {/* 4. Analysis Insights */}
+    
+      
+      {/* 5. Analysis Insights */}
       {analysisResult?.analysis_result?.analysis && (
         <Card sx={{ 
           mb: { xs: 2, sm: 3 }, 
