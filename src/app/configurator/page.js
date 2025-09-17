@@ -63,8 +63,8 @@ const AGENT_TYPES = [
     description: 'Intelligent business logic automation',
     subtitle: 'Smart Decision Making',
     icon: RuleIcon,
-    color: '#2196F3',
-    gradient: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
+    color: '#64b5f6',
+    gradient: 'linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%)',
     stats: '50+ Rules'
   },
   {
@@ -73,8 +73,8 @@ const AGENT_TYPES = [
     description: 'Automated task orchestration',
     subtitle: 'Time Intelligence',
     icon: ScheduleIcon,
-    color: '#FF9800',
-    gradient: 'linear-gradient(135deg, #FF9800 0%, #FFB74D 100%)',
+    color: '#81c784',
+    gradient: 'linear-gradient(135deg, #66bb6a 0%, #81c784 100%)',
     stats: '24/7 Active'
   },
   {
@@ -83,8 +83,8 @@ const AGENT_TYPES = [
     description: 'Automated Decision Making',
     subtitle: 'Continuous Oversight',
     icon: SupervisoryIcon,
-    color: '#4CAF50',
-    gradient: 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
+    color: '#ffb74d',
+    gradient: 'linear-gradient(135deg, #ffa726 0%, #ffb74d 100%)',
     stats: '99.9% Uptime'
   },
   {
@@ -93,8 +93,8 @@ const AGENT_TYPES = [
     description: 'Deep insights & Predictions',
     subtitle: 'Data Intelligence',
     icon: AnalyticsIcon,
-    color: '#9C27B0',
-    gradient: 'linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%)',
+    color: '#ba68c8',
+    gradient: 'linear-gradient(135deg, #ab47bc 0%, #ba68c8 100%)',
     stats: 'Real-time'
   }
 ];
@@ -400,48 +400,70 @@ export default function ConfiguratorPage() {
     <Box 
       sx={{ 
         minHeight: '100vh',
-        background: `linear-gradient(135deg, 
-          ${alpha('#2196F3', 0.05)} 0%, 
-          ${alpha('#9C27B0', 0.05)} 25%,
-          ${alpha('#4CAF50', 0.03)} 50%,
-          ${alpha('#FF9800', 0.05)} 75%,
-          ${alpha('#2196F3', 0.05)} 100%
-        )`,
         position: 'relative',
         overflow: 'hidden',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: `radial-gradient(circle at 50% 50%, 
-            ${alpha('#2196F3', 0.03)} 0%,
-            ${alpha('#9C27B0', 0.02)} 25%,
-            ${alpha('#4CAF50', 0.015)} 50%,
-            ${alpha('#FF9800', 0.02)} 75%,
-            ${alpha('#2196F3', 0.03)} 100%
-          )`,
-          animation: 'breathe 8s ease-in-out infinite',
-          zIndex: 0
-        },
-        '@keyframes breathe': {
-          '0%': {
-            transform: 'scale(1)',
-            opacity: 0.3
-          },
-          '50%': {
-            transform: 'scale(1.05)',
-            opacity: 0.6
-          },
-          '100%': {
-            transform: 'scale(1)',
-            opacity: 0.3
-          }
-        }
+        background: `linear-gradient(135deg, 
+          ${alpha('#0d1b2a', 0.55)} 0%, 
+          ${alpha('#1b263b', 0.7)} 25%,
+          ${alpha('#1e3a5f', 0.75)} 50%,
+          ${alpha('#2d4f73', 0.2)} 75%,
+          ${alpha('#0d1b2a', 0.15)} 100%
+        )`
       }}
     >
+      {/* Video Background */}
+      <Box
+        component="video"
+        autoPlay
+        muted
+        loop
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: -2,
+          opacity: 0.4,
+          filter: 'brightness(0.9) contrast(1.1) blur(1px)',
+          transform: 'scale(1.1)' // Slight zoom to avoid edge artifacts
+        }}
+      >
+        <source src="/vecteezy_data-neural-network-ai-technology-cloud-computing-bits_21723025.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </Box>
+      
+      {/* Dark Blue Overlay */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: `linear-gradient(135deg, 
+            ${alpha('#0f1419', 0.8)} 0%, 
+            ${alpha('#1a2332', 0.75)} 25%,
+            ${alpha('#1e3a5f', 0.7)} 50%,
+            ${alpha('#2d4f73', 0.75)} 75%,
+            ${alpha('#0f1419', 0.8)} 100%
+          )`,
+          zIndex: -1,
+          animation: 'breathe 12s ease-in-out infinite',
+          '@keyframes breathe': {
+            '0%': {
+              opacity: 0.7
+            },
+            '50%': {
+              opacity: 0.85
+            },
+            '100%': {
+              opacity: 0.7
+            }
+          }
+        }}
+      />
       {/* Floating Background Particles */}
       {mounted && [...Array(12)].map((_, i) => (
         <FloatingParticle
@@ -499,13 +521,14 @@ export default function ConfiguratorPage() {
                 sx={{ 
                   fontWeight: 900, 
                   mb: 2,
-                  background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 50%, #9C27B0 100%)',
+                  background: 'linear-gradient(135deg,rgb(255, 255, 255) 0%,rgba(182, 30, 38, 0.28) 30%,rgb(242, 245, 248) 60%, #ba68c8 100%)',
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   fontSize: { xs: '2.5rem', md: '3.5rem', lg: '4rem' },
                   letterSpacing: '-0.02em',
-                  textShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                  textShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.1))'
                 }}
               >
                 MiFiX.AI
@@ -517,9 +540,10 @@ export default function ConfiguratorPage() {
                 sx={{ 
                   fontWeight: 300,
                   mb: 3,
-                  color: 'text.primary',
+                  color: '#e3f2fd',
                   fontSize: { xs: '1.5rem', md: '2rem' },
-                  opacity: 0.8
+                  opacity: 0.9,
+                  textShadow: '0 2px 8px rgba(0,0,0,0.5)'
                 }}
               >
                 Intelligent Agent Orchestration
@@ -528,12 +552,14 @@ export default function ConfiguratorPage() {
               <Typography 
                 variant="h6" 
                 sx={{ 
-                  color: 'text.secondary',
+                  color: 'white',
                   mb: 4,
                   maxWidth: 600,
                   mx: 'auto',
                   lineHeight: 1.6,
-                  fontSize: { xs: '1rem', md: '1.25rem' }
+                  fontSize: { xs: '1rem', md: '1.25rem' },
+                  opacity: 0.85,
+                  textShadow: '0 1px 4px rgba(0,0,0,0.6)'
                 }}
               >
                 Transform your business with AI-powered agents that think, learn, and adapt.
@@ -557,12 +583,14 @@ export default function ConfiguratorPage() {
                         px: 4,
                         py: 1.5,
                         borderRadius: 3,
-                        background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
-                        boxShadow: `0 8px 25px ${alpha('#2196F3', 0.4)}`,
+                        background: 'linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%)',
+                        boxShadow: `0 8px 25px ${alpha('#42a5f5', 0.4)}`,
+                        backdropFilter: 'blur(10px)',
+                        border: `1px solid ${alpha('#64b5f6', 0.3)}`,
                         '&:hover': {
-                          background: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)',
+                          background: 'linear-gradient(135deg, #1e88e5 0%, #42a5f5 100%)',
                           transform: 'translateY(-2px)',
-                          boxShadow: `0 12px 35px ${alpha('#2196F3', 0.5)}`
+                          boxShadow: `0 12px 35px ${alpha('#42a5f5', 0.5)}`
                         },
                         transition: 'all 0.3s ease'
                       }}
@@ -585,12 +613,14 @@ export default function ConfiguratorPage() {
                         py: 1.5,
                         borderRadius: 3,
                         borderWidth: 2,
-                        borderColor: '#2196F3',
-                        color: '#2196F3',
+                        borderColor: '#64b5f6',
+                        color: '#64b5f6',
+                        backdropFilter: 'blur(10px)',
+                        background: alpha('#0d1b2a', 0.3),
                         '&:hover': {
                           borderWidth: 2,
-                          borderColor: '#1976D2',
-                          background: alpha('#2196F3', 0.05),
+                          borderColor: '#42a5f5',
+                          background: alpha('#64b5f6', 0.1),
                           transform: 'translateY(-2px)'
                         },
                         transition: 'all 0.3s ease'
@@ -617,17 +647,18 @@ export default function ConfiguratorPage() {
                         sx={{
                           p: 3,
                           textAlign: 'center',
-                          background: alpha('#ffffff', 0.8),
-                          backdropFilter: 'blur(10px)',
+                          background: alpha('#0d1b2a', 0.6),
+                          backdropFilter: 'blur(15px)',
                           borderRadius: 3,
-                          border: `1px solid ${alpha('#2196F3', 0.1)}`
+                          border: `1px solid ${alpha('#64b5f6', 0.2)}`,
+                          boxShadow: `0 8px 32px ${alpha('#000', 0.2)}`
                         }}
                       >
-                        <stat.icon sx={{ fontSize: 32, color: '#2196F3', mb: 1 }} />
-                        <Typography variant="h4" sx={{ fontWeight: 700, color: '#2196F3' }}>
+                        <stat.icon sx={{ fontSize: 32, color: '#64b5f6', mb: 1 }} />
+                        <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
                           <AnimatedCounter value={stat.value} />{stat.suffix || ''}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{ color: 'white' }}>
                           {stat.label}
                         </Typography>
                       </Paper>
@@ -650,7 +681,8 @@ export default function ConfiguratorPage() {
                 textAlign: 'center',
                 mb: 6,
                 fontWeight: 700,
-                color: 'text.primary'
+                color: '#e3f2fd',
+                textShadow: '0 2px 8px rgba(0,0,0,0.5)'
               }}
             >
               Choose Your AI Agent
@@ -670,18 +702,20 @@ export default function ConfiguratorPage() {
                       onMouseLeave={() => setHoveredCard(null)}
                       sx={{ 
                         height: 320,
-                        background: alpha('#ffffff', 0.9),
+                        background: alpha('#0d1b2a', 0.8),
                         backdropFilter: 'blur(20px)',
                         borderRadius: 4,
-                        border: `2px solid ${alpha(agent.color, 0.1)}`,
+                        border: `2px solid ${alpha(agent.color, 0.3)}`,
                         position: 'relative',
                         overflow: 'hidden',
                         cursor: 'pointer',
                         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: `0 8px 32px ${alpha('#000', 0.3)}`,
                         '&:hover': {
                           transform: 'translateY(-12px) scale(1.02)',
-                          boxShadow: `0 25px 50px ${alpha(agent.color, 0.25)}`,
+                          boxShadow: `0 25px 50px ${alpha(agent.color, 0.4)}`,
                           border: `2px solid ${agent.color}`,
+                          background: alpha('#1b263b', 0.9),
                           '&::before': {
                             opacity: 1
                           }
@@ -694,7 +728,7 @@ export default function ConfiguratorPage() {
                           right: 0,
                           height: 4,
                           background: agent.gradient,
-                          opacity: 0.7,
+                          opacity: 0.8,
                           transition: 'opacity 0.3s ease'
                         }
                       }}
@@ -743,7 +777,7 @@ export default function ConfiguratorPage() {
                               sx={{ 
                                 mb: 1,
                                 fontWeight: 700,
-                                color: 'text.primary'
+                                color: '#e3f2fd'
                               }}
                             >
                               {agent.title}
@@ -765,10 +799,11 @@ export default function ConfiguratorPage() {
                             
                             <Typography 
                               variant="body2" 
-                              color="text.secondary"
                               sx={{ 
                                 mb: 3,
-                                lineHeight: 1.6
+                                lineHeight: 1.6,
+                                color: '#b3e5fc',
+                                opacity: 0.9
                               }}
                             >
                               {agent.description}
@@ -805,7 +840,7 @@ export default function ConfiguratorPage() {
         onClose={() => {
           setUploadDialogOpen(false);
           setUploadStep('select');
-          setUploadedFiles([]);
+          setSelectedFiles([]);
           setUploadProgress(0);
           setDragActive(false);
         }}
@@ -815,9 +850,9 @@ export default function ConfiguratorPage() {
           sx: {
             borderRadius: 4,
             backdropFilter: 'blur(20px)',
-            background: 'rgba(255, 255, 255, 0.95)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            background: alpha('#0d1b2a', 0.95),
+            border: `1px solid ${alpha('#64b5f6', 0.2)}`,
+            boxShadow: `0 20px 40px ${alpha('#000', 0.3)}`,
             overflow: 'visible'
           }
         }}
@@ -865,7 +900,7 @@ export default function ConfiguratorPage() {
         <DialogContent sx={{ p: 0, minHeight: 600, overflow: 'visible' }}>
           {uploadStep === 'select' && (
             <Fade in timeout={400}>
-              <Box sx={{ p: 6, background: 'linear-gradient(135deg, #fafafa 0%, #f5f7fa 100%)', position: 'relative' }}>
+              <Box sx={{ p: 6, background: `linear-gradient(135deg, ${alpha('#0d1b2a', 0.9)} 0%, ${alpha('#1b263b', 0.85)} 100%)`, position: 'relative' }}>
                 {/* Background Pattern */}
                 <Box
                   sx={{
@@ -886,7 +921,7 @@ export default function ConfiguratorPage() {
                     textAlign: 'center', 
                     fontSize: '1.1rem',
                     fontWeight: 600,
-                    color: 'text.primary',
+                    color: '#e3f2fd',
                     position: 'relative',
                     zIndex: 1
                   }}
@@ -896,8 +931,7 @@ export default function ConfiguratorPage() {
                 
                 <Typography 
                   variant="body1" 
-                  color="text.secondary" 
-                  sx={{ mb: 6, textAlign: 'center', fontSize: '0.95rem', position: 'relative', zIndex: 1 }}
+                  sx={{ mb: 6, textAlign: 'center', fontSize: '0.95rem', position: 'relative', zIndex: 1, color: '#b3e5fc', opacity: 0.9 }}
                 >
                   Upload your documents to expand the AI&apos;s understanding and capabilities
                 </Typography>
@@ -982,27 +1016,27 @@ export default function ConfiguratorPage() {
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     sx={{
-                      p: 8,
-                      borderRadius: '24px',
+                      p: -10,
+                      borderRadius: '34px',
                       textAlign: 'center',
                       cursor: 'pointer',
                       position: 'relative',
                       overflow: 'hidden',
                       background: dragActive 
-                        ? `linear-gradient(135deg, ${alpha('#ffffff', 0.95)}, ${alpha('#ffffff', 0.8)})`
-                        : `linear-gradient(135deg, #ffffff, ${alpha('#ffffff', 0.9)})`,
+                        ? `linear-gradient(135deg, ${alpha('#1b263b', 0.95)}, ${alpha('#2d4f73', 0.8)})`
+                        : `linear-gradient(135deg, ${alpha('#1b263b', 0.9)}, ${alpha('#0d1b2a', 0.95)})`,
                       border: dragActive 
-                        ? `3px solid ${selectedAgent?.color}` 
-                        : `2px dashed ${alpha(selectedAgent?.color || '#ccc', 0.3)}`,
+                        ? `2px solid ${selectedAgent?.color}` 
+                        : `1px solid ${alpha('#64b5f6', 0.2)}`,
                       boxShadow: dragActive 
-                        ? `0 25px 50px ${alpha(selectedAgent?.color || '#ccc', 0.15)}, 0 0 0 1px ${alpha('#fff', 0.1)} inset`
-                        : `0 8px 32px ${alpha('#000', 0.04)}, 0 0 0 1px ${alpha('#fff', 0.05)} inset`,
+                        ? `0 35px 50px ${alpha(selectedAgent?.color || '#ccc', 0.15)}, 0 0 0 1px ${alpha('#1b263b', 0.2)} inset`
+                        : `0 8px 32px ${alpha('#000', 0.2)}, 0 0 0 1px ${alpha('#1b263b', 0.1)} inset`,
                       transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                       transform: dragActive ? 'scale(1.02) translateY(-4px)' : 'scale(1)',
                       '&:hover': {
                         transform: 'translateY(-8px) scale(1.01)',
-                        boxShadow: `0 32px 64px ${alpha(selectedAgent?.color || '#000', 0.12)}, 0 0 0 1px ${alpha(selectedAgent?.color || '#fff', 0.1)} inset`,
-                        border: `2px dashed ${selectedAgent?.color}`,
+                        boxShadow: `0 32px 64px ${alpha(selectedAgent?.color || '#000', 0.12)}, 0 0 0 1px ${alpha(selectedAgent?.color || '#64b5f6', 0.2)} inset`,
+                        border: `2px solid ${selectedAgent?.color}`,
                         '& .upload-icon': {
                           transform: 'scale(1.15) rotate(5deg)'
                         },
@@ -1055,7 +1089,7 @@ export default function ConfiguratorPage() {
                           alignItems: 'center',
                           justifyContent: 'center',
                           mb: 4,
-                          boxShadow: `0 16px 32px ${alpha(selectedAgent?.color || '#2196F3', 0.25)}, 0 0 0 4px ${alpha('#fff', 0.8)} inset`,
+                          boxShadow: `0 16px 32px ${alpha(selectedAgent?.color || '#2196F3', 0.25)}, 0 0 0 4px ${alpha('#64b5f6', 0.3)} inset`,
                           transform: dragActive ? 'scale(1.1) rotate(10deg)' : 'scale(1)',
                           transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                           '&::before': {
@@ -1083,7 +1117,7 @@ export default function ConfiguratorPage() {
                         variant="h5" 
                         sx={{ 
                           mb: 2, 
-                          color: 'text.primary', 
+                          color: '#e3f2fd', 
                           fontWeight: 700,
                           fontSize: '1.5rem',
                           transition: 'color 0.3s ease'
@@ -1159,13 +1193,13 @@ export default function ConfiguratorPage() {
 
           {uploadStep === 'preview' && (
             <Slide in direction="left" timeout={400}>
-              <Box sx={{ p: 6, background: 'linear-gradient(135deg, #fafafa 0%, #f5f7fa 100%)' }}>
-                <Typography variant="h6" sx={{ mb: 4, color: 'text.primary', fontWeight: 700, textAlign: 'center' }}>
+              <Box sx={{ p: 6, background: `linear-gradient(135deg, ${alpha('#0d1b2a', 0.9)} 0%, ${alpha('#1b263b', 0.85)} 100%)` }}>
+                <Typography variant="h6" sx={{ mb: 4, color: '#e3f2fd', fontWeight: 700, textAlign: 'center' }}>
                   Review Selected Files
                 </Typography>
                 
                 <Box>
-                  <Typography variant="h6" sx={{ mb: 3, color: 'text.primary', fontWeight: 600 }}>
+                  <Typography variant="h6" sx={{ mb: 3, color: '#e3f2fd', fontWeight: 600 }}>
                     Selected Files ({selectedFiles.length})
                   </Typography>
                     
@@ -1178,7 +1212,8 @@ export default function ConfiguratorPage() {
                               borderRadius: 4,
                               overflow: 'hidden',
                               border: `2px solid ${alpha(selectedAgent?.color || '#ccc', 0.1)}`,
-                              background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
+                              background: `linear-gradient(135deg, ${alpha('#1b263b', 0.8)} 0%, ${alpha('#2d4f73', 0.6)} 100%)`,
+                            backdropFilter: 'blur(10px)',
                               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                               '&:hover': {
                                 transform: 'translateY(-4px) scale(1.02)',
@@ -1222,12 +1257,13 @@ export default function ConfiguratorPage() {
                                       mb: 0.5,
                                       overflow: 'hidden',
                                       textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap'
+                                      whiteSpace: 'nowrap',
+                                      color: '#e3f2fd'
                                     }}
                                   >
                                     {file.name}
                                   </Typography>
-                                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 500, color: '#b3e5fc', opacity: 0.8 }}>
                                     {(file.size / 1024 / 1024).toFixed(2)} MB
                                   </Typography>
                                 </Box>
@@ -1356,7 +1392,7 @@ export default function ConfiguratorPage() {
                   <BrainIcon sx={{ fontSize: 48, color: 'white' }} />
                 </Box>
                 
-                <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+                <Typography variant="h5" sx={{ mb: 2, fontWeight: 600, color: '#e3f2fd' }}>
                   Processing Documents
                 </Typography>
                 
@@ -1378,7 +1414,7 @@ export default function ConfiguratorPage() {
                       }
                     }} 
                   />
-                  <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                  <Typography variant="body2" sx={{ mt: 1, color: '#b3e5fc' }}>
                     {Math.round(uploadProgress)}% Complete
                   </Typography>
                 </Box>
@@ -1392,7 +1428,7 @@ export default function ConfiguratorPage() {
                       color={uploadProgress > index * 25 ? 'primary' : 'default'}
                       sx={{
                         background: uploadProgress > index * 25 ? selectedAgent?.color : 'transparent',
-                        color: uploadProgress > index * 25 ? 'white' : 'text.secondary'
+                        color: uploadProgress > index * 25 ? 'white' : '#b3e5fc'
                       }}
                     />
                   ))}
@@ -1430,7 +1466,7 @@ export default function ConfiguratorPage() {
                   Success!
                 </Typography>
                 
-                <Typography variant="h6" sx={{ mb: 1 }}>
+                <Typography variant="h6" sx={{ mb: 1, color: '#e3f2fd' }}>
                   Documents Successfully Embedded
                 </Typography>
                 
@@ -1458,7 +1494,7 @@ export default function ConfiguratorPage() {
         </DialogContent>
         
         {(uploadStep === 'preview') && (
-          <DialogActions sx={{ p: 3, pt: 0, background: alpha('#f5f5f5', 0.5), justifyContent: 'space-between' }}>
+          <DialogActions sx={{ p: 3, pt: 0, background: alpha('#0d1b2a', 0.8), justifyContent: 'space-between' }}>
             <Button 
               onClick={() => setUploadDialogOpen(false)}
               size="large"
@@ -1521,10 +1557,11 @@ export default function ConfiguratorPage() {
         PaperProps={{
           sx: {
             borderRadius: 4,
-            background: alpha('#ffffff', 0.95),
+            background: alpha('#0d1b2a', 0.95),
             backdropFilter: 'blur(20px)',
-            boxShadow: `0 25px 50px ${alpha('#000', 0.1)}`,
-            minHeight: '60vh'
+            boxShadow: `0 25px 50px ${alpha('#000', 0.3)}`,
+            minHeight: '60vh',
+            border: `1px solid ${alpha('#64b5f6', 0.2)}`
           }
         }}
       >
@@ -1533,7 +1570,7 @@ export default function ConfiguratorPage() {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between',
-            background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 50%, #9C27B0 100%)',
+            background: 'linear-gradient(135deg, #42a5f5 0%, #64b5f6 50%, #ba68c8 100%)',
             color: 'white',
             py: 3
           }}
@@ -1587,7 +1624,7 @@ export default function ConfiguratorPage() {
                   }
                 }} 
               />
-              <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
+              <Typography variant="body1" sx={{ mt: 2, color: '#b3e5fc' }}>
                 Loading brain collections...
               </Typography>
             </Box>
@@ -1664,7 +1701,8 @@ export default function ConfiguratorPage() {
                         p: 3,
                         borderRadius: 3,
                         border: `2px solid ${alpha(getAgentTypeColor(collection.name), 0.2)}`,
-                        background: alpha(getAgentTypeColor(collection.name), 0.02),
+                        background: alpha('#0d1b2a', 0.6),
+                        backdropFilter: 'blur(10px)',
                         position: 'relative',
                         transition: 'all 0.3s ease',
                         '&:hover': {
@@ -1699,7 +1737,7 @@ export default function ConfiguratorPage() {
                             size="small"
                             onClick={() => handleDeleteCollection(collection.name)}
                             sx={{ 
-                              color: 'text.secondary',
+                              color: '#b3e5fc',
                               '&:hover': {
                                 color: '#d32f2f',
                                 background: alpha('#d32f2f', 0.1)
@@ -1713,12 +1751,12 @@ export default function ConfiguratorPage() {
                       
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <DocumentIcon sx={{ mr: 1, color: getAgentTypeColor(collection.name) }} />
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#e3f2fd' }}>
                           {collection.document_count}
                         </Typography>
                       </Box>
                       
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body1" sx={{ mb: 4, color: '#b3e5fc', opacity: 0.9 }}>
                         Documents embedded in knowledge base
                       </Typography>
                     </Paper>
@@ -1729,11 +1767,20 @@ export default function ConfiguratorPage() {
           )}
         </DialogContent>
         
-        <DialogActions sx={{ p: 3, pt: 0 }}>
+        <DialogActions sx={{ p: 3, pt: 0, background: alpha('#0d1b2a', 0.9) }}>
           <Button 
             onClick={() => setBrainDialog(false)}
             size="large"
-            sx={{ px: 4 }}
+            sx={{ 
+              px: 4,
+              color: '#64b5f6',
+              borderColor: '#64b5f6',
+              background: alpha('#0d1b2a', 0.3),
+              '&:hover': {
+                background: alpha('#64b5f6', 0.1),
+                borderColor: '#42a5f5'
+              }
+            }}
           >
             Close
           </Button>
@@ -1749,7 +1796,19 @@ export default function ConfiguratorPage() {
         <Alert 
           onClose={() => setSnackbar({ ...snackbar, open: false })} 
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ 
+            width: '100%',
+            background: alpha('#0d1b2a', 0.95),
+            color: '#e3f2fd',
+            border: `1px solid ${alpha('#64b5f6', 0.3)}`,
+            backdropFilter: 'blur(10px)',
+            '& .MuiAlert-icon': {
+              color: '#64b5f6'
+            },
+            '& .MuiAlert-action': {
+              color: '#64b5f6'
+            }
+          }}
         >
           {snackbar.message}
         </Alert>

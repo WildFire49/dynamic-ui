@@ -39,6 +39,7 @@ export default function HomePage() {
   const [pendingMessage, setPendingMessage] = useState('');
   const [eventPollingInterval, setEventPollingInterval] = useState(null);
   const [conversationId, setConversationId] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState('vaishakh_configurator3');
   const [inputValue, setInputValue] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({ title: '', message: '' });
@@ -58,12 +59,35 @@ export default function HomePage() {
   const [pdfPopupOpen, setPdfPopupOpen] = useState(false);
   const [pdfPopupData, setPdfPopupData] = useState(null);
 
+  // New Chat handler - increments user ID and resets conversation
+  const handleNewChat = useCallback(() => {
+    // Extract current number from user ID and increment
+    const currentMatch = currentUserId.match(/(\d+)$/);
+    const currentNumber = currentMatch ? parseInt(currentMatch[1], 10) : 3;
+    const newUserId = currentUserId.replace(/(\d+)$/, (currentNumber + 1).toString());
+    
+    // Reset conversation state
+    setCurrentUserId(newUserId);
+    setConversationId(null);
+    setChatHistory([]);
+    setUploadedDocuments([]);
+    setCurrentResponseData(null);
+    setSessionId(null);
+    
+    console.log(`🔄 New chat started with user_id: ${newUserId}`);
+  }, [currentUserId]);
+
   const handleApiResponse = useCallback((data) => {
     console.log('API Response:', data);
     setIsTyping(false);
 
     if (data.conversation_id) {
       setConversationId(data.conversation_id);
+    }
+    
+    // Handle the response data structure for analysis results
+    if (data.response && data.response.conversation_id) {
+      setConversationId(data.response.conversation_id);
     }
 
     let botMessage = null;
@@ -387,9 +411,9 @@ export default function HomePage() {
         form_data: data,
       };
       requestBody = {
-        user_id: 'vaishakh_workflow1',
+        user_id: currentUserId,
         message: `continue ${JSON.stringify(details)}`,
-        conversation_id: conversationId,
+        ...(conversationId && { conversation_id: conversationId })
       };
       console.log('Sending form submission request:', requestBody);
 
@@ -402,15 +426,15 @@ export default function HomePage() {
         form_data: data,
       };
       requestBody = {
-        user_id: 'vaishakh_workflow1',
+        user_id: currentUserId,
         message: `continue ${JSON.stringify(details)}`,
-        conversation_id: conversationId,
+        ...(conversationId && { conversation_id: conversationId })
       };
       console.log('Sending navigation request:', requestBody);
     }
     
     await callChatApi(requestBody);
-  }, [currentResponseData, callChatApi, conversationId, sessionId]);
+  }, [currentResponseData, callChatApi, conversationId, currentUserId, sessionId]);
 
   // File upload handler
   const handleFileUpload = useCallback(async (file) => {
@@ -456,8 +480,7 @@ export default function HomePage() {
       setIsLoading(false);
     }
   }, [CONNECTION_ID]);
-  
-  // Check if message is an analysis question
+
   const isAnalysisQuestion = useCallback((message) => {
     const analysisKeywords = [
       'analyze', 'analysis', 'distribution', 'show me', 'visualize', 'chart', 'graph',
@@ -471,8 +494,7 @@ export default function HomePage() {
       message.toLowerCase().includes(keyword.toLowerCase())
     );
   }, []);
-  
-  // Handle data analysis
+
   const handleDataAnalysis = useCallback(async (question) => {
     const latestDocument = uploadedDocuments.length > 0 ? uploadedDocuments[uploadedDocuments.length - 1] : null;
     
@@ -481,17 +503,21 @@ export default function HomePage() {
       setIsTyping(true);
       
       // Always use chat endpoint for consistency
+      const requestPayload = {
+        user_id: currentUserId,
+        message: question,
+        ...(conversationId && { conversation_id: conversationId }),
+        ...(latestDocument && { document_key: latestDocument.document_key })
+      };
+      
+      console.log('🔍 [DEBUG] Sending request payload:', requestPayload);
+      
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          user_id: "vaishakh_configurator3",
-          message: question,
-          conversation_id: CONNECTION_ID,
-          ...(latestDocument && { document_key: latestDocument.document_key })
-        }),
+        body: JSON.stringify(requestPayload),
       });
         
         if (!response.ok) {
@@ -500,6 +526,12 @@ export default function HomePage() {
         
         const analysisResult = await response.json();
         console.log('🔍 [DEBUG] Chat API Result:', analysisResult);
+      
+      // Extract and store conversation_id if present
+      if (analysisResult.conversation_id) {
+        setConversationId(analysisResult.conversation_id);
+        console.log('🔍 [DEBUG] Updated conversation_id:', analysisResult.conversation_id);
+      }
       
       // Add analysis result to chat - pass the full API response
       const analysisMessage = {
@@ -524,7 +556,7 @@ export default function HomePage() {
       setIsAnalyzing(false);
       setIsTyping(false);
     }
-  }, [uploadedDocuments, CONNECTION_ID]);
+  }, [uploadedDocuments, conversationId, currentUserId]);
 
   const handleSendMessage = useCallback(async (messageText = null, audioFileUrl = null, audioKey = null) => {
     const finalMessageText = String(messageText || inputValue || '');
@@ -546,8 +578,9 @@ export default function HomePage() {
     setInputValue('');
 
     const requestBody = {
-      user_id: 'vaishakh_workflow1',
+      user_id: currentUserId,
       message: finalMessageText,
+      ...(conversationId && { conversation_id: conversationId })
     };
 
     // Add audio key if provided (instead of audio file)
@@ -555,8 +588,9 @@ export default function HomePage() {
       requestBody.key = audioKey;
     }
 
+    console.log('🔍 [DEBUG] Regular message payload:', requestBody);
     await callChatApi(requestBody);
-  }, [inputValue, callChatApi, isAnalysisQuestion, handleDataAnalysis]);
+  }, [inputValue, callChatApi, isAnalysisQuestion, handleDataAnalysis, conversationId, currentUserId]);
 
   const startRecording = useCallback(async (event) => {
     try {
@@ -632,7 +666,7 @@ export default function HomePage() {
     } catch (error) {
       console.error('Error starting recording:', error);
     }
-  }, []);
+  }, [recordingTime, handleSendMessage]);
 
   // PDF Popup handlers
   const handleClosePdfPopup = useCallback(() => {
@@ -878,6 +912,7 @@ export default function HomePage() {
             <Button
               variant="outlined"
               startIcon={<AddIcon />}
+              onClick={handleNewChat}
               sx={{ 
                 borderRadius: 2,
                 textTransform: 'none',
