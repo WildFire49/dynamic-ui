@@ -140,14 +140,22 @@ const DataAnalysisDashboard = () => {
     setError(null);
     
     try {
-      const response = await dataAnalysisApi.analyzeData(
-        connectionId,
-        selectedDocument.document_key,
-        analysisQuestion,
-        analysisContext
-      );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: "vaishakh_dashboard",
+          message: analysisQuestion,
+          conversation_id: connectionId,
+          document_key: selectedDocument.document_key
+        }),
+      });
+
+      const result = await response.json();
       
-      setAnalysisResult(response);
+      setAnalysisResult(result);
       setSuccess('Analysis completed successfully!');
       
     } catch (err) {

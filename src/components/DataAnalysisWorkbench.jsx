@@ -208,20 +208,22 @@ const DataAnalysisWorkbench = () => {
     setError('');
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis/analyze/${connectionId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          document_key: uploadResult.document_key,
-          question: query.trim()
+          user_id: "vaishakh_workbench",
+          message: query.trim(),
+          conversation_id: connectionId,
+          document_key: uploadResult.document_key
         }),
       });
 
       const result = await response.json();
       
-      if (result.success) {
+      if (response.ok) {
         setAnalysisResult(result);
         setSnackbar({
           open: true,

@@ -480,39 +480,26 @@ export default function HomePage() {
       setIsAnalyzing(true);
       setIsTyping(true);
       
-      // If document is available, use data analysis API, otherwise use chat endpoint
-      let analysisResult;
-      if (latestDocument) {
-        analysisResult = await dataAnalysisApi.analyzeData(
-          CONNECTION_ID,
-          latestDocument.document_key,
-          question,
-          'Analysis via chat interface'
-        );
-      } else {
-        // Use chat endpoint when no document is available (via Next.js API route to avoid CORS)
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user_id: "vaishakh_configurator3",
-            message: question,
-            conversation_id: CONNECTION_ID
-          }),
-        });
+      // Always use chat endpoint for consistency
+      const response = await fetch(`${API_BASE_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: "vaishakh_configurator3",
+          message: question,
+          conversation_id: CONNECTION_ID,
+          ...(latestDocument && { document_key: latestDocument.document_key })
+        }),
+      });
         
         if (!response.ok) {
           throw new Error(`Chat API error: ${response.status}`);
         }
         
-        const chatResult = await response.json();
-        console.log('🔍 [DEBUG] Chat API Result:', chatResult);
-        
-        // Pass through the original API response structure
-        analysisResult = chatResult;
-      }
+        const analysisResult = await response.json();
+        console.log('🔍 [DEBUG] Chat API Result:', analysisResult);
       
       // Add analysis result to chat - pass the full API response
       const analysisMessage = {
