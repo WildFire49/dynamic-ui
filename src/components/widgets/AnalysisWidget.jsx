@@ -514,12 +514,27 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         const summary = item.summary;
         const chartData = [];
         
-        if (summary.full_matches) chartData.push({ name: 'Matches', value: summary.full_matches, color: '#10b981' });
-        if (summary.mismatches) chartData.push({ name: 'Mismatches', value: summary.mismatches, color: '#f59e0b' });
-        if (summary.missing_in_xmm) chartData.push({ name: 'Missing XMM', value: summary.missing_in_xmm, color: '#ef4444' });
-        if (summary.missing_in_ktp) chartData.push({ name: 'Missing KTP', value: summary.missing_in_ktp, color: '#8b5cf6' });
-        if (summary.missing_in_sam) chartData.push({ name: 'Missing SAM', value: summary.missing_in_sam, color: '#06b6d4' });
-        if (summary.data_breaks) chartData.push({ name: 'Data Breaks', value: summary.data_breaks, color: '#f97316' });
+        // Handle new API format
+        if (summary.total_matches !== undefined) {
+          if (summary.total_matches) chartData.push({ name: 'Total Matches', value: summary.total_matches, color: '#10b981' });
+          if (summary.total_mismatches) chartData.push({ name: 'Total Mismatches', value: summary.total_mismatches, color: '#f59e0b' });
+          if (summary.reference_matches) chartData.push({ name: 'Reference Matches', value: summary.reference_matches, color: '#22c55e' });
+          if (summary.detailed_field_matches) chartData.push({ name: 'Field Matches', value: summary.detailed_field_matches, color: '#16a34a' });
+          
+          // Specific mismatch types
+          if (summary.message_type_mismatches) chartData.push({ name: 'Message Type Mismatches', value: summary.message_type_mismatches, color: '#ef4444' });
+          if (summary.amount_mismatches) chartData.push({ name: 'Amount Mismatches', value: summary.amount_mismatches, color: '#dc2626' });
+          if (summary.bic_mismatches) chartData.push({ name: 'BIC Mismatches', value: summary.bic_mismatches, color: '#b91c1c' });
+        }
+        // Handle legacy API format
+        else {
+          if (summary.full_matches) chartData.push({ name: 'Matches', value: summary.full_matches, color: '#10b981' });
+          if (summary.mismatches) chartData.push({ name: 'Mismatches', value: summary.mismatches, color: '#f59e0b' });
+          if (summary.missing_in_xmm) chartData.push({ name: 'Missing XMM', value: summary.missing_in_xmm, color: '#ef4444' });
+          if (summary.missing_in_ktp) chartData.push({ name: 'Missing KTP', value: summary.missing_in_ktp, color: '#8b5cf6' });
+          if (summary.missing_in_sam) chartData.push({ name: 'Missing SAM', value: summary.missing_in_sam, color: '#06b6d4' });
+          if (summary.data_breaks) chartData.push({ name: 'Data Breaks', value: summary.data_breaks, color: '#f97316' });
+        }
         
         if (chartData.length > 0) {
           charts.push({
@@ -539,24 +554,44 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     let totalMismatches = 0;
     let totalMissingRecords = 0;
     let totalDataBreaks = 0;
-    let individualRecordCounts = null;
+    let individualRecordCounts = { ktp: 0, xmm: 0, sam: 0 };
 
     Object.keys(result).forEach(key => {
       const item = result[key];
       if (item.summary) {
-        // Check for individual record counts first
-        if (item.summary.total_ktp_records || item.summary.total_xmm_records || item.summary.total_sam_records) {
+        // Handle new API format
+        if (item.summary.total_matches !== undefined) {
+          totalMatches += item.summary.total_matches || 0;
+          totalMismatches += item.summary.total_mismatches || 0;
+          
+          // Calculate specific mismatch types
+          totalMismatches += (item.summary.message_type_mismatches || 0);
+          totalMismatches += (item.summary.amount_mismatches || 0);
+          totalMismatches += (item.summary.bic_mismatches || 0);
+          
+          // Individual record counts
           individualRecordCounts = {
             ktp: item.summary.total_ktp_records || 0,
             xmm: item.summary.total_xmm_records || 0,
             sam: item.summary.total_sam_records || 0
           };
+        } 
+        // Handle legacy API format
+        else {
+          // Check for individual record counts first
+          if (item.summary.total_ktp_records || item.summary.total_xmm_records || item.summary.total_sam_records) {
+            individualRecordCounts = {
+              ktp: item.summary.total_ktp_records || 0,
+              xmm: item.summary.total_xmm_records || 0,
+              sam: item.summary.total_sam_records || 0
+            };
+          }
+          
+          totalMatches += item.summary.full_matches || 0;
+          totalMismatches += item.summary.mismatches || 0;
+          totalMissingRecords += (item.summary.missing_in_xmm || 0) + (item.summary.missing_in_ktp || 0) + (item.summary.missing_in_sam || 0);
+          totalDataBreaks += item.summary.data_breaks || 0;
         }
-        
-        totalMatches += item.summary.full_matches || 0;
-        totalMismatches += item.summary.mismatches || 0;
-        totalMissingRecords += (item.summary.missing_in_xmm || 0) + (item.summary.missing_in_ktp || 0) + (item.summary.missing_in_sam || 0);
-        totalDataBreaks += item.summary.data_breaks || 0;
       }
     });
 
@@ -624,10 +659,10 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
       const item = result[key];
       const formattedName = formatPairName(key);
       
-      // Add fully matched records table FIRST
+      // Add fully matched references table FIRST
       if (item.fully_matched_references && Array.isArray(item.fully_matched_references) && item.fully_matched_references.length > 0) {
         tables.push({
-          title: `${formattedName} - Fully Matched Records (${item.fully_matched_references.length} total)`,
+          title: `${formattedName} - Fully Matched References (${item.fully_matched_references.length} total)`,
           data: item.fully_matched_references.map(record => {
             const flatRecord = { 
               sender_ref: record.sender_ref || record.key_ref || 'N/A',
@@ -666,8 +701,16 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
           })
         });
       }
+
+      // Add fully matched records (detailed) table SECOND
+      if (item.fully_matched_records && Array.isArray(item.fully_matched_records) && item.fully_matched_records.length > 0) {
+        tables.push({
+          title: `${formattedName} - Fully Matched Records Details (${item.fully_matched_records.length} records)`,
+          data: item.fully_matched_records
+        });
+      }
       
-      // Add mismatched records table
+      // Add mismatched records table (legacy format)
       if (item.mismatched_records && Array.isArray(item.mismatched_records) && item.mismatched_records.length > 0) {
         const mismatchedTableData = [];
         
@@ -701,6 +744,35 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
           });
         }
       }
+
+      // Add new format mismatched records tables
+      // Message Type Mismatches
+      if (item.mismatched_message_type_but_same_ref && Array.isArray(item.mismatched_message_type_but_same_ref) && item.mismatched_message_type_but_same_ref.length > 0) {
+        tables.push({
+          title: `${formattedName} - Message Type Mismatches (${item.mismatched_message_type_but_same_ref.length} records)`,
+          data: item.mismatched_message_type_but_same_ref,
+          type: 'mismatched_records'
+        });
+      }
+
+      // Amount Mismatches
+      if (item.mismatched_amount_but_same_ref && Array.isArray(item.mismatched_amount_but_same_ref) && item.mismatched_amount_but_same_ref.length > 0) {
+        tables.push({
+          title: `${formattedName} - Amount Mismatches (${item.mismatched_amount_but_same_ref.length} records)`,
+          data: item.mismatched_amount_but_same_ref,
+          type: 'mismatched_records'
+        });
+      }
+
+      // BIC Mismatches
+      if (item.mismatched_bic_but_same_ref && Array.isArray(item.mismatched_bic_but_same_ref) && item.mismatched_bic_but_same_ref.length > 0) {
+        tables.push({
+          title: `${formattedName} - BIC Mismatches (${item.mismatched_bic_but_same_ref.length} records)`,
+          data: item.mismatched_bic_but_same_ref,
+          type: 'mismatched_records'
+        });
+      }
+
       
       // Add missing records table  
       const missingRecords = [];
