@@ -690,10 +690,8 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
 
   // Dynamic analysis of API response - now helper functions are defined
   const computedAnalysis = useMemo(() => {
-    // console.log('🔍 [DEBUG] AnalysisWidget received data:', JSON.stringify(data, null, 2));
     
     if (!data) {
-      // console.log('🔍 [DEBUG] No data provided to AnalysisWidget');
       return null;
     }
 
@@ -703,10 +701,6 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     const analysisText = data.response?.analysis_result?.analysis || data.analysis_result?.analysis || data.analysis;
     
     if (supportingData && Array.isArray(supportingData) && supportingData.length > 0) {
-      console.log('🔍 [DEBUG] Processing supporting_data structure');
-      console.log('🔍 [DEBUG] Supporting data length:', supportingData.length);
-      console.log('🔍 [DEBUG] Sample data:', supportingData[0]);
-      console.log('🔍 [DEBUG] Analysis text present:', !!analysisText);
       // Remove question marks and clean up the title
       const cleanTitle = question.replace(/\?+$/, '').trim();
       
@@ -724,17 +718,12 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
 
     // Handle reconciliation data structure (secondary use case)
     const result = data.result || data.response?.result;
-    // console.log('🔍 [DEBUG] Checking reconciliation result:', result);
     
     if (result && typeof result === 'object') {
-      // console.log('🔍 [DEBUG] Processing reconciliation data structure');
       const charts = generateReconciliationCharts(result);
       const stats = generateReconciliationStats(result);
       const tables = generateReconciliationTables(result);
       
-      // console.log('🔍 [DEBUG] Generated charts:', charts.length);
-      // console.log('🔍 [DEBUG] Generated stats:', stats.length);
-      // console.log('🔍 [DEBUG] Generated tables:', tables.length);
       
       return {
         type: 'reconciliation',
@@ -746,9 +735,8 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
       };
     }
 
-    console.log('🔍 [DEBUG] No matching data structure found');
     return null;
-  }, [data, theme]);
+  }, [data, theme]); // Keep simple dependencies to avoid performance issues
 
   // Use provided analysis prop or computed analysis
   const finalAnalysis = analysis || computedAnalysis;

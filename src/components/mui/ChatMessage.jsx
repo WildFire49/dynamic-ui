@@ -191,11 +191,31 @@ const ChatMessage = ({ message, index, onAction }) => {
   const isError = message.isError;
 
   // Use a stable key based on message content and index to prevent bouncing
-  const messageKey = message.type === 'schema' 
-    ? `schema-${message.content.id}-${index}` 
-    : message.type === 'table'
-    ? `table-${index}-${message.content.data?.length || 0}`
-    : `message-${index}`;
+  const generateMessageKey = () => {
+    if (message.type === 'schema') {
+      return `schema-${message.content.id}-${index}`;
+    }
+    if (message.type === 'table') {
+      return `table-${index}-${message.content.data?.length || 0}`;
+    }
+    
+    // For API responses with supporting_data, include question/data hash for uniqueness
+    const apiResponse = message.content?.response || message.content;
+    const analysisResult = apiResponse?.analysis_result || apiResponse;
+    
+    if (analysisResult?.supporting_data && Array.isArray(analysisResult.supporting_data)) {
+      const question = apiResponse?.question || '';
+      const dataLength = analysisResult.supporting_data.length;
+      const firstRecordHash = analysisResult.supporting_data[0] 
+        ? Object.keys(analysisResult.supporting_data[0]).join('') 
+        : '';
+      return `analysis-${index}-${question.replace(/[^a-zA-Z0-9]/g, '')}-${dataLength}-${firstRecordHash}`;
+    }
+    
+    return `message-${index}`;
+  };
+  
+  const messageKey = generateMessageKey();
 
   const renderMessageContent = () => {
     if (message.type === 'schema') {
@@ -458,4 +478,4 @@ const ChatMessage = ({ message, index, onAction }) => {
   );
 };
 
-export default React.memo(ChatMessage);
+export default ChatMessage;

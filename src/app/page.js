@@ -334,6 +334,14 @@ export default function HomePage() {
         setPdfPopupOpen(true);
       }
     }
+    // Handle analysis responses with supporting_data (from chat API)
+    else if (data.response?.analysis_result?.supporting_data) {
+      botMessage = {
+        type: 'data_analysis',
+        content: data, // Pass the full response including conversation_id
+        isBot: true
+      };
+    }
     // Handle simple message response
     else if (data.response?.message) {
       botMessage = { 
@@ -344,6 +352,10 @@ export default function HomePage() {
     }
 
     if (botMessage) {
+      // Ensure all bot messages have timestamps for unique keys
+      if (!botMessage.timestamp) {
+        botMessage.timestamp = new Date().toISOString();
+      }
       setChatHistory(prev => [...prev, botMessage]);
     }
   }, [activeJobIds]);
@@ -380,7 +392,13 @@ export default function HomePage() {
 
     } catch (error) {
       console.error('Error calling chat API:', error);
-      const errorMessage = { type: 'user', content: { text: `Error: ${error.message}` }, isBot: true, isError: true };
+      const errorMessage = { 
+        type: 'user', 
+        content: { text: `Error: ${error.message}` }, 
+        isBot: true, 
+        isError: true,
+        timestamp: new Date().toISOString()
+      };
       setChatHistory(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
@@ -510,7 +528,6 @@ export default function HomePage() {
         ...(latestDocument && { document_key: latestDocument.document_key })
       };
       
-      console.log('🔍 [DEBUG] Sending request payload:', requestPayload);
       
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
@@ -525,22 +542,20 @@ export default function HomePage() {
         }
         
         const analysisResult = await response.json();
-        console.log('🔍 [DEBUG] Chat API Result:', analysisResult);
       
       // Extract and store conversation_id if present
       if (analysisResult.conversation_id) {
         setConversationId(analysisResult.conversation_id);
-        console.log('🔍 [DEBUG] Updated conversation_id:', analysisResult.conversation_id);
       }
       
       // Add analysis result to chat - pass the full API response
       const analysisMessage = {
         type: 'data_analysis',
         content: analysisResult, // Pass the full API response directly
-        isBot: true
+        isBot: true,
+        timestamp: new Date().toISOString() // Add timestamp for unique keys
       };
       
-      console.log('🔍 [DEBUG] Adding analysis message to chat:', analysisMessage);
       setChatHistory(prev => [...prev, analysisMessage]);
       
     } catch (error) {
@@ -549,7 +564,8 @@ export default function HomePage() {
         type: 'user',
         content: { text: `🔍 Analysis failed: ${error.message}` },
         isBot: true,
-        isError: true
+        isError: true,
+        timestamp: new Date().toISOString()
       };
       setChatHistory(prev => [...prev, errorMessage]);
     } finally {
@@ -564,7 +580,11 @@ export default function HomePage() {
 
     // Only add chat bubble if there's text message, not for audio-only
     if (finalMessageText.trim() !== '') {
-      const userMessage = { type: 'user', content: { text: finalMessageText } };
+      const userMessage = { 
+        type: 'user', 
+        content: { text: finalMessageText },
+        timestamp: new Date().toISOString() // Add timestamp for unique keys
+      };
       setChatHistory(prev => [...prev, userMessage]);
       
       // Check if this is an analysis question
@@ -588,7 +608,6 @@ export default function HomePage() {
       requestBody.key = audioKey;
     }
 
-    console.log('🔍 [DEBUG] Regular message payload:', requestBody);
     await callChatApi(requestBody);
   }, [inputValue, callChatApi, isAnalysisQuestion, handleDataAnalysis, conversationId, currentUserId]);
 
@@ -1096,14 +1115,25 @@ export default function HomePage() {
               </Paper>
             </Box>
           ) : (
-            chatHistory.map((message, index) => (
-              <ChatMessage 
-                key={`message-${index}`}
-                message={message} 
-                index={index} 
-                onAction={handleAction}
-              />
-            ))
+            chatHistory.map((message, index) => {
+              // Generate a more unique key based on content and timestamp
+              const messageKey = message.timestamp 
+                ? `message-${message.timestamp}-${index}`
+                : message.content?.response?.question 
+                  ? `message-${message.content.response.question.replace(/[^a-zA-Z0-9]/g, '')}-${index}`
+                  : message.content?.text
+                    ? `message-${message.content.text.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '')}-${index}`
+                    : `message-${Date.now()}-${index}`;
+              
+              return (
+                <ChatMessage 
+                  key={messageKey}
+                  message={message} 
+                  index={index} 
+                  onAction={handleAction}
+                />
+              );
+            })
           )}
           {isTyping && (
             <Box 
