@@ -41,12 +41,13 @@ import {
   CalendarToday as ScheduleIcon,
   SupervisorAccount as SupervisoryIcon,
   Analytics as AnalyticsIcon,
+  RecordVoiceOver as VoiceIcon,
+  Rocket as RocketIcon,
   CloudUpload as UploadIcon,
   Storage as BrainIcon,
   Delete as DeleteIcon,
   Close as CloseIcon,
   Description as DocumentIcon,
-  Rocket as RocketIcon,
   AutoAwesome as SparkleIcon,
   Psychology as PsychologyIcon,
   PictureAsPdf as PdfIcon,
@@ -58,29 +59,9 @@ import { embeddingsApi } from '@/lib/api/embeddingsApi';
 
 const AGENT_TYPES = [
   {
-    id: 'rule_agent',
-    title: 'Rule Processor',
-    description: 'Intelligent business logic automation',
-    subtitle: 'Smart Decision Making',
-    icon: RuleIcon,
-    color: '#64b5f6',
-    gradient: 'linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%)',
-    stats: '50+ Rules'
-  },
-  {
-    id: 'scheduler',
-    title: 'Task Scheduler',
-    description: 'Automated task orchestration',
-    subtitle: 'Time Intelligence',
-    icon: ScheduleIcon,
-    color: '#81c784',
-    gradient: 'linear-gradient(135deg, #66bb6a 0%, #81c784 100%)',
-    stats: '24/7 Active'
-  },
-  {
     id: 'supervisory',
     title: 'Supervisory',
-    description: 'Automated Decision Making',
+    description: 'Automated Decision\nMaking',
     subtitle: 'Continuous Oversight',
     icon: SupervisoryIcon,
     color: '#ffb74d',
@@ -88,14 +69,54 @@ const AGENT_TYPES = [
     stats: '99.9% Uptime'
   },
   {
+    id: 'rule_agent',
+    title: 'Rule Processor',
+    description: 'Intelligent\nbusiness logic automation',
+    subtitle: 'Smart Decision Making',
+    icon: RuleIcon,
+    color: '#64b5f6',
+    gradient: 'linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%)',
+    stats: '50+ Rules'
+  },
+  {
+    id:'workflow',
+    title: 'Workflow',
+    description: 'Dynamic Workflows\nExecution',
+    subtitle: 'Process Automation',
+    icon: RocketIcon,
+    color: '#f06292',
+    gradient: 'linear-gradient(135deg, #ec407a 0%, #f06292 100%)',
+    stats: 'Dynamics 365'
+  },
+  {
     id: 'analysis_agent',
     title: 'Analytics',
-    description: 'Deep insights & Predictions',
+    description: 'Deep insights &\nPredictions',
     subtitle: 'Data Intelligence',
     icon: AnalyticsIcon,
     color: '#ba68c8',
     gradient: 'linear-gradient(135deg, #ab47bc 0%, #ba68c8 100%)',
     stats: 'Real-time'
+  },
+  {
+    id: 'scheduler',
+    title: 'Task Scheduler',
+    description: 'Automated task\norchestration',
+    subtitle: 'Time Intelligence',
+    icon: ScheduleIcon,
+    color: '#81c784',
+    gradient: 'linear-gradient(135deg, #66bb6a 0%, #81c784 100%)',
+    stats: '24/7 Active'
+  },
+  {
+    id:'voice_agent',
+    title: 'Media',
+    description: 'Processing Media &\nAudio Content',
+    subtitle: 'Speech Intelligence',
+    icon: VoiceIcon,
+    color: '#4db6ac',
+    gradient: 'linear-gradient(135deg, #26a69a 0%, #4db6ac 100%)',
+    stats: '24/7 Active'
   }
 ];
 
@@ -689,19 +710,48 @@ export default function ConfiguratorPage() {
             </Typography>
           </Fade>
           
-          <Grid container spacing={4}>
-            {AGENT_TYPES.map((agent, index) => {
-              const IconComponent = agent.icon;
-              const isHovered = hoveredCard === agent.id;
-              
-              return (
-                <Grid item xs={12} sm={6} lg={3} key={agent.id}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            px: { xs: 2, sm: 4, md: 6 }
+          }}>
+            <Grid 
+              container 
+              spacing={{ xs: 3, sm: 4, md: 5 }}
+              justifyContent="center" 
+              alignItems="stretch"
+              sx={{ 
+                maxWidth: { xs: '100%', sm: '800px', md: '1000px', lg: '1200px' },
+                width: '100%'
+              }}
+            >
+              {AGENT_TYPES.map((agent, index) => {
+                const IconComponent = agent.icon;
+                const isHovered = hoveredCard === agent.id;
+                
+                return (
+                  <Grid 
+                    item 
+                    xs={12} 
+                    sm={6} 
+                    md={4} 
+                    lg={4} 
+                    xl={4} 
+                    key={agent.id}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'center'
+                    }}
+                  >
                   <Grow in={mounted} timeout={1000 + index * 200}>
                     <Card 
                       onMouseEnter={() => setHoveredCard(agent.id)}
                       onMouseLeave={() => setHoveredCard(null)}
                       sx={{ 
-                        height: 320,
+                        width: { xs: '280px', sm: '290px', md: '300px' },
+                        height: 340,
+                        minHeight: 340,
+                        maxHeight: 340,
                         background: alpha('#0d1b2a', 0.8),
                         backdropFilter: 'blur(20px)',
                         borderRadius: 4,
@@ -827,10 +877,11 @@ export default function ConfiguratorPage() {
                       </CardActionArea>
                     </Card>
                   </Grow>
-                </Grid>
-              );
-            })}
-          </Grid>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Box>
         </Box>
       </Container>
 
