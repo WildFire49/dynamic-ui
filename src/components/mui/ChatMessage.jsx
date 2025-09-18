@@ -1,4 +1,5 @@
 "use client";
+import React from 'react';
 import {
   Box,
   Card,
@@ -362,7 +363,7 @@ const ChatMessage = ({ message, index, onAction }) => {
 
     // Handle API responses with new dynamic AnalysisWidget
     if (message.content && typeof message.content === 'object') {
-      console.log('🔍 [DEBUG] ChatMessage full content:', JSON.stringify(message.content, null, 2));
+      // console.log('🔍 [DEBUG] ChatMessage full content:', JSON.stringify(message.content, null, 2));
       
       // Check for reconciliation data structure - either nested in result or direct properties
       const result = message.content.result || message.content.response?.result;
@@ -394,13 +395,13 @@ const ChatMessage = ({ message, index, onAction }) => {
       const apiResponse = message.content.response || message.content;
       const analysisResult = apiResponse.analysis_result || apiResponse;
       
-      console.log('🔍 [DEBUG] API response:', apiResponse);
-      console.log('🔍 [DEBUG] Analysis result:', analysisResult);
-      console.log('🔍 [DEBUG] Has supporting_data:', !!analysisResult?.supporting_data);
-      console.log('🔍 [DEBUG] Supporting data length:', analysisResult?.supporting_data?.length);
+      // console.log('🔍 [DEBUG] API response:', JSON.stringify(apiResponse, null, 2));
+      // console.log('🔍 [DEBUG] Analysis result:', analysisResult);
+      // console.log('🔍 [DEBUG] Has supporting_data:', !!analysisResult?.supporting_data);
+      // console.log('🔍 [DEBUG] Supporting data length:', analysisResult?.supporting_data?.length);
       
       if (analysisResult && analysisResult.supporting_data && Array.isArray(analysisResult.supporting_data)) {
-        console.log('🔍 [DEBUG] Using AnalysisWidget for supporting_data');
+        // console.log('🔍 [DEBUG] Using AnalysisWidget for supporting_data');
         return (
           <Box sx={{ width: '100%', maxWidth: 'none' }}>
             <AnalysisWidget
@@ -412,7 +413,7 @@ const ChatMessage = ({ message, index, onAction }) => {
         );
       }
       
-      console.log('🔍 [DEBUG] No matching condition, falling through to old component');
+      // console.log('🔍 [DEBUG] No matching condition, falling through to old component');
     }
 
     // Handle voice messages
@@ -457,4 +458,4 @@ const ChatMessage = ({ message, index, onAction }) => {
   );
 };
 
-export default ChatMessage;
+export default React.memo(ChatMessage);

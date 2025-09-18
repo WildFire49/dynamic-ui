@@ -592,6 +592,19 @@ export default function HomePage() {
     await callChatApi(requestBody);
   }, [inputValue, callChatApi, isAnalysisQuestion, handleDataAnalysis, conversationId, currentUserId]);
 
+  // Optimized input handlers to prevent re-renders on every keystroke
+  const handleInputChange = useCallback((e) => {
+    setInputValue(e.target.value);
+  }, []);
+
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+      setInputValue('');
+    }
+  }, [handleSendMessage]);
+
   const startRecording = useCallback(async (event) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -816,12 +829,6 @@ export default function HomePage() {
       actionToConfirm();
     }
     handleDialogClose();
-  };
-
-  const handleKeyPress = (event) => {
-    if (event.key === 'Enter') {
-      handleSendMessage();
-    }
   };
 
   const [configuratorCallTime, setConfiguratorCallTime] = useState(null);
@@ -1202,13 +1209,8 @@ export default function HomePage() {
           <Box sx={{ flexGrow: 1 }}>
             <InputWithRecording
               inputValue={inputValue}
-              onInputChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
+              onInputChange={handleInputChange}
+              onKeyPress={handleKeyPress}
               onSendMessage={handleSendMessage}
               onStartRecording={startRecording}
               onStopRecording={stopRecording}

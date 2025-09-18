@@ -510,4 +510,4 @@ const EnhancedDataGrid = ({
   );
 };
 
-export default EnhancedDataGrid;
+export default React.memo(EnhancedDataGrid);

@@ -690,10 +690,10 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
 
   // Dynamic analysis of API response - now helper functions are defined
   const computedAnalysis = useMemo(() => {
-    console.log('🔍 [DEBUG] AnalysisWidget received data:', JSON.stringify(data, null, 2));
+    // console.log('🔍 [DEBUG] AnalysisWidget received data:', JSON.stringify(data, null, 2));
     
     if (!data) {
-      console.log('🔍 [DEBUG] No data provided to AnalysisWidget');
+      // console.log('🔍 [DEBUG] No data provided to AnalysisWidget');
       return null;
     }
 
@@ -724,17 +724,17 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
 
     // Handle reconciliation data structure (secondary use case)
     const result = data.result || data.response?.result;
-    console.log('🔍 [DEBUG] Checking reconciliation result:', result);
+    // console.log('🔍 [DEBUG] Checking reconciliation result:', result);
     
     if (result && typeof result === 'object') {
-      console.log('🔍 [DEBUG] Processing reconciliation data structure');
+      // console.log('🔍 [DEBUG] Processing reconciliation data structure');
       const charts = generateReconciliationCharts(result);
       const stats = generateReconciliationStats(result);
       const tables = generateReconciliationTables(result);
       
-      console.log('🔍 [DEBUG] Generated charts:', charts.length);
-      console.log('🔍 [DEBUG] Generated stats:', stats.length);
-      console.log('🔍 [DEBUG] Generated tables:', tables.length);
+      // console.log('🔍 [DEBUG] Generated charts:', charts.length);
+      // console.log('🔍 [DEBUG] Generated stats:', stats.length);
+      // console.log('🔍 [DEBUG] Generated tables:', tables.length);
       
       return {
         type: 'reconciliation',
@@ -1064,4 +1064,4 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
   );
 };
 
-export default AnalysisWidget;
+export default React.memo(AnalysisWidget);
