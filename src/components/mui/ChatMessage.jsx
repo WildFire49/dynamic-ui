@@ -352,14 +352,12 @@ const ChatMessage = ({ message, index, onAction }) => {
     }
 
     if (message.type === 'data_analysis') {
-      console.log('🔍 [DEBUG] Data analysis message content:', message.content);
       
       // Check if we have supporting_data structure
       const apiResponse = message.content.response || message.content;
       const analysisResult = apiResponse.analysis_result || apiResponse;
       
       if (analysisResult && analysisResult.supporting_data && Array.isArray(analysisResult.supporting_data)) {
-        console.log('🔍 [DEBUG] Using AnalysisWidget for data_analysis type with supporting_data');
         return (
           <Box sx={{ width: '100%', maxWidth: 'none' }}>
             <AnalysisWidget
@@ -394,7 +392,6 @@ const ChatMessage = ({ message, index, onAction }) => {
       );
       
       if ((result && typeof result === 'object') || isDirectReconciliation) {
-        console.log('🔍 [DEBUG] Found reconciliation data', isDirectReconciliation ? '(direct)' : '(nested)');
         // This is reconciliation data - use AnalysisWidget
         const reconciliationData = isDirectReconciliation ? 
           { response: { result: message.content } } : 
@@ -478,4 +475,14 @@ const ChatMessage = ({ message, index, onAction }) => {
   );
 };
 
-export default ChatMessage;
+// Simple memoization to prevent re-renders during typing
+const areEqual = (prevProps, nextProps) => {
+  // Only re-render if message content actually changed or index changed
+  return (
+    prevProps.index === nextProps.index &&
+    JSON.stringify(prevProps.message) === JSON.stringify(nextProps.message) &&
+    prevProps.onAction === nextProps.onAction
+  );
+};
+
+export default React.memo(ChatMessage, areEqual);

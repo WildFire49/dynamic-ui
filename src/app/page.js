@@ -1116,14 +1116,14 @@ export default function HomePage() {
             </Box>
           ) : (
             chatHistory.map((message, index) => {
-              // Generate a more unique key based on content and timestamp
+              // Generate a stable unique key based on content and timestamp
               const messageKey = message.timestamp 
                 ? `message-${message.timestamp}-${index}`
                 : message.content?.response?.question 
                   ? `message-${message.content.response.question.replace(/[^a-zA-Z0-9]/g, '')}-${index}`
                   : message.content?.text
                     ? `message-${message.content.text.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '')}-${index}`
-                    : `message-${Date.now()}-${index}`;
+                    : `message-stable-${index}`; // Use stable fallback instead of Date.now()
               
               return (
                 <ChatMessage 
