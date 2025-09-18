@@ -59,7 +59,7 @@ import { embeddingsApi } from '@/lib/api/embeddingsApi';
 const AGENT_TYPES = [
   {
     id: 'rule_agent',
-    title: 'Rule Engine',
+    title: 'Rule Processor',
     description: 'Intelligent business logic automation',
     subtitle: 'Smart Decision Making',
     icon: RuleIcon,
@@ -69,7 +69,7 @@ const AGENT_TYPES = [
   },
   {
     id: 'scheduler',
-    title: 'Smart Scheduler',
+    title: 'Task Scheduler',
     description: 'Automated task orchestration',
     subtitle: 'Time Intelligence',
     icon: ScheduleIcon,
@@ -79,7 +79,7 @@ const AGENT_TYPES = [
   },
   {
     id: 'supervisory',
-    title: 'AI Supervisor',
+    title: 'Supervisory',
     description: 'Automated Decision Making',
     subtitle: 'Continuous Oversight',
     icon: SupervisoryIcon,
@@ -89,7 +89,7 @@ const AGENT_TYPES = [
   },
   {
     id: 'analysis_agent',
-    title: 'Analytics Engine',
+    title: 'Analytics',
     description: 'Deep insights & Predictions',
     subtitle: 'Data Intelligence',
     icon: AnalyticsIcon,
