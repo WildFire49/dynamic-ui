@@ -624,23 +624,28 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
       const item = result[key];
       const formattedName = formatPairName(key);
       
-      // Add fully matched records table FIRST (limit to first 10 for performance)
-      if (item.fully_matched_records && Array.isArray(item.fully_matched_records) && item.fully_matched_records.length > 0) {
-        const limitedMatches = item.fully_matched_records.slice(0, 10);
+      // Add fully matched records table FIRST
+      if (item.fully_matched_references && Array.isArray(item.fully_matched_references) && item.fully_matched_references.length > 0) {
         tables.push({
-          title: `${formattedName} - Fully Matched Records (${item.fully_matched_records.length} total)`,
-          data: limitedMatches.map(record => {
+          title: `${formattedName} - Fully Matched Records (${item.fully_matched_references.length} total)`,
+          data: item.fully_matched_references.map(record => {
             const flatRecord = { 
-              key_ref: record.key_ref,
-              match_summary: record.match_summary || 'All fields matched'
+              sender_ref: record.sender_ref || record.key_ref || 'N/A',
+              ref: record.ref || 'N/A',
+              reference: record.Reference || record.reference || 'N/A'
             };
+            
+            // Only add match_summary if it exists in the API response
+            if (record.match_summary) {
+              flatRecord.match_summary = record.match_summary;
+            }
             
             // Add matched fields if available
             if (record.matched_fields && Array.isArray(record.matched_fields)) {
               flatRecord.matched_fields = record.matched_fields.join(', ');
             }
             
-            // Flatten nested details
+            // Flatten nested details if they exist
             if (record.ktp_details) {
               Object.keys(record.ktp_details).forEach(k => {
                 flatRecord[`ktp_${k}`] = record.ktp_details[k];
