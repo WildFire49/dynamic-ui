@@ -200,21 +200,32 @@ const InteractiveChart = ({
 
       case 'pie':
       case 'donut':
+        // Calculate safe radius that accounts for labels and margins
+        const containerWidth = 300; // Approximate container width
+        const containerHeight = height;
+        const safeRadius = Math.min(
+          (containerWidth - 80) / 2, // Account for labels extending beyond chart
+          (containerHeight - 80) / 2, // Account for top/bottom margins and labels
+          80 // Maximum radius to ensure it fits
+        );
+        const innerRadius = chartType === 'donut' ? safeRadius * 0.5 : 0;
+        
         return (
           <ResponsiveContainer key={animationKey} width="100%" height={height}>
-            <PieChart {...chartProps}>
+            <PieChart {...chartProps} margin={{ top: 30, right: 30, bottom: 30, left: 30 }}>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                outerRadius={chartType === 'donut' ? 160 : 140}
-                innerRadius={chartType === 'donut' ? 80 : 0}
+                outerRadius={safeRadius}
+                innerRadius={innerRadius}
                 fill="#8884d8"
                 dataKey="value"
                 animationDuration={1000}
                 animationBegin={200}
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 labelLine={false}
+                fontSize={10}
               >
                 {data.map((entry, index) => (
                   <Cell 
@@ -449,7 +460,14 @@ const InteractiveChart = ({
           justifyContent: 'center',
           animation: `${scaleIn} 0.6s ease-out`,
           animationDelay: `${index * 0.1 + 0.3}s`,
-          animationFillMode: 'both'
+          animationFillMode: 'both',
+          overflow: 'hidden', // Prevent chart from extending beyond container
+          position: 'relative',
+          minHeight: 0, // Allow flex shrinking
+          '& .recharts-wrapper': {
+            maxWidth: '100% !important',
+            maxHeight: '100% !important'
+          }
         }}>
           {renderChart()}
         </Box>

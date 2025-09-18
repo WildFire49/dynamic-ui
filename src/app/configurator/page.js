@@ -541,6 +541,7 @@ export default function ConfiguratorPage() {
                 component="h1" 
                 sx={{ 
                   fontWeight: 900, 
+                  textTransform: 'none',
                   mb: 2,
                   background: 'linear-gradient(135deg,rgb(255, 255, 255) 0%,rgba(182, 30, 38, 0.28) 30%,rgb(242, 245, 248) 60%, #ba68c8 100%)',
                   backgroundClip: 'text',
@@ -552,7 +553,7 @@ export default function ConfiguratorPage() {
                   filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.1))'
                 }}
               >
-                MiFiX.AI
+                MiFiX.ai
               </Typography>
               
               <Typography 

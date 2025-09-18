@@ -23,7 +23,8 @@ import {
   Warning as WarningIcon,
   Save as SaveIcon,
   Analytics as AnalyticsIcon,
-  DataObject as DataObjectIcon
+  DataObject as DataObjectIcon,
+  DoneAll as DoneAllIcon
 } from '@mui/icons-material';
 import InteractiveChart from './InteractiveChart';
 import StatCard from './StatCard';
@@ -85,6 +86,37 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     const filename = generateAuditReport(tableName, tableData, reviews);
     // You could show a success message here
     console.log(`Audit report generated: ${filename}`);
+  };
+
+  const handleDownloadTable = (tableName, tableData) => {
+    if (!tableData || tableData.length === 0) return;
+    
+    // Get column headers from the first row
+    const headers = Object.keys(tableData[0]);
+    
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...tableData.map(row =>
+        headers.map(header => {
+          const value = row[header];
+          return typeof value === 'string' && value.includes(',') 
+            ? `"${value}"` 
+            : String(value || '');
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${tableName?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
   useEffect(() => {
@@ -534,11 +566,11 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
 
     return [
       {
-        title: 'Match Rate',
-        value: `${matchRate.toFixed(1)}%`,
-        icon: CheckCircleIcon,
-        color: matchRate > 80 ? theme.palette.success.main : matchRate > 60 ? theme.palette.warning.main : theme.palette.error.main,
-        trend: matchRate > 80 ? '+2%' : '-5%'
+        title: 'Full Matches',
+        value: totalMatches.toLocaleString(),
+        icon: DoneAllIcon,
+        color: theme.palette.success.main,
+        trend: totalMatches > 0 ? '+1%' : '0%'
       },
       {
         title: 'Mismatches',
@@ -548,12 +580,19 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         trend: totalMismatches > 0 ? '+3%' : '0%'
       },
       {
-        title: 'Data Breaks',
-        value: totalDataBreaks.toLocaleString(),
-        icon: WarningIcon,
-        color: theme.palette.warning.main,
-        trend: totalDataBreaks > 0 ? '+1%' : '0%'
+        title: 'Match Rate',
+        value: `${matchRate.toFixed(1)}%`,
+        icon: CheckCircleIcon,
+        color: matchRate > 80 ? theme.palette.success.main : matchRate > 60 ? theme.palette.warning.main : theme.palette.error.main,
+        trend: matchRate > 80 ? '+2%' : '-5%'
       },
+      // {
+      //   title: 'Data Breaks',
+      //   value: totalDataBreaks.toLocaleString(),
+      //   icon: WarningIcon,
+      //   color: theme.palette.warning.main,
+      //   trend: totalDataBreaks > 0 ? '+1%' : '0%'
+      // },
       {
         title: 'KTP Records',
         value: individualRecordCounts.ktp.toLocaleString(),
@@ -591,7 +630,15 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         tables.push({
           title: `${formattedName} - Fully Matched Records (${item.fully_matched_records.length} total)`,
           data: limitedMatches.map(record => {
-            const flatRecord = { key_ref: record.key_ref };
+            const flatRecord = { 
+              key_ref: record.key_ref,
+              match_summary: record.match_summary || 'All fields matched'
+            };
+            
+            // Add matched fields if available
+            if (record.matched_fields && Array.isArray(record.matched_fields)) {
+              flatRecord.matched_fields = record.matched_fields.join(', ');
+            }
             
             // Flatten nested details
             if (record.ktp_details) {
@@ -620,59 +667,62 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         const mismatchedTableData = [];
         
         item.mismatched_records.forEach(record => {
-          if (record.discrepancies && Array.isArray(record.discrepancies)) {
+          if (record.discrepancies && Array.isArray(record.discrepancies) && record.discrepancies.length > 0) {
+            // Handle records with detailed discrepancies
             record.discrepancies.forEach(discrepancy => {
               mismatchedTableData.push({
                 key_ref: record.key_ref,
-                mismatch_type: discrepancy.mismatch_type || record.mismatch_summary,
+                mismatch_type: discrepancy.mismatch_type || record.mismatch_summary || 'Mismatch',
                 xmm_value: discrepancy.xmm_value || discrepancy.ktp_value || 'N/A',
                 sam_value: discrepancy.sam_value || discrepancy.xmm_value || 'N/A'
               });
             });
           } else {
-            // Fallback for records without detailed discrepancies
+            // Handle records without detailed discrepancies or empty discrepancies
             mismatchedTableData.push({
               key_ref: record.key_ref,
-              mismatch_type: record.mismatch_summary || 'Mismatch',
-              xmm_value: 'N/A',
-              sam_value: 'N/A'
+              mismatch_type: record.mismatch_summary || 'Mismatch detected',
+              mismatch_details: record.mismatch_summary || 'No detailed discrepancies available',
+              status: 'Requires Review'
             });
           }
         });
         
-        tables.push({
-          title: `${formattedName} - Mismatched Records`,
-          data: mismatchedTableData,
-          type: 'mismatched_records' // Add type for special handling
-        });
+        if (mismatchedTableData.length > 0) {
+          tables.push({
+            title: `${formattedName} - Mismatched Records`,
+            data: mismatchedTableData,
+            type: 'mismatched_records' // Add type for special handling
+          });
+        }
       }
       
       // Add missing records table  
       const missingRecords = [];
-      if (item.missing_records?.missing_in_xmm) {
+      if (item.missing_records?.missing_in_xmm && Array.isArray(item.missing_records.missing_in_xmm)) {
         item.missing_records.missing_in_xmm.forEach(record => {
           missingRecords.push({
             reference: record.ktp_sender_ref || record.xmm_ref || 'N/A',
             missing_in: 'XMM',
-            details: record.details
+            details: record.details || 'Record not found in XMM'
           });
         });
       }
-      if (item.missing_records?.missing_in_ktp) {
+      if (item.missing_records?.missing_in_ktp && Array.isArray(item.missing_records.missing_in_ktp)) {
         item.missing_records.missing_in_ktp.forEach(record => {
           missingRecords.push({
             reference: record.xmm_ref || record.ktp_sender_ref || 'N/A', 
             missing_in: 'KTP',
-            details: record.details
+            details: record.details || 'Record not found in KTP'
           });
         });
       }
-      if (item.missing_records?.missing_in_sam) {
+      if (item.missing_records?.missing_in_sam && Array.isArray(item.missing_records.missing_in_sam)) {
         item.missing_records.missing_in_sam.forEach(record => {
           missingRecords.push({
             reference: record.xmm_ref || record.sam_ref || 'N/A',
             missing_in: 'SAM', 
-            details: record.details
+            details: record.details || 'Record not found in SAM'
           });
         });
       }
@@ -863,7 +913,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
       </Fade>
 
       {/* Analysis Insights Section */}
-      {finalAnalysis.analysis && finalAnalysis.analysis.length > 0 && (
+      {/* {finalAnalysis.analysis && finalAnalysis.analysis.length > 0 && (
         <Fade in={currentSection >= 1} timeout={800}>
           <Box sx={{ mb: 5 }}>
             <Typography 
@@ -934,7 +984,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             </Grid>
           </Box>
         </Fade>
-      )}
+      )} */}
 
       {/* Visual Analytics Section */}
       {finalAnalysis.charts && finalAnalysis.charts.length > 0 && (
@@ -953,7 +1003,13 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             >
               Visual Analytics
             </Typography>
-            <Grid container spacing={3} justifyContent="center" alignItems="stretch">
+            <Box sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: 2, 
+              justifyContent: 'center',
+              width: '100%'
+            }}>
               {finalAnalysis.charts
                 .sort((a, b) => {
                   // Prioritize KTP vs XMM vs SAM Analysis to render first
@@ -962,18 +1018,28 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
                   return 0;
                 })
                 .map((chart, index) => (
-                <Grid item xs={12} md={6} lg={6} key={index}>
-                  <Box sx={{ 
-                    animation: `${slideIn} 0.6s ease-out ${0.2 * index + 0.5}s both`,
-                    height: '500px', // Increased height for better chart rendering
-                    display: 'flex',
-                    width: '100%'
-                  }}>
-                    <InteractiveChart {...chart} index={index} height={450} />
+                  <Box 
+                    key={index} 
+                    sx={{ 
+                      animation: `${slideIn} 0.6s ease-out ${0.2 * index + 0.5}s both`,
+                      height: '400px',
+                      width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(50% - 8px)' },
+                      minWidth: { xs: '100%', sm: '300px' },
+                      maxWidth: { xs: '100%', sm: '600px' },
+                      display: 'flex',
+                      overflow: 'hidden', // Prevent content from extending beyond container
+                      position: 'relative',
+                      '& > div': {
+                        width: '100%',
+                        height: '100%',
+                        overflow: 'hidden'
+                      }
+                    }}
+                  >
+                    <InteractiveChart {...chart} index={index} height={350} />
                   </Box>
-                </Grid>
               ))}
-            </Grid>
+            </Box>
           </Box>
         </Fade>
       )}
@@ -998,7 +1064,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             
             {finalAnalysis.tables.map((table, index) => (
               <Box key={index} sx={{ mb: 4 }}>
-                {/* Table Header with Audit Report Button */}
+                {/* Table Header with Action Buttons */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   {/* Hide the secondary table title for supporting_data tables */}
                   {!(table.title === 'Detailed Results' && finalAnalysis.type === 'supporting_data') && (
@@ -1006,23 +1072,46 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
                       {table.title}
                     </Typography>
                   )}
-                  {table.type === 'mismatched_records' && (
+                  
+                  {/* Action Buttons */}
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    {/* Download Table Button - Always show for all tables */}
                     <Button
                       variant="outlined"
                       size="small"
                       startIcon={<DownloadIcon />}
-                      onClick={() => handleGenerateAuditReport(table.title, table.data)}
+                      onClick={() => handleDownloadTable(table.title, table.data)}
                       sx={{
-                        borderColor: theme.palette.primary.main,
-                        color: theme.palette.primary.main,
+                        borderColor: theme.palette.success.main,
+                        color: theme.palette.success.main,
                         '&:hover': {
-                          background: alpha(theme.palette.primary.main, 0.1)
+                          background: alpha(theme.palette.success.main, 0.1),
+                          borderColor: theme.palette.success.main
                         }
                       }}
                     >
-                      Generate Audit Report
+                      Download Table
                     </Button>
-                  )}
+                    
+                    {/* Generate Audit Report Button - Only for mismatched records */}
+                    {table.type === 'mismatched_records' && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<ReviewsIcon />}
+                        onClick={() => handleGenerateAuditReport(table.title, table.data)}
+                        sx={{
+                          borderColor: theme.palette.primary.main,
+                          color: theme.palette.primary.main,
+                          '&:hover': {
+                            background: alpha(theme.palette.primary.main, 0.1)
+                          }
+                        }}
+                      >
+                        Generate Audit Report
+                      </Button>
+                    )}
+                  </Box>
                 </Box>
                 
                 <EnhancedDataGrid
