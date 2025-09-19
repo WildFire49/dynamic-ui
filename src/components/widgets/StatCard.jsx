@@ -122,9 +122,10 @@ const StatCard = ({
             display: 'flex', 
             flexDirection: 'column', 
             justifyContent: 'space-between',
-            p: 3,
+            p: 2.5, // Slightly reduced padding
             position: 'relative',
-            zIndex: 1
+            zIndex: 1,
+            overflow: 'hidden' // Ensure content doesn't overflow
           }}>
             {/* Header with Icon */}
             <Box sx={{ 
@@ -178,7 +179,14 @@ const StatCard = ({
             </Box>
 
             {/* Main Value */}
-            <Box sx={{ mb: 'auto' }}>
+            <Box sx={{ 
+              mb: 'auto', 
+              overflow: 'hidden',
+              minHeight: '60px', // Fixed height for value area
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}>
               <Typography 
                 variant="h3" 
                 sx={{
@@ -193,7 +201,13 @@ const StatCard = ({
                   animationDelay: `${index * 0.2}s`,
                   animationFillMode: 'both',
                   letterSpacing: '-0.02em',
-                  lineHeight: 1.2
+                  lineHeight: 1.1,
+                  fontSize: { xs: '1.2rem', sm: '1.6rem', md: '2rem' }, // Smaller responsive font size
+                  wordBreak: 'break-word', // Allow breaking long numbers
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2, // Allow up to 2 lines
+                  WebkitBoxOrient: 'vertical'
                 }}
               >
                 {value}
@@ -206,8 +220,13 @@ const StatCard = ({
                   color: theme.palette.text.secondary,
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
-                  fontSize: '0.75rem',
-                  opacity: 0.8
+                  fontSize: { xs: '0.65rem', sm: '0.7rem' }, // Smaller responsive font
+                  opacity: 0.8,
+                  lineHeight: 1.2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap', // Prevent title wrapping
+                  maxWidth: '100%'
                 }}
               >
                 {title}

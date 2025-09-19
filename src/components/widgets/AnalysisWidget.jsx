@@ -480,10 +480,23 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         const max = Math.max(...values);
         const min = Math.min(...values);
         
+        // Format large numbers appropriately
+        const formatLargeNumber = (num) => {
+          if (num >= 1000000000) {
+            return (num / 1000000000).toFixed(1) + 'B';
+          } else if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+          } else if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+          } else {
+            return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          }
+        };
+
         // Add average statistic
         stats.push({
           title: `Avg ${key.replace(/_/g, ' ').toUpperCase()}`,
-          value: avg.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+          value: formatLargeNumber(avg),
           icon: TrendingUpIcon,
           color: theme.palette.success.main,
           trend: '+5%'
@@ -493,7 +506,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         if (stats.length < 4) {
           stats.push({
             title: `${key.replace(/_/g, ' ').toUpperCase()} Range`,
-            value: `${min} - ${max}`,
+            value: `${formatLargeNumber(min)} - ${formatLargeNumber(max)}`,
             icon: AnalyticsIcon,
             color: theme.palette.info.main,
             trend: '±12%'
