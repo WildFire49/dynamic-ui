@@ -42,14 +42,66 @@ export const generateAuditReport = (tableName, tableData, reviews) => {
   const filename = `${tableName.replace(/[^a-zA-Z0-9]/g, '_')}_audit_report_${timestamp}.csv`;
   
   const auditData = tableData.map(row => {
+    // Determine the record key and mismatch type based on data structure
+    let recordKey, mismatchType, xmmValue, samValue;
+    
+    // Handle new format for different mismatch types
+    if (row.Reference) {
+      recordKey = row.Reference;
+      
+      // Message type mismatches
+      if (row.KTP_msg_type && row.XMM_msg_type && row.SAM_Identifier) {
+        mismatchType = 'Message Type Mismatch';
+        xmmValue = `${row.XMM_msg_type} (${row.XMM_normalized_msg_code})`;
+        samValue = `${row.SAM_Identifier} (${row.SAM_normalized_msg_code})`;
+      }
+      // Amount mismatches
+      else if (row.KTP_amount !== undefined && row.XMM_amt !== undefined && row.SAM_Cur_Amt) {
+        mismatchType = 'Amount Mismatch';
+        xmmValue = row.XMM_amt?.toLocaleString() || row.XMM_amt;
+        samValue = row.SAM_Cur_Amt;
+      }
+      // BIC mismatches
+      else if (row.omh_sent_bic && row.omh_recv_bic && row.Correspondent) {
+        mismatchType = 'BIC Mismatch';
+        xmmValue = `${row.omh_sent_bic} -> ${row.omh_recv_bic}`;
+        samValue = `${row.Correspondent} (${row.Sender_Receiver})`;
+      }
+    }
+    // Handle legacy format
+    else if (row.key_ref) {
+      recordKey = row.key_ref;
+      mismatchType = row.mismatch_type;
+      xmmValue = row.xmm_value;
+      samValue = row.sam_value;
+    }
+    // Fallback for unknown format
+    else {
+      recordKey = row.sender_ref || row.ref || 'Unknown';
+      mismatchType = 'Unknown Mismatch';
+      xmmValue = 'N/A';
+      samValue = 'N/A';
+    }
+    
     // Use compound key to match the review store logic
-    const uniqueKey = `${row.key_ref}_${row.mismatch_type}`;
-    const review = reviews[uniqueKey] || {};
+    // The review store expects the format: key_ref_mismatch_type
+    // But for new format, we need to create a compatible key
+    let reviewKey;
+    if (row.key_ref && row.mismatch_type) {
+      // Legacy format - use as is
+      reviewKey = `${row.key_ref}_${row.mismatch_type}`;
+    } else {
+      // New format - create compatible key
+      reviewKey = `${recordKey}_${mismatchType}`;
+    }
+    
+    const review = reviews[reviewKey] || {};
+    
     return {
-      'Record Key': row.key_ref,
-      'Mismatch Type': row.mismatch_type,
-      'XMM Value': row.xmm_value,
-      'SAM Value': row.sam_value,
+      'Record Key': recordKey,
+      'Mismatch Type': mismatchType,
+      'XMM Value': xmmValue,
+      'SAM Value': samValue,
       'Review Status': review.status || 'Pending Review',
       'Reviewer Comment': review.comment || '',
       'Reviewed By': review.reviewedBy || '',

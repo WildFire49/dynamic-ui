@@ -36,10 +36,37 @@ const ReviewPopover = ({
   useEffect(() => {
     if (open && recordData) {
       // Use compound key for unique identification
+      // Handle both old and new data formats
+      let key_ref, mismatch_type;
+      
+      if (recordData.key_ref && recordData.mismatch_type) {
+        // Legacy format
+        key_ref = recordData.key_ref;
+        mismatch_type = recordData.mismatch_type;
+      } else if (recordData.Reference) {
+        // New format - determine mismatch type based on available fields
+        key_ref = recordData.Reference;
+        
+        if (recordData.KTP_msg_type && recordData.XMM_msg_type && recordData.SAM_Identifier) {
+          mismatch_type = 'Message Type Mismatch';
+        } else if (recordData.KTP_amount !== undefined && recordData.XMM_amt !== undefined && recordData.SAM_Cur_Amt) {
+          mismatch_type = 'Amount Mismatch';
+        } else if (recordData.omh_sent_bic && recordData.omh_recv_bic && recordData.Correspondent) {
+          mismatch_type = 'BIC Mismatch';
+        } else {
+          mismatch_type = 'Unknown Mismatch';
+        }
+      } else {
+        // Fallback
+        key_ref = recordData.sender_ref || recordData.ref || 'Unknown';
+        mismatch_type = 'Unknown Mismatch';
+      }
+      
       const recordKey = {
-        key_ref: recordData.key_ref,
-        mismatch_type: recordData.mismatch_type
+        key_ref: key_ref,
+        mismatch_type: mismatch_type
       };
+      
       const existingReview = getReview(tableName, recordKey);
       if (existingReview) {
         setComment(existingReview.comment || '');
@@ -58,9 +85,35 @@ const ReviewPopover = ({
     if (!recordData || !tableName) return;
     
     // Use compound key for unique identification
+    // Handle both old and new data formats
+    let key_ref, mismatch_type;
+    
+    if (recordData.key_ref && recordData.mismatch_type) {
+      // Legacy format
+      key_ref = recordData.key_ref;
+      mismatch_type = recordData.mismatch_type;
+    } else if (recordData.Reference) {
+      // New format - determine mismatch type based on available fields
+      key_ref = recordData.Reference;
+      
+      if (recordData.KTP_msg_type && recordData.XMM_msg_type && recordData.SAM_Identifier) {
+        mismatch_type = 'Message Type Mismatch';
+      } else if (recordData.KTP_amount !== undefined && recordData.XMM_amt !== undefined && recordData.SAM_Cur_Amt) {
+        mismatch_type = 'Amount Mismatch';
+      } else if (recordData.omh_sent_bic && recordData.omh_recv_bic && recordData.Correspondent) {
+        mismatch_type = 'BIC Mismatch';
+      } else {
+        mismatch_type = 'Unknown Mismatch';
+      }
+    } else {
+      // Fallback
+      key_ref = recordData.sender_ref || recordData.ref || 'Unknown';
+      mismatch_type = 'Unknown Mismatch';
+    }
+    
     const recordKey = {
-      key_ref: recordData.key_ref,
-      mismatch_type: recordData.mismatch_type
+      key_ref: key_ref,
+      mismatch_type: mismatch_type
     };
     
     addReview(tableName, recordKey, {
