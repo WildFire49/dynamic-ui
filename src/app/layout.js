@@ -1,6 +1,8 @@
 import './globals.scss';
 import MuiThemeProvider from '@/lib/theme/MuiThemeProvider';
 import EmotionRegistry from '@/lib/theme/EmotionRegistry';
+import ErrorBoundaryWrapper from '@/components/error/ErrorBoundaryWrapper';
+import GlobalErrorHandler from '@/components/error/GlobalErrorHandler';
 
 export const metadata = {
   title: 'MiFiX AI',
@@ -21,7 +23,11 @@ export default function RootLayout({ children }) {
       <body>
         <EmotionRegistry>
           <MuiThemeProvider>
-            {children}
+            <ErrorBoundaryWrapper>
+              <GlobalErrorHandler>
+                {children}
+              </GlobalErrorHandler>
+            </ErrorBoundaryWrapper>
           </MuiThemeProvider>
         </EmotionRegistry>
       </body>
