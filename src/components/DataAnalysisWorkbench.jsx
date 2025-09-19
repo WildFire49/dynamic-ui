@@ -119,7 +119,7 @@ const DataAnalysisWorkbench = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis/upload/${connectionId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis/upload/${process.env.NEXT_PUBLIC_CONNECTION_ID || 'c132d635-7392-4856-a2ce-077f5482e88b'}`, {
         method: 'POST',
         body: formData,
       });
