@@ -556,6 +556,40 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             data: chartData
           });
         }
+
+        // Add specific mismatch breakdown chart
+        if (summary.total_mismatches > 0) {
+          const mismatchData = [];
+          if (summary.message_type_mismatches) {
+            mismatchData.push({ 
+              name: 'Message Type Mismatches', 
+              value: summary.message_type_mismatches, 
+              color: '#ef4444' 
+            });
+          }
+          if (summary.amount_mismatches) {
+            mismatchData.push({ 
+              name: 'Amount Mismatches', 
+              value: summary.amount_mismatches, 
+              color: '#dc2626' 
+            });
+          }
+          if (summary.bic_mismatches) {
+            mismatchData.push({ 
+              name: 'BIC Mismatches', 
+              value: summary.bic_mismatches, 
+              color: '#b91c1c' 
+            });
+          }
+          
+          if (mismatchData.length > 0) {
+            charts.push({
+              type: 'donut',
+              title: `${formatPairName(key)} - Mismatch Breakdown`,
+              data: mismatchData
+            });
+          }
+        }
       }
     });
     
@@ -573,6 +607,12 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     let messageTypeMismatches = 0;
     let amountMismatches = 0;
     let bicMismatches = 0;
+    let ktpOnlyReferences = 0;
+    let xmmOnlyReferences = 0;
+    let samOnlyReferences = 0;
+    let totalKtpRecords = 0;
+    let totalXmmRecords = 0;
+    let totalSamRecords = 0;
 
     Object.keys(result).forEach(key => {
       const item = result[key];
@@ -588,6 +628,16 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
           messageTypeMismatches += item.summary.message_type_mismatches || 0;
           amountMismatches += item.summary.amount_mismatches || 0;
           bicMismatches += item.summary.bic_mismatches || 0;
+          
+          // Extra records statistics
+          ktpOnlyReferences += item.summary.ktp_only_references || 0;
+          xmmOnlyReferences += item.summary.xmm_only_references || 0;
+          samOnlyReferences += item.summary.sam_only_references || 0;
+          
+          // Total record counts
+          totalKtpRecords += item.summary.total_ktp_records || 0;
+          totalXmmRecords += item.summary.total_xmm_records || 0;
+          totalSamRecords += item.summary.total_sam_records || 0;
           
           // Individual record counts
           individualRecordCounts = {
@@ -621,18 +671,25 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
 
     return [
       {
-        title: 'Total Matches',
-        value: totalMatches.toLocaleString(),
-        icon: DoneAllIcon,
-        color: theme.palette.success.main,
-        trend: totalMatches > 0 ? '+1%' : '0%'
+        title: 'Total KTP Records',
+        value: totalKtpRecords.toLocaleString(),
+        icon: AssessmentIcon,
+        color: theme.palette.primary.main,
+        trend: '+0%'
       },
       {
-        title: 'Reference ID Matches',
-        value: referenceMatches.toLocaleString(),
-        icon: CheckCircleIcon,
-        color: theme.palette.success.main,
-        trend: referenceMatches > 0 ? '+1%' : '0%'
+        title: 'Total XMM Records',
+        value: totalXmmRecords.toLocaleString(),
+        icon: AssessmentIcon,
+        color: theme.palette.primary.main,
+        trend: '+0%'
+      },
+      {
+        title: 'Total SAM Records',
+        value: totalSamRecords.toLocaleString(),
+        icon: AssessmentIcon,
+        color: theme.palette.primary.main,
+        trend: '+0%'
       },
       {
         title: 'Full Matches',
@@ -642,24 +699,40 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         trend: detailedFieldMatches > 0 ? '+2%' : '0%'
       },
       {
-        title: 'Match Rate',
-        value: `${matchRate.toFixed(1)}%`,
-        icon: CheckCircleIcon,
-        color: matchRate > 80 ? theme.palette.success.main : matchRate > 60 ? theme.palette.warning.main : theme.palette.error.main,
-        trend: matchRate > 80 ? '+2%' : '-5%'
-      },
-      {
         title: 'Total Mismatches',
         value: totalMismatches.toLocaleString(),
         icon: ErrorIcon,
         color: theme.palette.error.main,
         trend: totalMismatches > 0 ? '+3%' : '0%'
       },
+      // {
+      //   title: 'Total Matches',
+      //   value: totalMatches.toLocaleString(),
+      //   icon: DoneAllIcon,
+      //   color: theme.palette.success.main,
+      //   trend: totalMatches > 0 ? '+1%' : '0%'
+      // },
+      {
+        title: 'Reference ID Matches',
+        value: referenceMatches.toLocaleString(),
+        icon: CheckCircleIcon,
+        color: theme.palette.success.main,
+        trend: referenceMatches > 0 ? '+1%' : '0%'
+      },
+      
+      // {
+      //   title: 'Match Rate',
+      //   value: `${matchRate.toFixed(1)}%`,
+      //   icon: CheckCircleIcon,
+      //   color: matchRate > 80 ? theme.palette.success.main : matchRate > 60 ? theme.palette.warning.main : theme.palette.error.main,
+      //   trend: matchRate > 80 ? '+2%' : '-5%'
+      // },
+      
       {
         title: 'Message Type Mismatches',
         value: messageTypeMismatches.toLocaleString(),
-        icon: WarningIcon,
-        color: theme.palette.warning.main,
+        icon: ErrorIcon,
+        color: theme.palette.error.main,
         trend: messageTypeMismatches > 0 ? '+1%' : '0%'
       },
       {
@@ -676,6 +749,27 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         color: theme.palette.error.main,
         trend: bicMismatches > 0 ? '+1%' : '0%'
       },
+      {
+        title: 'KTP Extra Records',
+        value: ktpOnlyReferences.toLocaleString(),
+        icon: WarningIcon,
+        color: theme.palette.info.main,
+        trend: ktpOnlyReferences > 0 ? '+1%' : '0%'
+      },
+      {
+        title: 'XMM Extra Records',
+        value: xmmOnlyReferences.toLocaleString(),
+        icon: WarningIcon,
+        color: theme.palette.info.main,
+        trend: xmmOnlyReferences > 0 ? '+1%' : '0%'
+      },
+      {
+        title: 'SAM Extra Records',
+        value: samOnlyReferences.toLocaleString(),
+        icon: WarningIcon,
+        color: theme.palette.info.main,
+        trend: samOnlyReferences > 0 ? '+1%' : '0%'
+      },
     ];
   };
 
@@ -691,38 +785,26 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         tables.push({
           title: `${formattedName} - Fully Matched References (${item.fully_matched_references.length} total)`,
           data: item.fully_matched_references.map(record => {
-            const flatRecord = { 
-              sender_ref: record.sender_ref || record.key_ref || 'N/A',
-              ref: record.ref || 'N/A',
-              reference: record.Reference || record.reference || 'N/A'
-            };
+            // Create a flat record with all fields from the API response
+            const flatRecord = {};
             
-            // Only add match_summary if it exists in the API response
-            if (record.match_summary) {
-              flatRecord.match_summary = record.match_summary;
-            }
-            
-            // Add matched fields if available
-            if (record.matched_fields && Array.isArray(record.matched_fields)) {
-              flatRecord.matched_fields = record.matched_fields.join(', ');
-            }
-            
-            // Flatten nested details if they exist
-            if (record.ktp_details) {
-              Object.keys(record.ktp_details).forEach(k => {
-                flatRecord[`ktp_${k}`] = record.ktp_details[k];
-              });
-            }
-            if (record.xmm_details) {
-              Object.keys(record.xmm_details).forEach(k => {
-                flatRecord[`xmm_${k}`] = record.xmm_details[k];
-              });
-            }
-            if (record.sam_details) {
-              Object.keys(record.sam_details).forEach(k => {
-                flatRecord[`sam_${k}`] = record.sam_details[k];
-              });
-            }
+            // Copy all fields dynamically from the record
+            Object.keys(record).forEach(fieldKey => {
+              const fieldValue = record[fieldKey];
+              
+              // Handle arrays by joining them
+              if (Array.isArray(fieldValue)) {
+                flatRecord[fieldKey] = fieldValue.join(', ');
+              }
+              // Handle objects by stringifying them
+              else if (typeof fieldValue === 'object' && fieldValue !== null) {
+                flatRecord[fieldKey] = JSON.stringify(fieldValue);
+              }
+              // Handle primitive values
+              else {
+                flatRecord[fieldKey] = fieldValue !== undefined && fieldValue !== null ? fieldValue : 'N/A';
+              }
+            });
             
             return flatRecord;
           })
@@ -797,6 +879,30 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
           title: `${formattedName} - BIC Mismatches (${item.mismatched_bic_but_same_ref.length} records)`,
           data: item.mismatched_bic_but_same_ref,
           type: 'mismatched_records'
+        });
+      }
+
+      // Extra Records in KTP
+      if (item.references_only_in_KTP && Array.isArray(item.references_only_in_KTP) && item.references_only_in_KTP.length > 0) {
+        tables.push({
+          title: `${formattedName} - Extra Records in KTP (${item.references_only_in_KTP.length} records)`,
+          data: item.references_only_in_KTP
+        });
+      }
+
+      // Extra Records in XMM
+      if (item.references_only_in_XMM && Array.isArray(item.references_only_in_XMM) && item.references_only_in_XMM.length > 0) {
+        tables.push({
+          title: `${formattedName} - Extra Records in XMM (${item.references_only_in_XMM.length} records)`,
+          data: item.references_only_in_XMM
+        });
+      }
+
+      // Extra Records in SAM
+      if (item.references_only_in_SAM && Array.isArray(item.references_only_in_SAM) && item.references_only_in_SAM.length > 0) {
+        tables.push({
+          title: `${formattedName} - Extra Records in SAM (${item.references_only_in_SAM.length} records)`,
+          data: item.references_only_in_SAM
         });
       }
 
@@ -1004,55 +1110,31 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             padding: '0 8px' // Reduced padding for mobile
           }}>
             <Box sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: { xs: '12px', sm: '16px' } // Responsive gap
+              display: 'grid',
+              gridTemplateColumns: { 
+                xs: 'repeat(2, 1fr)', // 2 columns on mobile
+                sm: 'repeat(3, 1fr)', // 3 columns on small screens
+                md: 'repeat(3, 1fr)', // 3 columns on medium screens
+                lg: 'repeat(3, 1fr)'  // 3 columns on large screens
+              },
+              gap: { xs: '12px', sm: '16px', md: '20px' },
+              justifyItems: 'center',
+              alignItems: 'stretch'
             }}>
-              {/* First Row - 4 cards */}
-              <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: { xs: '8px', sm: '12px', md: '16px' }, // Responsive gap
-                flexWrap: { xs: 'wrap', md: 'nowrap' } // Allow wrapping on mobile
-              }}>
-                {finalAnalysis.stats.slice(0, 4).map((stat, index) => (
-                  <Box 
-                    key={index}
-                    sx={{ 
-                      animation: `${slideIn} 0.6s ease-out ${0.1 * index}s both`,
-                      height: { xs: '160px', sm: '180px' },
-                      width: { xs: 'calc(50% - 4px)', sm: 'calc(25% - 12px)', md: 'calc(25% - 12px)' }, // Responsive width
-                      minWidth: { xs: '140px', sm: '180px', md: '200px' }, // Responsive min width
-                      flex: { xs: '0 0 calc(50% - 4px)', md: '0 0 calc(25% - 12px)' } // Responsive flex
-                    }}
-                  >
-                    <StatCard {...stat} index={index} />
-                  </Box>
-                ))}
-              </Box>
-              
-              {/* Second Row - 4 cards */}
-              <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: { xs: '8px', sm: '12px', md: '16px' }, // Responsive gap
-                flexWrap: { xs: 'wrap', md: 'nowrap' } // Allow wrapping on mobile
-              }}>
-                {finalAnalysis.stats.slice(4, 8).map((stat, index) => (
-                  <Box 
-                    key={index + 4}
-                    sx={{ 
-                      animation: `${slideIn} 0.6s ease-out ${0.1 * (index + 4)}s both`,
-                      height: { xs: '160px', sm: '180px' },
-                      width: { xs: 'calc(50% - 4px)', sm: 'calc(25% - 12px)', md: 'calc(25% - 12px)' }, // Responsive width
-                      minWidth: { xs: '140px', sm: '180px', md: '200px' }, // Responsive min width
-                      flex: { xs: '0 0 calc(50% - 4px)', md: '0 0 calc(25% - 12px)' } // Responsive flex
-                    }}
-                  >
-                    <StatCard {...stat} index={index + 4} />
-                  </Box>
-                ))}
-              </Box>
+              {finalAnalysis.stats.map((stat, index) => (
+                <Box 
+                  key={index}
+                  sx={{ 
+                    animation: `${slideIn} 0.6s ease-out ${0.1 * index}s both`,
+                    height: { xs: '160px', sm: '180px' },
+                    width: '100%',
+                    maxWidth: { xs: '180px', sm: '220px', md: '250px' },
+                    minWidth: { xs: '140px', sm: '180px', md: '200px' }
+                  }}
+                >
+                  <StatCard {...stat} index={index} />
+                </Box>
+              ))}
             </Box>
           </Box>
         </Box>
