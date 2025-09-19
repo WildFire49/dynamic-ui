@@ -555,6 +555,11 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
     let totalMissingRecords = 0;
     let totalDataBreaks = 0;
     let individualRecordCounts = { ktp: 0, xmm: 0, sam: 0 };
+    let referenceMatches = 0;
+    let detailedFieldMatches = 0;
+    let messageTypeMismatches = 0;
+    let amountMismatches = 0;
+    let bicMismatches = 0;
 
     Object.keys(result).forEach(key => {
       const item = result[key];
@@ -564,10 +569,12 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
           totalMatches += item.summary.total_matches || 0;
           totalMismatches += item.summary.total_mismatches || 0;
           
-          // Calculate specific mismatch types
-          totalMismatches += (item.summary.message_type_mismatches || 0);
-          totalMismatches += (item.summary.amount_mismatches || 0);
-          totalMismatches += (item.summary.bic_mismatches || 0);
+          // Capture specific match and mismatch types
+          referenceMatches += item.summary.reference_matches || 0;
+          detailedFieldMatches += item.summary.detailed_field_matches || 0;
+          messageTypeMismatches += item.summary.message_type_mismatches || 0;
+          amountMismatches += item.summary.amount_mismatches || 0;
+          bicMismatches += item.summary.bic_mismatches || 0;
           
           // Individual record counts
           individualRecordCounts = {
@@ -601,18 +608,25 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
 
     return [
       {
-        title: 'Full Matches',
+        title: 'Total Matches',
         value: totalMatches.toLocaleString(),
         icon: DoneAllIcon,
         color: theme.palette.success.main,
         trend: totalMatches > 0 ? '+1%' : '0%'
       },
       {
-        title: 'Mismatches',
-        value: totalMismatches.toLocaleString(),
-        icon: ErrorIcon,
-        color: theme.palette.error.main,
-        trend: totalMismatches > 0 ? '+3%' : '0%'
+        title: 'Reference ID Matches',
+        value: referenceMatches.toLocaleString(),
+        icon: CheckCircleIcon,
+        color: theme.palette.success.main,
+        trend: referenceMatches > 0 ? '+1%' : '0%'
+      },
+      {
+        title: 'Full Matches',
+        value: detailedFieldMatches.toLocaleString(),
+        icon: DoneAllIcon,
+        color: theme.palette.success.main,
+        trend: detailedFieldMatches > 0 ? '+2%' : '0%'
       },
       {
         title: 'Match Rate',
@@ -621,33 +635,33 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         color: matchRate > 80 ? theme.palette.success.main : matchRate > 60 ? theme.palette.warning.main : theme.palette.error.main,
         trend: matchRate > 80 ? '+2%' : '-5%'
       },
-      // {
-      //   title: 'Data Breaks',
-      //   value: totalDataBreaks.toLocaleString(),
-      //   icon: WarningIcon,
-      //   color: theme.palette.warning.main,
-      //   trend: totalDataBreaks > 0 ? '+1%' : '0%'
-      // },
       {
-        title: 'KTP Records',
-        value: individualRecordCounts.ktp.toLocaleString(),
-        icon: AssessmentIcon,
-        color: theme.palette.primary.main,
-        trend: '+0%'
+        title: 'Total Mismatches',
+        value: totalMismatches.toLocaleString(),
+        icon: ErrorIcon,
+        color: theme.palette.error.main,
+        trend: totalMismatches > 0 ? '+3%' : '0%'
       },
       {
-        title: 'XMM Records',
-        value: individualRecordCounts.xmm.toLocaleString(),
-        icon: AnalyticsIcon,
-        color: theme.palette.info.main,
-        trend: '+0%'
+        title: 'Message Type Mismatches',
+        value: messageTypeMismatches.toLocaleString(),
+        icon: WarningIcon,
+        color: theme.palette.warning.main,
+        trend: messageTypeMismatches > 0 ? '+1%' : '0%'
       },
       {
-        title: 'SAM Records',
-        value: individualRecordCounts.sam.toLocaleString(),
-        icon: TrendingUpIcon,
-        color: theme.palette.success.main,
-        trend: '+0%'
+        title: 'Amount Mismatches',
+        value: amountMismatches.toLocaleString(),
+        icon: ErrorIcon,
+        color: theme.palette.error.main,
+        trend: amountMismatches > 0 ? '+1%' : '0%'
+      },
+      {
+        title: 'BIC Mismatches',
+        value: bicMismatches.toLocaleString(),
+        icon: ErrorIcon,
+        color: theme.palette.error.main,
+        trend: bicMismatches > 0 ? '+1%' : '0%'
       },
     ];
   };
@@ -971,21 +985,63 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             Overall Statistics
           </Typography>
           
-          <Grid container spacing={4} justifyContent="center" alignItems="stretch">
-            {finalAnalysis.stats.map((stat, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index}>
-                <Box sx={{ 
-                  animation: `${slideIn} 0.6s ease-out ${0.1 * index}s both`,
-                  height: '200px',
-                  display: 'flex',
-                  width: '100%',
-                  minWidth: '250px' // Ensure minimum width for content
-                }}>
-                  <StatCard {...stat} index={index} />
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
+          <Box sx={{
+            width: '100%', // Use full container width
+            margin: '0 auto', // Center the container
+            padding: '0 8px' // Reduced padding for mobile
+          }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: { xs: '12px', sm: '16px' } // Responsive gap
+            }}>
+              {/* First Row - 4 cards */}
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: { xs: '8px', sm: '12px', md: '16px' }, // Responsive gap
+                flexWrap: { xs: 'wrap', md: 'nowrap' } // Allow wrapping on mobile
+              }}>
+                {finalAnalysis.stats.slice(0, 4).map((stat, index) => (
+                  <Box 
+                    key={index}
+                    sx={{ 
+                      animation: `${slideIn} 0.6s ease-out ${0.1 * index}s both`,
+                      height: { xs: '160px', sm: '180px' },
+                      width: { xs: 'calc(50% - 4px)', sm: 'calc(25% - 12px)', md: 'calc(25% - 12px)' }, // Responsive width
+                      minWidth: { xs: '140px', sm: '180px', md: '200px' }, // Responsive min width
+                      flex: { xs: '0 0 calc(50% - 4px)', md: '0 0 calc(25% - 12px)' } // Responsive flex
+                    }}
+                  >
+                    <StatCard {...stat} index={index} />
+                  </Box>
+                ))}
+              </Box>
+              
+              {/* Second Row - 4 cards */}
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: { xs: '8px', sm: '12px', md: '16px' }, // Responsive gap
+                flexWrap: { xs: 'wrap', md: 'nowrap' } // Allow wrapping on mobile
+              }}>
+                {finalAnalysis.stats.slice(4, 8).map((stat, index) => (
+                  <Box 
+                    key={index + 4}
+                    sx={{ 
+                      animation: `${slideIn} 0.6s ease-out ${0.1 * (index + 4)}s both`,
+                      height: { xs: '160px', sm: '180px' },
+                      width: { xs: 'calc(50% - 4px)', sm: 'calc(25% - 12px)', md: 'calc(25% - 12px)' }, // Responsive width
+                      minWidth: { xs: '140px', sm: '180px', md: '200px' }, // Responsive min width
+                      flex: { xs: '0 0 calc(50% - 4px)', md: '0 0 calc(25% - 12px)' } // Responsive flex
+                    }}
+                  >
+                    <StatCard {...stat} index={index + 4} />
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          </Box>
         </Box>
       </Fade>
 
