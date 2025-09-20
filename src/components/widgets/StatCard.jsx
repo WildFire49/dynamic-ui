@@ -42,7 +42,8 @@ const StatCard = ({
   color, 
   trend, 
   index = 0,
-  animated = true 
+  animated = true,
+  onClick
 }) => {
   const theme = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -84,6 +85,7 @@ const StatCard = ({
         <Card
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
+          onClick={onClick}
           sx={{
             height: 180,
             width: '100%',

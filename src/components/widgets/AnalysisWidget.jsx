@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -66,6 +66,47 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
   const [reviewPopover, setReviewPopover] = useState({ open: false, anchorEl: null, recordData: null, tableName: '' });
   const { getTableReviews } = useReviewStore();
   const [currentSection, setCurrentSection] = useState(0);
+  
+  // Refs for scrolling to tables
+  const tableRefs = useRef({});
+  
+  // Scroll to table function
+  const scrollToTable = (searchTitle) => {
+    console.log('Searching for table:', searchTitle);
+    console.log('Available tables:', Object.keys(tableRefs.current));
+    
+    // Try exact match first
+    let tableRef = tableRefs.current[searchTitle];
+    
+    // If not found, try partial match with better precision
+    if (!tableRef) {
+      const matchingKey = Object.keys(tableRefs.current).find(key => {
+        // First try exact substring match - but only if it starts with the search title
+        if (key.startsWith(searchTitle)) return true;
+        
+        // Check if the key contains the exact search title
+        if (key.includes(searchTitle)) return true;
+        
+        return false;
+      });
+      
+      if (matchingKey) {
+        tableRef = tableRefs.current[matchingKey];
+        console.log('Found partial match:', matchingKey);
+      }
+    }
+    
+    if (tableRef) {
+      console.log('Scrolling to table');
+      tableRef.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
+    } else {
+      console.log('Table not found for:', searchTitle);
+    }
+  };
   
   // Review handlers
   const handleOpenReview = (event, recordData, tableName) => {
@@ -696,14 +737,16 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         value: referenceMatches.toLocaleString(),
         icon: CheckCircleIcon,
         color: theme.palette.success.main,
-        trend: referenceMatches > 0 ? '+1%' : '0%'
+        trend: referenceMatches > 0 ? '+1%' : '0%',
+        onClick: () => scrollToTable('Fully Matched References')
       },
       {
         title: 'Full Matches',
         value: detailedFieldMatches.toLocaleString(),
         icon: DoneAllIcon,
         color: theme.palette.success.main,
-        trend: detailedFieldMatches > 0 ? '+2%' : '0%'
+        trend: detailedFieldMatches > 0 ? '+2%' : '0%',
+        onClick: () => scrollToTable('Fully Matched Records Details')
       },
       {
         title: 'Total Mismatches',
@@ -755,21 +798,24 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         value: ktpOnlyReferences.toLocaleString(),
         icon: WarningIcon,
         color: theme.palette.info.main,
-        trend: ktpOnlyReferences > 0 ? '+1%' : '0%'
+        trend: ktpOnlyReferences > 0 ? '+1%' : '0%',
+        onClick: () => scrollToTable('Extra Records in KTP vs XMM')
       },
       {
         title: 'XMM Extra Records',
         value: xmmOnlyReferences.toLocaleString(),
         icon: WarningIcon,
         color: theme.palette.info.main,
-        trend: xmmOnlyReferences > 0 ? '+1%' : '0%'
+        trend: xmmOnlyReferences > 0 ? '+1%' : '0%',
+        onClick: () => scrollToTable('Extra Records in XMM vs KTP')
       },
       {
         title: 'SAM Extra Records',
         value: samOnlyReferences.toLocaleString(),
         icon: WarningIcon,
         color: theme.palette.info.main,
-        trend: samOnlyReferences > 0 ? '+1%' : '0%'
+        trend: samOnlyReferences > 0 ? '+1%' : '0%',
+        onClick: () => scrollToTable('Extra Records in SAM vs XMM')
       },
     ];
   };
@@ -1300,7 +1346,15 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             </Typography>
             
             {finalAnalysis.tables.map((table, index) => (
-              <Box key={index} sx={{ mb: 4 }}>
+              <Box 
+                key={index} 
+                sx={{ mb: 4 }}
+                ref={(el) => {
+                  if (el) {
+                    tableRefs.current[table.title] = el;
+                  }
+                }}
+              >
                 {/* Table Header with Action Buttons */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   {/* Hide the secondary table title for supporting_data tables */}
