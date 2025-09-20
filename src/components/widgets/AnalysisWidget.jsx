@@ -692,6 +692,13 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         trend: '+0%'
       },
       {
+        title: 'Reference ID Matches',
+        value: referenceMatches.toLocaleString(),
+        icon: CheckCircleIcon,
+        color: theme.palette.success.main,
+        trend: referenceMatches > 0 ? '+1%' : '0%'
+      },
+      {
         title: 'Full Matches',
         value: detailedFieldMatches.toLocaleString(),
         icon: DoneAllIcon,
@@ -712,13 +719,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
       //   color: theme.palette.success.main,
       //   trend: totalMatches > 0 ? '+1%' : '0%'
       // },
-      {
-        title: 'Reference ID Matches',
-        value: referenceMatches.toLocaleString(),
-        icon: CheckCircleIcon,
-        color: theme.palette.success.main,
-        trend: referenceMatches > 0 ? '+1%' : '0%'
-      },
+      
       
       // {
       //   title: 'Match Rate',
@@ -882,26 +883,34 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         });
       }
 
-      // Extra Records in KTP
+      // Extra Records in KTP (in ktp not in xmm)
       if (item.references_only_in_KTP && Array.isArray(item.references_only_in_KTP) && item.references_only_in_KTP.length > 0) {
         tables.push({
-          title: `${formattedName} - Extra Records in KTP (${item.references_only_in_KTP.length} records)`,
+          title: `Extra Records in KTP vs XMM (${item.references_only_in_KTP.length} records)`,
           data: item.references_only_in_KTP
         });
       }
 
-      // Extra Records in XMM
+      // Extra Records in XMM ( in xmm not in ktp)
       if (item.references_only_in_XMM && Array.isArray(item.references_only_in_XMM) && item.references_only_in_XMM.length > 0) {
         tables.push({
-          title: `${formattedName} - Extra Records in XMM (${item.references_only_in_XMM.length} records)`,
+          title: `Extra Records in XMM vs KTP (${item.references_only_in_XMM.length} records)`,
           data: item.references_only_in_XMM
+        });
+      }
+      // Extra Records in XMM vs SAM ( in xmm not in sam)
+
+      if (item.references_only_in_XMM_not_in_SAM && Array.isArray(item.references_only_in_XMM_not_in_SAM) && item.references_only_in_XMM_not_in_SAM.length > 0) {
+        tables.push({
+          title: `Extra Records in XMM vs SAM (${item.references_only_in_XMM_not_in_SAM.length} records)`,
+          data: item.references_only_in_XMM_not_in_SAM
         });
       }
 
       // Extra Records in SAM
       if (item.references_only_in_SAM && Array.isArray(item.references_only_in_SAM) && item.references_only_in_SAM.length > 0) {
         tables.push({
-          title: `${formattedName} - Extra Records in SAM (${item.references_only_in_SAM.length} records)`,
+          title: `Extra Records in SAM vs XMM (${item.references_only_in_SAM.length} records)`,
           data: item.references_only_in_SAM
         });
       }
@@ -1064,7 +1073,7 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
             minWidth: 0
           }}
         >
-          Data Analysis Results
+          MiFiX.ai  
         </Typography>
         <Button
           variant="contained"
