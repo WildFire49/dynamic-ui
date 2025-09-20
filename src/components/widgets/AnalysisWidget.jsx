@@ -753,7 +753,8 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         value: totalMismatches.toLocaleString(),
         icon: ErrorIcon,
         color: theme.palette.error.main,
-        trend: totalMismatches > 0 ? '+3%' : '0%'
+        trend: totalMismatches > 0 ? '+3%' : '0%',
+        onClick: () => scrollToTable('Message Type Mismatches')
       },
       // {
       //   title: 'Total Matches',
@@ -777,21 +778,24 @@ const AnalysisWidget = ({ data, analysis, onSave, title = 'Analysis Results' }) 
         value: messageTypeMismatches.toLocaleString(),
         icon: ErrorIcon,
         color: theme.palette.error.main,
-        trend: messageTypeMismatches > 0 ? '+1%' : '0%'
+        trend: messageTypeMismatches > 0 ? '+1%' : '0%',
+        onClick: () => scrollToTable('Message Type Mismatches')
       },
       {
         title: 'Amount Mismatches',
         value: amountMismatches.toLocaleString(),
         icon: ErrorIcon,
         color: theme.palette.error.main,
-        trend: amountMismatches > 0 ? '+1%' : '0%'
+        trend: amountMismatches > 0 ? '+1%' : '0%',
+        onClick: () => scrollToTable('Amount Mismatches')
       },
       {
         title: 'BIC Mismatches',
         value: bicMismatches.toLocaleString(),
         icon: ErrorIcon,
         color: theme.palette.error.main,
-        trend: bicMismatches > 0 ? '+1%' : '0%'
+        trend: bicMismatches > 0 ? '+1%' : '0%',
+        onClick: () => scrollToTable('BIC Mismatches')
       },
       {
         title: 'KTP Extra Records',
