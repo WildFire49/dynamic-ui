@@ -1269,9 +1269,17 @@ const AnalysisWidget = ({
         Array.isArray(item.mismatched_message_type_but_same_ref) &&
         item.mismatched_message_type_but_same_ref.length > 0
       ) {
+        const messageTypeMismatches = item.mismatched_message_type_but_same_ref.map(record => ({
+          ...record,
+          key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
+          mismatch_type: 'Message Type Mismatch',
+          xmm_value: record.XMM_msg_type ? `${record.XMM_msg_type} (${record.XMM_normalized_msg_code || 'N/A'})` : 'N/A',
+          sam_value: record.SAM_Identifier ? `${record.SAM_Identifier} (${record.SAM_normalized_msg_code || 'N/A'})` : 'N/A'
+        }));
+        
         tables.push({
-          title: `${formattedName} - Message Type Mismatches (${item.mismatched_message_type_but_same_ref.length} records)`,
-          data: item.mismatched_message_type_but_same_ref,
+          title: `${formattedName} - Message Type Mismatches (${messageTypeMismatches.length} records)`,
+          data: messageTypeMismatches,
           type: "mismatched_records",
         });
       }
@@ -1282,9 +1290,17 @@ const AnalysisWidget = ({
         Array.isArray(item.mismatched_amount_but_same_ref) &&
         item.mismatched_amount_but_same_ref.length > 0
       ) {
+        const amountMismatches = item.mismatched_amount_but_same_ref.map(record => ({
+          ...record,
+          key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
+          mismatch_type: 'Amount Mismatch',
+          xmm_value: record.XMM_amt?.toLocaleString() || record.XMM_amt || 'N/A',
+          sam_value: record.SAM_Cur_Amt || 'N/A'
+        }));
+        
         tables.push({
-          title: `${formattedName} - Amount Mismatches (${item.mismatched_amount_but_same_ref.length} records)`,
-          data: item.mismatched_amount_but_same_ref,
+          title: `${formattedName} - Amount Mismatches (${amountMismatches.length} records)`,
+          data: amountMismatches,
           type: "mismatched_records",
         });
       }
@@ -1295,9 +1311,17 @@ const AnalysisWidget = ({
         Array.isArray(item.mismatched_bic_but_same_ref) &&
         item.mismatched_bic_but_same_ref.length > 0
       ) {
+        const bicMismatches = item.mismatched_bic_but_same_ref.map(record => ({
+          ...record,
+          key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
+          mismatch_type: 'BIC Mismatch',
+          xmm_value: record.omh_sent_bic && record.omh_recv_bic ? `${record.omh_sent_bic} -> ${record.omh_recv_bic}` : 'N/A',
+          sam_value: record.Correspondent && record.Sender_Receiver ? `${record.Correspondent} (${record.Sender_Receiver})` : 'N/A'
+        }));
+        
         tables.push({
-          title: `${formattedName} - BIC Mismatches (${item.mismatched_bic_but_same_ref.length} records)`,
-          data: item.mismatched_bic_but_same_ref,
+          title: `${formattedName} - BIC Mismatches (${bicMismatches.length} records)`,
+          data: bicMismatches,
           type: "mismatched_records",
         });
       }
