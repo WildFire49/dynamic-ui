@@ -35,7 +35,7 @@ const SchedulerResponse = ({ content }) => {
   // Handle both old format (from events API) and new format (from chat API)
   const isNewFormat = content?.type === 'scheduler_response' || content?.data;
   
-  let title, metadata, download_url, status, data, message, success, job_id, schedule_details, result, isCompleted;
+  let title, metadata, download_url, status, data, message, success, job_id, schedule_details, result, isCompleted, response_type;
   
   if (isNewFormat) {
     // Extract data based on format
@@ -45,6 +45,8 @@ const SchedulerResponse = ({ content }) => {
     status = responseData.status || 'pending';
     schedule_details = responseData.schedule_details;
     result = responseData.result;
+    response_type = responseData.response_type;
+    message = responseData.message || title;
     
     // Check if this is a completed task with results
     isCompleted = status === 'completed' && result;
@@ -53,7 +55,7 @@ const SchedulerResponse = ({ content }) => {
     if (isCompleted && result) {
       data = result.data || result.tabular_data;
       download_url = result.pdf_url || result.download_url;
-      message = result.message;
+      message = result.message || message;
     }
   } else {
     // Old format from events API
@@ -67,6 +69,34 @@ const SchedulerResponse = ({ content }) => {
     success = metaData.success;
     isCompleted = status === 'completed';
   }
+
+  // Format schedule time if available
+  const formatScheduleTime = () => {
+    if (!schedule_details) return null;
+    
+    try {
+      const { params, timezone } = schedule_details;
+      if (params?.run_date) {
+        const date = new Date(params.run_date);
+        const options = {
+          year: 'numeric',
+          month: 'long', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: timezone || 'Asia/Kolkata',
+          timeZoneName: 'short'
+        };
+        return date.toLocaleString('en-IN', options);
+      }
+    } catch (error) {
+      console.error('Error formatting schedule time:', error);
+    }
+    return null;
+  };
+
+  const scheduleTimeFormatted = formatScheduleTime();
+  const isScheduledTask = response_type === 'scheduled' && schedule_details;
 
   const handleDownload = () => {
     if (download_url) {
@@ -109,12 +139,12 @@ const SchedulerResponse = ({ content }) => {
               }}>
                 Scheduler Agent
               </Typography>
-              {/* <Stack direction="row" alignItems="center" spacing={1}>
+              <Stack direction="row" alignItems="center" spacing={1}>
                 <CheckCircleIcon sx={{ fontSize: 16 }} />
                 <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Report scheduled successfully
+                  {isScheduledTask ? 'Task scheduled successfully' : 'Report processed successfully'}
                 </Typography>
-              </Stack> */}
+              </Stack>
             </Box>
             <Tooltip title="Share Report">
               <IconButton sx={{ color: 'white' }}>
@@ -134,12 +164,16 @@ const SchedulerResponse = ({ content }) => {
             border: '1px solid rgba(37, 211, 102, 0.3)'
           }}>
             <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1.5 }}>
-              <WhatsAppIcon sx={{ color: '#25D366', fontSize: 24 }} />
+              {isScheduledTask ? (
+                <ScheduleIcon sx={{ color: '#25D366', fontSize: 24 }} />
+              ) : (
+                <WhatsAppIcon sx={{ color: '#25D366', fontSize: 24 }} />
+              )}
               <Typography variant="h6" sx={{ 
                 color: '#128C7E',
                 fontWeight: 'bold'
               }}>
-                {message || 'Report Generated Successfully!'}
+                {isScheduledTask ? 'Task Scheduled Successfully!' : (message || 'Report Generated Successfully!')}
               </Typography>
             </Stack>
             
@@ -148,9 +182,25 @@ const SchedulerResponse = ({ content }) => {
               mb: 2,
               lineHeight: 1.6
             }}>
-              Your report has been generated and will be sent to your WhatsApp shortly. 
-              <br />
-              You'll receive a notification once it's delivered.
+              {isScheduledTask ? (
+                <>
+                  {message}
+                  {scheduleTimeFormatted && (
+                    <>
+                      <br />
+                      <Box component="span" sx={{ display: 'block', fontWeight: 'bold', color: '128C7E', textAlign: 'center' }}>
+                        Your Report will be sent to your WhatsApp shortly.
+                      </Box>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  Your report has been generated and will be sent to your WhatsApp shortly. 
+                  <br />
+                  You'll receive a notification once it's delivered.
+                </>
+              )}
             </Typography>
 
             {/* WhatsApp Status Chip */}
@@ -168,46 +218,84 @@ const SchedulerResponse = ({ content }) => {
             /> */}
           </Box>
 
-          {/* Report Details */}
-          {/* <Card sx={{ mb: 3, bgcolor: 'rgba(255,255,255,0.7)', borderRadius: 2 }}>
-            <CardContent sx={{ p: 2.5 }}>
-              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
-                <DescriptionIcon sx={{ color: '#128C7E' }} />
-                <Typography variant="h6" sx={{ color: '#128C7E', fontWeight: 'bold' }}>
-                  Report Details
-                </Typography>
-              </Stack>
+          {/* Schedule Details */}
+          {/* {(isScheduledTask || job_id) && (
+            <Card sx={{ mb: 3, bgcolor: 'rgba(255,255,255,0.7)', borderRadius: 2 }}>
+              <CardContent sx={{ p: 2.5 }}>
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+                  {isScheduledTask ? (
+                    <ScheduleIcon sx={{ color: '#128C7E' }} />
+                  ) : (
+                    <DescriptionIcon sx={{ color: '#128C7E' }} />
+                  )}
+                  <Typography variant="h6" sx={{ color: '#128C7E', fontWeight: 'bold' }}>
+                    {isScheduledTask ? 'Schedule Details' : 'Task Details'}
+                  </Typography>
+                </Stack>
 
-              <Stack spacing={1.5}>
-                {data && data.length > 0 && (
+                <Stack spacing={1.5}>
+                  {isScheduledTask && scheduleTimeFormatted && (
+                    <Box sx={{ 
+                      p: 2, 
+                      bgcolor: 'rgba(25, 118, 210, 0.1)', 
+                      borderRadius: 1.5,
+                      border: '1px solid rgba(25, 118, 210, 0.2)'
+                    }}>
+                      <Stack direction="row" alignItems="center" spacing={1.5}>
+                        <AccessTimeIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+                        <Typography variant="body1" sx={{ 
+                          fontWeight: 'medium', 
+                          color: '#1976d2'
+                        }}>
+                          {scheduleTimeFormatted}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  )}
+                  
+                  {data && data.length > 0 && (
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2e7d32' }}>
+                        📊 Records: {data.length} {data.length === 1 ? 'record' : 'records'}
+                      </Typography>
+                    </Box>
+                  )}
+                  
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2e7d32' }}>
-                      Records: {data.length} {data.length === 1 ? 'record' : 'records'}
+                      🕒 {isScheduledTask ? 'Scheduled' : 'Generated'}: {new Date().toLocaleString('en-IN')}
                     </Typography>
                   </Box>
-                )}
-                
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2e7d32' }}>
-                    Generated: {new Date().toLocaleString()}
-                  </Typography>
-                </Box>
 
-                {job_id && (
-                  <Box>
-                    <Typography variant="body2" sx={{ 
-                      fontWeight: 'medium', 
-                      color: '#666',
-                      fontFamily: 'monospace',
-                      fontSize: '0.8rem'
+                  {job_id && (
+                    <Box sx={{ 
+                      p: 1.5, 
+                      bgcolor: 'rgba(108, 117, 125, 0.1)', 
+                      borderRadius: 1,
+                      border: '1px solid rgba(108, 117, 125, 0.2)'
                     }}>
-                      Job ID: {job_id}
-                    </Typography>
-                  </Box>
-                )}
-              </Stack>
-            </CardContent>
-          </Card> */}
+                      <Typography variant="body2" sx={{ 
+                        fontWeight: 'medium', 
+                        color: '#6c757d',
+                        fontFamily: 'monospace',
+                        fontSize: '0.85rem'
+                      }}>
+                        🔢 Job ID: {job_id}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {schedule_details?.type && (
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2e7d32' }}>
+                        📋 Schedule Type: {schedule_details.type}
+                      </Typography>
+                    </Box>
+                  )}
+                </Stack>
+              </CardContent>
+            </Card>
+          )} */}
 
           {/* Enhanced Data Grid - Only show if data exists */}
           {data && data.length > 0 && (
