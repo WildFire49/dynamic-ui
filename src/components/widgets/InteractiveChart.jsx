@@ -200,19 +200,44 @@ const InteractiveChart = ({
 
       case 'pie':
       case 'donut':
-        // Calculate safe radius that accounts for labels and margins
-        const containerWidth = 300; // Approximate container width
+        // Custom label renderer to prevent overlap
+        const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, index }) => {
+          // Only show labels for segments larger than 3%
+          if (percent < 0.03) return null;
+          
+          const RADIAN = Math.PI / 180;
+          const radius = innerRadius + (outerRadius - innerRadius) * 1.4; // Position labels further out
+          const x = cx + radius * Math.cos(-midAngle * RADIAN);
+          const y = cy + radius * Math.sin(-midAngle * RADIAN);
+          
+          return (
+            <text
+              x={x}
+              y={y}
+              fill={theme.palette.text.primary}
+              textAnchor={x > cx ? 'start' : 'end'}
+              dominantBaseline="central"
+              fontSize="11"
+              fontWeight="500"
+            >
+              {`${name} ${(percent * 100).toFixed(0)}%`}
+            </text>
+          );
+        };
+
+        // Calculate safe radius with more space for external labels
+        const containerWidth = 350; // Increased for better label spacing
         const containerHeight = height;
         const safeRadius = Math.min(
-          (containerWidth - 80) / 2, // Account for labels extending beyond chart
-          (containerHeight - 80) / 2, // Account for top/bottom margins and labels
-          80 // Maximum radius to ensure it fits
+          (containerWidth - 120) / 2, // More space for external labels
+          (containerHeight - 100) / 2, // More vertical space
+          65 // Smaller radius to leave more space for labels
         );
         const innerRadius = chartType === 'donut' ? safeRadius * 0.5 : 0;
         
         return (
           <ResponsiveContainer key={animationKey} width="100%" height={height}>
-            <PieChart {...chartProps} margin={{ top: 30, right: 30, bottom: 30, left: 30 }}>
+            <PieChart {...chartProps} margin={{ top: 40, right: 60, bottom: 40, left: 60 }}>
               <Pie
                 data={data}
                 cx="50%"
@@ -223,9 +248,8 @@ const InteractiveChart = ({
                 dataKey="value"
                 animationDuration={1000}
                 animationBegin={200}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={renderCustomLabel}
                 labelLine={false}
-                fontSize={10}
               >
                 {data.map((entry, index) => (
                   <Cell 

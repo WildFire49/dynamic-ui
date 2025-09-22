@@ -17,7 +17,8 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
-  LabelList
+  LabelList,
+  Label
 } from 'recharts';
 
 const PieChartComponent = ({ 
@@ -110,6 +111,66 @@ const PieChartComponent = ({
     return null;
   };
 
+  // Custom label rendering function for better positioning
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, value }) => {
+    // Only show label if the slice is large enough (>= 3% of total)
+    if (percent < 0.03) return null;
+    
+    const RADIAN = Math.PI / 180;
+    // Position label outside the pie chart
+    const radius = outerRadius + 30;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    
+    // Determine text anchor based on position
+    const textAnchor = x > cx ? 'start' : 'end';
+    
+    return (
+      <g>
+        {/* Connection line */}
+        <line
+          x1={cx + (outerRadius + 10) * Math.cos(-midAngle * RADIAN)}
+          y1={cy + (outerRadius + 10) * Math.sin(-midAngle * RADIAN)}
+          x2={x - (textAnchor === 'start' ? 5 : -5)}
+          y2={y}
+          stroke={theme.palette.text.secondary}
+          strokeWidth={1}
+          strokeOpacity={0.6}
+        />
+        {/* Label text */}
+        <text
+          x={x}
+          y={y - 4}
+          textAnchor={textAnchor}
+          dominantBaseline="central"
+          style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            fill: theme.palette.text.primary,
+            fontFamily: theme.typography.fontFamily
+          }}
+        >
+          {name.length > 15 ? `${name.substring(0, 12)}...` : name}
+        </text>
+        {/* Value text */}
+        <text
+          x={x}
+          y={y + 12}
+          textAnchor={textAnchor}
+          dominantBaseline="central"
+          style={{
+            fontSize: '11px',
+            fontWeight: 500,
+            fill: theme.palette.text.secondary,
+            fontFamily: theme.typography.fontFamily
+          }}
+        >
+          {`${value}${showPercentages ? '%' : ''}`}
+        </text>
+      </g>
+    );
+  };
+
   if (!data || data.length === 0) {
     return (
       <Card sx={{ 
@@ -175,19 +236,21 @@ const PieChartComponent = ({
           <Box sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ width: '100%', height: height, flex: 1, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                <PieChart margin={{ top: 60, right: 80, bottom: 60, left: 80 }}>
                   <Pie
                     data={enhancedData}
                     cx="50%"
                     cy="50%"
                     innerRadius={innerRadius}
                     outerRadius={outerRadius}
-                    paddingAngle={3}
+                    paddingAngle={2}
                     dataKey="value"
                     animationBegin={0}
                     animationDuration={animationDuration}
                     onMouseEnter={onPieEnter}
                     onMouseLeave={onPieLeave}
+                    labelLine={false}
+                    label={showValues ? renderCustomizedLabel : false}
                   >
                     {enhancedData.map((entry, index) => (
                       <Cell 
@@ -203,48 +266,38 @@ const PieChartComponent = ({
                         }}
                       />
                     ))}
-                    {showValues && (
-                      <LabelList
-                        dataKey="value"
-                        position="center"
-                        formatter={(value) => `${value}${showPercentages ? '%' : ''}`}
-                        style={{
-                          fontSize: '14px',
-                          fontWeight: 600,
-                          fill: theme.palette.text.primary
-                        }}
-                      />
-                    )}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
 
-              {/* Center Information Display */}
-              <Box sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                textAlign: 'center',
-                pointerEvents: 'none'
-              }}>
-                <Typography variant="h4" sx={{
-                  fontWeight: 700,
-                  color: theme.palette.text.primary,
-                  mb: 0.5
+              {/* Center Information Display - only show for donut charts */}
+              {innerRadius !== "0%" && innerRadius !== 0 && (
+                <Box sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  textAlign: 'center',
+                  pointerEvents: 'none'
                 }}>
-                  {enhancedData.reduce((sum, item) => sum + item.value, 0)}{showPercentages ? '%' : ''}
-                </Typography>
-                <Typography variant="caption" sx={{
-                  color: theme.palette.text.secondary,
-                  fontWeight: 500,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5
-                }}>
-                  Total
-                </Typography>
-              </Box>
+                  <Typography variant="h4" sx={{
+                    fontWeight: 700,
+                    color: theme.palette.text.primary,
+                    mb: 0.5
+                  }}>
+                    {enhancedData.reduce((sum, item) => sum + item.value, 0)}{showPercentages ? '%' : ''}
+                  </Typography>
+                  <Typography variant="caption" sx={{
+                    color: theme.palette.text.secondary,
+                    fontWeight: 500,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5
+                  }}>
+                    Total
+                  </Typography>
+                </Box>
+              )}
             </Box>
 
             {/* Enhanced Legend with Stats */}
