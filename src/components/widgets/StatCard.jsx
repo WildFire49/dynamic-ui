@@ -87,14 +87,14 @@ const StatCard = ({
           onMouseLeave={() => setHovered(false)}
           onClick={onClick}
           sx={{
-            height: 180,
+            height: { xs: 120, sm: 140, md: 160 }, // Much smaller on mobile
             width: '100%',
             background: `linear-gradient(135deg, 
               ${alpha(theme.palette.background.paper, 0.9)} 0%, 
               ${alpha(color || theme.palette.primary.main, 0.05)} 100%)`,
             backdropFilter: 'blur(20px)',
             border: `1px solid ${alpha(color || theme.palette.primary.main, 0.2)}`,
-            borderRadius: 3,
+            borderRadius: { xs: 2, sm: 3 }, // Smaller border radius on mobile
             position: 'relative',
             overflow: 'hidden',
             cursor: 'pointer',
@@ -102,7 +102,7 @@ const StatCard = ({
             animation: animated ? `${float} 4s ease-in-out infinite` : 'none',
             animationDelay: `${index * 0.5}s`,
             '&:hover': {
-              transform: 'translateY(-8px) scale(1.02)',
+              transform: { xs: 'translateY(-4px) scale(1.01)', sm: 'translateY(-8px) scale(1.02)' }, // Less movement on mobile
               boxShadow: `0 20px 40px ${alpha(color || theme.palette.primary.main, 0.3)}`,
               border: `1px solid ${alpha(color || theme.palette.primary.main, 0.4)}`
             },
@@ -124,21 +124,21 @@ const StatCard = ({
             display: 'flex', 
             flexDirection: 'column', 
             justifyContent: 'space-between',
-            p: 2.5, // Slightly reduced padding
+            p: { xs: 1, sm: 1.5, md: 2 }, // Much smaller padding on mobile
             position: 'relative',
             zIndex: 1,
-            overflow: 'hidden' // Ensure content doesn't overflow
+            overflow: 'hidden'
           }}>
             {/* Header with Icon */}
             <Box sx={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'flex-start',
-              mb: 2
+              mb: { xs: 0.5, sm: 1, md: 2 }
             }}>
               <Box sx={{
-                p: 1.5,
-                borderRadius: 2,
+                p: { xs: 0.8, sm: 1.2, md: 1.5 }, // Smaller icon padding on mobile
+                borderRadius: { xs: 1, sm: 1.5, md: 2 },
                 background: `linear-gradient(45deg, ${color || theme.palette.primary.main}, ${alpha(color || theme.palette.primary.main, 0.8)})`,
                 boxShadow: `0 8px 16px ${alpha(color || theme.palette.primary.main, 0.3)}`,
                 transition: 'all 0.3s ease',
@@ -146,7 +146,7 @@ const StatCard = ({
               }}>
                 {Icon && (
                   <Icon sx={{ 
-                    fontSize: 24, 
+                    fontSize: { xs: 16, sm: 20, md: 24 }, // Much smaller icons on mobile
                     color: 'white',
                     filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
                   }} />

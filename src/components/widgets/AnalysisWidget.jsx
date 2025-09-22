@@ -8,6 +8,7 @@ import {
   Fade,
   alpha,
   useTheme,
+  useMediaQuery,
   Button,
   IconButton,
   Paper,
@@ -67,6 +68,8 @@ const AnalysisWidget = ({
   title = "Analysis Results",
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
   const [hasAnimated, setHasAnimated] = useState(false);
   const [reviewPopover, setReviewPopover] = useState({
     open: false,
@@ -459,6 +462,113 @@ const AnalysisWidget = ({
       return charts;
     }
 
+    // Check if this is RM performance data
+    const hasRMName = allKeys.some(key => 
+      key.includes('RM_Name') || key.includes('RM Name') || key.toLowerCase().includes('rm_name')
+    );
+    const hasBranch = allKeys.some(key => 
+      key.includes('Branch') || key.includes('branch') || key.includes('Branches_afer_merger')
+    );
+    const hasDemand = allKeys.some(key => 
+      key.includes('Dem') || key.includes('demand') || key.includes('MTD_Dem')
+    );
+    const hasCollection = allKeys.some(key => 
+      key.includes('Coll') || key.includes('collection') || key.includes('MTD_Coll')
+    );
+    const hasOTR = allKeys.some(key => 
+      key.includes('OTR') || key.includes('otr')
+    );
+
+    if (hasRMName && hasBranch && (hasDemand || hasCollection || hasOTR)) {
+      console.log('🔍 [ANALYSIS] Detected RM performance data, generating RM performance charts');
+      console.log('🔍 [ANALYSIS] Sample RM data:', supportingData[0]);
+      console.log('🔍 [ANALYSIS] Detection flags:', { hasRMName, hasBranch, hasDemand, hasCollection, hasOTR });
+
+      // 1. Collection Efficiency Bar Chart
+      const rmData = supportingData.map(rm => {
+        const demand = rm.MTD_Dem_incl_adv || 0;
+        const collection = rm.MTD_Coll_incl_adv || 0;
+        const efficiency = demand > 0 ? (collection / demand) * 100 : 0;
+        
+        return {
+          name: rm.RM_Name && rm.RM_Name.length > 12 ? rm.RM_Name.substring(0, 10) + '..' : rm.RM_Name,
+          value: Math.round(efficiency * 100) / 100,
+          efficiency,
+          demand,
+          collection,
+          otr: Math.round((rm.OTR || 0) * 100),
+          color: efficiency >= 90 ? '#10b981' : efficiency >= 80 ? '#f59e0b' : '#ef4444'
+        };
+      }).sort((a, b) => b.efficiency - a.efficiency);
+
+      charts.push({
+        type: 'bar',
+        title: 'Collection Efficiency by RM (%)',
+        data: rmData,
+        yAxisLabel: 'Collection Efficiency (%)',
+        formatValue: (value) => `${value}%`
+      });
+      
+      console.log('🔍 [ANALYSIS] Collection Efficiency chart data:', rmData.slice(0, 3));
+
+      // 2. OTR Performance Distribution (Pie Chart)
+      const otrCategories = { excellent: 0, good: 0, average: 0, poor: 0 };
+      supportingData.forEach(rm => {
+        const otr = (rm.OTR || 0) * 100;
+        if (otr >= 95) otrCategories.excellent++;
+        else if (otr >= 85) otrCategories.good++;
+        else if (otr >= 70) otrCategories.average++;
+        else otrCategories.poor++;
+      });
+
+      const otrPieData = [
+        { name: 'Excellent (95%+)', value: otrCategories.excellent, color: '#10b981' },
+        { name: 'Good (85-94%)', value: otrCategories.good, color: '#f59e0b' },
+        { name: 'Average (70-84%)', value: otrCategories.average, color: '#f97316' },
+        { name: 'Poor (<70%)', value: otrCategories.poor, color: '#ef4444' }
+      ].filter(item => item.value > 0);
+
+      if (otrPieData.length > 0) {
+        charts.push({
+          type: 'donut',
+          title: 'OTR Performance Distribution',
+          data: otrPieData
+        });
+        
+        console.log('🔍 [ANALYSIS] OTR Distribution chart data:', otrPieData);
+      }
+
+      // 3. Top Performing RMs by Collection Amount (Bar Chart)
+      const topRMsData = supportingData
+        .filter(rm => (rm.MTD_Coll_incl_adv || 0) > 0)
+        .sort((a, b) => (b.MTD_Coll_incl_adv || 0) - (a.MTD_Coll_incl_adv || 0))
+        .slice(0, 10)
+        .map((rm, index) => ({
+          name: rm.RM_Name && rm.RM_Name.length > 12 ? rm.RM_Name.substring(0, 10) + '..' : rm.RM_Name,
+          value: rm.MTD_Coll_incl_adv || 0,
+          demand: rm.MTD_Dem_incl_adv || 0,
+          collection: rm.MTD_Coll_incl_adv || 0,
+          efficiency: rm.MTD_Dem_incl_adv > 0 ? ((rm.MTD_Coll_incl_adv / rm.MTD_Dem_incl_adv) * 100) : 0,
+          color: index < 3 ? '#10b981' : index < 6 ? '#3b82f6' : '#6366f1'
+        }));
+
+      if (topRMsData.length > 0) {
+        charts.push({
+          type: 'bar',
+          title: 'TOP 10 RMs by Collection Amount',
+          data: topRMsData,
+          yAxisLabel: 'Collection Amount',
+          formatValue: (value) => `₹${value.toLocaleString()}`
+        });
+        
+        console.log('🔍 [ANALYSIS] Top RMs chart data:', topRMsData.slice(0, 3));
+      }
+      
+      console.log('🔍 [ANALYSIS] Final RM charts generated:', charts.length, 'charts');
+
+      return charts.slice(0, 2); // Limit to 2 charts for clean layout
+    }
+
     // Original logic for other data types
     Object.keys(firstItem).forEach((key) => {
       const values = supportingData
@@ -673,6 +783,69 @@ const AnalysisWidget = ({
           icon: WarningIcon,
           color: theme.palette.error.main,
           trend: maxCollection > 40 ? "+15%" : "-5%",
+        },
+      ];
+    }
+
+    // Check if this is RM performance data
+    const hasRMName = allKeys.some(key => 
+      key.includes('RM_Name') || key.includes('RM Name') || key.toLowerCase().includes('rm_name')
+    );
+    const hasBranch = allKeys.some(key => 
+      key.includes('Branch') || key.includes('branch') || key.includes('Branches_afer_merger')
+    );
+    const hasDemand = allKeys.some(key => 
+      key.includes('Dem') || key.includes('demand') || key.includes('MTD_Dem')
+    );
+    const hasCollection = allKeys.some(key => 
+      key.includes('Coll') || key.includes('collection') || key.includes('MTD_Coll')
+    );
+    const hasOTR = allKeys.some(key => 
+      key.includes('OTR') || key.includes('otr')
+    );
+
+    if (hasRMName && hasBranch && (hasDemand || hasCollection || hasOTR)) {
+      console.log('🔍 [STATS] Generating RM performance stats');
+      // RM performance-specific statistics
+      const totalDemand = supportingData.reduce((sum, rm) => sum + (rm.MTD_Dem_incl_adv || 0), 0);
+      const totalCollection = supportingData.reduce((sum, rm) => sum + (rm.MTD_Coll_incl_adv || 0), 0);
+      const overallEfficiency = totalDemand > 0 ? (totalCollection / totalDemand) * 100 : 0;
+      const avgOTR = supportingData.reduce((sum, rm) => sum + ((rm.OTR || 0) * 100), 0) / supportingData.length;
+      const topPerformers = supportingData.filter(rm => {
+        const efficiency = rm.MTD_Dem_incl_adv > 0 ? (rm.MTD_Coll_incl_adv / rm.MTD_Dem_incl_adv) * 100 : 0;
+        return efficiency >= 90;
+      }).length;
+
+      return [
+        {
+          title: "Total Collection",
+          value: Math.round(totalCollection).toLocaleString(),
+          icon: TrendingUpIcon,
+          color: theme.palette.success.main,
+          trend: "+5%",
+        },
+        {
+          title: "Total Demand", 
+          value: Math.round(totalDemand).toLocaleString(),
+          icon: AssessmentIcon,
+          color: theme.palette.warning.main,
+          trend: "+3%",
+        },
+        {
+          title: "Collection Efficiency",
+          value: `${Math.round(overallEfficiency)}%`,
+          icon: CheckCircleIcon,
+          color: overallEfficiency >= 90 ? theme.palette.success.main : 
+                 overallEfficiency >= 80 ? theme.palette.warning.main : theme.palette.error.main,
+          trend: overallEfficiency >= 85 ? "+2%" : "-1%",
+        },
+        {
+          title: "Average OTR",
+          value: `${Math.round(avgOTR)}%`,
+          icon: AnalyticsIcon,
+          color: avgOTR >= 90 ? theme.palette.success.main :
+                 avgOTR >= 80 ? theme.palette.info.main : theme.palette.error.main,
+          trend: avgOTR >= 85 ? "+4%" : "-2%",
         },
       ];
     }
@@ -1541,40 +1714,50 @@ const AnalysisWidget = ({
   }
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ 
+      width: "100%", 
+      maxWidth: '100vw',
+      overflow: 'hidden',
+      px: isMobile ? 1 : 2
+    }}>
       {/* Header with Save Button */}
       <Box
         sx={{
           display: "flex",
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: "space-between",
-          alignItems: "center",
-          mb: 4,
-          flexWrap: "wrap",
-          gap: 2,
+          alignItems: isMobile ? "stretch" : "center",
+          mb: isMobile ? 3 : 4,
+          gap: isMobile ? 1.5 : 2,
+          px: isMobile ? 1 : 0,
         }}
       >
         <Typography
-          variant="h4"
+          variant={isMobile ? "h5" : "h4"}
           sx={{
             fontWeight: 700,
+            fontSize: isMobile ? '1.5rem' : isTablet ? '2rem' : '2.125rem',
             background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             animation: `${slideIn} 0.8s ease-out`,
             flex: 1,
             minWidth: 0,
+            textAlign: isMobile ? 'center' : 'left',
           }}
         >
           MiFiX.ai
         </Typography>
         <Button
           variant="contained"
-          startIcon={<SaveIcon />}
+          startIcon={!isMobile ? <SaveIcon /> : null}
           onClick={handleSaveToLoginboard}
+          size={isMobile ? "small" : "medium"}
           sx={{
-            borderRadius: 3,
-            px: 3,
-            py: 1.5,
+            borderRadius: isMobile ? 2 : 3,
+            px: isMobile ? 2 : 3,
+            py: isMobile ? 1 : 1.5,
+            fontSize: isMobile ? '0.75rem' : '0.875rem',
             background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
             boxShadow: `0 8px 32px ${theme.palette.primary.main}40`,
             "&:hover": {
@@ -1583,9 +1766,10 @@ const AnalysisWidget = ({
             },
             transition: "all 0.3s ease",
             animation: `${float} 3s ease-in-out infinite`,
+            minWidth: isMobile ? '100px' : 'auto',
           }}
         >
-          Save to Dashboard
+          {isMobile ? 'Save' : 'Save to Dashboard'}
         </Button>
       </Box>
 
@@ -1593,9 +1777,10 @@ const AnalysisWidget = ({
       <Fade in={currentSection >= 0} timeout={800}>
         <Box sx={{ mb: 5 }}>
           <Typography
-            variant="h4"
+            variant={isMobile ? "h5" : "h4"}
             sx={{
-              mb: 4,
+              mb: isMobile ? 3 : 4,
+              fontSize: isMobile ? '1.5rem' : '2.125rem',
               fontWeight: 700,
               color: theme.palette.text.primary,
               animation: `${fadeInUp} 0.6s ease-out 0.1s both`,
@@ -1617,13 +1802,14 @@ const AnalysisWidget = ({
                 display: "grid",
                 gridTemplateColumns: {
                   xs: "repeat(2, 1fr)", // 2 columns on mobile
-                  sm: "repeat(3, 1fr)", // 3 columns on small screens
-                  md: "repeat(3, 1fr)", // 3 columns on medium screens
-                  lg: "repeat(3, 1fr)", // 3 columns on large screens
+                  sm: "repeat(3, 1fr)", // 3 columns on tablet+
+                  md: "repeat(4, 1fr)", // 4 columns on desktop
+                  lg: "repeat(4, 1fr)", // 4 columns on large screens
                 },
-                gap: { xs: "12px", sm: "16px", md: "20px" },
+                gap: { xs: "8px", sm: "12px", md: "16px" }, // Smaller gaps
                 justifyItems: "center",
                 alignItems: "stretch",
+                px: { xs: 1, sm: 2 }, // Add horizontal padding
               }}
             >
               {finalAnalysis.stats.map((stat, index) => (
@@ -1631,10 +1817,10 @@ const AnalysisWidget = ({
                   key={index}
                   sx={{
                     animation: `${slideIn} 0.6s ease-out ${0.1 * index}s both`,
-                    height: { xs: "160px", sm: "180px" },
+                    height: { xs: "120px", sm: "140px", md: "160px" }, // Match StatCard heights
                     width: "100%",
-                    maxWidth: { xs: "180px", sm: "220px", md: "250px" },
-                    minWidth: { xs: "140px", sm: "180px", md: "200px" },
+                    maxWidth: { xs: "150px", sm: "180px", md: "200px" }, // Smaller max widths
+                    minWidth: { xs: "120px", sm: "140px", md: "160px" }, // Smaller min widths
                   }}
                 >
                   <StatCard {...stat} index={index} />
@@ -1810,85 +1996,113 @@ const AnalysisWidget = ({
                 <Box
                   sx={{
                     display: "flex",
+                    flexDirection: isMobile ? 'column' : 'row',
                     justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 2,
+                    alignItems: isMobile ? "stretch" : "center",
+                    mb: isMobile ? 1.5 : 2,
+                    gap: isMobile ? 1 : 0,
                   }}
                 >
-                  {/* Hide the secondary table title for supporting_data tables */}
-                  {!(
-                    table.title === "Detailed Results" &&
-                    finalAnalysis.type === "supporting_data"
-                  ) && (
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontWeight: 600,
-                        color: theme.palette.text.primary,
-                      }}
-                    >
-                      {table.title}
-                    </Typography>
-                  )}
+                  {/* Show table title */}
+                  <Typography
+                    variant={isMobile ? "subtitle1" : "h6"}
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: isMobile ? '1rem' : '1.25rem',
+                      color: theme.palette.text.primary,
+                      textAlign: isMobile ? 'center' : 'left',
+                      flex: 1
+                    }}
+                  >
+                    {table.title}
+                  </Typography>
 
                   {/* Action Buttons */}
-                  <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                  <Box sx={{ 
+                    display: "flex", 
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: isMobile ? 1 : 2, 
+                    alignItems: isMobile ? "stretch" : "center",
+                    justifyContent: "flex-end",
+                    width: isMobile ? '100%' : 'auto',
+                    ml: 'auto'
+                  }}>
                     {/* Download Table Button - Always show for all tables */}
                     <Button
                       variant="outlined"
-                      size="small"
-                      startIcon={<DownloadIcon />}
+                      size={isMobile ? "small" : "small"}
+                      startIcon={!isMobile ? <DownloadIcon /> : null}
                       onClick={() =>
                         handleDownloadTable(table.title, table.data)
                       }
                       sx={{
                         borderColor: theme.palette.success.main,
                         color: theme.palette.success.main,
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                        px: isMobile ? 1.5 : 2,
+                        py: isMobile ? 0.5 : 1,
+                        minWidth: isMobile ? 'auto' : '120px',
                         "&:hover": {
                           background: alpha(theme.palette.success.main, 0.1),
                           borderColor: theme.palette.success.main,
                         },
                       }}
                     >
-                      Download Table
+                      {isMobile ? 'Download' : 'Download Table'}
                     </Button>
 
                     {/* Generate Audit Report Button - Only for mismatched records */}
                     {table.type === "mismatched_records" && (
                       <Button
                         variant="outlined"
-                        size="small"
-                        startIcon={<ReviewsIcon />}
+                        size={isMobile ? "small" : "small"}
+                        startIcon={!isMobile ? <ReviewsIcon /> : null}
                         onClick={() =>
                           handleGenerateAuditReport(table.title, table.data)
                         }
                         sx={{
                           borderColor: theme.palette.primary.main,
                           color: theme.palette.primary.main,
+                          fontSize: isMobile ? '0.75rem' : '0.875rem',
+                          px: isMobile ? 1.5 : 2,
+                          py: isMobile ? 0.5 : 1,
+                          minWidth: isMobile ? 'auto' : '160px',
                           "&:hover": {
                             background: alpha(theme.palette.primary.main, 0.1),
                           },
                         }}
                       >
-                        Generate Audit Report
+                        {isMobile ? 'Audit' : 'Generate Audit Report'}
                       </Button>
                     )}
                   </Box>
                 </Box>
 
-                <EnhancedDataGrid
-                  title={table.title}
-                  data={table.data}
-                  type={table.type}
-                  onReviewClick={
-                    table.type === "mismatched_records"
-                      ? handleOpenReview
-                      : undefined
-                  }
-                  height={400}
-                  pageSize={10}
-                  index={index}
-                />
+                <Box sx={{ width: '100%', overflow: 'hidden' }}>
+                  <EnhancedDataGrid
+                    title={table.title}
+                    data={table.data}
+                    height={isMobile ? 350 : 500}
+                    pageSize={isMobile ? 10 : 25}
+                    index={index}
+                    exportFileName={`${finalAnalysis.title}_${table.title}`}
+                    onRefresh={
+                      table.title.toLowerCase().includes("mismatch")
+                        ? () => window.location.reload()
+                        : undefined
+                    }
+                    type={
+                      table.title.toLowerCase().includes("mismatch")
+                        ? "mismatched_records"
+                        : null
+                    }
+                    onReviewClick={
+                      table.title.toLowerCase().includes("mismatch")
+                        ? handleOpenReview
+                        : null
+                    }
+                  />
+                </Box>
               </Box>
             ))}
           </Box>

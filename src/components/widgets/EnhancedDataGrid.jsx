@@ -13,6 +13,7 @@ import {
   Menu,
   MenuItem,
   useTheme,
+  useMediaQuery,
   alpha,
   Fade,
   Grow,
@@ -76,6 +77,8 @@ const EnhancedDataGrid = ({
   onReviewClick = null
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
   const [mounted, setMounted] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [filteredData, setFilteredData] = useState(data);
@@ -105,14 +108,102 @@ const EnhancedDataGrid = ({
       const values = data.map(row => row[key]);
       const isNumeric = values.every(val => !isNaN(val) && val !== null && val !== undefined && val !== '');
       const isDate = values.some(val => !isNaN(Date.parse(val)));
+      const isOTR = key === 'OTR' || key.toLowerCase().includes('otr');
+      const isPercentage = key.toLowerCase().includes('percentage') || key.toLowerCase().includes('percent');
+      const isEfficiency = key.toLowerCase().includes('efficiency');
 
-      return {
+      const baseColumn = {
         field: key,
         headerName: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         flex: 1,
-        minWidth: 150,
-        editable: false
+        minWidth: isMobile ? 100 : 150,
+        maxWidth: isMobile ? 200 : undefined,
+        editable: false,
+        headerClassName: 'wrapped-header',
+        renderHeader: (params) => (
+          <Box sx={{ 
+            whiteSpace: 'normal', 
+            lineHeight: 1.2, 
+            fontSize: isMobile ? '0.75rem' : '0.875rem',
+            fontWeight: 700,
+            textAlign: 'center',
+            padding: '4px 0'
+          }}>
+            {params.colDef.headerName}
+          </Box>
+        )
       };
+
+      // Special handling for OTR fields - convert decimal to percentage
+      if (isOTR && isNumeric) {
+        return {
+          ...baseColumn,
+          align: 'center',
+          headerAlign: 'center',
+          renderCell: (params) => {
+            if (params.value === null || params.value === undefined) {
+              return <span style={{ color: '#999', fontStyle: 'italic' }}>No Data</span>;
+            }
+            
+            // Convert decimal to percentage for OTR
+            const displayValue = params.value <= 1 ? params.value * 100 : params.value;
+            const roundedValue = Math.round(displayValue * 100) / 100;
+            
+            return (
+              <Chip
+                label={`${roundedValue}%`}
+                size="small"
+                sx={{
+                  backgroundColor: roundedValue >= 95 ? '#e8f5e8' :
+                                 roundedValue >= 85 ? '#fff3e0' :
+                                 roundedValue >= 70 ? '#ffeaa7' : '#ffcdd2',
+                  color: roundedValue >= 95 ? '#2e7d32' :
+                         roundedValue >= 85 ? '#f57c00' :
+                         roundedValue >= 70 ? '#ff8f00' : '#d32f2f',
+                  fontWeight: 600,
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem'
+                }}
+              />
+            );
+          }
+        };
+      }
+
+      // Special handling for other percentage fields
+      if ((isPercentage || isEfficiency) && isNumeric) {
+        return {
+          ...baseColumn,
+          align: 'center',
+          headerAlign: 'center',
+          renderCell: (params) => {
+            if (params.value === null || params.value === undefined) {
+              return <span style={{ color: '#999', fontStyle: 'italic' }}>No Data</span>;
+            }
+            
+            const value = Number(params.value);
+            const roundedValue = Math.round(value * 100) / 100;
+            
+            return (
+              <Chip
+                label={`${roundedValue}%`}
+                size="small"
+                sx={{
+                  backgroundColor: roundedValue >= 90 ? '#e8f5e8' :
+                                 roundedValue >= 80 ? '#fff3e0' : '#ffcdd2',
+                  color: roundedValue >= 90 ? '#2e7d32' :
+                         roundedValue >= 80 ? '#f57c00' : '#d32f2f',
+                  fontWeight: 600,
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem'
+                }}
+              />
+            );
+          }
+        };
+      }
+
+      return baseColumn;
     });
     
     // Add review column for mismatched records as the first column
@@ -120,11 +211,25 @@ const EnhancedDataGrid = ({
       baseColumns.unshift({
         field: 'review',
         headerName: 'Review',
-        width: 220,
+        width: isMobile ? 120 : 220,
+        minWidth: isMobile ? 120 : 200,
         sortable: false,
         filterable: false,
         align: 'center',
         headerAlign: 'center',
+        headerClassName: 'wrapped-header',
+        renderHeader: (params) => (
+          <Box sx={{ 
+            whiteSpace: 'normal', 
+            lineHeight: 1.2, 
+            fontSize: isMobile ? '0.75rem' : '0.875rem',
+            fontWeight: 700,
+            textAlign: 'center',
+            padding: '4px 0'
+          }}>
+            {params.colDef.headerName}
+          </Box>
+        ),
         renderCell: (params) => {
           // Use compound key for unique identification
           const recordKey = {
@@ -179,7 +284,7 @@ const EnhancedDataGrid = ({
                 )}
               </IconButton>
               
-              {hasReview && (
+              {hasReview && !isMobile && (
                 <Chip
                   label={reviewStatus.notMismatch ? "Not Mismatch" : "Reviewed"}
                   size="small"
@@ -252,19 +357,35 @@ const EnhancedDataGrid = ({
   // Custom toolbar
   const CustomToolbar = () => (
     <GridToolbarContainer sx={{ 
-      justifyContent: 'space-between', 
-      p: 2,
+      flexDirection: isMobile ? 'column' : 'row',
+      justifyContent: isMobile ? 'flex-start' : 'space-between', 
+      gap: isMobile ? 1 : 0,
+      p: isMobile ? 1 : 2,
       background: alpha(theme.palette.primary.main, 0.02),
       borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
     }}>
-      <Stack direction="row" spacing={1}>
-        <GridToolbarColumnsButton />
-        <GridToolbarFilterButton />
-        <GridToolbarDensitySelector />
-        <GridToolbarExport />
+      <Stack 
+        direction={isMobile ? 'column' : 'row'} 
+        spacing={1}
+        sx={{ width: isMobile ? '100%' : 'auto' }}
+      >
+        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+          <GridToolbarColumnsButton size={isMobile ? 'small' : 'medium'} />
+          <GridToolbarFilterButton size={isMobile ? 'small' : 'medium'} />
+          <GridToolbarDensitySelector size={isMobile ? 'small' : 'medium'} />
+          <GridToolbarExport size={isMobile ? 'small' : 'medium'} />
+        </Stack>
       </Stack>
       
-      <Stack direction="row" spacing={1} alignItems="center">
+      <Stack 
+        direction="row" 
+        spacing={1} 
+        alignItems="center"
+        sx={{ 
+          width: isMobile ? '100%' : 'auto',
+          justifyContent: isMobile ? 'flex-end' : 'flex-start'
+        }}
+      >
         {onRefresh && (
           <Tooltip title="Refresh Data">
             <IconButton 
@@ -283,7 +404,7 @@ const EnhancedDataGrid = ({
         )}
         
         <Button
-          startIcon={<DownloadIcon />}
+          startIcon={!isMobile ? <DownloadIcon /> : null}
           onClick={exportToCSV}
           size="small"
           variant="outlined"
@@ -291,6 +412,9 @@ const EnhancedDataGrid = ({
             borderRadius: 2,
             textTransform: 'none',
             fontWeight: 600,
+            fontSize: isMobile ? '0.75rem' : '0.875rem',
+            minWidth: isMobile ? '40px' : 'auto',
+            px: isMobile ? 1 : 2,
             borderColor: alpha(theme.palette.primary.main, 0.3),
             '&:hover': {
               background: alpha(theme.palette.primary.main, 0.05),
@@ -298,7 +422,7 @@ const EnhancedDataGrid = ({
             }
           }}
         >
-          Export CSV
+          {isMobile ? 'CSV' : 'Export CSV'}
         </Button>
       </Stack>
     </GridToolbarContainer>
@@ -374,13 +498,18 @@ const EnhancedDataGrid = ({
       >
         {/* Header */}
         <Box sx={{ 
-          p: 3,
+          p: isMobile ? 2 : 3,
           background: `linear-gradient(135deg, 
             ${alpha(theme.palette.primary.main, 0.05)} 0%, 
             ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
           borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
         }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={3}>
+          <Stack 
+            direction={isMobile ? "column" : "row"} 
+            justifyContent="space-between" 
+            alignItems={isMobile ? "stretch" : "center"} 
+            spacing={isMobile ? 2 : 3}
+          >
             <Box>
               <Stack direction="row" alignItems="center" spacing={2} mb={1}>
                 <Box sx={{
@@ -392,8 +521,9 @@ const EnhancedDataGrid = ({
                   <TableViewIcon sx={{ fontSize: 20 }} />
                 </Box>
                 
-                <Typography variant="h6" sx={{
+                <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{
                   fontWeight: 700,
+                  fontSize: isMobile ? '1rem' : '1.25rem',
                   background: `linear-gradient(45deg, ${theme.palette.text.primary}, ${theme.palette.primary.main})`,
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
@@ -403,14 +533,19 @@ const EnhancedDataGrid = ({
                 </Typography>
               </Stack>
               
-              <Stack direction="row" spacing={2} alignItems="center">
+              <Stack 
+                direction={isMobile ? "column" : "row"} 
+                spacing={isMobile ? 1 : 2} 
+                alignItems={isMobile ? "flex-start" : "center"}
+              >
                 <Chip 
                   label={`${filteredData.length} records`}
                   size="small" 
                   sx={{
                     background: alpha(theme.palette.success.main, 0.1),
                     color: theme.palette.success.main,
-                    fontWeight: 600
+                    fontWeight: 600,
+                    fontSize: isMobile ? '0.7rem' : '0.75rem'
                   }}
                 />
                 
@@ -421,7 +556,8 @@ const EnhancedDataGrid = ({
                     sx={{
                       background: alpha(theme.palette.info.main, 0.1),
                       color: theme.palette.info.main,
-                      fontWeight: 600
+                      fontWeight: 600,
+                      fontSize: isMobile ? '0.7rem' : '0.75rem'
                     }}
                   />
                 )}
@@ -431,17 +567,21 @@ const EnhancedDataGrid = ({
             {/* Search */}
             <TextField
               size="small"
-              placeholder="Search all columns..."
+              placeholder={isMobile ? "Search..." : "Search all columns..."}
               value={searchText}
               onChange={(e) => handleSearch(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: theme.palette.text.secondary, fontSize: 20 }} />
+                    <SearchIcon sx={{ 
+                      color: theme.palette.text.secondary, 
+                      fontSize: isMobile ? 18 : 20 
+                    }} />
                   </InputAdornment>
                 ),
                 sx: {
                   borderRadius: 2,
+                  fontSize: isMobile ? '0.875rem' : '1rem',
                   background: alpha(theme.palette.background.paper, 0.8),
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: alpha(theme.palette.primary.main, 0.2)
@@ -454,14 +594,22 @@ const EnhancedDataGrid = ({
                   }
                 }
               }}
-              sx={{ minWidth: 250 }}
+              sx={{ 
+                width: isMobile ? '100%' : 'auto',
+                minWidth: isMobile ? 'unset' : 250,
+                maxWidth: isMobile ? '100%' : 350
+              }}
             />
           </Stack>
         </Box>
 
         {/* Data Grid */}
         <Grow in={mounted} timeout={1200} style={{ transformOrigin: 'center top' }}>
-          <Box sx={{ height: height }}>
+          <Box sx={{ 
+            height: isMobile ? Math.min(height, 400) : height,
+            width: '100%',
+            overflow: 'hidden'
+          }}>
             <DataGrid
               rows={filteredData.map((row, index) => ({ id: index, ...row }))}
               columns={columns}
@@ -481,6 +629,7 @@ const EnhancedDataGrid = ({
               }}
               sx={{
                 border: 'none',
+                width: '100%',
                 '& .MuiDataGrid-main': {
                   borderRadius: 0
                 },
@@ -489,8 +638,15 @@ const EnhancedDataGrid = ({
                     ${alpha(theme.palette.background.paper, 0.8)} 0%, 
                     ${alpha(theme.palette.primary.main, 0.03)} 100%)`,
                   borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  fontSize: '0.875rem',
-                  fontWeight: 700
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  fontWeight: 700,
+                  minHeight: isMobile ? '48px !important' : '56px !important'
+                },
+                '& .wrapped-header .MuiDataGrid-columnHeaderTitle': {
+                  whiteSpace: 'normal !important',
+                  lineHeight: '1.2 !important',
+                  overflow: 'visible !important',
+                  textOverflow: 'unset !important'
                 },
                 '& .MuiDataGrid-columnHeader': {
                   '&:focus, &:focus-within': {
@@ -515,16 +671,25 @@ const EnhancedDataGrid = ({
                 },
                 '& .MuiDataGrid-cell': {
                   borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  padding: isMobile ? '4px 8px' : '8px 16px',
                   '&:focus, &:focus-within': {
                     outline: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`
                   }
+                },
+                '& .MuiDataGrid-virtualScroller': {
+                  overflowX: 'auto'
                 },
                 '& .MuiDataGrid-footerContainer': {
                   background: alpha(theme.palette.background.default, 0.5),
                   borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
                 },
                 '& .MuiTablePagination-root': {
-                  color: theme.palette.text.secondary
+                  color: theme.palette.text.secondary,
+                  fontSize: isMobile ? '0.75rem' : '0.875rem'
+                },
+                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                  fontSize: isMobile ? '0.75rem' : '0.875rem'
                 },
                 '& .MuiCheckbox-root': {
                   color: alpha(theme.palette.primary.main, 0.6),

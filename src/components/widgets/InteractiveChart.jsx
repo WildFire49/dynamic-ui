@@ -156,15 +156,32 @@ const InteractiveChart = ({
   ];
 
   const renderChart = () => {
+    // Calculate dynamic Y-axis domain for proper scaling
+    const maxValue = Math.max(...data.map(item => item.value || 0));
+    const minValue = Math.min(...data.map(item => item.value || 0));
+    const padding = (maxValue - minValue) * 0.1; // 10% padding
+    const yAxisDomain = [
+      Math.max(0, minValue - padding), // Don't go below 0 for most cases
+      maxValue + padding
+    ];
+
     const chartProps = {
       data
+    };
+
+    // Responsive margins based on screen size
+    const responsiveMargins = {
+      top: 30,
+      right: 30,
+      left: 20,
+      bottom: 60 // More space for labels on mobile
     };
 
     switch (chartType) {
       case 'bar':
         return (
           <ResponsiveContainer key={animationKey} width="100%" height={height}>
-            <BarChart {...chartProps} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
+            <BarChart {...chartProps} margin={responsiveMargins}>
               <defs>
                 {colors.map((color, index) => (
                   <linearGradient key={index} id={`barGradient${index}`} x1="0" y1="0" x2="0" y2="1">
@@ -177,23 +194,38 @@ const InteractiveChart = ({
               <XAxis 
                 dataKey="name" 
                 stroke={theme.palette.text.secondary}
-                fontSize={12}
+                fontSize={10}
                 tickLine={false}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                interval={0}
               />
               <YAxis 
+                domain={yAxisDomain}
                 stroke={theme.palette.text.secondary}
-                fontSize={12}
+                fontSize={10}
                 tickLine={false}
                 axisLine={false}
+                tickFormatter={(value) => {
+                  if (title && title.includes('%')) return `${value.toFixed(0)}%`;
+                  return value.toLocaleString();
+                }}
               />
               <RechartsTooltip content={<CustomTooltip />} />
               <Bar 
                 dataKey="value" 
-                fill="url(#barGradient0)"
                 radius={[4, 4, 0, 0]}
                 animationDuration={1000}
                 animationBegin={200}
-              />
+              >
+                {data.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.color || `url(#barGradient${index % colors.length})`} 
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         );
