@@ -45,20 +45,27 @@ export const generateAuditReport = (tableName, tableData, reviews) => {
     // Determine the record key and mismatch type based on data structure
     let recordKey, mismatchType, xmmValue, samValue;
     
+    // Prioritize mapped fields from our table generation
+    if (row.key_ref && row.mismatch_type) {
+      recordKey = row.key_ref;
+      mismatchType = row.mismatch_type;
+      xmmValue = row.xmm_value || 'N/A';
+      samValue = row.sam_value || 'N/A';
+    }
     // Handle new format for different mismatch types
-    if (row.Reference) {
+    else if (row.Reference) {
       recordKey = row.Reference;
       
       // Message type mismatches
       if (row.KTP_msg_type && row.XMM_msg_type && row.SAM_Identifier) {
         mismatchType = 'Message Type Mismatch';
-        xmmValue = `${row.XMM_msg_type} (${row.XMM_normalized_msg_code})`;
-        samValue = `${row.SAM_Identifier} (${row.SAM_normalized_msg_code})`;
+        xmmValue = `${row.XMM_msg_type} (${row.XMM_normalized_msg_code || 'N/A'})`;
+        samValue = `${row.SAM_Identifier} (${row.SAM_normalized_msg_code || 'N/A'})`;
       }
-      // Amount mismatches
-      else if (row.KTP_amount !== undefined && row.XMM_amt !== undefined && row.SAM_Cur_Amt) {
+      // Amount mismatches - fix field name from XMM_amt to XMM_amount
+      else if (row.KTP_amount !== undefined && row.XMM_amount !== undefined && row.SAM_Cur_Amt) {
         mismatchType = 'Amount Mismatch';
-        xmmValue = row.XMM_amt?.toLocaleString() || row.XMM_amt;
+        xmmValue = row.XMM_amount?.toLocaleString() || row.XMM_amount;
         samValue = row.SAM_Cur_Amt;
       }
       // BIC mismatches
@@ -67,13 +74,6 @@ export const generateAuditReport = (tableName, tableData, reviews) => {
         xmmValue = `${row.omh_sent_bic} -> ${row.omh_recv_bic}`;
         samValue = `${row.Correspondent} (${row.Sender_Receiver})`;
       }
-    }
-    // Handle legacy format
-    else if (row.key_ref) {
-      recordKey = row.key_ref;
-      mismatchType = row.mismatch_type;
-      xmmValue = row.xmm_value;
-      samValue = row.sam_value;
     }
     // Fallback for unknown format
     else {

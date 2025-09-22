@@ -1273,8 +1273,10 @@ const AnalysisWidget = ({
           ...record,
           key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
           mismatch_type: 'Message Type Mismatch',
+          ktp_value: record.KTP_msg_type ? `${record.KTP_msg_type} (${record.KTP_normalized_msg_code || 'N/A'})` : 'N/A',
           xmm_value: record.XMM_msg_type ? `${record.XMM_msg_type} (${record.XMM_normalized_msg_code || 'N/A'})` : 'N/A',
-          sam_value: record.SAM_Identifier ? `${record.SAM_Identifier} (${record.SAM_normalized_msg_code || 'N/A'})` : 'N/A'
+          sam_value: record.SAM_Identifier ? `${record.SAM_Identifier} (${record.SAM_normalized_msg_code || 'N/A'})` : 'N/A',
+          discrepancy: `KTP: ${record.KTP_normalized_msg_code || 'N/A'} vs XMM: ${record.XMM_normalized_msg_code || 'N/A'} vs SAM: ${record.SAM_normalized_msg_code || 'N/A'}`
         }));
         
         tables.push({
@@ -1294,8 +1296,13 @@ const AnalysisWidget = ({
           ...record,
           key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
           mismatch_type: 'Amount Mismatch',
-          xmm_value: record.XMM_amt?.toLocaleString() || record.XMM_amt || 'N/A',
-          sam_value: record.SAM_Cur_Amt || 'N/A'
+          ktp_value: record.KTP_amount?.toLocaleString() || record.KTP_normalized_amount?.toLocaleString() || 'N/A',
+          xmm_value: record.XMM_amount?.toLocaleString() || record.XMM_normalized_amount?.toLocaleString() || 'N/A',
+          sam_value: record.SAM_Cur_Amt || record.SAM_normalized_amount?.toLocaleString() || 'N/A',
+          // Add normalized comparison for clarity
+          normalized_diff: record.SAM_normalized_amount && record.XMM_normalized_amount 
+            ? `${(record.SAM_normalized_amount - record.XMM_normalized_amount).toLocaleString()}` 
+            : 'N/A'
         }));
         
         tables.push({
@@ -1315,8 +1322,13 @@ const AnalysisWidget = ({
           ...record,
           key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
           mismatch_type: 'BIC Mismatch',
+          xmm_sent_bic: record.omh_sent_bic || 'N/A',
+          xmm_recv_bic: record.omh_recv_bic || 'N/A',
+          sam_correspondent: record.Correspondent || 'N/A',
+          sam_sender_receiver: record.Sender_Receiver || 'N/A',
           xmm_value: record.omh_sent_bic && record.omh_recv_bic ? `${record.omh_sent_bic} -> ${record.omh_recv_bic}` : 'N/A',
-          sam_value: record.Correspondent && record.Sender_Receiver ? `${record.Correspondent} (${record.Sender_Receiver})` : 'N/A'
+          sam_value: record.Correspondent && record.Sender_Receiver ? `${record.Correspondent} (${record.Sender_Receiver})` : 'N/A',
+          mismatch_details: `XMM recv BIC equals SAM Correspondent: ${record.XMM_recv_equals_SAM_Correspondent ? 'Yes' : 'No'}`
         }));
         
         tables.push({
