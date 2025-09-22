@@ -881,7 +881,7 @@ const AnalysisWidget = ({
       if (item.message_type_count_in_XMM) {
         const xmmMessageData = item.message_type_count_in_XMM.map((msg) => ({
           name: `MT${msg.omh_msg_type}`,
-          value: parseInt(msg.type_count),
+          value: parseInt(msg.msg_type_count || msg.type_count),
           color:
             msg.omh_msg_type === "300"
               ? "#3b82f6"

@@ -115,14 +115,16 @@ const EnhancedDataGrid = ({
       };
     });
     
-    // Add review column for mismatched records
+    // Add review column for mismatched records as the first column
     if (isReviewable) {
-      baseColumns.push({
+      baseColumns.unshift({
         field: 'review',
         headerName: 'Review',
-        width: 200,
+        width: 220,
         sortable: false,
         filterable: false,
+        align: 'center',
+        headerAlign: 'center',
         renderCell: (params) => {
           // Use compound key for unique identification
           const recordKey = {
@@ -133,21 +135,40 @@ const EnhancedDataGrid = ({
           const hasReview = !!reviewStatus;
           
           return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: 1.5,
+              width: '100%',
+              py: 0.5
+            }}>
               <IconButton
                 size="small"
                 onClick={(event) => onReviewClick(event, params.row, title)}
                 sx={{
-                  color: hasReview 
-                    ? (reviewStatus.notMismatch ? theme.palette.success.main : theme.palette.warning.main)
-                    : theme.palette.error.main,
+                  width: 32,
+                  height: 32,
+                  color: 'white',
                   backgroundColor: hasReview 
-                    ? alpha(reviewStatus.notMismatch ? theme.palette.success.main : theme.palette.warning.main, 0.1)
-                    : alpha(theme.palette.error.main, 0.1),
+                    ? (reviewStatus.notMismatch ? '#4caf50' : '#ff9800')
+                    : '#f44336',
+                  boxShadow: hasReview 
+                    ? (reviewStatus.notMismatch ? '0 3px 8px rgba(76, 175, 80, 0.3)' : '0 3px 8px rgba(255, 152, 0, 0.3)')
+                    : '0 3px 8px rgba(244, 67, 54, 0.3)',
+                  border: '1.5px solid',
+                  borderColor: hasReview 
+                    ? (reviewStatus.notMismatch ? '#4caf50' : '#ff9800')
+                    : '#f44336',
+                  transition: 'all 0.3s ease-in-out',
                   '&:hover': {
                     backgroundColor: hasReview 
-                      ? alpha(reviewStatus.notMismatch ? theme.palette.success.main : theme.palette.warning.main, 0.2)
-                      : alpha(theme.palette.error.main, 0.2)
+                      ? (reviewStatus.notMismatch ? '#45a049' : '#f57c00')
+                      : '#e53935',
+                    transform: 'scale(1.08)',
+                    boxShadow: hasReview 
+                      ? (reviewStatus.notMismatch ? '0 4px 12px rgba(76, 175, 80, 0.4)' : '0 4px 12px rgba(255, 152, 0, 0.4)')
+                      : '0 4px 12px rgba(244, 67, 54, 0.4)',
                   }
                 }}
               >
@@ -157,12 +178,22 @@ const EnhancedDataGrid = ({
                   <ErrorIcon fontSize="small" />
                 )}
               </IconButton>
+              
               {hasReview && (
                 <Chip
                   label={reviewStatus.notMismatch ? "Not Mismatch" : "Reviewed"}
                   size="small"
-                  color={reviewStatus.notMismatch ? "success" : "warning"}
-                  variant="outlined"
+                  sx={{
+                    backgroundColor: reviewStatus.notMismatch ? '#e8f5e8' : '#fff3e0',
+                    color: reviewStatus.notMismatch ? '#2e7d32' : '#ef6c00',
+                    border: `1px solid ${reviewStatus.notMismatch ? '#4caf50' : '#ff9800'}`,
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    height: 24,
+                    '& .MuiChip-label': {
+                      px: 1
+                    }
+                  }}
                 />
               )}
             </Box>
