@@ -6,7 +6,9 @@ import {
   IconButton,
   alpha,
   useTheme,
-  Tooltip
+  Tooltip,
+  Collapse,
+  Fade
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
@@ -105,8 +107,18 @@ const StatisticsCard = ({
         </IconButton>
       </Box>
 
-      {/* Expandable Content - Simple conditional rendering */}
-      {isExpanded && (
+      {/* Expandable Content - Smooth Animation */}
+      <Collapse 
+        in={isExpanded} 
+        timeout={{
+          enter: 500,
+          exit: 400
+        }}
+        easing={{
+          enter: 'cubic-bezier(0.4, 0, 0.3, 1)',
+          exit: 'cubic-bezier(0.4, 0, 0.6, 1)'
+        }}
+      >
         <Box sx={{ 
           p: 3,
           background: `linear-gradient(135deg, ${alpha(color, 0.04)} 0%, ${alpha(color, 0.08)} 100%)`,
@@ -132,34 +144,42 @@ const StatisticsCard = ({
               const truncatedTitle = isLongText ? `${stat.title.substring(0, 20)}...` : stat.title;
               
               return (
-                <Box
-                  key={statIndex}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    p: 2.5,
-                    borderRadius: 2,
-                    background: 'linear-gradient(135deg, #ffffff, #f8f9fa)',
-                    border: `2px solid ${color}`,
-                    boxShadow: `0 2px 8px ${alpha(color, 0.1)}`,
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 4px 16px ${alpha(color, 0.2)}`
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: '3px',
-                      background: `linear-gradient(90deg, ${color}, ${alpha(color, 0.7)})`
-                    }
+                <Fade 
+                  in={isExpanded} 
+                  timeout={{
+                    enter: 800 + (statIndex * 100),
+                    exit: 200
                   }}
+                  key={statIndex}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 2.5,
+                      borderRadius: 2,
+                      background: 'linear-gradient(135deg, #ffffff, #f8f9fa)',
+                      border: `2px solid ${color}`,
+                      boxShadow: `0 2px 8px ${alpha(color, 0.1)}`,
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      transform: 'translateY(0)',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 4px 16px ${alpha(color, 0.2)}`
+                      },
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '3px',
+                        background: `linear-gradient(90deg, ${color}, ${alpha(color, 0.7)})`
+                      }
+                    }}
                 >
                   <Tooltip title={isLongText ? stat.title : ''} arrow placement="top">
                     <Typography variant="body1" sx={{
@@ -183,12 +203,13 @@ const StatisticsCard = ({
                   }}>
                     {parseInt(stat.value).toLocaleString()}
                   </Typography>
-                </Box>
+                  </Box>
+                </Fade>
               );
             })}
           </Box>
         </Box>
-      )}
+      </Collapse>
     </Paper>
   );
 };
