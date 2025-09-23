@@ -45,9 +45,9 @@ const menuItems = [
   { id: 'chat', label: 'Chat', icon: ChatIcon },
   { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
   { id: 'configurator', label: 'Configurator', icon: ConfiguratorIcon },
-  { id: 'chatHistory', label: 'Chat History', icon: HistoryIcon },
-  { id: 'creditRulesUpdate', label: 'Credit Rules Update', icon: GavelIcon },
-  { id: 'creditCheck', label: 'Credit Check', icon: CreditIcon },
+  // { id: 'chatHistory', label: 'Chat History', icon: HistoryIcon },
+  // { id: 'creditRulesUpdate', label: 'Credit Rules Update', icon: GavelIcon },
+  // { id: 'creditCheck', label: 'Credit Check', icon: CreditIcon },
   { id: 'accessControl', label: 'Access Control', icon: AccessControlIcon },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
@@ -277,7 +277,7 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
       <Divider />
 
       {/* Recent Conversations Section */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <Box sx={{ flex: 1.2, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #e1e5e9' }}>
           <Typography 
             variant="h6" 

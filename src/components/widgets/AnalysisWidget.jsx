@@ -2,27 +2,23 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
-  Grid,
+  Paper,
   Fade,
+  keyframes,
   alpha,
   useTheme,
   useMediaQuery,
-  Button,
   IconButton,
-  Paper,
-  Tabs,
-  Tab,
-  Tooltip,
+  Button,
   Collapse,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-} from "@mui/material";
-import { keyframes } from "@mui/system";
-import DownloadIcon from "@mui/icons-material/Download";
-import ReviewsIcon from "@mui/icons-material/Reviews";
+  Tooltip,
+  CircularProgress,
+  Tab,
+  Tabs,
+  Badge,
+  Chip
+} from '@mui/material';
+import StatisticsCard from './StatisticsCard';
 import {
   Assessment as AssessmentIcon,
   TrendingUp as TrendingUpIcon,
@@ -34,11 +30,26 @@ import {
   DataObject as DataObjectIcon,
   DoneAll as DoneAllIcon,
   GetApp as GetAppIcon,
+  TrendingDown as TrendingDownIcon,
+  ExpandMore as ExpandMoreIcon,
+  Timeline as TimelineIcon,
+  GridView as GridViewIcon,
+  TableChart as TableChartIcon,
+  TableView as TableViewIcon,
+  Fullscreen as FullscreenIcon,
+  FullscreenExit as FullscreenExitIcon,
+  Insights as InsightsIcon,
   BarChart as BarChartIcon,
   PieChart as PieChartIcon,
   ShowChart as ShowChartIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
+  DonutLarge as DonutLargeIcon,
+  AreaChart as AreaChartIcon,
+  Download as DownloadIcon,
+  FilterList as FilterListIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+  Sort as SortIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import InteractiveChart from "./InteractiveChart";
 import StatCard from "./StatCard";
@@ -99,7 +110,7 @@ const AnalysisWidget = ({
   const [tabularResultsExpanded, setTabularResultsExpanded] = useState(true);
   const [selectedTableTab, setSelectedTableTab] = useState(0);
   const [expandedTables, setExpandedTables] = useState({});
-  const [expandedStatCards, setExpandedStatCards] = useState({});
+  // Note: Statistics cards now use independent state management in StatisticsCard component
 
   // Refs for scrolling to tables
   const tableRefs = useRef({});
@@ -258,18 +269,7 @@ const AnalysisWidget = ({
     }));
   };
 
-  // Handle stat card expansion
-  const handleStatCardExpansion = (cardKey) => {
-    console.log('Stat card expansion clicked:', cardKey, 'Current state:', expandedStatCards[cardKey]);
-    setExpandedStatCards(prev => {
-      const newState = {
-        ...prev,
-        [cardKey]: !prev[cardKey]
-      };
-      console.log('New stat card state:', newState);
-      return newState;
-    });
-  };
+  // Note: Statistics card handlers moved to individual StatisticsCard components
 
   // Initialize expanded state for charts
   const initializeExpandedCharts = (charts) => {
@@ -299,34 +299,26 @@ const AnalysisWidget = ({
     tables.forEach((table, index) => {
       const title = table.title.toLowerCase();
       const tableWithIndex = { ...table, originalIndex: index };
-      console.log(`Categorizing table: "${table.title}" (${title});`);
+  
       
       if (title.includes('reference') && (title.includes('match') || title.includes('id'))) {
-        console.log('  -> Reference Matches');
         categories.referenceMatches.push(tableWithIndex);
       } else if (title.includes('fully') && title.includes('match')) {
-        console.log('  -> Fully Matched');
         categories.fullyMatched.push(tableWithIndex);
       } else if (title.includes('mismatch')) {
         if (title.includes('message') || title.includes('type')) {
-          console.log('  -> Mismatches: Message Type');
           categories.mismatches.messageType.push(tableWithIndex);
         } else if (title.includes('amount')) {
-          console.log('  -> Mismatches: Amount');
           categories.mismatches.amount.push(tableWithIndex);
         } else if (title.includes('bic')) {
-          console.log('  -> Mismatches: BIC');
           categories.mismatches.bic.push(tableWithIndex);
         } else {
-          console.log('  -> Mismatches: Default (Message Type)');
           // Default mismatch category
           categories.mismatches.messageType.push(tableWithIndex);
         }
       } else if (title.includes('extra') || title.includes('additional')) {
-        console.log('  -> Extra Records');
         categories.extraRecords.push(tableWithIndex);
       } else {
-        console.log('  -> Default (Reference Matches)');
         // Default to reference matches if unclear
         categories.referenceMatches.push(tableWithIndex);
       }
@@ -471,24 +463,32 @@ const AnalysisWidget = ({
       const title = stat.title.toLowerCase();
       const value = parseInt(stat.value) || 0;
       
+      console.log(`📝 [CATEGORIZE] Processing: "${stat.title}" (value: ${value})`);
+      
       if (title.includes('mismatch')) {
+        console.log(`  → 🔴 Assigning to CRITICAL (mismatch)`);
         categories.critical.stats.push(stat);
         categories.critical.totalValue += value;
       } else if (title.includes('match') || title.includes('reference')) {
+        console.log(`  → 🟢 Assigning to MATCHES (match/reference)`);
         categories.matches.stats.push(stat);
         categories.matches.totalValue += value;
       } else if (title.includes('total') && (title.includes('ktp') || title.includes('xmm') || title.includes('sam'))) {
+        console.log(`  → 🔵 Assigning to RECORDS (total ktp/xmm/sam)`);
         categories.records.stats.push(stat);
         categories.records.totalValue += value;
       } else if (title.includes('extra') || title.includes('additional')) {
+        console.log(`  → 🟠 Assigning to EXTRAS (extra/additional)`);
         categories.extras.stats.push(stat);
         categories.extras.totalValue += value;
       } else {
         // Default categorization based on keywords
         if (title.includes('error') || title.includes('fail')) {
+          console.log(`  → 🔴 Assigning to CRITICAL (error/fail default)`);
           categories.critical.stats.push(stat);
           categories.critical.totalValue += value;
         } else {
+          console.log(`  → 🔵 Assigning to RECORDS (default)`);
           categories.records.stats.push(stat);
           categories.records.totalValue += value;
         }
@@ -2181,7 +2181,7 @@ const AnalysisWidget = ({
               textAlign: "center",
             }}
           >
-            Overall Statistics
+            Overall Summary 
           </Typography>
 
           <Box
@@ -2197,13 +2197,7 @@ const AnalysisWidget = ({
               const organizedStats = organizeStatistics(finalAnalysis.stats);
               if (!organizedStats) return null;
 
-              // Separate categories into top and bottom rows
-              const topRowCategories = ['matches', 'critical'].filter(key => 
-                organizedStats[key].stats.length > 0
-              );
-              const bottomRowCategories = ['records', 'extras'].filter(key => 
-                organizedStats[key].stats.length > 0
-              );
+              // Note: Using direct component rendering instead of category mapping
 
               return (
                 <Box sx={{
@@ -2212,311 +2206,79 @@ const AnalysisWidget = ({
                   gap: { xs: 3, sm: 5 },
                   mb: 4
                 }}>
-                  {/* Top Row - Critical and Successful Matches */}
-                  {topRowCategories.length > 0 && (
-                    <Box sx={{
-                      display: 'grid',
-                      gridTemplateColumns: {
-                        xs: '1fr',
-                        sm: topRowCategories.length === 1 ? '1fr' : 'repeat(2, 1fr)',
-                        md: topRowCategories.length === 1 ? '1fr' : 'repeat(2, 1fr)'
-                      },
-                      gap: { xs: 2, sm: 4, md: 6 }
-                    }}>
-                      {topRowCategories.map((categoryKey, index) => {
-                        const category = organizedStats[categoryKey];
-                        const uniqueKey = `top-${categoryKey}`;
-                        const isExpanded = expandedStatCards[uniqueKey] || false;
-                        const isPrimary = category.priority === 'high';
-                        
-                        console.log(`Rendering top row card: ${categoryKey}, uniqueKey: ${uniqueKey}, isExpanded: ${isExpanded}`);
-                        
-                        // Only render if category has data
-                        if (!category.stats || category.stats.length === 0) {
-                          return null;
-                        }
-                        
-                        return (
-                          <Paper
-                            key={uniqueKey}
-                            elevation={isPrimary ? 4 : 2}
-                            sx={{
-                              borderRadius: 3,
-                              overflow: 'hidden',
-                              background: `linear-gradient(135deg, ${alpha(category.color, 0.05)} 0%, ${alpha(category.color, 0.08)} 100%)`,
-                              border: `2px solid ${category.color}`,
-                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                              animation: `${slideIn} 0.6s ease-out ${0.1 * index}s both`,
-                              '&:hover': {
-                                transform: 'translateY(-4px)',
-                                boxShadow: `0 12px 40px ${alpha(category.color, 0.2)}`
-                              }
-                            }}
-                          >
-                        {/* Category Header */}
-                        <Box 
-                          onClick={() => handleStatCardExpansion(uniqueKey)}
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            p: isPrimary ? 3 : 2.5,
-                            cursor: 'pointer',
-                            background: `linear-gradient(135deg, ${alpha(category.color, 0.08)} 0%, ${alpha(category.color, 0.12)} 100%)`,
-                            '&:hover': {
-                              background: `linear-gradient(135deg, ${alpha(category.color, 0.12)} 0%, ${alpha(category.color, 0.16)} 100%)`
-                            },
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box sx={{
-                              width: isPrimary ? 56 : 48,
-                              height: isPrimary ? 56 : 48,
-                              borderRadius: '50%',
-                              background: `linear-gradient(135deg, ${category.color}, ${alpha(category.color, 0.8)})`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              boxShadow: `0 8px 32px ${alpha(category.color, 0.3)}`
-                            }}>
-                              {React.cloneElement(category.icon, { 
-                                sx: { color: 'white', fontSize: isPrimary ? 28 : 24 } 
-                              })}
-                            </Box>
-                            <Box>
-                              <Typography variant={isPrimary ? 'h5' : 'h6'} sx={{
-                                fontWeight: 700,
-                                color: theme.palette.text.primary,
-                                mb: 0.5
-                              }}>
-                                {category.title}
-                              </Typography>
-                              <Typography variant={isPrimary ? 'h4' : 'h5'} sx={{
-                                fontWeight: 800,
-                                color: category.color,
-                                lineHeight: 1
-                              }}>
-                                {category.totalValue.toLocaleString()}
-                              </Typography>
-                            </Box>
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton
-                              sx={{
-                                color: category.color,
-                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                                transition: 'transform 0.3s ease'
-                              }}
-                            >
-                              <ExpandMoreIcon />
-                            </IconButton>
-                          </Box>
-                        </Box>
+                  {/* Top Row - Independent Statistics Cards */}
+                  <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)',
+                      md: 'repeat(2, 1fr)'
+                    },
+                    gap: { xs: 2, sm: 4, md: 6 }
+                  }}>
+                    {/* Successful Matches - Independent Component */}
+                    {organizedStats.matches?.stats?.length > 0 && (
+                      <StatisticsCard
+                        category="matches"
+                        stats={organizedStats.matches.stats}
+                        title={organizedStats.matches.title}
+                        icon={organizedStats.matches.icon}
+                        color={organizedStats.matches.color}
+                        totalValue={organizedStats.matches.totalValue}
+                        isPrimary={organizedStats.matches.priority === 'high'}
+                      />
+                    )}
+                    
+                    {/* Attention Points - Independent Component */}
+                    {organizedStats.critical?.stats?.length > 0 && (
+                      <StatisticsCard
+                        category="critical"
+                        stats={organizedStats.critical.stats}
+                        title={organizedStats.critical.title}
+                        icon={organizedStats.critical.icon}
+                        color={organizedStats.critical.color}
+                        totalValue={organizedStats.critical.totalValue}
+                        isPrimary={organizedStats.critical.priority === 'high'}
+                      />
+                    )}
+                  </Box>
 
-                        {/* Expandable Details */}
-                        <Collapse in={isExpanded} timeout={300}>
-                          <Box sx={{ 
-                            p: 2,
-                            background: `linear-gradient(135deg, ${alpha(category.color, 0.03)} 0%, ${alpha(category.color, 0.05)} 100%)`
-                          }}>
-                            <Box sx={{
-                              display: 'grid',
-                              gridTemplateColumns: isPrimary ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr',
-                              gap: 2
-                            }}>
-                              {category.stats.map((stat, statIndex) => (
-                                <Box
-                                  key={statIndex}
-                                  sx={{
-                                    p: 2,
-                                    borderRadius: 2,
-                                    background: alpha(category.color, 0.03),
-                                    border: `1px solid ${alpha(category.color, 0.1)}`,
-                                    transition: 'all 0.2s ease',
-                                    '&:hover': {
-                                      background: alpha(category.color, 0.06),
-                                      transform: 'translateY(-2px)'
-                                    }
-                                  }}
-                                >
-                                  <Typography variant="body2" sx={{
-                                    color: theme.palette.text.secondary,
-                                    mb: 0.5,
-                                    fontSize: '0.75rem'
-                                  }}>
-                                    {stat.title}
-                                  </Typography>
-                                  <Typography variant="h6" sx={{
-                                    fontWeight: 700,
-                                    color: category.color
-                                  }}>
-                                    {stat.value}
-                                  </Typography>
-                                </Box>
-                              ))}
-                            </Box>
-                          </Box>
-                            </Collapse>
-                          </Paper>
-                        );
-                      })}
-                    </Box>
-                  )}
-
-                  {/* Bottom Row - Total Records and Extra Records */}
-                  {bottomRowCategories.length > 0 && (
-                    <Box sx={{
-                      display: 'grid',
-                      gridTemplateColumns: {
-                        xs: '1fr',
-                        sm: bottomRowCategories.length === 1 ? '1fr' : 'repeat(2, 1fr)',
-                        md: bottomRowCategories.length === 1 ? '1fr' : 'repeat(2, 1fr)'
-                      },
-                      gap: { xs: 2, sm: 4, md: 6 }
-                    }}>
-                      {bottomRowCategories.map((categoryKey, index) => {
-                        const category = organizedStats[categoryKey];
-                        const uniqueKey = `bottom-${categoryKey}`;
-                        const isExpanded = expandedStatCards[uniqueKey] || false;
-                        const isPrimary = category.priority === 'high';
-                        
-                        console.log(`Rendering bottom row card: ${categoryKey}, uniqueKey: ${uniqueKey}, isExpanded: ${isExpanded}`);
-                        
-                        // Only render if category has data
-                        if (!category.stats || category.stats.length === 0) {
-                          return null;
-                        }
-                        
-                        return (
-                          <Paper
-                            key={uniqueKey}
-                            elevation={isPrimary ? 4 : 2}
-                            sx={{
-                              borderRadius: 3,
-                              overflow: 'hidden',
-                              background: `linear-gradient(135deg, ${alpha(category.color, 0.05)} 0%, ${alpha(category.color, 0.08)} 100%)`,
-                              border: `2px solid ${category.color}`,
-                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                              animation: `${slideIn} 0.6s ease-out ${0.1 * (index + topRowCategories.length)}s both`,
-                              '&:hover': {
-                                transform: 'translateY(-4px)',
-                                boxShadow: `0 12px 40px ${alpha(category.color, 0.2)}`
-                              }
-                            }}
-                          >
-                            {/* Category Header */}
-                            <Box 
-                              onClick={() => handleStatCardExpansion(uniqueKey)}
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                p: isPrimary ? 3 : 2.5,
-                                cursor: 'pointer',
-                                background: `linear-gradient(135deg, ${alpha(category.color, 0.08)} 0%, ${alpha(category.color, 0.12)} 100%)`,
-                                '&:hover': {
-                                  background: `linear-gradient(135deg, ${alpha(category.color, 0.12)} 0%, ${alpha(category.color, 0.16)} 100%)`
-                                },
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Box sx={{
-                                  width: isPrimary ? 56 : 48,
-                                  height: isPrimary ? 56 : 48,
-                                  borderRadius: '50%',
-                                  background: `linear-gradient(135deg, ${category.color}, ${alpha(category.color, 0.8)})`,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  boxShadow: `0 8px 32px ${alpha(category.color, 0.3)}`
-                                }}>
-                                  {React.cloneElement(category.icon, { 
-                                    sx: { color: 'white', fontSize: isPrimary ? 28 : 24 } 
-                                  })}
-                                </Box>
-                                <Box>
-                                  <Typography variant={isPrimary ? 'h5' : 'h6'} sx={{
-                                    fontWeight: 700,
-                                    color: theme.palette.text.primary,
-                                    mb: 0.5
-                                  }}>
-                                    {category.title}
-                                  </Typography>
-                                  <Typography variant={isPrimary ? 'h4' : 'h5'} sx={{
-                                    fontWeight: 800,
-                                    color: category.color,
-                                    lineHeight: 1
-                                  }}>
-                                    {category.totalValue.toLocaleString()}
-                                  </Typography>
-                                </Box>
-                              </Box>
-                              
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <IconButton
-                                  sx={{
-                                    color: category.color,
-                                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                                    transition: 'transform 0.3s ease'
-                                  }}
-                                >
-                                  <ExpandMoreIcon />
-                                </IconButton>
-                              </Box>
-                            </Box>
-
-                            {/* Expandable Details */}
-                            <Collapse in={isExpanded} timeout={300}>
-                              <Box sx={{ 
-                                p: 2,
-                                background: `linear-gradient(135deg, ${alpha(category.color, 0.03)} 0%, ${alpha(category.color, 0.05)} 100%)`
-                              }}>
-                                <Box sx={{
-                                  display: 'grid',
-                                  gridTemplateColumns: isPrimary ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr',
-                                  gap: 2
-                                }}>
-                                  {category.stats.map((stat, statIndex) => (
-                                    <Box
-                                      key={statIndex}
-                                      sx={{
-                                        p: 2,
-                                        borderRadius: 2,
-                                        background: alpha(category.color, 0.03),
-                                        border: `1px solid ${alpha(category.color, 0.1)}`,
-                                        transition: 'all 0.2s ease',
-                                        '&:hover': {
-                                          background: alpha(category.color, 0.06),
-                                          transform: 'translateY(-2px)'
-                                        }
-                                      }}
-                                    >
-                                      <Typography variant="body2" sx={{
-                                        color: theme.palette.text.secondary,
-                                        mb: 0.5,
-                                        fontSize: '0.75rem'
-                                      }}>
-                                        {stat.title}
-                                      </Typography>
-                                      <Typography variant="h6" sx={{
-                                        fontWeight: 700,
-                                        color: category.color
-                                      }}>
-                                        {stat.value}
-                                      </Typography>
-                                    </Box>
-                                  ))}
-                                </Box>
-                              </Box>
-                            </Collapse>
-                          </Paper>
-                        );
-                      })}
-                    </Box>
-                  )}
+                  {/* Bottom Row - Independent Statistics Cards */}
+                  <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)',
+                      md: 'repeat(2, 1fr)'
+                    },
+                    gap: { xs: 2, sm: 4, md: 6 }
+                  }}>
+                    {/* Total Records - Independent Component */}
+                    {organizedStats.records?.stats?.length > 0 && (
+                      <StatisticsCard
+                        category="records"
+                        stats={organizedStats.records.stats}
+                        title={organizedStats.records.title}
+                        icon={organizedStats.records.icon}
+                        color={organizedStats.records.color}
+                        totalValue={organizedStats.records.totalValue}
+                        isPrimary={organizedStats.records.priority === 'high'}
+                      />
+                    )}
+                    
+                    {/* Extra Records - Independent Component */}
+                    {organizedStats.extras?.stats?.length > 0 && (
+                      <StatisticsCard
+                        category="extras"
+                        stats={organizedStats.extras.stats}
+                        title={organizedStats.extras.title}
+                        icon={organizedStats.extras.icon}
+                        color={organizedStats.extras.color}
+                        totalValue={organizedStats.extras.totalValue}
+                        isPrimary={organizedStats.extras.priority === 'high'}
+                      />
+                    )}
+                  </Box>
                 </Box>
               );
             })()}
@@ -2878,7 +2640,7 @@ const AnalysisWidget = ({
                                         fontWeight: 600,
                                         color: theme.palette.text.secondary,
                                         mb: 1,
-                                        fontSize: '0.75rem',
+                                        fontSize: '1rem',
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.5px'
                                       }}>
@@ -2887,7 +2649,7 @@ const AnalysisWidget = ({
                                       <Box sx={{
                                         display: 'flex',
                                         flexWrap: 'wrap',
-                                        gap: 2
+                                        gap: 3
                                       }}>
                                         {[
                                           { key: 'bar', icon: BarChartIcon, label: 'Bar' },
@@ -2945,7 +2707,7 @@ const AnalysisWidget = ({
                                       }}>
                                         Legend
                                       </Typography>
-                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                         {chart.data?.map((item, index) => (
                                           <Box key={index} sx={{
                                             display: 'flex',
@@ -2962,8 +2724,8 @@ const AnalysisWidget = ({
                                             }
                                           }}>
                                             <Box sx={{
-                                              width: 12,
-                                              height: 12,
+                                              width: 15,
+                                              height: 15,
                                               borderRadius: '50%',
                                               backgroundColor: item.color || theme.palette.primary.main,
                                               flexShrink: 0
@@ -2972,7 +2734,7 @@ const AnalysisWidget = ({
                                               <Typography variant="body2" sx={{
                                                 fontWeight: 500,
                                                 color: theme.palette.text.primary,
-                                                fontSize: '0.8rem',
+                                                fontSize: '1rem',
                                                 lineHeight: 1.2,
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
