@@ -93,7 +93,7 @@ const styles = {
     }
   },
   botMessage: {
-    maxWidth: { xs: '90%', sm: '85%', md: '70%', lg: '60%' },
+    maxWidth: { xs: '99%', sm: '93.5%', md: '77%', lg: '66%' },
     minWidth: { xs: '100px', sm: '130px' },
     p: { xs: 1.5, sm: 2 },
     borderRadius: { xs: 1.5, sm: 2 },

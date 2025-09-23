@@ -71,12 +71,16 @@ const shimmer = keyframes`
 `;
 
 const InteractiveChart = ({ 
-  type = 'bar', 
-  title, 
   data = [], 
-  index = 0,
-  height = 400,
-  allowTypeChange = true 
+  type = 'bar', 
+  title = 'Chart', 
+  height = 300, 
+  width = '100%',
+  index = 0, 
+  allowTypeChange = true,
+  colors: customColors = null,
+  responsive = false,
+  hideHeader = false
 }) => {
   const theme = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -89,12 +93,19 @@ const InteractiveChart = ({
     return () => clearTimeout(timer);
   }, [index]);
 
+  // Update chartType when type prop changes
+  useEffect(() => {
+    if (type !== chartType) {
+      setChartType(type);
+    }
+  }, [type]);
+
   useEffect(() => {
     setAnimationKey(prev => prev + 1);
   }, [chartType]);
 
   // CEO-level color palette
-  const colors = [
+  const colors = customColors || [
     '#6366f1', // Indigo
     '#10b981', // Emerald
     '#f59e0b', // Amber
@@ -180,7 +191,7 @@ const InteractiveChart = ({
     switch (chartType) {
       case 'bar':
         return (
-          <ResponsiveContainer key={animationKey} width="100%" height={height}>
+          <ResponsiveContainer key={animationKey} width="100%" height={responsive ? "100%" : height}>
             <BarChart {...chartProps} margin={responsiveMargins}>
               <defs>
                 {colors.map((color, index) => (
@@ -258,17 +269,17 @@ const InteractiveChart = ({
         };
 
         // Calculate safe radius with more space for external labels
-        const containerWidth = 350; // Increased for better label spacing
-        const containerHeight = height;
+        const containerWidth = responsive ? 500 : 350; // Larger width in responsive mode
+        const containerHeight = responsive ? height * 0.8 : height; // Use more height in responsive mode
         const safeRadius = Math.min(
-          (containerWidth - 120) / 2, // More space for external labels
-          (containerHeight - 100) / 2, // More vertical space
-          65 // Smaller radius to leave more space for labels
+          (containerWidth - (responsive ? 80 : 120)) / 2, // Less padding in responsive mode
+          (containerHeight - (responsive ? 60 : 100)) / 2, // Less vertical padding in responsive mode
+          responsive ? 120 : 65 // Much larger radius in responsive mode
         );
         const innerRadius = chartType === 'donut' ? safeRadius * 0.5 : 0;
         
         return (
-          <ResponsiveContainer key={animationKey} width="100%" height={height}>
+          <ResponsiveContainer key={animationKey} width="100%" height={responsive ? "100%" : height}>
             <PieChart {...chartProps} margin={{ top: 40, right: 60, bottom: 40, left: 60 }}>
               <Pie
                 data={data}
@@ -297,7 +308,7 @@ const InteractiveChart = ({
 
       case 'line':
         return (
-          <ResponsiveContainer key={animationKey} width="100%" height={height}>
+          <ResponsiveContainer key={animationKey} width="100%" height={responsive ? "100%" : height}>
             <LineChart {...chartProps} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
               <defs>
                 <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
@@ -335,7 +346,7 @@ const InteractiveChart = ({
 
       case 'area':
         return (
-          <ResponsiveContainer key={animationKey} width="100%" height={height}>
+          <ResponsiveContainer key={animationKey} width="100%" height={responsive ? "100%" : height}>
             <AreaChart {...chartProps} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
               <defs>
                 <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -412,50 +423,65 @@ const InteractiveChart = ({
     );
   }
 
+  // Conditional wrapper for responsive mode
+  const ChartWrapper = responsive ? Box : Paper;
+  const wrapperProps = responsive ? {
+    ref: chartRef,
+    sx: {
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative'
+    }
+  } : {
+    ref: chartRef,
+    sx: {
+      position: 'relative',
+      overflow: 'hidden',
+      borderRadius: 3,
+      background: `linear-gradient(135deg, 
+        ${alpha(theme.palette.background.paper, 0.9)} 0%, 
+        ${alpha(theme.palette.background.default, 0.7)} 100%)`,
+      backdropFilter: 'blur(20px)',
+      border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+      boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.1)}`,
+      animation: `${fadeInUp} 1s ease-out`,
+      animationDelay: `${index * 0.2}s`,
+      animationFillMode: 'both',
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: '-100%',
+        width: '100%',
+        height: '2px',
+        background: `linear-gradient(90deg, transparent, ${theme.palette.primary.main}, transparent)`,
+        animation: `${shimmer} 2s ease-in-out infinite`,
+        animationDelay: `${index * 0.3}s`
+      }
+    }
+  };
+
   return (
     <Fade in={mounted} timeout={1000}>
-      <Paper
-        ref={chartRef}
-        sx={{
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: 3,
-          background: `linear-gradient(135deg, 
-            ${alpha(theme.palette.background.paper, 0.9)} 0%, 
-            ${alpha(theme.palette.background.default, 0.7)} 100%)`,
-          backdropFilter: 'blur(20px)',
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-          boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.1)}`,
-          animation: `${fadeInUp} 1s ease-out`,
-          animationDelay: `${index * 0.2}s`,
-          animationFillMode: 'both',
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: '-100%',
-            width: '100%',
-            height: '2px',
-            background: `linear-gradient(90deg, transparent, ${theme.palette.primary.main}, transparent)`,
-            animation: `${shimmer} 2s ease-in-out infinite`,
-            animationDelay: `${index * 0.3}s`
-          }
-        }}
-      >
-        {/* Header */}
-        <Box sx={{ 
-          p: 3, 
-          pb: 2,
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          gap: 3, // Add gap between title and buttons
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-        }}>
+      <ChartWrapper {...wrapperProps}>
+        {/* Header - Conditionally rendered */}
+        {!hideHeader && (
+          <Box sx={{ 
+            p: responsive ? 1 : 3, 
+            pb: responsive ? 1 : 2,
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            gap: 3,
+            borderBottom: responsive ? 'none' : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            flexShrink: 0
+          }}>
           <Typography variant="h6" sx={{
             fontWeight: 700,
             background: `linear-gradient(45deg, ${theme.palette.text.primary}, ${theme.palette.primary.main})`,
@@ -505,52 +531,65 @@ const InteractiveChart = ({
               })}
             </ButtonGroup>
           )}
-        </Box>
+          </Box>
+        )}
 
         {/* Chart */}
         <Box sx={{ 
-          p: 2,
+          p: responsive ? 0.5 : 2,
           flexGrow: 1,
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          alignItems: 'stretch',
+          justifyContent: 'stretch',
           animation: `${scaleIn} 0.6s ease-out`,
           animationDelay: `${index * 0.1 + 0.3}s`,
           animationFillMode: 'both',
-          overflow: 'hidden', // Prevent chart from extending beyond container
+          overflow: 'hidden',
           position: 'relative',
-          minHeight: 0, // Allow flex shrinking
+          minHeight: 0,
+          width: '100%',
+          height: responsive ? '100%' : 'auto',
           '& .recharts-wrapper': {
-            maxWidth: '100% !important',
-            maxHeight: '100% !important'
+            width: '100% !important',
+            height: '100% !important',
+            maxWidth: 'none !important',
+            maxHeight: 'none !important'
+          },
+          '& .recharts-surface': {
+            width: '100% !important',
+            height: '100% !important'
           }
         }}>
           {renderChart()}
         </Box>
 
-        {/* Decorative elements */}
-        <Box sx={{
-          position: 'absolute',
-          top: -30,
-          right: -30,
-          width: 100,
-          height: 100,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.05)} 0%, transparent 70%)`,
-          pointerEvents: 'none'
-        }} />
+        {/* Decorative elements - Only show when not in responsive mode */}
+        {!responsive && (
+          <>
+            <Box sx={{
+              position: 'absolute',
+              top: -30,
+              right: -30,
+              width: 100,
+              height: 100,
+              borderRadius: '50%',
+              background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.05)} 0%, transparent 70%)`,
+              pointerEvents: 'none'
+            }} />
 
-        <Box sx={{
-          position: 'absolute',
-          bottom: -20,
-          left: -20,
-          width: 60,
-          height: 60,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(theme.palette.secondary.main, 0.05)} 0%, transparent 70%)`,
-          pointerEvents: 'none'
-        }} />
-      </Paper>
+            <Box sx={{
+              position: 'absolute',
+              bottom: -20,
+              left: -20,
+              width: 60,
+              height: 60,
+              borderRadius: '50%',
+              background: `radial-gradient(circle, ${alpha(theme.palette.secondary.main, 0.03)} 0%, transparent 70%)`,
+              pointerEvents: 'none'
+            }} />
+          </>
+        )}
+      </ChartWrapper>
     </Fade>
   );
 };

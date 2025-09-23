@@ -15,6 +15,7 @@ import {
   Toolbar,
   Typography
 } from '@mui/material';
+import Sidebar from '../components/Sidebar';
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ChatMessage from '../components/mui/ChatMessage';
@@ -58,6 +59,55 @@ export default function HomePage() {
   const taskPollingRef = useRef(null);
   const [pdfPopupOpen, setPdfPopupOpen] = useState(false);
   const [pdfPopupData, setPdfPopupData] = useState(null);
+  
+  // Sidebar states
+  const [selectedTab, setSelectedTab] = useState('chat');
+
+  const handleTabChange = (tabId) => {
+    setSelectedTab(tabId);
+  };
+
+  // Function to load conversation history
+  const loadConversationHistory = (conversationHistory) => {
+    // Convert API format to your internal chat format
+    const formattedHistory = conversationHistory.map((msg, index) => {
+      if (msg.sender_type === 'user') {
+        return {
+          type: 'user',
+          content: {
+            text: msg.content
+          },
+          timestamp: msg.created_at,
+          isHistorical: true // Mark as historical to prevent auto-scroll
+        };
+      } else {
+        // Handle AI responses
+        let content;
+        try {
+          // Try to parse as JSON first
+          const parsedContent = JSON.parse(msg.content);
+          content = parsedContent;
+        } catch {
+          // If not JSON, treat as plain text
+          content = {
+            text: msg.content
+          };
+        }
+        
+        return {
+          type: 'ai',
+          content: content,
+          isBot: true,
+          timestamp: msg.created_at,
+          isHistorical: true // Mark as historical to prevent auto-scroll
+        };
+      }
+    });
+
+    // Replace current chat history
+    setChatHistory(formattedHistory);
+    setSelectedTab('chat'); // Switch to chat view
+  };
 
   // New Chat handler - increments user ID and resets conversation
   const handleNewChat = useCallback(() => {
@@ -915,347 +965,460 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    scrollToBottom();
+    // Only auto-scroll for new messages, not when loading conversation history
+    if (chatHistory.length > 0) {
+      const lastMessage = chatHistory[chatHistory.length - 1];
+      
+      // Don't scroll for historical messages or if loading conversation history
+      if (lastMessage.isHistorical) {
+        return;
+      }
+      
+      const now = new Date();
+      const messageTime = new Date(lastMessage.timestamp);
+      
+      // Only scroll if the message is recent (within the last 10 seconds)
+      // This prevents scrolling when loading old conversation history
+      if (now - messageTime < 10000) {
+        const timer = setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+        
+        return () => clearTimeout(timer);
+      }
+    }
   }, [chatHistory]);
 
+
+  // Only render chat content when selectedTab is 'chat'
+  const renderMainContent = () => {
+    if (selectedTab !== 'chat') {
+      return (
+        <Box sx={{ 
+          flex: 1, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: 2,
+          p: 4
+        }}>
+          <Typography variant="h4" color="primary">
+            {selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1).replace(/([A-Z])/g, ' $1')}
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            This section is under development
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <>
+        <Box sx={{ 
+          flexGrow: 1, 
+          overflowY: 'auto', 
+          overflowX: 'hidden',
+          py: 2,
+          px: 0,
+          backgroundColor: '#f8f9fa',
+          width: '100%',
+          maxWidth: '100%',
+          backgroundImage: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'
+        }}>
+          <Box sx={{ 
+            minHeight: '100%', 
+            display: 'flex', 
+            flexDirection: 'column',
+            width: '100%',
+            maxWidth: '100%'
+          }}>
+            {chatHistory.length === 0 ? (
+              // Welcome Screen
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                minHeight: '60vh',
+                px: { xs: 2, sm: 3 },
+                textAlign: 'center',
+                width: '100%',
+                maxWidth: '100%'
+              }}>
+                <Box sx={{ 
+                  width: 80, 
+                  height: 80, 
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 3,
+                  boxShadow: '0 4px 20px rgba(25, 118, 210, 0.3)',
+                  overflow: 'hidden'
+                }}>
+                  <Image 
+                    src="/ai-chatbot.png" 
+                    alt="MiFiX AI" 
+                    width={80} 
+                    height={80} 
+                    style={{ borderRadius: '50%' }}
+                  />
+                </Box>
+                
+                <Typography variant="h4" sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#1976d2',
+                  mb: 2
+                }}>
+                  Welcome to MiFiX AI
+                </Typography>
+                
+                <Typography variant="body1" sx={{ 
+                  color: '#6c757d',
+                  mb: 4,
+                  maxWidth: '400px',
+                  lineHeight: 1.6
+                }}>
+                  I&apos;m here to help you with any questions or queries you might have. Feel free to ask me anything!
+                </Typography>
+                
+                <Paper sx={{ 
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #e9ecef',
+                  borderRadius: 3,
+                  p: 2,
+                  maxWidth: '350px',
+                  position: 'relative'
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ 
+                      width: 32, 
+                      height: 32, 
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      overflow: 'hidden'
+                    }}>
+                      <Image 
+                        src="/ai-chatbot.png" 
+                        alt="MiFiX AI" 
+                        width={32} 
+                        height={32} 
+                        style={{ borderRadius: '50%' }}
+                      />
+                    </Box>
+                    <Typography variant="body2" sx={{ color: '#495057' }}>
+                      Hello! I&apos;m MiFiX AI, your intelligent assistant. How can I help you today?
+                    </Typography>
+                  </Box>
+                  <Box sx={{
+                    position: 'absolute',
+                    top: '20px',
+                    left: '-8px',
+                    width: 0,
+                    height: 0,
+                    borderRight: '8px solid #f8f9fa',
+                    borderTop: '8px solid transparent',
+                    borderBottom: '8px solid transparent'
+                  }} />
+                </Paper>
+              </Box>
+            ) : (
+              chatHistory.map((message, index) => {
+                // Generate a stable unique key based on content and timestamp
+                const messageKey = message.timestamp 
+                  ? `message-${message.timestamp}-${index}`
+                  : message.content?.response?.question 
+                    ? `message-${message.content.response.question.replace(/[^a-zA-Z0-9]/g, '')}-${index}`
+                    : message.content?.text
+                      ? `message-${message.content.text.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '')}-${index}`
+                      : `message-stable-${index}`; // Use stable fallback instead of Date.now()
+                
+                return (
+                  <ChatMessage 
+                    key={messageKey}
+                    message={message} 
+                    index={index} 
+                    onAction={handleAction}
+                  />
+                );
+              })
+            )}
+            {isTyping && (
+              <Box 
+                sx={{ 
+                  display: 'flex',
+                  justifyContent: 'flex-start',
+                  mb: 2,
+                  px: { xs: 1, sm: 2 }
+                }}
+              >
+                <Paper 
+                  elevation={1}
+                  sx={{
+                    maxWidth: { xs: '85%', sm: '70%', md: '60%' },
+                    minWidth: '120px',
+                    p: 2,
+                    borderRadius: 2,
+                    backgroundColor: '#f5f5f5',
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: '10px',
+                      left: '-8px',
+                      width: 0,
+                      height: 0,
+                      borderRight: '8px solid #f5f5f5',
+                      borderTop: '8px solid transparent',
+                      borderBottom: '8px solid transparent'
+                    }
+                  }}
+                >
+                  <TypingIndicator />
+                </Paper>
+              </Box>
+            )}
+          </Box>
+          <div ref={chatEndRef} />
+        </Box>
+        <Box sx={{ 
+          p: 1, 
+          backgroundColor: '#ffffff', 
+          borderTop: '1px solid #e9ecef',
+          display: 'flex',
+          justifyContent: 'center'
+        }}>
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            width: '100%',
+            maxWidth: '800px'
+          }}>
+          {/* File Upload Button */}
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            style={{ display: 'none' }}
+            id="file-upload-input"
+            onChange={async (e) => {
+              const file = e.target.files[0];
+              if (file) {
+                await handleFileUpload(file);
+                e.target.value = ''; // Reset input
+              }
+            }}
+          />
+          <IconButton
+            component="label"
+            htmlFor="file-upload-input"
+            sx={{
+              color: uploadedDocuments.length > 0 ? '#4caf50' : '#666',
+              backgroundColor: uploadedDocuments.length > 0 ? '#e8f5e9' : '#f5f5f5',
+              '&:hover': {
+                backgroundColor: uploadedDocuments.length > 0 ? '#c8e6c9' : '#e0e0e0'
+              },
+              borderRadius: '12px',
+              width: 44,
+              height: 44,
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <CircularProgress size={20} />
+            ) : uploadedDocuments.length > 0 ? (
+              <Image 
+                src="/excel.png" 
+                alt="Excel file" 
+                width={24} 
+                height={24}
+                style={{
+                  animation: 'bounce 0.6s ease-in-out'
+                }}
+              />
+            ) : (
+              <DocumentIcon />
+            )}
+          </IconButton>
+          
+          
+            <Box sx={{ flexGrow: 1 }}>
+              <InputWithRecording
+                inputValue={inputValue}
+                onInputChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                onSendMessage={handleSendMessage}
+                onStartRecording={startRecording}
+                onStopRecording={stopRecording}
+                onPauseRecording={pauseRecording}
+                onResumeRecording={resumeRecording}
+                onCancelRecording={cancelRecording}
+                isRecording={isRecording}
+                isPaused={isPaused}
+                recordingTime={recordingTime}
+                isTyping={isTyping || isAnalyzing}
+                placeholder={uploadedDocuments.length > 0 ? "Ask me about your data... Try: 'Show me top issues' or 'What's the success rate?'" : "Type your message here..."}
+              />
+            </Box>
+          </Box>
+        </Box>
+      </>
+    );
+  };
 
   return (
     <Box
       sx={{
         height: '100vh',
         display: 'flex',
-        flexDirection: 'column',
         bgcolor: 'background.default',
       }}
     >
-      <AppBar position="static" sx={{ 
-        backgroundColor: '#ffffff', 
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        borderBottom: '1px solid #e0e0e0'
-      }}>
-        <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={handleNewChat}
-              sx={{ 
-                borderRadius: 2,
-                textTransform: 'none',
-                fontSize: '14px',
-                color: '#1976d2',
-                borderColor: '#e0e0e0',
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                  borderColor: '#1976d2'
-                }
-              }}
-            >
-              New Chat
-            </Button>
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 1.5,
-              backgroundColor: '#f8f9fa',
-              borderRadius: 3,
-              px: 2,
-              py: 1
-            }}>
-              <Box sx={{ 
-                width: 40, 
-                height: 40, 
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <Image 
-                  src="/ai-chatbot.png" 
-                  alt="MiFiX AI" 
-                  width={40} 
-                  height={40} 
-                  style={{ borderRadius: '50%' }}
-                />
-                <Box sx={{
-                  position: 'absolute',
-                  bottom: 0,
-                  right: 0,
-                  width: 12,
-                  height: 12,
-                  backgroundColor: '#4caf50',
-                  borderRadius: '50%',
-                  border: '2px solid white'
-                }} />
-              </Box>
-              <Box>
-                <Typography sx={{ 
-                  fontWeight: 'bold', 
-                  fontSize: '16px',
-                  color: '#1976d2',
-                  lineHeight: 1.2
-                }}>
-                  MiFiX AI
-                </Typography>
-                <Typography sx={{ 
-                  fontSize: '12px', 
-                  color: '#4caf50',
-                  lineHeight: 1
-                }}>
-                  Online
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        </Toolbar>
-      </AppBar>
+      {/* Sidebar */}
+      <Sidebar 
+        selectedTab={selectedTab}
+        onTabChange={handleTabChange}
+        onLoadConversation={loadConversationHistory}
+      />
+
+      {/* Main Content Area */}
       <Box sx={{ 
         flexGrow: 1, 
-        overflowY: 'auto', 
-        py: 2,
-        px: 0,
-        backgroundColor: '#f8f9fa',
-        backgroundImage: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'
+        display: 'flex', 
+        flexDirection: 'column',
+        marginLeft: { xs: 0, md: '320px' },
+        width: { xs: '100vw', md: 'calc(100vw - 320px)' },
+        maxWidth: { xs: '100vw', md: 'calc(100vw - 320px)' },
+        height: '100vh',
+        overflowX: 'hidden'
       }}>
-        <Box sx={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
-          {chatHistory.length === 0 ? (
-            // Welcome Screen
+        <AppBar position="static" sx={{ 
+          backgroundColor: '#ffffff', 
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          borderBottom: '1px solid #e0e0e0',
+          width: '100%',
+          maxWidth: '100%',
+          flexShrink: 0
+        }}>
+          <Toolbar sx={{ 
+            justifyContent: 'space-between', 
+            py: 1,
+            minHeight: '64px',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            px: { xs: 1, sm: 2 }
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {selectedTab === 'chat' && (
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={handleNewChat}
+                  sx={{ 
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '14px',
+                    color: '#1976d2',
+                    borderColor: '#e0e0e0',
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5',
+                      borderColor: '#1976d2'
+                    }
+                  }}
+                >
+                  New Chat
+                </Button>
+              )}
+            </Box>
+            
             <Box sx={{ 
               display: 'flex', 
-              flexDirection: 'column', 
               alignItems: 'center', 
-              justifyContent: 'center', 
-              minHeight: '60vh',
-              px: 3,
-              textAlign: 'center'
+              gap: { xs: 1, sm: 2 },
+              flexShrink: 1,
+              minWidth: 0
             }}>
               <Box sx={{ 
-                width: 80, 
-                height: 80, 
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 3,
-                boxShadow: '0 4px 20px rgba(25, 118, 210, 0.3)',
-                overflow: 'hidden'
-              }}>
-                <Image 
-                  src="/ai-chatbot.png" 
-                  alt="MiFiX AI" 
-                  width={80} 
-                  height={80} 
-                  style={{ borderRadius: '50%' }}
-                />
-              </Box>
-              
-              <Typography variant="h4" sx={{ 
-                fontWeight: 'bold', 
-                color: '#1976d2',
-                mb: 2
-              }}>
-                Welcome to MiFiX AI
-              </Typography>
-              
-              <Typography variant="body1" sx={{ 
-                color: '#6c757d',
-                mb: 4,
-                maxWidth: '400px',
-                lineHeight: 1.6
-              }}>
-                I&apos;m here to help you with any questions or queries you might have. Feel free to ask me anything!
-              </Typography>
-              
-              <Paper sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: { xs: 1, sm: 1.5 },
                 backgroundColor: '#f8f9fa',
-                border: '1px solid #e9ecef',
                 borderRadius: 3,
-                p: 2,
-                maxWidth: '350px',
-                position: 'relative'
+                px: { xs: 1, sm: 2 },
+                py: 1,
+                flexShrink: 1,
+                minWidth: 0
               }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Box sx={{ 
-                    width: 32, 
-                    height: 32, 
+                <Box sx={{ 
+                  width: { xs: 32, sm: 40 }, 
+                  height: { xs: 32, sm: 40 }, 
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  flexShrink: 0
+                }}>
+                  <Image 
+                    src="/ai-chatbot.png" 
+                    alt="MiFiX AI" 
+                    width={40} 
+                    height={40} 
+                    style={{ 
+                      borderRadius: '50%',
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                  />
+                  <Box sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: 12,
+                    height: 12,
+                    backgroundColor: '#4caf50',
                     borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    overflow: 'hidden'
+                    border: '2px solid white'
+                  }} />
+                </Box>
+                <Box sx={{ minWidth: 0, flexShrink: 1 }}>
+                  <Typography sx={{ 
+                    fontWeight: 'bold', 
+                    fontSize: { xs: '14px', sm: '16px' },
+                    color: '#1976d2',
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
                   }}>
-                    <Image 
-                      src="/ai-chatbot.png" 
-                      alt="MiFiX AI" 
-                      width={32} 
-                      height={32} 
-                      style={{ borderRadius: '50%' }}
-                    />
-                  </Box>
-                  <Typography variant="body2" sx={{ color: '#495057' }}>
-                    Hello! I&apos;m MiFiX AI, your intelligent assistant. How can I help you today?
+                    MiFiX AI
+                  </Typography>
+                  <Typography sx={{ 
+                    fontSize: { xs: '10px', sm: '12px' }, 
+                    color: '#4caf50',
+                    lineHeight: 1,
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Online
                   </Typography>
                 </Box>
-                <Box sx={{
-                  position: 'absolute',
-                  top: '20px',
-                  left: '-8px',
-                  width: 0,
-                  height: 0,
-                  borderRight: '8px solid #f8f9fa',
-                  borderTop: '8px solid transparent',
-                  borderBottom: '8px solid transparent'
-                }} />
-              </Paper>
+              </Box>
             </Box>
-          ) : (
-            chatHistory.map((message, index) => {
-              // Generate a stable unique key based on content and timestamp
-              const messageKey = message.timestamp 
-                ? `message-${message.timestamp}-${index}`
-                : message.content?.response?.question 
-                  ? `message-${message.content.response.question.replace(/[^a-zA-Z0-9]/g, '')}-${index}`
-                  : message.content?.text
-                    ? `message-${message.content.text.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '')}-${index}`
-                    : `message-stable-${index}`; // Use stable fallback instead of Date.now()
-              
-              return (
-                <ChatMessage 
-                  key={messageKey}
-                  message={message} 
-                  index={index} 
-                  onAction={handleAction}
-                />
-              );
-            })
-          )}
-          {isTyping && (
-            <Box 
-              sx={{ 
-                display: 'flex',
-                justifyContent: 'flex-start',
-                mb: 2,
-                px: { xs: 1, sm: 2 }
-              }}
-            >
-              <Paper 
-                elevation={1}
-                sx={{
-                  maxWidth: { xs: '85%', sm: '70%', md: '60%' },
-                  minWidth: '120px',
-                  p: 2,
-                  borderRadius: 2,
-                  backgroundColor: '#f5f5f5',
-                  position: 'relative',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: '10px',
-                    left: '-8px',
-                    width: 0,
-                    height: 0,
-                    borderRight: '8px solid #f5f5f5',
-                    borderTop: '8px solid transparent',
-                    borderBottom: '8px solid transparent'
-                  }
-                }}
-              >
-                <TypingIndicator />
-              </Paper>
-            </Box>
-          )}
-        </Box>
-        <div ref={chatEndRef} />
+          </Toolbar>
+        </AppBar>
+
+        {/* Render main content based on selected tab */}
+        {renderMainContent()}
       </Box>
-      <Box sx={{ 
-        p: 1, 
-        backgroundColor: '#ffffff', 
-        borderTop: '1px solid #e9ecef',
-        display: 'flex',
-        justifyContent: 'center'
-      }}>
-        <Box sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          width: '100%',
-          maxWidth: '800px'
-        }}>
-        {/* File Upload Button */}
-        <input
-          type="file"
-          accept=".xlsx,.xls,.csv"
-          style={{ display: 'none' }}
-          id="file-upload-input"
-          onChange={async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-              await handleFileUpload(file);
-              e.target.value = ''; // Reset input
-            }
-          }}
-        />
-        <IconButton
-          component="label"
-          htmlFor="file-upload-input"
-          sx={{
-            color: uploadedDocuments.length > 0 ? '#4caf50' : '#666',
-            backgroundColor: uploadedDocuments.length > 0 ? '#e8f5e9' : '#f5f5f5',
-            '&:hover': {
-              backgroundColor: uploadedDocuments.length > 0 ? '#c8e6c9' : '#e0e0e0'
-            },
-            borderRadius: '12px',
-            width: 44,
-            height: 44,
-            position: 'relative',
-            overflow: 'hidden'
-          }}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <CircularProgress size={20} />
-          ) : uploadedDocuments.length > 0 ? (
-            <Image 
-              src="/excel.png" 
-              alt="Excel file" 
-              width={24} 
-              height={24}
-              style={{
-                animation: 'bounce 0.6s ease-in-out'
-              }}
-            />
-          ) : (
-            <DocumentIcon />
-          )}
-        </IconButton>
-        
-        
-          <Box sx={{ flexGrow: 1 }}>
-            <InputWithRecording
-              inputValue={inputValue}
-              onInputChange={handleInputChange}
-              onKeyPress={handleKeyPress}
-              onSendMessage={handleSendMessage}
-              onStartRecording={startRecording}
-              onStopRecording={stopRecording}
-              onPauseRecording={pauseRecording}
-              onResumeRecording={resumeRecording}
-              onCancelRecording={cancelRecording}
-              isRecording={isRecording}
-              isPaused={isPaused}
-              recordingTime={recordingTime}
-              isTyping={isTyping || isAnalyzing}
-              placeholder={uploadedDocuments.length > 0 ? "Ask me about your data... Try: 'Show me top issues' or 'What's the success rate?'" : "Type your message here..."}
-            />
-          </Box>
-        </Box>
-      </Box>
+
       <ConfirmationDialog
         open={dialogOpen}
         handleClose={handleDialogClose}
