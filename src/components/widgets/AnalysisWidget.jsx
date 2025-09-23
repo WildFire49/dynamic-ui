@@ -2218,6 +2218,12 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
 
               // Note: Using direct component rendering instead of category mapping
 
+              // Count visible cards for layout decisions
+              const topRowCount = [organizedStats.matches, organizedStats.critical]
+                .filter(stat => stat?.stats?.length > 0).length;
+              const bottomRowCount = [organizedStats.records, organizedStats.extras]
+                .filter(stat => stat?.stats?.length > 0).length;
+
               return (
                 <Box sx={{
                   display: 'flex',
@@ -2230,10 +2236,13 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
                     display: 'grid',
                     gridTemplateColumns: {
                       xs: '1fr',
-                      sm: 'repeat(2, 1fr)',
-                      md: 'repeat(2, 1fr)'
+                      sm: topRowCount === 1 ? '1fr' : 'repeat(2, 1fr)',
+                      md: topRowCount === 1 ? '1fr' : 'repeat(2, 1fr)'
                     },
-                    gap: { xs: 2, sm: 4, md: 6 }
+                    gap: { xs: 2, sm: 4, md: 6 },
+                    justifyItems: topRowCount === 1 ? 'center' : 'stretch',
+                    maxWidth: topRowCount === 1 ? '500px' : '100%',
+                    margin: topRowCount === 1 ? '0 auto' : '0'
                   }}>
                     {/* Successful Matches - Independent Component */}
                     {organizedStats.matches?.stats?.length > 0 && (
@@ -2267,10 +2276,13 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
                     display: 'grid',
                     gridTemplateColumns: {
                       xs: '1fr',
-                      sm: 'repeat(2, 1fr)',
-                      md: 'repeat(2, 1fr)'
+                      sm: bottomRowCount === 1 ? '1fr' : 'repeat(2, 1fr)',
+                      md: bottomRowCount === 1 ? '1fr' : 'repeat(2, 1fr)'
                     },
-                    gap: { xs: 2, sm: 4, md: 6 }
+                    gap: { xs: 2, sm: 4, md: 6 },
+                    justifyItems: bottomRowCount === 1 ? 'center' : 'stretch',
+                    maxWidth: bottomRowCount === 1 ? '500px' : '100%',
+                    margin: bottomRowCount === 1 ? '0 auto' : '0'
                   }}>
                     {/* Total Records - Independent Component */}
                     {organizedStats.records?.stats?.length > 0 && (
@@ -2461,21 +2473,66 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
                 }}>
               {(() => {
                 const chartCategories = categorizeCharts(finalAnalysis.charts);
+                
+                // Generate dynamic labels based on the data context
+                const getTabLabel = (category, charts) => {
+                  if (charts.length === 0) return '';
+                  
+                  // Check if this is pipeline/regional data
+                  const hasRegionalData = Array.isArray(finalAnalysis.data) && finalAnalysis.data?.some(item => 
+                    Object.keys(item || {}).some(key => 
+                      key.toLowerCase().includes('region') || 
+                      key.toLowerCase().includes('pipeline')
+                    )
+                  );
+                  
+                  // Check if this is reconciliation data
+                  const isReconciliation = finalAnalysis.type === 'reconciliation' || 
+                    charts.some(chart => 
+                      chart.title?.toLowerCase().includes('reconciliation') ||
+                      chart.title?.toLowerCase().includes('match')
+                    );
+                  
+                  if (hasRegionalData) {
+                    switch(category) {
+                      case 'reconciliation': return 'Data Overview';
+                      case 'mismatch': return 'Analysis Breakdown';
+                      case 'messageTypes': return 'Regional Distribution';
+                      default: return charts[0]?.title || 'Data Analysis';
+                    }
+                  } else if (isReconciliation) {
+                    switch(category) {
+                      case 'reconciliation': return 'Reconciliation Overview';
+                      case 'mismatch': return 'Mismatch Analysis';
+                      case 'messageTypes': return 'Message Types';
+                      default: return charts[0]?.title || 'Analysis';
+                    }
+                  } else {
+                    // Generic data analysis labels
+                    switch(category) {
+                      case 'reconciliation': return 'Data Overview';
+                      case 'mismatch': return 'Analysis Results';
+                      case 'messageTypes': return 'Data Distribution';
+                      default: return charts[0]?.title || 'Data Analysis';
+                    }
+                  }
+                };
+                
                 const tabData = [
                   {
-                    label: 'Reconciliation Overview',
+                    label: getTabLabel('reconciliation', chartCategories.reconciliation),
                     icon: <AssessmentIcon />,
                     charts: chartCategories.reconciliation,
                     color: theme.palette.success.main
                   },
                   {
-                    label: 'Mismatch Analysis',
+                    label: getTabLabel('mismatch', chartCategories.mismatch),
                     icon: <ErrorIcon />,
                     charts: chartCategories.mismatch,
                     color: theme.palette.error.main
                   },
                   {
-                    label: 'Message Types',
+                    label: getTabLabel('messageTypes', chartCategories.messageTypes),
                     icon: <PieChartIcon />,
                     charts: chartCategories.messageTypes,
                     color: theme.palette.info.main
@@ -2912,23 +2969,105 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
                 }}>
                   {(() => {
                     const tableCategories = categorizeTables(finalAnalysis.tables);
+                    
+                    // Generate dynamic table labels based on the data context
+                    const getTableLabel = (category, tables) => {
+                      if (tables.length === 0) return '';
+                      
+                      // Check if this is pipeline/regional data
+                      const hasRegionalData = Array.isArray(finalAnalysis.data) && finalAnalysis.data?.some(item => 
+                        Object.keys(item || {}).some(key => 
+                          key.toLowerCase().includes('region') || 
+                          key.toLowerCase().includes('pipeline')
+                        )
+                      );
+                      
+                      // Check if this is reconciliation data
+                      const isReconciliation = finalAnalysis.type === 'reconciliation' || 
+                        tables.some(table => 
+                          table.title?.toLowerCase().includes('reconciliation') ||
+                          table.title?.toLowerCase().includes('match')
+                        );
+                      
+                      if (hasRegionalData) {
+                        switch(category) {
+                          case 'referenceMatches': return 'Federal Pipeline Report';
+                          case 'fullyMatched': return 'Complete Data Report';
+                          case 'mismatches': return 'Analysis Breakdown';
+                          case 'extraRecords': return 'Additional Data';
+                          default: return tables[0]?.title || 'Data Report';
+                        }
+                      } else if (isReconciliation) {
+                        switch(category) {
+                          case 'referenceMatches': return 'Reference ID Matches Report';
+                          case 'fullyMatched': return 'Fully Matched Report';
+                          case 'mismatches': return 'Mismatches Report';
+                          case 'extraRecords': return 'Extra Records Report';
+                          default: return tables[0]?.title || 'Analysis Report';
+                        }
+                      } else {
+                        // Generic data analysis labels
+                        switch(category) {
+                          case 'referenceMatches': return 'Detailed Results';
+                          case 'fullyMatched': return 'Complete Data';
+                          case 'mismatches': return 'Analysis Results';
+                          case 'extraRecords': return 'Additional Data';
+                          default: return tables[0]?.title || 'Data Report';
+                        }
+                      }
+                    };
+                    
+                    const getTableDescription = (category, tables) => {
+                      if (tables.length === 0) return '';
+                      
+                      // Check if this is pipeline/regional data
+                      const hasRegionalData = Array.isArray(finalAnalysis.data) && finalAnalysis.data?.some(item => 
+                        Object.keys(item || {}).some(key => 
+                          key.toLowerCase().includes('region') || 
+                          key.toLowerCase().includes('pipeline')
+                        )
+                      );
+                      
+                      if (hasRegionalData) {
+                        switch(category) {
+                          case 'referenceMatches': return 'Federal client pipeline data by regions';
+                          case 'fullyMatched': return 'Complete regional pipeline data';
+                          case 'mismatches': return 'Detailed regional analysis breakdown';
+                          case 'extraRecords': return 'Additional regional data points';
+                          default: return 'Data analysis results';
+                        }
+                      } else {
+                        switch(category) {
+                          case 'referenceMatches': return 'Tables showing reference ID matches';
+                          case 'fullyMatched': return 'Tables with complete matches';
+                          case 'mismatches': return 'Tables showing various types of mismatches';
+                          case 'extraRecords': return 'Tables with additional or unmatched records';
+                          default: return 'Analysis results';
+                        }
+                      }
+                    };
+                    
                     const tabData = [
                       {
-                        label: 'Reference ID Matches Report',
+                        label: getTableLabel('referenceMatches', tableCategories.referenceMatches),
                         icon: <CheckCircleIcon />,
                         tables: tableCategories.referenceMatches,
                         color: theme.palette.success.main,
-                        description: 'Tables showing reference ID matches'
+                        description: getTableDescription('referenceMatches', tableCategories.referenceMatches)
                       },
                       {
-                        label: 'Fully Matched Report',
+                        label: getTableLabel('fullyMatched', tableCategories.fullyMatched),
                         icon: <DoneAllIcon />,
                         tables: tableCategories.fullyMatched,
                         color: theme.palette.info.main,
-                        description: 'Tables with complete matches'
+                        description: getTableDescription('fullyMatched', tableCategories.fullyMatched)
                       },
                       {
-                        label: 'Mismatches Report',
+                        label: getTableLabel('mismatches', [
+                          ...tableCategories.mismatches.messageType,
+                          ...tableCategories.mismatches.amount,
+                          ...tableCategories.mismatches.bic
+                        ]),
                         icon: <ErrorIcon />,
                         tables: [
                           ...tableCategories.mismatches.messageType,
@@ -2936,14 +3075,18 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
                           ...tableCategories.mismatches.bic
                         ],
                         color: theme.palette.error.main,
-                        description: 'Tables showing various types of mismatches'
+                        description: getTableDescription('mismatches', [
+                          ...tableCategories.mismatches.messageType,
+                          ...tableCategories.mismatches.amount,
+                          ...tableCategories.mismatches.bic
+                        ])
                       },
                       {
-                        label: 'Extra Records Report',
+                        label: getTableLabel('extraRecords', tableCategories.extraRecords),
                         icon: <WarningIcon />,
                         tables: tableCategories.extraRecords,
                         color: theme.palette.warning.main,
-                        description: 'Tables with additional or unmatched records'
+                        description: getTableDescription('extraRecords', tableCategories.extraRecords)
                       }
                     ].filter(tab => tab.tables.length > 0);
 
