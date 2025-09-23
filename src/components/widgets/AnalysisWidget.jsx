@@ -19,6 +19,7 @@ import {
   Chip
 } from '@mui/material';
 import StatisticsCard from './StatisticsCard';
+import AnalysisWidgetSkeleton from './AnalysisWidgetSkeleton';
 import {
   Assessment as AssessmentIcon,
   TrendingUp as TrendingUpIcon,
@@ -85,15 +86,17 @@ const float = keyframes`
   50% { transform: translateY(-8px); }
 `;
 
-const AnalysisWidget = ({
-  data,
-  analysis,
-  onSave,
-  title = "Analysis Results",
-}) => {
+const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
+  // Loading state for complex data processing
+  const [isProcessing, setIsProcessing] = useState(true);
+  
+  // Log for debugging
+  console.log('AnalysisWidget received data:', data);
+
   const [hasAnimated, setHasAnimated] = useState(false);
   const [reviewPopover, setReviewPopover] = useState({
     open: false,
@@ -695,7 +698,6 @@ const AnalysisWidget = ({
             "#2ca02c",
             "#d62728",
             "#9467bd",
-            "#8c564b",
           ];
           return {
             name: state,
@@ -1989,9 +1991,7 @@ const AnalysisWidget = ({
 
   // Dynamic analysis of API response - now helper functions are defined
   const computedAnalysis = useMemo(() => {
-    if (!data) {
-      return null;
-    }
+    console.log('Processing analysis data:', data);
 
     // Handle supporting_data structure (primary use case) - check both nested and direct structures
     const supportingData =
@@ -2043,10 +2043,10 @@ const AnalysisWidget = ({
     }
 
     return null;
-  }, [data, theme]); // Keep simple dependencies to avoid performance issues
+  }, [data]);
 
-  // Use provided analysis prop or computed analysis
-  const finalAnalysis = analysis || computedAnalysis;
+  // Use computed analysis
+  const finalAnalysis = computedAnalysis;
 
   // Initialize chart types for new charts
   useEffect(() => {
@@ -2061,7 +2061,26 @@ const AnalysisWidget = ({
         setChartTypes(prev => ({ ...prev, ...newChartTypes }));
       }
     }
-  }, [finalAnalysis?.charts, chartTypes]);
+    setHasAnimated(true);
+  }, [finalAnalysis]);
+
+  // Show skeleton while processing complex data - AFTER all hooks
+  useEffect(() => {
+    if (data) {
+      setIsProcessing(true);
+      // Simulate processing delay for smooth loading
+      const timer = setTimeout(() => {
+        setIsProcessing(false);
+      }, 400);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [data]);
+
+  // Show skeleton while processing - AFTER all hooks are declared
+  if (isProcessing) {
+    return <AnalysisWidgetSkeleton />;
+  }
 
   const handleSaveToLoginboard = () => {
     if (finalAnalysis && onSave) {

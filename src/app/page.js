@@ -19,6 +19,7 @@ import Sidebar from '../components/Sidebar';
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ChatMessage from '../components/mui/ChatMessage';
+import ChatSkeleton from '../components/mui/ChatSkeleton';
 import InputWithRecording from '../components/mui/InputWithRecording';
 import PDFNotificationPopup from '../components/mui/PDFNotificationPopup';
 import { generateAudioFileName, uploadAudioFile } from '../lib/audioUpload';
@@ -45,6 +46,9 @@ export default function HomePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({ title: '', message: '' });
   const [actionToConfirm, setActionToConfirm] = useState(null);
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [pdfUrls, setPdfUrls] = useState([]);
+  const [showPdfPopup, setShowPdfPopup] = useState(false);
   
   // Data Analysis states
   const [uploadedDocuments, setUploadedDocuments] = useState([]);
@@ -69,8 +73,12 @@ export default function HomePage() {
 
   // Function to load conversation history
   const loadConversationHistory = (conversationHistory) => {
-    // Convert API format to your internal chat format
-    const formattedHistory = conversationHistory.map((msg, index) => {
+    setIsLoadingConversation(true);
+    
+    // Simulate loading delay for better UX
+    setTimeout(() => {
+      // Convert API format to your internal chat format
+      const formattedHistory = conversationHistory.map((msg, index) => {
       if (msg.sender_type === 'user') {
         return {
           type: 'user',
@@ -106,7 +114,9 @@ export default function HomePage() {
 
     // Replace current chat history
     setChatHistory(formattedHistory);
+    setIsLoadingConversation(false);
     setSelectedTab('chat'); // Switch to chat view
+  }, 800); // 800ms delay for smooth skeleton animation
   };
 
   // New Chat handler - increments user ID and resets conversation
@@ -1126,6 +1136,8 @@ export default function HomePage() {
                   }} />
                 </Paper>
               </Box>
+            ) : isLoadingConversation ? (
+              <ChatSkeleton />
             ) : (
               chatHistory.map((message, index) => {
                 // Generate a stable unique key based on content and timestamp
