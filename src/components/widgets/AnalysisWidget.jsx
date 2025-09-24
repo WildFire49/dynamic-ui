@@ -3323,30 +3323,10 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                                 </Box>
                                 <Box sx={{ display: 'flex', gap: 1 }}>
                                   {/* Show audit report button only for mismatches tab */}
-                                  {tabData[selectedTableTab].label.toLowerCase().includes("mismatch") && (
-                                    <Button
-                                      variant="outlined"
-                                      startIcon={<AssignmentIcon />}
-                                      onClick={() => {
-                                        // Generate audit report for all tables in the mismatches category
-                                        tabData[selectedTableTab].tables.forEach(table => {
-                                          if (table.data && table.data.length > 0) {
-                                            handleAuditReport(table.title, table.data);
-                                          }
-                                        });
-                                      }}
-                                      sx={{
-                                        borderColor: theme.palette.info.main,
-                                        color: theme.palette.info.main,
-                                        '&:hover': {
-                                          borderColor: theme.palette.info.main,
-                                          backgroundColor: alpha(theme.palette.info.main, 0.08)
-                                        }
-                                      }}
-                                    >
-                                      Generate Audit Report
-                                    </Button>
-                                  )}
+                                  {/* {tabData[selectedTableTab].label.toLowerCase().includes("mismatch") && (
+                                    
+                                    
+                                  )} */}
                                   <Button
                                     variant="contained"
                                     startIcon={<DownloadIcon />}

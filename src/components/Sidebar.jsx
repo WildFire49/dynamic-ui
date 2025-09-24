@@ -343,7 +343,7 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
             {mode === 'dashboard' ? (
               <>
                 <DashboardIcon sx={{ fontSize: 20, color: '#3498db' }} />
-                Recent Analyses
+                Recent Analysis
               </>
             ) : (
               <>
