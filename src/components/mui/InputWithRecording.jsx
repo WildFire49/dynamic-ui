@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -18,7 +18,7 @@ import {
   SmartToy as BotIcon
 } from '@mui/icons-material';
 
-const InputWithRecording = ({
+const InputWithRecording = React.memo(({
   inputValue,
   onInputChange,
   onKeyPress,
@@ -31,27 +31,30 @@ const InputWithRecording = ({
   isRecording,
   isPaused,
   recordingTime,
-  isTyping
+  isTyping,
+  placeholder
 }) => {
-  const formatTime = (seconds) => {
+  // Memoize expensive calculations
+  const formatTime = useCallback((seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, []);
 
-  // Calculate progress percentage for seek visualization
-  const getRecordingProgress = () => {
-    // Show progress out of reasonable max duration (e.g., 5 minutes = 300 seconds)
+  // Memoize recording progress calculation
+  const recordingProgress = useMemo(() => {
     const maxDuration = 300;
     return Math.min((recordingTime / maxDuration) * 100, 100);
-  };
+  }, [recordingTime]);
 
-  // Generate animated waveform bars with recording progress
-  const generateWaveformBars = () => {
-    const progress = getRecordingProgress();
+  // Memoize formatted time to prevent recalculation
+  const formattedTime = useMemo(() => formatTime(recordingTime), [formatTime, recordingTime]);
+
+  // Memoize waveform bars to prevent regeneration on every render
+  const waveformBars = useMemo(() => {
     return Array.from({ length: 25 }, (_, i) => {
       const barProgress = (i / 25) * 100;
-      const isActive = barProgress <= progress;
+      const isActive = barProgress <= recordingProgress;
       
       return (
         <Box
@@ -72,7 +75,46 @@ const InputWithRecording = ({
         />
       );
     });
-  };
+  }, [recordingProgress]);
+
+  // Memoize TextField styles to prevent recalculation
+  const textFieldStyles = useMemo(() => ({
+    flex: 1,
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '24px',
+      backgroundColor: '#ffffff',
+      border: '2px solid #f0f0f0',
+      minHeight: '48px',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      '&:hover': {
+        borderColor: '#e0e0e0',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        transform: 'translateY(-1px)'
+      },
+      '&.Mui-focused': {
+        borderColor: '#1976d2',
+        backgroundColor: '#ffffff',
+        boxShadow: '0 4px 24px rgba(25,118,210,0.15)',
+        transform: 'translateY(-1px)'
+      },
+      '& fieldset': {
+        border: 'none'
+      }
+    },
+    '& .MuiInputBase-input': {
+      py: 1,
+      px: 2,
+      fontSize: '15px',
+      lineHeight: 1.5,
+      fontWeight: 400,
+      '&::placeholder': {
+        color: '#9e9e9e',
+        opacity: 1,
+        fontSize: '15px'
+      }
+    }
+  }), []);
 
   if (isRecording) {
     const recordingColor = isPaused ? '#ff9800' : '#f44336';
@@ -152,14 +194,14 @@ const InputWithRecording = ({
               textShadow: '0 1px 2px rgba(0,0,0,0.1)'
             }}
           >
-            {formatTime(recordingTime)}
+            {formattedTime}
           </Typography>
         </Box>
 
         {/* Animated Waveform Bars */}
         {!isPaused && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, mr: 2 }}>
-            {generateWaveformBars()}
+            {waveformBars}
           </Box>
         )}
 
@@ -240,7 +282,7 @@ const InputWithRecording = ({
     }}>
       <TextField
         variant="outlined"
-        placeholder="Type your message here..."
+        placeholder={placeholder || "Type your message here..."}
         value={inputValue}
         onChange={onInputChange}
         onKeyPress={onKeyPress}
@@ -248,43 +290,7 @@ const InputWithRecording = ({
         multiline
         maxRows={4}
         minRows={1}
-        sx={{
-          flex: 1,
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '24px',
-            backgroundColor: '#ffffff',
-            border: '2px solid #f0f0f0',
-            minHeight: '48px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              borderColor: '#e0e0e0',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-              transform: 'translateY(-1px)'
-            },
-            '&.Mui-focused': {
-              borderColor: '#1976d2',
-              backgroundColor: '#ffffff',
-              boxShadow: '0 4px 24px rgba(25,118,210,0.15)',
-              transform: 'translateY(-1px)'
-            },
-            '& fieldset': {
-              border: 'none'
-            }
-          },
-          '& .MuiInputBase-input': {
-            py: 1,
-            px: 2,
-            fontSize: '15px',
-            lineHeight: 1.5,
-            fontWeight: 400,
-            '&::placeholder': {
-              color: '#9e9e9e',
-              opacity: 1,
-              fontSize: '15px'
-            }
-          }
-        }}
+        sx={textFieldStyles}
       />
       
       <Grow in={true} timeout={300}>
@@ -350,6 +356,6 @@ const InputWithRecording = ({
       </Zoom>
     </Box>
   );
-};
+});
 
 export default InputWithRecording;

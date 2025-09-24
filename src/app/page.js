@@ -673,7 +673,8 @@ export default function HomePage() {
 
   // Optimized input handlers to prevent re-renders on every keystroke
   const handleInputChange = useCallback((e) => {
-    setInputValue(e.target.value);
+    const value = e.target.value;
+    setInputValue(value);
   }, []);
 
   const handleKeyPress = useCallback((e) => {
@@ -1275,11 +1276,11 @@ export default function HomePage() {
                 isPaused={isPaused}
                 recordingTime={recordingTime}
                 isTyping={isTyping || isAnalyzing}
-                placeholder={uploadedDocuments.length > 0 ? "Ask me about your data... Try: 'Show me top issues' or 'What's the success rate?'" : "Type your message here..."}
+                placeholder={uploadedDocuments.length > 0 ? "Ask me about your data." : "Type your message here..."}
               />
             </Box>
           </Box>
-        </Box>
+        </Box>  
       </>
     );
   };
