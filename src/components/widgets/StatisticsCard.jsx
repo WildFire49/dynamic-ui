@@ -201,7 +201,7 @@ const StatisticsCard = ({
                     minWidth: 'fit-content',
                     ml: 2
                   }}>
-                    {parseInt(stat.value).toLocaleString()}
+                    {stat.value}
                   </Typography>
                   </Box>
                 </Fade>

@@ -490,7 +490,8 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
     stats.forEach(stat => {
       const title = stat.title.toLowerCase();
-      const value = parseInt(stat.value) || 0;
+      // Remove commas and parse the numeric value properly
+      const value = parseInt(stat.value.toString().replace(/,/g, '')) || 0;
       
       console.log(`📝 [CATEGORIZE] Processing: "${stat.title}" (value: ${value})`);
       
@@ -1541,6 +1542,8 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
     Object.keys(result).forEach((key) => {
       const item = result[key];
+      console.log(`🔍 Processing result key: ${key}`, item.summary);
+      
       if (item.summary) {
         // Handle new API format - only use detailed_field_matches and reference_matches
         if (
@@ -1560,17 +1563,24 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
           ktpOnlyReferences += item.summary.ktp_only_references || 0;
           xmmOnlyReferences += item.summary.xmm_only_references || 0;
           samOnlyReferences += item.summary.sam_only_references || 0;
+          
+          console.log(`🔍 After processing ${key}:`, {
+            ktpOnlyReferences,
+            xmmOnlyReferences,
+            samOnlyReferences,
+            totalSamRecords: totalSamRecords + (item.summary.total_sam_records || 0)
+          });
 
           // Total record counts
           totalKtpRecords += item.summary.total_ktp_records || 0;
           totalXmmRecords += item.summary.total_xmm_records || 0;
           totalSamRecords += item.summary.total_sam_records || 0;
 
-          // Individual record counts
+          // Individual record counts - accumulate rather than overwrite
           individualRecordCounts = {
-            ktp: item.summary.total_ktp_records || 0,
-            xmm: item.summary.total_xmm_records || 0,
-            sam: item.summary.total_sam_records || 0,
+            ktp: totalKtpRecords,
+            xmm: totalXmmRecords,
+            sam: totalSamRecords,
           };
         }
         // Handle legacy API format
@@ -1607,6 +1617,16 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
     const totalRecords = totalMatches + totalMismatches + totalMissingRecords;
     const matchRate =
       totalRecords > 0 ? (totalMatches / totalRecords) * 100 : 0;
+
+    // Debug final values
+    console.log('🔍 FINAL VALUES:', {
+      totalKtpRecords,
+      totalXmmRecords, 
+      totalSamRecords,
+      ktpOnlyReferences,
+      xmmOnlyReferences,
+      samOnlyReferences
+    });
 
     return [
       {
