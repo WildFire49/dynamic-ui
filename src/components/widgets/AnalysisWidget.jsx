@@ -3505,6 +3505,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                                         pageSize={isMobile ? 15 : 50}
                                         index={table.originalIndex || tableIndex}
                                         exportFileName={`${finalAnalysis.title}_${table.title}`}
+                                        hideHeader={true}
                                         onRefresh={
                                           table.title.toLowerCase().includes("mismatch")
                                             ? () => window.location.reload()

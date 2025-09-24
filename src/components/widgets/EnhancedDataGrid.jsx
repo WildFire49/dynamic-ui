@@ -74,7 +74,8 @@ const EnhancedDataGrid = ({
   customColumns = null,
   loading = false,
   type = null,
-  onReviewClick = null
+  onReviewClick = null,
+  hideHeader = false
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -496,112 +497,114 @@ const EnhancedDataGrid = ({
           }
         }}
       >
-        {/* Header */}
-        <Box sx={{ 
-          p: isMobile ? 2 : 3,
-          background: `linear-gradient(135deg, 
-            ${alpha(theme.palette.primary.main, 0.05)} 0%, 
-            ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-        }}>
-          <Stack 
-            direction={isMobile ? "column" : "row"} 
-            justifyContent="space-between" 
-            alignItems={isMobile ? "stretch" : "center"} 
-            spacing={isMobile ? 2 : 3}
-          >
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={2} mb={1}>
-                <Box sx={{
-                  p: 1,
-                  borderRadius: 2,
-                  background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  color: 'white'
-                }}>
-                  <TableViewIcon sx={{ fontSize: 20 }} />
-                </Box>
+        {/* Header - Only show if hideHeader is false */}
+        {!hideHeader && (
+          <Box sx={{ 
+            p: isMobile ? 2 : 3,
+            background: `linear-gradient(135deg, 
+              ${alpha(theme.palette.primary.main, 0.05)} 0%, 
+              ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+          }}>
+            <Stack 
+              direction={isMobile ? "column" : "row"} 
+              justifyContent="space-between" 
+              alignItems={isMobile ? "stretch" : "center"} 
+              spacing={isMobile ? 2 : 3}
+            >
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={2} mb={1}>
+                  <Box sx={{
+                    p: 1,
+                    borderRadius: 2,
+                    background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    color: 'white'
+                  }}>
+                    <TableViewIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  
+                  <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{
+                    fontWeight: 700,
+                    fontSize: isMobile ? '1rem' : '1.25rem',
+                    background: `linear-gradient(45deg, ${theme.palette.text.primary}, ${theme.palette.primary.main})`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}>
+                    {title}
+                  </Typography>
+                </Stack>
                 
-                <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{
-                  fontWeight: 700,
-                  fontSize: isMobile ? '1rem' : '1.25rem',
-                  background: `linear-gradient(45deg, ${theme.palette.text.primary}, ${theme.palette.primary.main})`,
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}>
-                  {title}
-                </Typography>
-              </Stack>
-              
-              <Stack 
-                direction={isMobile ? "column" : "row"} 
-                spacing={isMobile ? 1 : 2} 
-                alignItems={isMobile ? "flex-start" : "center"}
-              >
-                <Chip 
-                  label={`${filteredData.length} records`}
-                  size="small" 
-                  sx={{
-                    background: alpha(theme.palette.success.main, 0.1),
-                    color: theme.palette.success.main,
-                    fontWeight: 600,
-                    fontSize: isMobile ? '0.7rem' : '0.75rem'
-                  }}
-                />
-                
-                {selectedRows.length > 0 && (
+                <Stack 
+                  direction={isMobile ? "column" : "row"} 
+                  spacing={isMobile ? 1 : 2} 
+                  alignItems={isMobile ? "flex-start" : "center"}
+                >
                   <Chip 
-                    label={`${selectedRows.length} selected`}
+                    label={`${filteredData.length} records`}
                     size="small" 
                     sx={{
-                      background: alpha(theme.palette.info.main, 0.1),
-                      color: theme.palette.info.main,
+                      background: alpha(theme.palette.success.main, 0.1),
+                      color: theme.palette.success.main,
                       fontWeight: 600,
                       fontSize: isMobile ? '0.7rem' : '0.75rem'
                     }}
                   />
-                )}
-              </Stack>
-            </Box>
+                  
+                  {selectedRows.length > 0 && (
+                    <Chip 
+                      label={`${selectedRows.length} selected`}
+                      size="small" 
+                      sx={{
+                        background: alpha(theme.palette.info.main, 0.1),
+                        color: theme.palette.info.main,
+                        fontWeight: 600,
+                        fontSize: isMobile ? '0.7rem' : '0.75rem'
+                      }}
+                    />
+                  )}
+                </Stack>
+              </Box>
 
-            {/* Search */}
-            <TextField
-              size="small"
-              placeholder={isMobile ? "Search..." : "Search all columns..."}
-              value={searchText}
-              onChange={(e) => handleSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ 
-                      color: theme.palette.text.secondary, 
-                      fontSize: isMobile ? 18 : 20 
-                    }} />
-                  </InputAdornment>
-                ),
-                sx: {
-                  borderRadius: 2,
-                  fontSize: isMobile ? '0.875rem' : '1rem',
-                  background: alpha(theme.palette.background.paper, 0.8),
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: alpha(theme.palette.primary.main, 0.2)
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: alpha(theme.palette.primary.main, 0.4)
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme.palette.primary.main
+              {/* Search */}
+              <TextField
+                size="small"
+                placeholder={isMobile ? "Search..." : "Search all columns..."}
+                value={searchText}
+                onChange={(e) => handleSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ 
+                        color: theme.palette.text.secondary, 
+                        fontSize: isMobile ? 18 : 20 
+                      }} />
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    borderRadius: 2,
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    background: alpha(theme.palette.background.paper, 0.8),
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: alpha(theme.palette.primary.main, 0.2)
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: alpha(theme.palette.primary.main, 0.4)
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.palette.primary.main
+                    }
                   }
-                }
-              }}
-              sx={{ 
-                width: isMobile ? '100%' : 'auto',
-                minWidth: isMobile ? 'unset' : 250,
-                maxWidth: isMobile ? '100%' : 350
-              }}
-            />
-          </Stack>
-        </Box>
+                }}
+                sx={{ 
+                  width: isMobile ? '100%' : 'auto',
+                  minWidth: isMobile ? 'unset' : 250,
+                  maxWidth: isMobile ? '100%' : 350
+                }}
+              />
+            </Stack>
+          </Box>
+        )}
 
         {/* Data Grid */}
         <Grow in={mounted} timeout={1200} style={{ transformOrigin: 'center top' }}>
