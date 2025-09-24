@@ -41,11 +41,6 @@ export const generateAuditReport = (tableName, tableData, reviews) => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `${tableName.replace(/[^a-zA-Z0-9]/g, '_')}_audit_report_${timestamp}.csv`;
   
-  // Debug logging
-  console.log('Generating audit report for:', tableName);
-  console.log('Table data sample:', tableData[0]);
-  console.log('Reviews available:', Object.keys(reviews || {}));
-  
   const auditData = tableData.map(row => {
     // Determine the record key and mismatch type based on data structure
     let recordKey, mismatchType, xmmValue, samValue;
@@ -100,10 +95,7 @@ export const generateAuditReport = (tableName, tableData, reviews) => {
       reviewKey = `${recordKey}_${mismatchType}`;
     }
     
-    // Debug logging for review key matching
-    console.log(`Looking for review with key: ${reviewKey}`);
     const review = reviews[reviewKey] || {};
-    console.log(`Found review:`, review);
     
     return {
       'Record Key': recordKey,
