@@ -48,6 +48,7 @@ import {
   Download as DownloadIcon,
   FilterList as FilterListIcon,
   Visibility as VisibilityIcon,
+  Assignment as AssignmentIcon,
   VisibilityOff as VisibilityOffIcon,
   Sort as SortIcon,
   Search as SearchIcon,
@@ -589,6 +590,19 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleAuditReport = (tableName, tableData) => {
+    if (!tableData || tableData.length === 0) return;
+    
+    // Get reviews for this specific table using the store's getState method
+    const tableReviews = useReviewStore.getState().getTableReviews(tableName);
+    
+    // Generate and download the audit report
+    const filename = generateAuditReport(tableName, tableData, tableReviews);
+    
+    // Show success message or notification if needed
+    console.log(`Audit report generated: ${filename}`);
   };
 
   useEffect(() => {
@@ -2253,6 +2267,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
             flex: 1,
             minWidth: 0,
             textAlign: isMobile ? 'center' : 'left',
+            color: '#37527e',
           }}
         >
           MiFiX.ai
@@ -3306,23 +3321,50 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                                     {tabData[selectedTableTab].description}
                                   </Typography>
                                 </Box>
-                                <Button
-                                  variant="contained"
-                                  startIcon={<DownloadIcon />}
-                                  onClick={() => handleCategoryDownload(
-                                    tabData[selectedTableTab].label.replace(/\s+/g, '_').toLowerCase(),
-                                    tabData[selectedTableTab].tables
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  {/* Show audit report button only for mismatches tab */}
+                                  {tabData[selectedTableTab].label.toLowerCase().includes("mismatch") && (
+                                    <Button
+                                      variant="outlined"
+                                      startIcon={<AssignmentIcon />}
+                                      onClick={() => {
+                                        // Generate audit report for all tables in the mismatches category
+                                        tabData[selectedTableTab].tables.forEach(table => {
+                                          if (table.data && table.data.length > 0) {
+                                            handleAuditReport(table.title, table.data);
+                                          }
+                                        });
+                                      }}
+                                      sx={{
+                                        borderColor: theme.palette.info.main,
+                                        color: theme.palette.info.main,
+                                        '&:hover': {
+                                          borderColor: theme.palette.info.main,
+                                          backgroundColor: alpha(theme.palette.info.main, 0.08)
+                                        }
+                                      }}
+                                    >
+                                      Generate Audit Report
+                                    </Button>
                                   )}
-                                  sx={{
-                                    backgroundColor: tabData[selectedTableTab].color,
-                                    '&:hover': {
+                                  <Button
+                                    variant="contained"
+                                    startIcon={<DownloadIcon />}
+                                    onClick={() => handleCategoryDownload(
+                                      tabData[selectedTableTab].label.replace(/\s+/g, '_').toLowerCase(),
+                                      tabData[selectedTableTab].tables
+                                    )}
+                                    sx={{
                                       backgroundColor: tabData[selectedTableTab].color,
-                                      filter: 'brightness(0.9)'
-                                    }
-                                  }}
-                                >
-                                  Download Report
-                                </Button>
+                                      '&:hover': {
+                                        backgroundColor: tabData[selectedTableTab].color,
+                                        filter: 'brightness(0.9)'
+                                      }
+                                    }}
+                                  >
+                                    Download Report
+                                  </Button>
+                                </Box>
                               </Box>
 
                               {/* Tables List */}
@@ -3395,6 +3437,31 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                                         </Box>
                                         
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          {/* Show audit report button only for mismatch tables */}
+                                          {table.title.toLowerCase().includes("mismatch") && (
+                                            <Tooltip title="Generate Audit Report" arrow>
+                                              <IconButton
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleAuditReport(table.title, table.data);
+                                                }}
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor: alpha(theme.palette.info.main, 0.08),
+                                                  color: theme.palette.info.main,
+                                                  width: 32,
+                                                  height: 32,
+                                                  '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.info.main, 0.15),
+                                                    transform: 'scale(1.05)'
+                                                  },
+                                                  transition: 'all 0.2s ease'
+                                                }}
+                                              >
+                                                <AssignmentIcon fontSize="small" />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
                                           <Tooltip title="Download Table" arrow>
                                             <IconButton
                                               onClick={(e) => {

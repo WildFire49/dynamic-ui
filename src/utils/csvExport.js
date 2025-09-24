@@ -41,6 +41,11 @@ export const generateAuditReport = (tableName, tableData, reviews) => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `${tableName.replace(/[^a-zA-Z0-9]/g, '_')}_audit_report_${timestamp}.csv`;
   
+  // Debug logging
+  console.log('Generating audit report for:', tableName);
+  console.log('Table data sample:', tableData[0]);
+  console.log('Reviews available:', Object.keys(reviews || {}));
+  
   const auditData = tableData.map(row => {
     // Determine the record key and mismatch type based on data structure
     let recordKey, mismatchType, xmmValue, samValue;
@@ -56,11 +61,11 @@ export const generateAuditReport = (tableName, tableData, reviews) => {
     else if (row.Reference) {
       recordKey = row.Reference;
       
-      // Message type mismatches
-      if (row.KTP_msg_type && row.XMM_msg_type && row.SAM_Identifier) {
+      // Message type mismatches - check for various field name formats
+      if ((row['KTP Msg Type'] || row.KTP_msg_type) && (row['XMM Msg Type'] || row.XMM_msg_type) && (row['SAM Identifier'] || row.SAM_Identifier)) {
         mismatchType = 'Message Type Mismatch';
-        xmmValue = `${row.XMM_msg_type} (${row.XMM_normalized_msg_code || 'N/A'})`;
-        samValue = `${row.SAM_Identifier} (${row.SAM_normalized_msg_code || 'N/A'})`;
+        xmmValue = `${row['XMM Msg Type'] || row.XMM_msg_type} (${row.XMM_normalized_msg_code || 'N/A'})`;
+        samValue = `${row['SAM Identifier'] || row.SAM_Identifier} (${row.SAM_normalized_msg_code || 'N/A'})`;
       }
       // Amount mismatches - fix field name from XMM_amt to XMM_amount
       else if (row.KTP_amount !== undefined && row.XMM_amount !== undefined && row.SAM_Cur_Amt) {
@@ -95,7 +100,10 @@ export const generateAuditReport = (tableName, tableData, reviews) => {
       reviewKey = `${recordKey}_${mismatchType}`;
     }
     
+    // Debug logging for review key matching
+    console.log(`Looking for review with key: ${reviewKey}`);
     const review = reviews[reviewKey] || {};
+    console.log(`Found review:`, review);
     
     return {
       'Record Key': recordKey,

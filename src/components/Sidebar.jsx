@@ -327,7 +327,7 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
       <Divider />
 
       {/* Recent Section: Chat or Analyses */}
-      <Box sx={{ flex: 1.9, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <Box sx={{ flex: 2, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #e1e5e9' }}>
           <Typography 
             variant="h6" 

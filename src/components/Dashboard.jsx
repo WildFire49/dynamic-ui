@@ -515,7 +515,7 @@ const Dashboard = () => {
                   height: 80, 
                   mx: 'auto', 
                   mb: 4,
-                  background: 'linear-gradient(135deg, #37527e 0%, #f1641f 100%)',
+                  background: 'linear-gradient(135deg, #37527e 0%,rgb(31, 70, 241) 100%)',
                   color: '#ffffff',
                   border: '3px solid #ffffff',
                   boxShadow: '0 8px 32px rgba(55, 82, 126, 0.3), 0 0 0 1px rgba(241, 100, 31, 0.2)',
@@ -527,7 +527,7 @@ const Dashboard = () => {
                     left: '-6px',
                     right: '-6px',
                     bottom: '-6px',
-                    background: 'linear-gradient(135deg, #f1641f, #37527e)',
+                    background: 'linear-gradient(135deg,rgb(31, 70, 241), #37527e)',
                     borderRadius: '50%',
                     zIndex: -1,
                     opacity: 0.1
@@ -542,9 +542,9 @@ const Dashboard = () => {
                   right: '10px',
                   width: '12px',
                   height: '12px',
-                  background: '#f1641f',
+                  background: '#37527e',
                   borderRadius: '50%',
-                  boxShadow: '0 2px 8px rgba(241, 100, 31, 0.4)'
+                  boxShadow: '0 2px 8px rgba(44, 75, 228, 0.4)'
                 }} />
                 <Box sx={{
                   position: 'absolute',
@@ -561,7 +561,7 @@ const Dashboard = () => {
               <Typography variant="h1" sx={{ 
                 fontWeight: 900,
                 fontSize: { xs: '2.5rem', md: '3.25rem' },
-                background: 'linear-gradient(135deg, #37527e 0%, #f1641f 50%, #37527e 100%)',
+                background: 'linear-gradient(135deg, #37527e 0%,rgb(28, 53, 117) 50%, #37527e 100%)',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
@@ -577,7 +577,7 @@ const Dashboard = () => {
                   transform: 'translateX(-50%)',
                   width: '80px',
                   height: '4px',
-                  background: 'linear-gradient(90deg, #37527e, #f1641f, #37527e)',
+                  background: 'linear-gradient(90deg,rgb(73, 109, 167),rgb(31, 140, 241), #37527e)',
                   borderRadius: '2px',
                   opacity: 0.8
                 }
@@ -602,7 +602,7 @@ const Dashboard = () => {
                   transform: 'translateY(-50%)',
                   width: '6px',
                   height: '6px',
-                  background: '#f1641f',
+                  background: 'rgb(31, 140, 241)',
                   borderRadius: '50%'
                 },
                 '&::after': {
