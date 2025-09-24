@@ -86,7 +86,7 @@ const float = keyframes`
   50% { transform: translateY(-8px); }
 `;
 
-const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
+const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpandedStates }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -106,13 +106,29 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
   });
   const { getTableReviews } = useReviewStore();
   const [currentSection, setCurrentSection] = useState(0);
-  const [selectedChartTab, setSelectedChartTab] = useState(0);
+  const [selectedChartTab, setSelectedChartTab] = useState(
+    initialExpandedStates?.selectedChartTab ?? 0
+  );
   const [chartTypes, setChartTypes] = useState({});
-  const [visualAnalyticsExpanded, setVisualAnalyticsExpanded] = useState(true);
-  const [expandedCharts, setExpandedCharts] = useState({});
-  const [tabularResultsExpanded, setTabularResultsExpanded] = useState(true);
-  const [selectedTableTab, setSelectedTableTab] = useState(0);
-  const [expandedTables, setExpandedTables] = useState({});
+  const [visualAnalyticsExpanded, setVisualAnalyticsExpanded] = useState(
+    initialExpandedStates?.visualAnalytics ?? true
+  );
+  const [expandedCharts, setExpandedCharts] = useState(
+    initialExpandedStates?.expandedCharts ?? {}
+  );
+  const [tabularResultsExpanded, setTabularResultsExpanded] = useState(
+    initialExpandedStates?.tabularResults ?? true
+  );
+  const [selectedTableTab, setSelectedTableTab] = useState(
+    initialExpandedStates?.selectedTableTab ?? 0
+  );
+  const [expandedTables, setExpandedTables] = useState(
+    initialExpandedStates?.expandedTables ?? {}
+  );
+  const [lastExpandedChartKeyByTab, setLastExpandedChartKeyByTab] = useState(
+    initialExpandedStates?.lastExpandedChartKeyByTab ?? {}
+  );
+  const [hasUserExpandedCharts, setHasUserExpandedCharts] = useState(false);
   // Note: Statistics cards now use independent state management in StatisticsCard component
 
   // Refs for scrolling to tables
@@ -260,6 +276,15 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
         [chartKey]: !prev[chartKey]
       };
       console.log('New chart state:', newState[chartKey]);
+      // Persist the last opened chart for the current tab category when expanded
+      if (newState[chartKey]) {
+        const tabCategories = ['reconciliation', 'mismatch', 'messageTypes'];
+        const currentCategory = tabCategories[selectedChartTab] || 'reconciliation';
+        setLastExpandedChartKeyByTab(prevMap => ({
+          ...prevMap,
+          [currentCategory]: chartKey
+        }));
+      }
       return newState;
     });
   };
@@ -2076,6 +2101,66 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
       return () => clearTimeout(timer);
     }
   }, [data]);
+  
+  // Monitor when user manually expands charts
+  useEffect(() => {
+    const hasAnyExpanded = Object.values(expandedCharts).some(isExpanded => isExpanded);
+    console.log('📊 Checking if user expanded charts:', { hasAnyExpanded, hasUserExpandedCharts, expandedCharts });
+    if (hasAnyExpanded && !hasUserExpandedCharts) {
+      console.log('✅ Setting hasUserExpandedCharts to true');
+      setHasUserExpandedCharts(true);
+    }
+  }, [expandedCharts, hasUserExpandedCharts]);
+  
+  // Auto-expand chart when switching tabs (smart behavior based on previous interactions)
+  useEffect(() => {
+    console.log('🔄 Auto-expand effect triggered:', {
+      hasCharts: !!finalAnalysis?.charts,
+      visualAnalyticsExpanded,
+      selectedChartTab,
+      hasUserExpandedCharts,
+      chartsLength: finalAnalysis?.charts?.length
+    });
+    
+    if (finalAnalysis?.charts && visualAnalyticsExpanded && selectedChartTab >= 0 && hasUserExpandedCharts) {
+      // Use existing categorizeCharts function
+      const chartCategories = categorizeCharts(finalAnalysis.charts);
+      
+      const tabCategories = ['reconciliation', 'mismatch', 'messageTypes'];
+      const currentCategory = tabCategories[selectedChartTab];
+      const currentTabCharts = chartCategories[currentCategory] || [];
+      
+      console.log('📋 Tab switching details:', {
+        currentCategory,
+        currentTabChartsLength: currentTabCharts.length,
+        allCategories: Object.keys(chartCategories).map(key => ({ key, length: chartCategories[key].length }))
+      });
+      
+      // Determine which chart key to open: last opened in this tab, else the first chart in this tab
+      if (currentTabCharts.length > 0) {
+        const storedKey = lastExpandedChartKeyByTab[currentCategory];
+        const fallbackKey = `${currentTabCharts[0].title}-0`;
+        const chartKeyToOpen = storedKey || fallbackKey;
+        console.log('🎯 Computed chartKeyToOpen:', { storedKey, fallbackKey, chartKeyToOpen });
+
+        setExpandedCharts(prev => {
+          if (!prev[chartKeyToOpen]) {
+            console.log('🚀 Auto-expanding chart by key:', chartKeyToOpen);
+            return {
+              ...prev,
+              [chartKeyToOpen]: true
+            };
+          }
+          console.log('⏭️ Chart already expanded for key:', chartKeyToOpen);
+          return prev;
+        });
+      } else {
+        console.log('❌ No charts in current tab category:', currentCategory);
+      }
+    } else {
+      console.log('❌ Auto-expand conditions not met');
+    }
+  }, [selectedChartTab, visualAnalyticsExpanded, finalAnalysis?.charts, hasUserExpandedCharts, lastExpandedChartKeyByTab]);
 
   // Show skeleton while processing - AFTER all hooks are declared
   if (isProcessing) {
@@ -2084,7 +2169,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
 
   const handleSaveToLoginboard = () => {
     if (finalAnalysis && onSave) {
-      onSave({
+      const dashboardData = {
         type: "analysis_widget",
         title: finalAnalysis.title,
         analysis: finalAnalysis,
@@ -2093,7 +2178,19 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
         charts: finalAnalysis.charts,
         stats: finalAnalysis.stats,
         tables: finalAnalysis.tables,
-      });
+        // Save expanded/collapsed states
+        expandedStates: {
+          visualAnalytics: visualAnalyticsExpanded,
+          tabularResults: tabularResultsExpanded,
+          expandedCharts: expandedCharts,
+          expandedTables: expandedTables,
+          selectedChartTab: selectedChartTab,
+          selectedTableTab: selectedTableTab,
+          lastExpandedChartKeyByTab: lastExpandedChartKeyByTab
+        }
+      };
+      
+      onSave(dashboardData);
 
       // Navigate to dashboard in new tab
       window.open("/dashboard", "_blank");
@@ -2548,7 +2645,27 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave }) => {
                     }}>
                       <Tabs
                         value={selectedChartTab}
-                        onChange={(event, newValue) => setSelectedChartTab(newValue)}
+                        onChange={(event, newValue) => {
+                          setSelectedChartTab(newValue);
+                          // Proactively auto-expand when switching tabs
+                          if (visualAnalyticsExpanded) {
+                            const nextTab = newValue;
+                            const tabCategories = ['reconciliation', 'mismatch', 'messageTypes'];
+                            const currentCategory = tabCategories[nextTab];
+                            const chartsInTab = (tabData[nextTab]?.charts) || [];
+                            if (chartsInTab.length > 0) {
+                              const storedKey = lastExpandedChartKeyByTab[currentCategory];
+                              const fallbackKey = `${chartsInTab[0].title}-0`;
+                              const chartKeyToOpen = storedKey || fallbackKey;
+                              setExpandedCharts(prev => ({
+                                ...prev,
+                                [chartKeyToOpen]: true
+                              }));
+                              // Mark user intent so effect continues to work
+                              if (!hasUserExpandedCharts) setHasUserExpandedCharts(true);
+                            }
+                          }
+                        }}
                         variant={isMobile ? "scrollable" : "fullWidth"}
                         scrollButtons="auto"
                         sx={{

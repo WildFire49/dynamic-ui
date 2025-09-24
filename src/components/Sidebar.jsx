@@ -20,7 +20,8 @@ import {
   Paper,
   Chip,
   Fade,
-  Skeleton
+  Skeleton,
+  Tooltip
 } from '@mui/material';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -52,7 +53,7 @@ const menuItems = [
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
-const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
+const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', onSelectAnalysis }) => {
   const theme = useTheme();
   const router = useRouter();
   const [conversations, setConversations] = useState([]);
@@ -61,6 +62,13 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [conversationContainer, setConversationContainer] = useState(null);
+
+  // Analyses state (for dashboard mode)
+  const [analyses, setAnalyses] = useState([]);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisLoadingMore, setAnalysisLoadingMore] = useState(false);
+  const [analysisHasMore, setAnalysisHasMore] = useState(true);
+  const [analysisPage, setAnalysisPage] = useState(1);
 
   // Helper function to convert UTC to IST
   const formatToIST = (dateString) => {
@@ -72,6 +80,34 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
     } catch (error) {
       console.error('Date formatting error:', error);
       return 'Invalid date';
+    }
+  };
+
+  // Load analyses from localStorage with pagination (5 per page)
+  const PAGE_SIZE = 5;
+  const loadAnalyses = (pageNum = 1, append = false) => {
+    if (pageNum === 1) setAnalysisLoading(true); else setAnalysisLoadingMore(true);
+    try {
+      const saved = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
+      // Sort newest first
+      const sorted = [...saved].sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+      const start = (pageNum - 1) * PAGE_SIZE;
+      const end = start + PAGE_SIZE;
+      const slice = sorted.slice(start, end);
+      if (append) {
+        setAnalyses(prev => [...prev, ...slice]);
+      } else {
+        setAnalyses(slice);
+      }
+      setAnalysisHasMore(end < sorted.length);
+      setAnalysisPage(pageNum);
+    } catch (e) {
+      console.error('Error loading saved analyses:', e);
+      setAnalyses([]);
+      setAnalysisHasMore(false);
+    } finally {
+      setAnalysisLoading(false);
+      setAnalysisLoadingMore(false);
     }
   };
 
@@ -106,8 +142,14 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
   // Handle infinite scroll
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
-    if (scrollHeight - scrollTop === clientHeight && hasMore && !loadingMore) {
-      fetchConversations(page + 1, true);
+    if (mode === 'dashboard') {
+      if (scrollHeight - scrollTop === clientHeight && analysisHasMore && !analysisLoadingMore) {
+        loadAnalyses(analysisPage + 1, true);
+      }
+    } else {
+      if (scrollHeight - scrollTop === clientHeight && hasMore && !loadingMore) {
+        fetchConversations(page + 1, true);
+      }
     }
   };
 
@@ -128,13 +170,21 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
   };
 
   useEffect(() => {
-    fetchConversations(1, false);
-  }, []);
+    if (mode === 'dashboard') {
+      loadAnalyses(1, false);
+    } else {
+      fetchConversations(1, false);
+    }
+  }, [mode]);
 
   const handleMenuClick = (item) => {
     // Handle navigation for specific items
     if (item.id === 'dashboard') {
-      router.push('/dashboard');
+      // Open dashboard in new tab to preserve localStorage state
+      window.open('/dashboard', '_blank');
+    } else if (item.id === 'chat' && mode === 'dashboard') {
+      // Navigate to chat page from dashboard
+      router.push('/');
     } else if (item.id === 'configurator') {
       router.push('/configurator');
     } else {
@@ -145,7 +195,7 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
 
 
   const drawerContent = (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', pb: 4, overflow: 'auto' }}>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', pb: 2, overflow: 'auto' }}>
       {/* Header */}
       <Box sx={{ p: 3, textAlign: 'center', position: 'relative' }}>
         <Box sx={{ 
@@ -276,8 +326,8 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
 
       <Divider />
 
-      {/* Recent Conversations Section */}
-      <Box sx={{ flex: 1.2, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* Recent Section: Chat or Analyses */}
+      <Box sx={{ flex: 1.9, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #e1e5e9' }}>
           <Typography 
             variant="h6" 
@@ -290,8 +340,17 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
               gap: 1
             }}
           >
-            <ChatIcon sx={{ fontSize: 20, color: '#3498db' }} />
-            Chat History
+            {mode === 'dashboard' ? (
+              <>
+                <DashboardIcon sx={{ fontSize: 20, color: '#3498db' }} />
+                Recent Analyses
+              </>
+            ) : (
+              <>
+                <ChatIcon sx={{ fontSize: 20, color: '#3498db' }} />
+                Chat History
+              </>
+            )}
           </Typography>
           <Typography 
             variant="caption" 
@@ -300,7 +359,9 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
               fontSize: '0.75rem'
             }}
           >
-            {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+            {mode === 'dashboard' 
+              ? `${analyses.length} shown`
+              : `${conversations.length} conversation${conversations.length !== 1 ? 's' : ''}`}
           </Typography>
         </Box>
         
@@ -327,141 +388,253 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation }) => {
           }}
           onScroll={handleScroll}
         >
-          {loading && conversations.length === 0 ? (
-            <Box sx={{ p: 2 }}>
-              {[...Array(3)].map((_, i) => (
-                <Box key={i} sx={{ mb: 2 }}>
-                  <Skeleton variant="rectangular" width="100%" height={60} sx={{ borderRadius: 2, mb: 1 }} />
-                </Box>
-              ))}
-            </Box>
-          ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
-              {conversations.map((conversation, index) => (
-                <Fade in={true} timeout={300 + index * 100} key={conversation.id}>
-                  <Paper
-                    elevation={0}
-                    onClick={() => loadConversation(conversation.id)}
-                    sx={{
-                      p: 2.5,
-                      borderRadius: 3,
-                      backgroundColor: '#ffffff',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: '1px solid #e8ecf0',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      '&:hover': {
-                        backgroundColor: '#f8fafc',
-                        borderColor: '#3498db',
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 8px 25px rgba(52, 152, 219, 0.15)',
-                      },
-                      '&:active': {
-                        transform: 'translateY(0px)',
-                      }
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #3498db, #2980b9)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          boxShadow: '0 4px 12px rgba(52, 152, 219, 0.3)'
-                        }}>
-                          {index + 1}
+          {mode === 'dashboard' ? (
+            analysisLoading && analyses.length === 0 ? (
+              <Box sx={{ p: 2 }}>
+                {[...Array(3)].map((_, i) => (
+                  <Box key={i} sx={{ mb: 2 }}>
+                    <Skeleton variant="rectangular" width="100%" height={60} sx={{ borderRadius: 2, mb: 1 }} />
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
+                {analyses.map((item, index) => (
+                  <Fade in={true} timeout={300 + index * 100} key={item.id || `${item.title}-${index}`}>
+                    <Paper
+                      elevation={0}
+                      onClick={() => onSelectAnalysis && onSelectAnalysis(item.timestamp)}
+                      sx={{
+                        p: 2.5,
+                        borderRadius: 3,
+                        backgroundColor: '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: '1px solid #e8ecf0',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&:hover': {
+                          backgroundColor: '#f8fafc',
+                          borderColor: '#3498db',
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 8px 25px rgba(52, 152, 219, 0.15)',
+                        },
+                        '&:active': {
+                          transform: 'translateY(0px)',
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flex: 1, minWidth: 0 }}>
+                          <Box sx={{
+                            width: 32,
+                            height: 32,
+                            minWidth: 32,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #3498db, #2980b9)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            boxShadow: '0 4px 12px rgba(52, 152, 219, 0.3)',
+                            marginTop: '2px'
+                          }}>
+                            {index + 1}
+                          </Box>
+                          <Box sx={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Tooltip title={item.title || 'Saved Analysis'}>
+                              <Typography 
+                                variant="subtitle2" 
+                                sx={{ 
+                                  fontSize: '0.9rem',
+                                  fontWeight: 600,
+                                  color: '#2c3e50',
+                                  lineHeight: 1.2,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
+                                {item.title || 'Saved Analysis'}
+                              </Typography>
+                            </Tooltip>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                fontSize: '0.75rem',
+                                color: '#7f8c8d',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                mt: 0.5
+                              }}
+                            >
+                              {item.timestamp ? formatToIST(item.timestamp) : '—'}
+                            </Typography>
+                          </Box>
                         </Box>
-                        <Box>
-                          <Typography 
-                            variant="subtitle2" 
-                            sx={{ 
-                              fontSize: '0.9rem',
-                              fontWeight: 600,
-                              color: '#2c3e50',
-                              lineHeight: 1.2
-                            }}
-                          >
-                            Conversation {index + 1}
-                          </Typography>
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              fontSize: '0.75rem',
-                              color: '#7f8c8d',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 0.5,
-                              mt: 0.5
-                            }}
-                          >
-                            {formatToIST(conversation.updated_at)}
-                          </Typography>
-                        </Box>
+                        <Chip 
+                          label="Saved" 
+                          size="small" 
+                          sx={{ 
+                            height: 20,
+                            minWidth: 50,
+                            fontSize: '0.65rem',
+                            fontWeight: 500,
+                            backgroundColor: '#e8f5e8',
+                            color: '#27ae60',
+                            border: 'none',
+                            ml: 1,
+                            flexShrink: 0,
+                            '& .MuiChip-label': {
+                              px: 1
+                            }
+                          }} 
+                        />
                       </Box>
-                      <Chip 
-                        label="Recent" 
-                        size="small" 
-                        sx={{ 
-                          height: 20,
-                          fontSize: '0.65rem',
-                          fontWeight: 500,
-                          backgroundColor: '#e8f5e8',
-                          color: '#27ae60',
-                          border: 'none',
-                          '& .MuiChip-label': {
-                            px: 1
-                          }
-                        }} 
-                      />
-                    </Box>
-                  </Paper>
-                </Fade>
-              ))}
-              
-              {loadingMore && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                  <CircularProgress size={20} sx={{ color: '#3498db' }} />
-                </Box>
-              )}
-              
-              {conversations.length === 0 && !loading && (
-                <Box sx={{ 
-                  textAlign: 'center', 
-                  py: 6,
-                  px: 2
-                }}>
-                  <ChatIcon sx={{ fontSize: 48, color: '#bdc3c7', mb: 2 }} />
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: '#7f8c8d',
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                      mb: 1
-                    }}
-                  >
-                    No conversations yet
-                  </Typography>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      color: '#95a5a6',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    Start a new chat to see your history here
-                  </Typography>
-                </Box>
-              )}
-            </Box>
+                    </Paper>
+                  </Fade>
+                ))}
+
+                {analysisLoadingMore && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                    <CircularProgress size={20} sx={{ color: '#3498db' }} />
+                  </Box>
+                )}
+
+                {analyses.length === 0 && !analysisLoading && (
+                  <Box sx={{ textAlign: 'center', py: 6, px: 2 }}>
+                    <DashboardIcon sx={{ fontSize: 48, color: '#bdc3c7', mb: 2 }} />
+                    <Typography variant="body2" sx={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: 500, mb: 1 }}>
+                      No saved analyses yet
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#95a5a6', fontSize: '0.75rem' }}>
+                      Save analyses from chat to see them here
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            )
+          ) : (
+            // Chat mode content (original)
+            loading && conversations.length === 0 ? (
+              <Box sx={{ p: 2 }}>
+                {[...Array(3)].map((_, i) => (
+                  <Box key={i} sx={{ mb: 2 }}>
+                    <Skeleton variant="rectangular" width="100%" height={60} sx={{ borderRadius: 2, mb: 1 }} />
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
+                {conversations.map((conversation, index) => (
+                  <Fade in={true} timeout={300 + index * 100} key={conversation.id}>
+                    <Paper
+                      elevation={0}
+                      onClick={() => loadConversation(conversation.id)}
+                      sx={{
+                        p: 2.5,
+                        borderRadius: 3,
+                        backgroundColor: '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: '1px solid #e8ecf0',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&:hover': {
+                          backgroundColor: '#f8fafc',
+                          borderColor: '#3498db',
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 8px 25px rgba(52, 152, 219, 0.15)',
+                        },
+                        '&:active': {
+                          transform: 'translateY(0px)',
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flex: 1, minWidth: 0 }}>
+                          <Box sx={{
+                            width: 32,
+                            height: 32,
+                            minWidth: 32,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #3498db, #2980b9)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            boxShadow: '0 4px 12px rgba(52, 152, 219, 0.3)',
+                            marginTop: '2px'
+                          }}>
+                            {index + 1}
+                          </Box>
+                          <Box sx={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography 
+                              variant="subtitle2" 
+                              sx={{ 
+                                fontSize: '0.9rem',
+                                fontWeight: 600,
+                                color: '#2c3e50',
+                                lineHeight: 1.2,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              Conversation {index + 1}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#7f8c8d', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                              {formatToIST(conversation.updated_at)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Chip 
+                          label="Recent" 
+                          size="small" 
+                          sx={{ 
+                            height: 20,
+                            minWidth: 50,
+                            fontSize: '0.65rem',
+                            fontWeight: 500,
+                            backgroundColor: '#e8f5e8',
+                            color: '#27ae60',
+                            border: 'none',
+                            ml: 1,
+                            flexShrink: 0,
+                            '& .MuiChip-label': {
+                              px: 1
+                            }
+                          }}
+                        />
+                      </Box>
+                    </Paper>
+                  </Fade>
+                ))}
+
+                {loadingMore && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                    <CircularProgress size={20} sx={{ color: '#3498db' }} />
+                  </Box>
+                )}
+
+                {conversations.length === 0 && !loading && (
+                  <Box sx={{ textAlign: 'center', py: 6, px: 2 }}>
+                    <ChatIcon sx={{ fontSize: 48, color: '#bdc3c7', mb: 2 }} />
+                    <Typography variant="body2" sx={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: 500, mb: 1 }}>
+                      No conversations yet
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#95a5a6', fontSize: '0.75rem' }}>
+                      Start a new chat to see your history here
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            )
           )}
         </Box>
       </Box>

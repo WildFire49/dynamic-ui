@@ -45,6 +45,8 @@ import {
   AccountBalance as AccountBalanceIcon
 } from '@mui/icons-material';
 import DynamicDataVisualization from './mui/DynamicDataVisualization';
+import Sidebar from './Sidebar';
+import { useRef } from 'react';
 import DataGridComponent from './charts/DataGridComponent';
 import AnalysisWidget from './widgets/AnalysisWidget';
 
@@ -55,6 +57,14 @@ const Dashboard = () => {
   const [editDialog, setEditDialog] = useState({ open: false, item: null });
   const [fullscreenView, setFullscreenView] = useState({ open: false, item: null });
   const [hoveredCard, setHoveredCard] = useState(null);
+  const analysisRefs = useRef({});
+
+  const handleSelectAnalysis = (timestamp) => {
+    const el = analysisRefs.current[timestamp];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Load saved visualizations and analyses from localStorage on mount
   useEffect(() => {
@@ -171,6 +181,7 @@ const Dashboard = () => {
             data={analysisData}
             title={item.title}
             onSave={() => {}} // No save needed in dashboard view
+            initialExpandedStates={item.expandedStates} // Restore expanded states
           />
         </Box>
       );
@@ -281,7 +292,11 @@ const Dashboard = () => {
 
   const renderVisualizationCard = (item, index) => (
     <Fade in={true} timeout={600 + (index * 200)} key={item.id}>
-      <Box sx={{ 
+      <Box
+        ref={(el) => {
+          if (el && item.timestamp) analysisRefs.current[item.timestamp] = el;
+        }}
+        sx={{ 
         mb: 8,
         width: '100%',
         position: 'relative'
@@ -433,11 +448,32 @@ const Dashboard = () => {
   );
 
   return (
-    <Box sx={{ 
-      background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
-      minHeight: '100vh',
-      position: 'relative'
-    }}>
+    <>
+      <Sidebar 
+        mode="dashboard"
+        selectedTab={'dashboard'}
+        onTabChange={() => {}}
+        onSelectAnalysis={handleSelectAnalysis}
+      />
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          marginLeft: { xs: 0, md: '320px' },
+          width: { xs: '100%', md: 'calc(100% - 320px)' },
+          maxWidth: '100%',
+          overflowX: 'hidden',
+          height: '100%'
+        }}
+      >
+      <Box 
+        sx={{ 
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
+          minHeight: '100vh',
+          position: 'relative'
+        }}
+      >
       <Box sx={{ position: 'relative', width: '100%' }}>
         {/* Elegant Header Section */}
         <Box sx={{ 
@@ -591,12 +627,9 @@ const Dashboard = () => {
       {/* Full Width Analysis Section */}
       <Box sx={{ 
         background: '#ffffff',
-        width: '100vw',
+        width: '100%',
         position: 'relative',
-        left: '50%',
-        right: '50%',
-        marginLeft: '-50vw',
-        marginRight: '-50vw',
+        boxSizing: 'border-box',
         minHeight: '80vh'
       }}>
         {/* Quick Stats Section */}
@@ -870,7 +903,6 @@ const Dashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Enhanced Fullscreen View Dialog */}
       <Dialog 
         open={fullscreenView.open} 
         onClose={() => setFullscreenView({ open: false, item: null })}
@@ -947,7 +979,9 @@ const Dashboard = () => {
           </Box>
         </DialogContent>
       </Dialog>
-    </Box>
+      </Box>
+     </Box>
+    </>
   );
 };
 
