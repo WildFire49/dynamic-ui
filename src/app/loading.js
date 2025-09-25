@@ -53,10 +53,10 @@ export default function Loading() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `linear-gradient(135deg, 
-          ${alpha(theme.palette.primary.main, 0.05)} 0%, 
-          ${alpha(theme.palette.secondary.main, 0.02)} 50%, 
-          ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
+        //  background: `linear-gradient(135deg, 
+          // ${alpha(theme.palette.primary.main, 0.05)} 0%, 
+          // ${alpha(theme.palette.secondary.main, 0.02)} 50%, 
+          // ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
         position: 'relative',
         overflow: 'hidden'
       }}
@@ -70,7 +70,7 @@ export default function Loading() {
           width: 100,
           height: 100,
           borderRadius: '50%',
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})`,
+          // background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})`,
           animation: `${float} 3s ease-in-out infinite`,
           zIndex: 0
         }}
@@ -83,7 +83,7 @@ export default function Loading() {
           width: 60,
           height: 60,
           borderRadius: '50%',
-          background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.1)})`,
+          // background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.1)})`,
           animation: `${float} 4s ease-in-out infinite reverse`,
           zIndex: 0
         }}

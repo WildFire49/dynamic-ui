@@ -347,7 +347,7 @@ const ChatMessage = ({ message, index, onAction }) => {
       return <AudioTranslationResponse content={message.content} />;
     }
 
-    if (message.type === 'scheduler_response') {
+    if (message.type === 'scheduler_response' || message.content?.type === 'scheduler_response') {
       return <SchedulerResponse content={message.content} />;
     }
 

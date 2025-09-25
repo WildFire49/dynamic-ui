@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../contexts/AuthContext';
 import GavelIcon from '@mui/icons-material/Gavel';
 import {
   Dashboard as DashboardIcon,
@@ -38,24 +39,39 @@ import {
   History as HistoryIcon,
   Security as AccessControlIcon,
 } from '@mui/icons-material';
-import NewStreetLogo from '../../public/assets/NewStreetLogo';
+// import NewStreetLogo from '../../public/assets/NewStreetLogo'; // Replaced with MiFiX logo
+import MiFixLogoLight from '../../public/assets/MiFixLogoLight';
 
 const drawerWidth = 240; // Reduced width
 
-const menuItems = [
-  { id: 'chat', label: 'Chat', icon: ChatIcon },
-  { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
-  { id: 'configurator', label: 'Configurator', icon: ConfiguratorIcon },
-  // { id: 'chatHistory', label: 'Chat History', icon: HistoryIcon },
-  // { id: 'creditRulesUpdate', label: 'Credit Rules Update', icon: GavelIcon },
-  // { id: 'creditCheck', label: 'Credit Check', icon: CreditIcon },
-  { id: 'accessControl', label: 'Access Control', icon: AccessControlIcon },
-  { id: 'settings', label: 'Settings', icon: SettingsIcon },
-];
+import { MENU_ITEMS, getAccessibleMenuItems } from '../config/roleConfig';
+
+// Icon mapping for dynamic icon rendering
+const ICON_MAP = {
+  'ChatIcon': ChatIcon,
+  'DashboardIcon': DashboardIcon,
+  'ConfiguratorIcon': ConfiguratorIcon,
+  'AccessControlIcon': AccessControlIcon,
+  'SettingsIcon': SettingsIcon,
+};
 
 const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', onSelectAnalysis }) => {
   const theme = useTheme();
   const router = useRouter();
+  const { user, getUserRoles, hasRole, isSuperAdmin, isRegularUser } = useAuth();
+
+  // Get filtered menu items based on user roles
+  const getFilteredMenuItems = () => {
+    if (!user) return [];
+    
+    const userRoleCodes = getUserRoles();
+    return getAccessibleMenuItems(userRoleCodes).map(item => ({
+      ...item,
+      icon: ICON_MAP[item.icon] || ChatIcon, // Fallback to ChatIcon if not found
+    }));
+  };
+
+  const menuItems = getFilteredMenuItems();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -221,16 +237,13 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
               justifyContent: 'center',
               margin: '0 auto 12px',
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, rgba(47, 143, 239, 0.05) 0%, rgba(255, 255, 255, 0.1) 100%)',
+              border: '1px solid rgba(47, 143, 239, 0.1)',
+              boxShadow: '0 4px 16px rgba(47, 143, 239, 0.1)'
             }}
           >
-            <Image 
-              src="/mifix-logo.png"
-              alt="MiFiX Logo"
-              width={66}
-              height={66}
-              style={{ objectFit: 'contain' }}
-            />
+            <MiFixLogoLight width={60} height={22} />
           </Box>
           <Typography 
             variant="h6" 
@@ -240,11 +253,11 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
               marginBottom: 1
             }}
           >
-            <div style={{ textAlign: 'center' }}>
+            {/* <div style={{ textAlign: 'center' }}>
               <svg width="120" height="40" viewBox="0 0 120 40">
                 <text x="60" y="25" fontSize="24" fontWeight="bold" textAnchor="middle">MiFiX.ai</text>
               </svg>
-            </div>
+            </div> */}
           </Typography>
         </Box>
       </Box>  
@@ -327,7 +340,7 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
       <Divider />
 
       {/* Recent Section: Chat or Analyses */}
-      <Box sx={{ flex: 2, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #e1e5e9' }}>
           <Typography 
             variant="h6" 

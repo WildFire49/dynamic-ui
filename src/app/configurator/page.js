@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Typography,
@@ -53,9 +54,11 @@ import {
   PictureAsPdf as PdfIcon,
   PictureAsPdf,
   Speed as SpeedIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { embeddingsApi } from '@/lib/api/embeddingsApi';
+import RouteGuard from '../../components/auth/RouteGuard';
 
 const AGENT_TYPES = [
   {
@@ -190,6 +193,7 @@ const spinKeyframes = `
 `;
 
 export default function ConfiguratorPage() {
+  const router = useRouter();
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [brainDialog, setBrainDialog] = useState(false);
@@ -418,7 +422,8 @@ export default function ConfiguratorPage() {
   };
 
   return (
-    <Box 
+    <RouteGuard routeId="configurator">
+      <Box 
       sx={{ 
         minHeight: '100vh',
         position: 'relative',
@@ -496,8 +501,39 @@ export default function ConfiguratorPage() {
       ))}
       
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+        {/* Back Button */}
+        <Fade in={mounted} timeout={800}>
+          <Box sx={{ pt: 4, pb: 2 }}>
+            <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => router.push('/')}
+              sx={{
+                color: 'white',
+                background: alpha('#0d1b2a', 0.6),
+                backdropFilter: 'blur(20px)',
+                border: `1px solid ${alpha('#64b5f6', 0.3)}`,
+                borderRadius: 3,
+                px: 3,
+                py: 1.5,
+                fontWeight: 600,
+                textTransform: 'none',
+                boxShadow: `0 8px 25px ${alpha('#000', 0.2)}`,
+                '&:hover': {
+                  background: alpha('#1b263b', 0.8),
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 12px 35px ${alpha('#64b5f6', 0.3)}`,
+                  border: `1px solid ${alpha('#64b5f6', 0.5)}`,
+                },
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
+              Back to Chat
+            </Button>
+          </Box>
+        </Fade>
+        
         {/* Hero Section */}
-        <Box sx={{ pt: 8, pb: 6, textAlign: 'center' }}>
+        <Box sx={{ pt: 4, pb: 6, textAlign: 'center' }}>
           <Fade in={mounted} timeout={1000}>
             <Box>
               <Box sx={{ mb: 3, position: 'relative' }}>
@@ -1865,6 +1901,7 @@ export default function ConfiguratorPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+      </Box>
+    </RouteGuard>
   );
 }

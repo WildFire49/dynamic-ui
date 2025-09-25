@@ -14,6 +14,12 @@ const theme = createTheme({
       light: '#4ca6ff', // Lighter blue
       contrastText: '#ffffff',
     },
+    secondary: {
+      main: '#2f8fef', // Blue to match the login gradient
+      dark: '#1e6bb8', // Darker blue
+      light: '#5ba3f2', // Lighter blue
+      contrastText: '#ffffff',
+    },
     tertiary: {
       main: '#37527e', // Deep blue for performance metrics
       dark: '#2a3f60',
@@ -23,7 +29,7 @@ const theme = createTheme({
     background: {
       default: '#f8fafc', // Clean light background
       paper: '#ffffff',   // Pure white for cards and panels
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Professional gradient
+      gradient: 'linear-gradient(135deg, rgba(185, 198, 228, 0.2) 0%, rgba(170, 185, 235, 0.3) 15%, rgba(155, 175, 242, 0.4) 30%, rgba(130, 165, 248, 0.5) 45%, rgba(105, 155, 250, 0.6) 60%, rgba(80, 148, 248, 0.7) 75%, rgba(60, 145, 245, 0.8) 85%, rgb(47, 143, 239) 100%)', // Blue gradient to match login
       chat: {
         bot: '#0078d7',   // Blue for bot chat bubbles
         user: '#f1f1f1', // Light grey for user chat bubbles

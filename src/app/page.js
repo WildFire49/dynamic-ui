@@ -25,8 +25,34 @@ import PDFNotificationPopup from '../components/mui/PDFNotificationPopup';
 import { generateAudioFileName, uploadAudioFile } from '../lib/audioUpload';
 import { API_BASE_URL, CHAT_ENDPOINT } from '../lib/config';
 import { dataAnalysisApi } from '../lib/api/dataAnalysisApi';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
+import UserMenu from '../components/auth/UserMenu';
+import { keyframes } from '@emotion/react';
+
+// Define animations for AI elements
+const pulseGlow = keyframes`
+  0% {
+    filter: drop-shadow(0 0 20px rgba(25, 118, 210, 0.3));
+    transform: scale(1);
+  }
+  100% {
+    filter: drop-shadow(0 0 30px rgba(25, 118, 210, 0.5));
+    transform: scale(1.02);
+  }
+`;
+
+const floatAnimation = keyframes`
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+`;
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [chatHistory, setChatHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -1035,7 +1061,12 @@ export default function HomePage() {
           backgroundColor: '#f8f9fa',
           width: '100%',
           maxWidth: '100%',
-          backgroundImage: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'
+          backgroundImage: `
+            radial-gradient(circle at 20% 50%, rgba(47, 143, 239, 0.03) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(25, 118, 210, 0.05) 0%, transparent 50%),
+            radial-gradient(circle at 40% 80%, rgba(47, 143, 239, 0.02) 0%, transparent 50%),
+            linear-gradient(135deg, #f8f9fa 0%, #f8fafc 100%)
+          `
         }}>
           <Box sx={{ 
             minHeight: '100%', 
@@ -1082,7 +1113,7 @@ export default function HomePage() {
                   color: '#1976d2',
                   mb: 2
                 }}>
-                  Welcome to MiFiX AI
+                  Welcome to MiFiX AI 
                 </Typography>
                 
                 <Typography variant="body1" sx={{ 
@@ -1286,13 +1317,14 @@ export default function HomePage() {
   };
 
   return (
-    <Box
-      sx={{
-        height: '100vh',
-        display: 'flex',
-        bgcolor: 'background.default',
-      }}
-    >
+    <ProtectedRoute>
+      <Box
+        sx={{
+          height: '100vh',
+          display: 'flex',
+          bgcolor: 'background.default',
+        }}
+      >
       {/* Sidebar */}
       <Sidebar 
         selectedTab={selectedTab}
@@ -1312,12 +1344,13 @@ export default function HomePage() {
         overflowX: 'hidden'
       }}>
         <AppBar position="static" sx={{ 
-          backgroundColor: '#ffffff', 
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderBottom: '1px solid #e0e0e0',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)', 
+          boxShadow: '0 4px 20px rgba(25, 118, 210, 0.08)',
+          borderBottom: '1px solid rgba(25, 118, 210, 0.1)',
           width: '100%',
           maxWidth: '100%',
-          flexShrink: 0
+          flexShrink: 0,
+          backdropFilter: 'blur(10px)'
         }}>
           <Toolbar sx={{ 
             justifyContent: 'space-between', 
@@ -1327,63 +1360,70 @@ export default function HomePage() {
             overflow: 'hidden',
             px: { xs: 1, sm: 2 }
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {selectedTab === 'chat' && (
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={handleNewChat}
-                  sx={{ 
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontSize: '14px',
-                    color: '#1976d2',
-                    borderColor: '#e0e0e0',
-                    '&:hover': {
-                      backgroundColor: '#f5f5f5',
-                      borderColor: '#1976d2'
-                    }
-                  }}
-                >
-                  New Chat
-                </Button>
-              )}
-            </Box>
+            {/* Left Side - New Chat Button */}
+            {selectedTab === 'chat' && (
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={handleNewChat}
+                sx={{ 
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '14px',
+                  color: '#1976d2',
+                  borderColor: '#e0e0e0',
+                  background: 'linear-gradient(145deg, #ffffff, #f8f9fa)',
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5',
+                    borderColor: '#1976d2',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.15)'
+                  },
+                  transition: 'all 0.2s ease-in-out'
+                }}
+              >
+                New Chat
+              </Button>
+            )}
             
+            {/* Right Side - Unified Status & User Panel */}
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: { xs: 1, sm: 2 },
-              flexShrink: 1,
-              minWidth: 0
+              gap: 2,
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,249,250,0.9))',
+              borderRadius: 4,
+              px: 2,
+              py: 1,
+              border: '1px solid rgba(25, 118, 210, 0.08)',
+              boxShadow: '0 4px 20px rgba(25, 118, 210, 0.08)',
+              backdropFilter: 'blur(10px)'
             }}>
+              {/* Bot Status Section */}
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: { xs: 1, sm: 1.5 },
-                backgroundColor: '#f8f9fa',
-                borderRadius: 3,
-                px: { xs: 1, sm: 2 },
-                py: 1,
-                flexShrink: 1,
-                minWidth: 0
+                gap: 1.5,
+                pr: 2,
+                borderRight: '1px solid rgba(25, 118, 210, 0.1)'
               }}>
                 <Box sx={{ 
-                  width: { xs: 32, sm: 40 }, 
-                  height: { xs: 32, sm: 40 }, 
+                  width: 36, 
+                  height: 36, 
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   position: 'relative',
                   overflow: 'hidden',
-                  flexShrink: 0
+                  background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.1), rgba(66, 165, 245, 0.1))',
+                  border: '2px solid rgba(25, 118, 210, 0.2)'
                 }}>
                   <Image 
                     src="/ai-chatbot.png" 
                     alt="MiFiX AI" 
-                    width={40} 
-                    height={40} 
+                    width={32} 
+                    height={32} 
                     style={{ 
                       borderRadius: '50%',
                       width: '100%',
@@ -1393,36 +1433,61 @@ export default function HomePage() {
                   />
                   <Box sx={{
                     position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    width: 12,
-                    height: 12,
+                    bottom: -1,
+                    right: -1,
+                    width: 10,
+                    height: 10,
                     backgroundColor: '#4caf50',
                     borderRadius: '50%',
-                    border: '2px solid white'
+                    border: '2px solid white',
+                    boxShadow: '0 2px 4px rgba(76, 175, 80, 0.3)'
                   }} />
                 </Box>
-                <Box sx={{ minWidth: 0, flexShrink: 1 }}>
+                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                   <Typography sx={{ 
-                    fontWeight: 'bold', 
-                    fontSize: { xs: '14px', sm: '16px' },
+                    fontWeight: 600, 
+                    fontSize: '14px',
                     color: '#1976d2',
-                    lineHeight: 1.2,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+                    lineHeight: 1.2
                   }}>
                     MiFiX AI
                   </Typography>
                   <Typography sx={{ 
-                    fontSize: { xs: '10px', sm: '12px' }, 
+                    fontSize: '11px', 
                     color: '#4caf50',
                     lineHeight: 1,
-                    whiteSpace: 'nowrap'
+                    fontWeight: 500
                   }}>
                     Online
                   </Typography>
                 </Box>
+              </Box>
+              
+              {/* User Section */}
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1.5
+              }}>
+                <Box sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'right' }}>
+                  <Typography sx={{ 
+                    fontWeight: 600, 
+                    fontSize: '14px',
+                    color: '#1976d2',
+                    lineHeight: 1.2
+                  }}>
+                    {user?.roles?.find(role => role.productCode === 'MIFIX-AI')?.roleName?.replace('Configurator', 'User') || 'User'}
+                  </Typography>
+                  <Typography sx={{ 
+                    fontSize: '11px', 
+                    color: '#666',
+                    lineHeight: 1,
+                    fontWeight: 500
+                  }}>
+                    Logged In
+                  </Typography>
+                </Box>
+                <UserMenu />
               </Box>
             </Box>
           </Toolbar>
@@ -1444,6 +1509,7 @@ export default function HomePage() {
         onClose={handleClosePdfPopup}
         data={pdfPopupData}
       />
-    </Box>
+      </Box>
+    </ProtectedRoute>
   );
 }
