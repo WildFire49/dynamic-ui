@@ -230,7 +230,7 @@ const LoginScreen = () => {
                 </Fade>
               )}
 
-              {/* Employee ID Field */}
+              {/* User ID Field */}
               <Typography
                 variant="body2"
                 sx={{
@@ -240,12 +240,12 @@ const LoginScreen = () => {
                   fontSize: '0.875rem',
                 }}
               >
-                Employee ID*
+                User ID*
               </Typography>
               <TextField
                 fullWidth
                 required
-                placeholder="SZS017924"
+                placeholder="Enter User ID"
                 value={formData.username}
                 onChange={handleChange('username')}
                 disabled={isSubmitting}
@@ -284,7 +284,7 @@ const LoginScreen = () => {
                 fullWidth
                 required
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="Enter Password"
                 value={formData.password}
                 onChange={handleChange('password')}
                 disabled={isSubmitting}
