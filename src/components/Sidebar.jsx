@@ -26,6 +26,7 @@ import {
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
+import authService from '../services/authService';
 import GavelIcon from '@mui/icons-material/Gavel';
 import {
   Dashboard as DashboardIcon,
@@ -133,7 +134,15 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
     else setLoadingMore(true);
     
     try {
-      const response = await fetch(`https://supervisory-dev.mifix.io/users/vaishakh_configurator3/conversations?page=${pageNum}&limit=10`);
+      const username = authService.getUsername();
+      if (!username) {
+        console.error('No username found in localStorage');
+        setLoading(false);
+        setLoadingMore(false);
+        return;
+      }
+      
+      const response = await fetch(`https://supervisory-dev.mifix.io/users/${username}/conversations?page=${pageNum}&limit=10`);
       if (response.ok) {
         const data = await response.json();
         const newConversations = data.conversations || [];

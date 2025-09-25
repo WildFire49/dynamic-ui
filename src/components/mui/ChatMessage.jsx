@@ -21,6 +21,7 @@ import IncentiveRulesResponse from './IncentiveRulesResponse';
 import SchedulerResponse from './SchedulerResponse';
 import VoiceWaveform from './VoiceWaveform';
 import AnalysisWidget from '../widgets/AnalysisWidget';
+import AccessDeniedResponse from './AccessDeniedResponse';
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -349,6 +350,11 @@ const ChatMessage = ({ message, index, onAction }) => {
 
     if (message.type === 'scheduler_response' || message.content?.type === 'scheduler_response') {
       return <SchedulerResponse content={message.content} />;
+    }
+
+    // Handle access denied response
+    if (message.content?.response?.type === 'access_denied' || message.content?.type === 'access_denied') {
+      return <AccessDeniedResponse content={message.content} />;
     }
 
     if (message.type === 'data_analysis') {

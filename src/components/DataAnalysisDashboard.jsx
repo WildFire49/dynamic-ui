@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import authService from '../services/authService';
 import {
   Box,
   Container,
@@ -146,10 +147,11 @@ const DataAnalysisDashboard = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: "vaishakh_dashboard",
+          user_id: authService.getUsername() || "vaishakh_dashboard",
           message: analysisQuestion,
           conversation_id: connectionId,
-          document_key: selectedDocument.document_key
+          document_key: selectedDocument.document_key,
+          ...(authService.getRoleCode() && { roleCode: authService.getRoleCode() })
         }),
       });
 

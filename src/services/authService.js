@@ -36,10 +36,11 @@ class AuthService {
       const data = await response.json();
 
       if (data.status === 200) {
-        // Store tokens in localStorage
+        // Store tokens and username in localStorage
         localStorage.setItem('accessToken', data.data.data.accessToken);
         localStorage.setItem('refreshToken', data.data.data.refreshToken);
         localStorage.setItem('accessTokenExpiry', data.data.data.accessTokenExpiry);
+        localStorage.setItem('username', username); // Store the username used for login
         
         return {
           success: true,
@@ -81,6 +82,12 @@ class AuthService {
       if (data.status === 200) {
         // Store user info
         localStorage.setItem('userInfo', JSON.stringify(data.data.data));
+        
+        // Store roleCode from the first role in roles array
+        if (data.data.data.roles && data.data.data.roles.length > 0) {
+          const roleCode = data.data.data.roles[0].roleCode;
+          localStorage.setItem('roleCode', roleCode);
+        }
         
         return {
           success: true,
@@ -184,12 +191,24 @@ class AuthService {
     return localStorage.getItem('accessToken');
   }
 
+  // Get roleCode from localStorage
+  getRoleCode() {
+    return localStorage.getItem('roleCode');
+  }
+
+  // Get username from localStorage
+  getUsername() {
+    return localStorage.getItem('username');
+  }
+
   // Logout
   logout() {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('accessTokenExpiry');
     localStorage.removeItem('userInfo');
+    localStorage.removeItem('roleCode');
+    localStorage.removeItem('username');
   }
 
   // Check if user is authenticated

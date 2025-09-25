@@ -28,6 +28,7 @@ import { dataAnalysisApi } from '../lib/api/dataAnalysisApi';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 import { useAuth } from '../contexts/AuthContext';
 import UserMenu from '../components/auth/UserMenu';
+import authService from '../services/authService';
 import { keyframes } from '@emotion/react';
 
 // Define animations for AI elements
@@ -67,7 +68,7 @@ export default function HomePage() {
   const [pendingMessage, setPendingMessage] = useState('');
   const [eventPollingInterval, setEventPollingInterval] = useState(null);
   const [conversationId, setConversationId] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState('vaishakh_configurator3');
+  const [currentUserId, setCurrentUserId] = useState('');
   const [inputValue, setInputValue] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({ title: '', message: '' });
@@ -453,6 +454,12 @@ export default function HomePage() {
       if (conversationId) {
         requestBody.conversation_id = conversationId;
       }
+      
+      // Add roleCode to the request
+      const roleCode = authService.getRoleCode();
+      if (roleCode) {
+        requestBody.roleCode = roleCode;
+      }
 
       // Check if this is a configurator API call
       const isConfiguratorCall = body.message && body.message.includes('configurator');
@@ -607,11 +614,13 @@ export default function HomePage() {
       setIsTyping(true);
       
       // Always use chat endpoint for consistency
+      const roleCode = authService.getRoleCode();
       const requestPayload = {
         user_id: currentUserId,
         message: question,
         ...(conversationId && { conversation_id: conversationId }),
-        ...(latestDocument && { document_key: latestDocument.document_key })
+        ...(latestDocument && { document_key: latestDocument.document_key }),
+        ...(roleCode && { roleCode })
       };
       
       
@@ -996,6 +1005,14 @@ export default function HomePage() {
       }
     };
   }, [eventPollingInterval]);
+
+  // Load username from localStorage on component mount
+  useEffect(() => {
+    const storedUsername = authService.getUsername();
+    if (storedUsername) {
+      setCurrentUserId(storedUsername);
+    }
+  }, []);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
