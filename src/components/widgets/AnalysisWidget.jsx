@@ -57,6 +57,7 @@ import InteractiveChart from "./InteractiveChart";
 import StatCard from "./StatCard";
 import EnhancedDataGrid from "./EnhancedDataGrid";
 import ReviewPopover from "./ReviewPopover";
+import ChartErrorBoundary from "./ChartErrorBoundary";
 import useReviewStore from "../../lib/stores/reviewStore";
 import { generateAuditReport } from "../../utils/csvExport";
 
@@ -3009,17 +3010,49 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                                       }
                                     }}
                                   >
-                                    <InteractiveChart 
-                                      key={`${chart.originalIndex}-${getCurrentChartType(chart.originalIndex, chart.type)}`}
-                                      {...chart} 
-                                      type={getCurrentChartType(chart.originalIndex, chart.type)}
-                                      index={chart.originalIndex} 
-                                      height={isMobile ? 450 : 580}
-                                      width="100%"
-                                      responsive={true}
-                                      hideHeader={true}
-                                      allowTypeChange={false}
-                                    />
+                                    {/* Error Boundary for Chart Rendering */}
+                                    <ChartErrorBoundary height={isMobile ? 450 : 580}>
+                                      {chart && chart.data && Array.isArray(chart.data) && chart.data.length > 0 ? (
+                                        <React.Suspense fallback={
+                                          <Box sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center',
+                                            height: isMobile ? 450 : 580,
+                                            minHeight: 400
+                                          }}>
+                                            <CircularProgress />
+                                          </Box>
+                                        }>
+                                          <InteractiveChart 
+                                            key={`chart-${chart.originalIndex}-${getCurrentChartType(chart.originalIndex, chart.type)}-${Date.now()}`}
+                                            {...chart} 
+                                            type={getCurrentChartType(chart.originalIndex, chart.type)}
+                                            index={chart.originalIndex} 
+                                            height={isMobile ? 450 : 580}
+                                            width="100%"
+                                            responsive={true}
+                                            hideHeader={true}
+                                            allowTypeChange={false}
+                                          />
+                                        </React.Suspense>
+                                      ) : (
+                                        <Box sx={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center', 
+                                          justifyContent: 'center',
+                                          height: isMobile ? 450 : 580,
+                                          minHeight: 400,
+                                          color: 'text.secondary',
+                                          bgcolor: 'background.paper',
+                                          border: '1px solid',
+                                          borderColor: 'divider',
+                                          borderRadius: 2
+                                        }}>
+                                          <Typography>Chart data unavailable</Typography>
+                                        </Box>
+                                      )}
+                                    </ChartErrorBoundary>
                                       </Box>
                                     </Box>
                                   </Collapse>

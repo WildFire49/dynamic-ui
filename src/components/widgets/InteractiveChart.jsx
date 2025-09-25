@@ -167,10 +167,42 @@ const InteractiveChart = ({
   ];
 
   const renderChart = () => {
+    // Validate data before rendering
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          height: '100%',
+          minHeight: 200,
+          color: 'text.secondary'
+        }}>
+          <Typography>No data available for chart</Typography>
+        </Box>
+      );
+    }
+
     // Calculate dynamic Y-axis domain for proper scaling
-    const maxValue = Math.max(...data.map(item => item.value || 0));
-    const minValue = Math.min(...data.map(item => item.value || 0));
-    const padding = (maxValue - minValue) * 0.1; // 10% padding
+    const values = data.map(item => item.value || 0).filter(val => typeof val === 'number' && !isNaN(val));
+    if (values.length === 0) {
+      return (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          height: '100%',
+          minHeight: 200,
+          color: 'text.secondary'
+        }}>
+          <Typography>Invalid data format for chart</Typography>
+        </Box>
+      );
+    }
+
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    const padding = Math.max(1, (maxValue - minValue) * 0.1); // 10% padding, min 1
     const yAxisDomain = [
       Math.max(0, minValue - padding), // Don't go below 0 for most cases
       maxValue + padding
@@ -191,8 +223,9 @@ const InteractiveChart = ({
     switch (chartType) {
       case 'bar':
         return (
-          <ResponsiveContainer key={animationKey} width="100%" height={responsive ? "100%" : height}>
-            <BarChart {...chartProps} margin={responsiveMargins}>
+          <Box sx={{ width: '100%', height: '100%', minHeight: height || 400 }}>
+            <ResponsiveContainer key={animationKey} width="100%" height="100%">
+              <BarChart {...chartProps} margin={responsiveMargins}>
               <defs>
                 {colors.map((color, index) => (
                   <linearGradient key={index} id={`barGradient${index}`} x1="0" y1="0" x2="0" y2="1">
@@ -239,6 +272,7 @@ const InteractiveChart = ({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          </Box>
         );
 
       case 'pie':
