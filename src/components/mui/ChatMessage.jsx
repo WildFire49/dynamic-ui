@@ -181,12 +181,20 @@ const styles = {
 const ChatMessage = ({ message, index, onAction }) => {
   // Handle saving analysis to dashboard
   const handleSaveAnalysis = (analysisData) => {
-    const savedData = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
-    savedData.push(analysisData);
-    localStorage.setItem('savedAnalyses', JSON.stringify(savedData));
-    
-    // Show success notification (you can enhance this with a proper notification system)
-    console.log('Analysis saved to dashboard:', analysisData.title);
+    try {
+      const savedData = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
+      
+      // Add unique ID if not present
+      if (!analysisData.id) {
+        analysisData.id = Date.now().toString();
+      }
+      
+      savedData.push(analysisData);
+      localStorage.setItem('savedAnalyses', JSON.stringify(savedData));
+      
+    } catch (error) {
+      // Silent error handling
+    }
   };
   const isUser = message.type === 'user' && !message.isBot;
   const isBot = message.isBot || message.type === 'schema' || message.type === 'table';

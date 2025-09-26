@@ -2203,10 +2203,15 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
   }
 
   const handleSaveToLoginboard = () => {
+    console.log('🔥 [WIDGET SAVE DEBUG] Save button clicked');
+    console.log('🔥 [WIDGET SAVE DEBUG] finalAnalysis:', finalAnalysis);
+    console.log('🔥 [WIDGET SAVE DEBUG] onSave function:', onSave);
+    
     if (finalAnalysis && onSave) {
       const dashboardData = {
+        id: Date.now().toString(), // Add unique ID
         type: "analysis_widget",
-        title: finalAnalysis.title,
+        title: finalAnalysis.title || title || 'Untitled Analysis',
         analysis: finalAnalysis,
         data: data, // Include original data for Dashboard rendering
         timestamp: new Date().toISOString(),
@@ -2225,10 +2230,19 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
         }
       };
       
+      console.log('🔥 [WIDGET SAVE DEBUG] Calling onSave with dashboardData:', dashboardData);
       onSave(dashboardData);
 
       // Navigate to dashboard in new tab
       window.open("/dashboard", "_blank");
+    } else {
+      console.error('❌ [WIDGET SAVE ERROR] Missing finalAnalysis or onSave:', {
+        hasFinalAnalysis: !!finalAnalysis,
+        hasOnSave: !!onSave,
+        finalAnalysis,
+        onSave
+      });
+      alert('Cannot save: Missing analysis data or save function');
     }
   };
 

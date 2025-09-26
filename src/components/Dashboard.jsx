@@ -57,6 +57,7 @@ const Dashboard = () => {
   const [editDialog, setEditDialog] = useState({ open: false, item: null });
   const [fullscreenView, setFullscreenView] = useState({ open: false, item: null });
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const analysisRefs = useRef({});
 
   const handleSelectAnalysis = (timestamp) => {
@@ -73,10 +74,8 @@ const Dashboard = () => {
     if (saved) {
       try {
         const parsedData = JSON.parse(saved);
-        console.log('📊 [DASHBOARD] Loaded visualizations:', parsedData.length);
         setSavedVisualizations(parsedData);
       } catch (error) {
-        console.error('Error loading saved visualizations:', error);
         setSavedVisualizations([]);
       }
     }
@@ -86,24 +85,29 @@ const Dashboard = () => {
     if (savedAnalysesData) {
       try {
         const parsedAnalyses = JSON.parse(savedAnalysesData);
-        console.log('📊 [DASHBOARD] Loaded analyses:', parsedAnalyses.length);
         setSavedAnalyses(parsedAnalyses);
       } catch (error) {
-        console.error('Error loading saved analyses:', error);
         setSavedAnalyses([]);
       }
     }
+    
+    // Mark initial load as complete
+    setIsInitialLoad(false);
   }, []);
 
-  // Save visualizations to localStorage whenever they change
+  // Save visualizations to localStorage whenever they change (but not during initial load)
   useEffect(() => {
-    localStorage.setItem('dashboardVisualizations', JSON.stringify(savedVisualizations));
-  }, [savedVisualizations]);
+    if (!isInitialLoad) {
+      localStorage.setItem('dashboardVisualizations', JSON.stringify(savedVisualizations));
+    }
+  }, [savedVisualizations, isInitialLoad]);
   
-  // Save analyses to localStorage whenever they change
+  // Save analyses to localStorage whenever they change (but not during initial load)
   useEffect(() => {
-    localStorage.setItem('savedAnalyses', JSON.stringify(savedAnalyses));
-  }, [savedAnalyses]);
+    if (!isInitialLoad) {
+      localStorage.setItem('savedAnalyses', JSON.stringify(savedAnalyses));
+    }
+  }, [savedAnalyses, isInitialLoad]);
 
   // Calculate dashboard statistics - sort by latest timestamp (newest first)
   const allItems = [...savedVisualizations, ...savedAnalyses].sort((a, b) => {
@@ -315,10 +319,11 @@ const Dashboard = () => {
         <Box sx={{
           background: '#ffffff',
           borderLeft: `4px solid ${getAnalysisTypeColor(item.type)}`,
-          py: 3,
-          px: 4,
+          py: { xs: 2, md: 3, lg: 4 },
+          px: { xs: 2, md: 4, lg: 6 },
           width: '100%',
-          borderBottom: '1px solid #e5e7eb'
+          borderBottom: '1px solid #e5e7eb',
+          borderRadius: { xs: 0, md: '8px 8px 0 0' }
         }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={3}>
             <Stack direction="row" alignItems="center" spacing={3} flex={1}>
@@ -437,9 +442,11 @@ const Dashboard = () => {
         {/* Full Width Visualization Content */}
         <Box sx={{ 
           width: '100%',
-          minHeight: '70vh',
+          minHeight: { xs: '60vh', md: '70vh', lg: '75vh' },
           background: '#ffffff',
-          borderBottom: '4px solid #f1f5f9'
+          borderBottom: '4px solid #f1f5f9',
+          borderRadius: { xs: 0, md: '0 0 8px 8px' },
+          overflow: 'hidden'
         }}>
           {renderVisualization(item)}
         </Box>
@@ -448,41 +455,38 @@ const Dashboard = () => {
   );
 
   return (
-    <>
-      <Sidebar 
-        mode="dashboard"
-        selectedTab={'dashboard'}
-        onTabChange={() => {}}
-        onSelectAnalysis={handleSelectAnalysis}
-      />
-      <Box
-        sx={{
-          flexGrow: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          marginLeft: { xs: 0, md: '320px' },
-          width: { xs: '100%', md: 'calc(100% - 320px)' },
-          maxWidth: '100%',
-          overflowX: 'hidden',
-          height: '100%'
-        }}
-      >
-      <Box 
+    <Box 
+      sx={{ 
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
+        minHeight: '100vh',
+        position: 'relative',
+        width: '100%',
+        maxWidth: '100%',
+        mx: 'auto'
+      }}
+    >
+      {/* Main Content Container with proper centering */}
+      <Container 
+        maxWidth={false}
         sx={{ 
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
-          minHeight: '100vh',
-          position: 'relative'
+          maxWidth: '1600px', // Max width for large screens
+          mx: 'auto', // Center the container
+          px: { xs: 2, sm: 3, md: 4, lg: 6 }, // Responsive padding
+          position: 'relative',
+          width: '100%'
         }}
       >
-      <Box sx={{ position: 'relative', width: '100%' }}>
         {/* Elegant Header Section */}
         <Box sx={{ 
-          pt: { xs: 6, md: 8 }, 
-          pb: { xs: 4, md: 6 }, 
-          px: 4,
+          pt: { xs: 4, md: 6, lg: 8 }, 
+          pb: { xs: 3, md: 4, lg: 6 }, 
+          px: { xs: 2, md: 4, lg: 6 },
           background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
           borderBottom: '1px solid #e2e8f0',
           position: 'relative',
+          borderRadius: { xs: 0, md: '12px 12px 0 0' },
+          mx: { xs: -2, sm: -3, md: -4, lg: -6 }, // Offset container padding
+          mb: 0,
           '&::before': {
             content: '""',
             position: 'absolute',
@@ -558,9 +562,11 @@ const Dashboard = () => {
                 }} />
               </Box>
               
-              <Typography variant="h1" sx={{ 
+              <Typography 
+                variant="h1" 
+                sx={{ 
                 fontWeight: 900,
-                fontSize: { xs: '2.5rem', md: '3.25rem' },
+                fontSize: { xs: '2.5rem', md: '3.25rem', lg: '3.75rem', xl: '4rem' },
                 background: 'linear-gradient(135deg, #37527e 0%,rgb(28, 53, 117) 50%, #37527e 100%)',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
@@ -622,9 +628,19 @@ const Dashboard = () => {
             </Box>
           </Fade>
         </Box>
-      </Box>
+      </Container>
 
-      {/* Full Width Analysis Section */}
+      {/* Full Width Analysis Section - Outside Container for full width */}
+      <Container 
+        maxWidth={false}
+        sx={{ 
+          maxWidth: '1600px',
+          mx: 'auto',
+          px: { xs: 2, sm: 3, md: 4, lg: 6 },
+          position: 'relative',
+          width: '100%'
+        }}
+      >
       <Box sx={{ 
         background: '#ffffff',
         width: '100%',
@@ -634,8 +650,8 @@ const Dashboard = () => {
       }}>
         {/* Quick Stats Section */}
         <Box sx={{ 
-          px: 4,
-          py: 4,
+          px: { xs: 2, md: 4, lg: 6 },
+          py: { xs: 3, md: 4, lg: 5 },
           background: '#ffffff',
           borderBottom: '1px solid #e2e8f0'
         }}>
@@ -651,9 +667,18 @@ const Dashboard = () => {
             Dashboard Overview
           </Typography>
           
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+          <Grid container spacing={{ xs: 2, md: 3, lg: 4 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper sx={{ 
+                p: { xs: 2, md: 3, lg: 4 }, 
+                textAlign: 'center', 
+                borderRadius: 3,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
+                }
+              }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
                   {dashboardStats.totalVisualizations}
                 </Typography>
@@ -662,8 +687,17 @@ const Dashboard = () => {
                 </Typography>
               </Paper>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper sx={{ 
+                p: { xs: 2, md: 3, lg: 4 }, 
+                textAlign: 'center', 
+                borderRadius: 3,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
+                }
+              }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.success.main }}>
                   {dashboardStats.totalRecords.toLocaleString()}
                 </Typography>
@@ -672,8 +706,17 @@ const Dashboard = () => {
                 </Typography>
               </Paper>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper sx={{ 
+                p: { xs: 2, md: 3, lg: 4 }, 
+                textAlign: 'center', 
+                borderRadius: 3,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
+                }
+              }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.warning.main }}>
                   {dashboardStats.chartTypes}
                 </Typography>
@@ -682,8 +725,17 @@ const Dashboard = () => {
                 </Typography>
               </Paper>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper sx={{ 
+                p: { xs: 2, md: 3, lg: 4 }, 
+                textAlign: 'center', 
+                borderRadius: 3,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
+                }
+              }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.info.main }}>
                   {dashboardStats.lastUpdated ? new Date(dashboardStats.lastUpdated).toLocaleDateString() : 'N/A'}
                 </Typography>
@@ -700,10 +752,14 @@ const Dashboard = () => {
           <Fade in={true} timeout={1200}>
             <Box sx={{ 
               textAlign: 'center', 
-              py: 8,
-              px: 4,
+              py: { xs: 6, md: 8, lg: 12 },
+              px: { xs: 4, md: 6, lg: 8 },
               background: '#ffffff',
-              border: 'none'
+              border: 'none',
+              minHeight: { xs: '60vh', md: '70vh' },
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
             }}>
               <Avatar sx={{ 
                 width: 120, 
@@ -739,40 +795,44 @@ const Dashboard = () => {
                 Use the main chat to perform analysis, create visualizations, and save them here to build your command center.
               </Typography>
               
-              <Button 
-                variant="contained" 
-                size="large"
-                startIcon={<TrendingUpIcon />}
-                sx={{ 
-                  background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  borderRadius: 0,
-                  textTransform: 'none',
-                  boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`
-                  },
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Start Analysis
-              </Button>
+              {/* <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+                <Button 
+                  variant="contained" 
+                  size="large"
+                  startIcon={<TrendingUpIcon />}
+                  sx={{ 
+                    background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    px: 4,
+                    py: 1.5,
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    borderRadius: 0,
+                    textTransform: 'none',
+                    boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`
+                    },
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  Start Analysis
+                </Button>
+              </Stack> */}
             </Box>
           </Fade>
         ) : (
           <Box sx={{ width: '100%' }}>
             <Box sx={{ 
-              px: 4,
-              py: 3, 
+              px: { xs: 2, md: 4, lg: 6 },
+              py: { xs: 2, md: 3, lg: 4 }, 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'space-between',
               background: '#f8fafc',
-              borderBottom: '1px solid #e2e8f0'
+              borderBottom: '1px solid #e2e8f0',
+              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+              gap: { xs: 2, sm: 0 }
             }}>
               <Typography variant="h5" sx={{ 
                 fontWeight: 700,
@@ -806,6 +866,7 @@ const Dashboard = () => {
           </Box>
         )}
       </Box>
+      </Container>
 
       {/* Enhanced Edit Title Dialog */}
       <Dialog 
@@ -979,9 +1040,7 @@ const Dashboard = () => {
           </Box>
         </DialogContent>
       </Dialog>
-      </Box>
-     </Box>
-    </>
+    </Box>
   );
 };
 
