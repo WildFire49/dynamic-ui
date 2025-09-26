@@ -22,6 +22,7 @@ import SchedulerResponse from './SchedulerResponse';
 import VoiceWaveform from './VoiceWaveform';
 import AnalysisWidget from '../widgets/AnalysisWidget';
 import AccessDeniedResponse from './AccessDeniedResponse';
+import EmailSentResponse from './EmailSentResponse';
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -355,6 +356,16 @@ const ChatMessage = ({ message, index, onAction }) => {
     // Handle access denied response
     if (message.content?.response?.type === 'access_denied' || message.content?.type === 'access_denied') {
       return <AccessDeniedResponse content={message.content} />;
+    }
+
+    // Handle email responses (both success and error)
+    if (message.content?.type === 'email_sent' || message.content?.response?.type === 'email_sent') {
+      return <EmailSentResponse response={message.content} />;
+    }
+
+    // Handle email error responses  
+    if (message.content?.type === 'error' && message.content?.content?.includes?.('email')) {
+      return <EmailSentResponse response={message.content} />;
     }
 
     if (message.type === 'data_analysis') {
