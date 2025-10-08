@@ -37,21 +37,24 @@ const SchedulerResponse = ({ content }) => {
 
   // Handle various scheduler response formats
   const isSchedulerResponse = content?.type === 'scheduler_response' || 
+                             content?.response?.type === 'scheduler_response' ||
                              content?.data?.response_type === 'scheduled' ||
                              content?.response_type === 'scheduled';
   
   let title, metadata, download_url, status, data, message, success, job_id, schedule_details, result, isCompleted, response_type;
   
   if (isSchedulerResponse) {
-    // Handle the new format shown in the JSON
-    const responseData = content.data || content;
-    title = content.content || 'Scheduler Response';
+    // Handle the new nested format: content.response.data
+    const responseData = content?.response?.data || content?.data || content;
+    const responseContent = content?.response || content;
+    
+    title = responseContent.content || content.content || 'Scheduler Response';
     job_id = responseData.job_id;
     status = responseData.success ? 'scheduled' : 'failed';
     schedule_details = responseData.schedule_details;
     result = responseData.result;
     response_type = responseData.response_type || 'scheduled';
-    message = responseData.message || content.content || title;
+    message = responseData.message || responseContent.content || content.content || title;
     
     // Check if this is a completed task with results
     isCompleted = status === 'completed' && result;
@@ -227,197 +230,13 @@ const SchedulerResponse = ({ content }) => {
           {/* Schedule Details - Made visible and modern */}
           {(isScheduledTask || job_id) && (
             <Card sx={{ 
-              mb: 3, 
+              mb: 1, 
               background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%)',
               borderRadius: 3,
               border: '1px solid rgba(37, 211, 102, 0.2)',
               boxShadow: '0 8px 32px rgba(37, 211, 102, 0.1)'
             }}>
-              <CardContent sx={{ p: 3 }}>
-                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
-                  {isScheduledTask ? (
-                    <Box sx={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 4px 20px rgba(33, 150, 243, 0.3)'
-                    }}>
-                      <ScheduleIcon sx={{ color: 'white', fontSize: 24 }} />
-                    </Box>
-                  ) : (
-                    <Box sx={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #128C7E 0%, #25D366 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 4px 20px rgba(18, 140, 126, 0.3)'
-                    }}>
-                      <DescriptionIcon sx={{ color: 'white', fontSize: 24 }} />
-                    </Box>
-                  )}
-                  <Box>
-                    <Typography variant="h6" sx={{ 
-                      color: isScheduledTask ? '#2196F3' : '#128C7E', 
-                      fontWeight: 700,
-                      fontSize: '1.2rem'
-                    }}>
-                      {isScheduledTask ? 'Schedule Details' : 'Task Details'}
-                    </Typography>
-                    <Typography variant="body2" sx={{ 
-                      color: '#666',
-                      opacity: 0.8
-                    }}>
-                      Task configuration and timing information
-                    </Typography>
-                  </Box>
-                </Stack>
-
-                <Stack spacing={2.5}>
-                  {isScheduledTask && scheduleTimeFormatted && (
-                    <Box sx={{ 
-                      p: 3, 
-                      background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.08) 0%, rgba(33, 203, 243, 0.05) 100%)',
-                      borderRadius: 2,
-                      border: '1px solid rgba(33, 150, 243, 0.2)',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}>
-                      <Stack direction="row" alignItems="center" spacing={2}>
-                        <AccessTimeIcon sx={{ color: '#2196F3', fontSize: 28 }} />
-                        <Box>
-                          <Typography variant="h6" sx={{ 
-                            fontWeight: 700, 
-                            color: '#2196F3',
-                            mb: 0.5
-                          }}>
-                            Scheduled Time
-                          </Typography>
-                          <Typography variant="body1" sx={{ 
-                            fontWeight: 600, 
-                            color: '#1976d2',
-                            fontSize: '1.1rem'
-                          }}>
-                            {scheduleTimeFormatted}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                      {/* Decorative element */}
-                      <Box sx={{
-                        position: 'absolute',
-                        top: -20,
-                        right: -20,
-                        width: 80,
-                        height: 80,
-                        borderRadius: '50%',
-                        background: 'radial-gradient(circle, rgba(33, 150, 243, 0.1) 0%, transparent 70%)',
-                      }} />
-                    </Box>
-                  )}
-                  
-                  {data && data.length > 0 && (
-                    <Box sx={{ 
-                      p: 2, 
-                      bgcolor: 'rgba(76, 175, 80, 0.08)', 
-                      borderRadius: 2,
-                      border: '1px solid rgba(76, 175, 80, 0.2)'
-                    }}>
-                      <Typography variant="body1" sx={{ 
-                        fontWeight: 600, 
-                        color: '#388e3c',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1
-                      }}>
-                        📊 Data Records: {data.length} {data.length === 1 ? 'record' : 'records'}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  <Box sx={{ 
-                    p: 2, 
-                    bgcolor: 'rgba(156, 39, 176, 0.08)', 
-                    borderRadius: 2,
-                    border: '1px solid rgba(156, 39, 176, 0.2)'
-                  }}>
-                    <Typography variant="body1" sx={{ 
-                      fontWeight: 600, 
-                      color: '#7b1fa2',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1
-                    }}>
-                      🕒 {isScheduledTask ? 'Scheduled at' : 'Generated at'}: {new Date().toLocaleString('en-IN', {
-                        dateStyle: 'medium',
-                        timeStyle: 'short'
-                      })}
-                    </Typography>
-                  </Box>
-
-                  {job_id && (
-                    <Box sx={{ 
-                      p: 2.5, 
-                      bgcolor: 'rgba(108, 117, 125, 0.08)', 
-                      borderRadius: 2,
-                      border: '1px solid rgba(108, 117, 125, 0.2)'
-                    }}>
-                      <Typography variant="body2" sx={{ 
-                        fontWeight: 600, 
-                        color: '#495057',
-                        fontSize: '0.9rem',
-                        mb: 0.5
-                      }}>
-                        Job Reference ID
-                      </Typography>
-                      <Typography variant="body1" sx={{ 
-                        fontWeight: 500, 
-                        color: '#6c757d',
-                        fontFamily: 'Monaco, Consolas, monospace',
-                        fontSize: '0.9rem',
-                        background: 'rgba(108, 117, 125, 0.1)',
-                        padding: '8px 12px',
-                        borderRadius: 1,
-                        border: '1px solid rgba(108, 117, 125, 0.1)'
-                      }}>
-                        {job_id}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {schedule_details?.type && (
-                    <Box sx={{ 
-                      p: 2, 
-                      bgcolor: 'rgba(255, 152, 0, 0.08)', 
-                      borderRadius: 2,
-                      border: '1px solid rgba(255, 152, 0, 0.2)'
-                    }}>
-                      <Typography variant="body1" sx={{ 
-                        fontWeight: 600, 
-                        color: '#f57c00',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1
-                      }}>
-                        📋 Schedule Type: <Chip 
-                          label={schedule_details.type} 
-                          size="small"
-                          sx={{
-                            bgcolor: 'rgba(255, 152, 0, 0.2)',
-                            color: '#f57c00',
-                            fontWeight: 600
-                          }}
-                        />
-                      </Typography>
-                    </Box>
-                  )}
-                </Stack>
-              </CardContent>
+              
             </Card>
           )}
 

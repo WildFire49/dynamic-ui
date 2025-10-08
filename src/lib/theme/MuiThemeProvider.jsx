@@ -4,67 +4,103 @@ import * as React from 'react';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
-// A custom theme for this app - sleek and professional financial dashboard
-const theme = createTheme({
+// Default color palette
+const defaultColors = {
+  primary: '#0078d7',
+  secondary: '#2f8fef',
+  success: '#48bb78',
+  warning: '#ed8936',
+  error: '#f56565',
+  info: '#0078d7',
+};
+
+// Create a context for theme customization
+export const ThemeCustomizationContext = React.createContext({
+  colors: defaultColors,
+  updateColor: (key, value) => {},
+  resetColors: () => {},
+});
+
+// Custom hook to use theme customization
+export const useThemeCustomization = () => {
+  const context = React.useContext(ThemeCustomizationContext);
+  if (!context) {
+    throw new Error('useThemeCustomization must be used within MuiThemeProvider');
+  }
+  return context;
+};
+
+// Helper function to adjust color brightness
+const adjustColor = (color, amount) => {
+  const clamp = (val) => Math.min(Math.max(val, 0), 255);
+  const num = parseInt(color.replace('#', ''), 16);
+  const r = clamp((num >> 16) + amount);
+  const g = clamp(((num >> 8) & 0x00FF) + amount);
+  const b = clamp((num & 0x0000FF) + amount);
+  return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
+};
+
+// Function to create theme based on colors
+const createAppTheme = (colors) => createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#0078d7', // Bright blue for buttons and accents (from screenshot)
-      dark: '#00468e', // Darker blue
-      light: '#4ca6ff', // Lighter blue
+      main: colors.primary,
+      dark: adjustColor(colors.primary, -20),
+      light: adjustColor(colors.primary, 20),
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#2f8fef', // Blue to match the login gradient
-      dark: '#1e6bb8', // Darker blue
-      light: '#5ba3f2', // Lighter blue
+      main: colors.secondary,
+      dark: adjustColor(colors.secondary, -20),
+      light: adjustColor(colors.secondary, 20),
       contrastText: '#ffffff',
     },
     tertiary: {
-      main: '#37527e', // Deep blue for performance metrics
-      dark: '#2a3f60',
-      light: '#5a6f94',
+      main: adjustColor(colors.primary, -40),
+      dark: adjustColor(colors.primary, -60),
+      light: adjustColor(colors.primary, -20),
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f8fafc', // Clean light background
-      paper: '#ffffff',   // Pure white for cards and panels
-      gradient: 'linear-gradient(135deg, rgba(185, 198, 228, 0.2) 0%, rgba(170, 185, 235, 0.3) 15%, rgba(155, 175, 242, 0.4) 30%, rgba(130, 165, 248, 0.5) 45%, rgba(105, 155, 250, 0.6) 60%, rgba(80, 148, 248, 0.7) 75%, rgba(60, 145, 245, 0.8) 85%, rgb(47, 143, 239) 100%)', // Blue gradient to match login
+      default: '#f8fafc',
+      paper: '#ffffff',
+      gradient: `linear-gradient(135deg, ${adjustColor(colors.primary, 100)} 0%, ${colors.secondary} 100%)`,
       chat: {
-        bot: '#0078d7',   // Blue for bot chat bubbles
-        user: '#f1f1f1', // Light grey for user chat bubbles
+        bot: colors.primary,
+        user: '#f1f1f1',
       }
     },
     text: {
-      primary: '#1a202c',    // Dark professional text
-      secondary: '#4a5568',  // Muted secondary text
-      disabled: '#a0aec0',   // Disabled text
-      bot: '#ffffff',        // White text for bot messages
-      user: '#1a202c',       // Dark text for user messages
+      primary: '#1a202c',
+      secondary: '#4a5568',
+      disabled: '#a0aec0',
+      bot: '#ffffff',
+      user: '#1a202c',
     },
     success: {
-      main: '#48bb78',   // Professional green
-      dark: '#38a169',
-      light: '#68d391',
+      main: colors.success,
+      dark: adjustColor(colors.success, -20),
+      light: adjustColor(colors.success, 20),
     },
     warning: {
-      main: '#ed8936',   // Professional orange
-      dark: '#dd6b20',
-      light: '#f6ad55',
+      main: colors.warning,
+      dark: adjustColor(colors.warning, -20),
+      light: adjustColor(colors.warning, 20),
     },
     error: {
-      main: '#f56565',   // Professional red
-      dark: '#e53e3e',
-      light: '#fc8181',
+      main: colors.error,
+      dark: adjustColor(colors.error, -20),
+      light: adjustColor(colors.error, 20),
     },
     info: {
-      main: '#0078d7',   // Blue for information
-      dark: '#00468e',
-      light: '#4ca6ff',
+      main: colors.info,
+      dark: adjustColor(colors.info, -20),
+      light: adjustColor(colors.info, 20),
     },
     action: {
-      active: '#0078d7',
-      hover: 'rgba(0, 120, 215, 0.08)',
+      active: colors.primary,
+      hover: `rgba(${parseInt(colors.primary.slice(1, 3), 16)}, ${parseInt(colors.primary.slice(3, 5), 16)}, ${parseInt(colors.primary.slice(5, 7), 16)}, 0.08)`,
     }
   },
   typography: {
@@ -123,10 +159,6 @@ const theme = createTheme({
         root: {
           '& .MuiOutlinedInput-root': {
             borderRadius: 8,
-            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: '#0078d7',
-              borderWidth: 2,
-            },
           },
         },
       },
@@ -143,11 +175,140 @@ const theme = createTheme({
 });
 
 export default function MuiThemeProvider({ children }) {
+  // Initialize with default colors to prevent hydration mismatch
+  const [colors, setColors] = React.useState(defaultColors);
+  const [isClient, setIsClient] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // Fetch theme colors from API
+  const fetchThemeFromAPI = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/theme', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store', // Always fetch fresh data
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setColors(result.data);
+        // Also cache in localStorage for instant load on next visit
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('themeColors', JSON.stringify(result.data));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch theme from API:', error);
+      // Fallback to localStorage if API fails
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('themeColors');
+        if (saved) {
+          try {
+            setColors(JSON.parse(saved));
+          } catch (e) {
+            console.error('Failed to parse saved theme colors:', e);
+          }
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Load theme on mount and set up polling for updates
+  React.useEffect(() => {
+    setIsClient(true);
+    
+    // Initial fetch
+    fetchThemeFromAPI();
+    
+    // Poll for updates every 30 seconds (adjust as needed)
+    const interval = setInterval(() => {
+      fetchThemeFromAPI();
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [fetchThemeFromAPI]);
+
+  // Create theme based on current colors
+  const theme = React.useMemo(() => createAppTheme(colors), [colors]);
+
+  // Update a specific color (saves to API)
+  const updateColor = React.useCallback(async (key, value) => {
+    // Optimistic update
+    const newColors = { ...colors, [key]: value };
+    setColors(newColors);
+    
+    // Save to API
+    try {
+      const response = await fetch('/api/theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ colors: newColors }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update with server response (in case of normalization)
+        setColors(result.data);
+        
+        // Also update localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('themeColors', JSON.stringify(result.data));
+        }
+      } else {
+        console.error('Failed to update theme:', result.error);
+        // Revert on error
+        setColors(colors);
+      }
+    } catch (error) {
+      console.error('Failed to update theme:', error);
+      // Revert on error
+      setColors(colors);
+    }
+  }, [colors]);
+
+  // Reset to default colors (calls API DELETE)
+  const resetColors = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/theme', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setColors(result.data);
+        
+        // Clear localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('themeColors');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to reset theme:', error);
+      // Fallback to default
+      setColors(defaultColors);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('themeColors');
+      }
+    }
+  }, []);
+
+  const contextValue = React.useMemo(
+    () => ({ colors, updateColor, resetColors }),
+    [colors, updateColor, resetColors]
+  );
+
   return (
-    <ThemeProvider theme={theme}>
-      {/* CssBaseline kickstarts an elegant, consistent, and simple baseline to build upon. */}
-      <CssBaseline />
-      {children}
-    </ThemeProvider>
+    <ThemeCustomizationContext.Provider value={contextValue}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </ThemeCustomizationContext.Provider>
   );
 }

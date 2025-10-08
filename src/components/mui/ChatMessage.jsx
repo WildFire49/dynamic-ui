@@ -23,6 +23,8 @@ import VoiceWaveform from './VoiceWaveform';
 import AnalysisWidget from '../widgets/AnalysisWidget';
 import AccessDeniedResponse from './AccessDeniedResponse';
 import EmailSentResponse from './EmailSentResponse';
+import DynamicFormRenderer from '../dynamic-form/DynamicFormRenderer';
+import { getFormSchemaByKeyword } from '../dynamic-form/sampleFormSchemas';
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -228,6 +230,29 @@ const ChatMessage = ({ message, index, onAction }) => {
   const messageKey = generateMessageKey();
 
   const renderMessageContent = () => {
+    // Check for dynamic form schema
+    if (message.type === 'dynamic_form' && message.formSchema) {
+      return (
+        <Box sx={{ width: '100%', maxWidth: '100%' }}>
+          <DynamicFormRenderer 
+            formSchema={message.formSchema}
+            onSubmit={(data) => {
+              console.log('Form submitted:', data);
+              if (onAction) {
+                onAction({ type: 'form_submit', data });
+              }
+            }}
+            onContinue={(nextFormId) => {
+              console.log('Continue to next form:', nextFormId);
+              if (onAction) {
+                onAction({ type: 'form_continue', nextFormId });
+              }
+            }}
+          />
+        </Box>
+      );
+    }
+
     if (message.type === 'schema') {
       return <DynamicRenderer schema={message.content} onAction={onAction} />;
     }
@@ -353,11 +378,115 @@ const ChatMessage = ({ message, index, onAction }) => {
       return <IncentiveRulesResponse content={message.content} source={message.source} />;
     }
 
+    // Handle status info_needed messages
+    if (message.status === 'info_needed' || message.content?.status === 'info_needed') {
+      const messageText = message.message || message.content?.message || 'Please provide more information.';
+      return (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2.5,
+            backgroundColor: '#e3f2fd',
+            borderLeft: '4px solid #1976d2',
+            borderRadius: '8px'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                backgroundColor: '#1976d2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '14px' }}>ℹ️</Typography>
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 600, color: '#1976d2', mb: 0.5, fontSize: '14px' }}>
+                Information Needed
+              </Typography>
+              <Typography sx={{ color: '#424242', fontSize: '14px', lineHeight: 1.6 }}>
+                {messageText}
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      );
+    }
+
+    // Handle error messages with detailed content
+    if (message.type === 'error' || message.content?.action === 'none' || 
+        (message.content?.message && message.content?.message.includes('Error'))) {
+      const errorMessage = message.content?.message || message.message || 'An error occurred';
+      const errorContent = message.content?.content || message.content?.result;
+      
+      return (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2.5,
+            backgroundColor: '#ffebee',
+            borderLeft: '4px solid #d32f2f',
+            borderRadius: '8px'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                backgroundColor: '#d32f2f',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '14px' }}>⚠️</Typography>
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 600, color: '#d32f2f', mb: 0.5, fontSize: '14px' }}>
+                Error
+              </Typography>
+              <Typography sx={{ color: '#424242', fontSize: '14px', lineHeight: 1.6, mb: 1 }}>
+                {errorMessage}
+              </Typography>
+              {errorContent && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    backgroundColor: '#fff',
+                    borderRadius: '4px',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    color: '#666',
+                    maxHeight: '200px',
+                    overflow: 'auto'
+                  }}
+                >
+                  {typeof errorContent === 'string' ? errorContent : JSON.stringify(errorContent, null, 2)}
+                </Paper>
+              )}
+            </Box>
+          </Box>
+        </Paper>
+      );
+    }
+
     if (message.type === 'audio_translation') {
       return <AudioTranslationResponse content={message.content} />;
     }
 
-    if (message.type === 'scheduler_response' || message.content?.type === 'scheduler_response') {
+    if (message.type === 'scheduler_response' || 
+        message.content?.type === 'scheduler_response' || 
+        message.content?.response?.type === 'scheduler_response') {
       return <SchedulerResponse content={message.content} />;
     }
 
@@ -476,6 +605,20 @@ const ChatMessage = ({ message, index, onAction }) => {
     if (isUser) {
       return styles.userMessage;
     }
+    
+    // Full width for dynamic forms
+    if (message.type === 'dynamic_form') {
+      return {
+        ...styles.botMessage,
+        maxWidth: '100%',
+        width: '100%',
+        p: { xs: 2, sm: 3 },
+        '&::before': {
+          display: 'none' // Remove the chat bubble tail
+        }
+      };
+    }
+    
     if (isError) {
       return { ...styles.botMessage, ...styles.errorMessage };
     }
@@ -484,7 +627,9 @@ const ChatMessage = ({ message, index, onAction }) => {
 
   return (
     <Box 
-      key={messageKey} 
+      key={messageKey}
+      data-message-type={message.type}
+      data-message-index={index}
       sx={{
         ...styles.messageContainer,
         ...(isUser ? styles.userMessageContainer : styles.botMessageContainer)

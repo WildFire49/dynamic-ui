@@ -2,7 +2,8 @@
 import ConfirmationDialog from '@/components/mui/ConfirmationDialog';
 import TypingIndicator from '@/components/mui/TypingIndicator';
 import {
-  Description as DocumentIcon
+  Description as DocumentIcon,
+  Menu as MenuIcon
 } from '@mui/icons-material';
 import AddIcon from '@mui/icons-material/Add';
 import {
@@ -30,6 +31,7 @@ import { useAuth } from '../contexts/AuthContext';
 import UserMenu from '../components/auth/UserMenu';
 import authService from '../services/authService';
 import { keyframes } from '@emotion/react';
+import { getFormSchemaByKeyword, getFormSchemaById } from '../components/dynamic-form/sampleFormSchemas';
 
 // Define animations for AI elements
 const pulseGlow = keyframes`
@@ -93,9 +95,18 @@ export default function HomePage() {
   
   // Sidebar states
   const [selectedTab, setSelectedTab] = useState('chat');
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleTabChange = (tabId) => {
     setSelectedTab(tabId);
+    // Close mobile drawer when tab changes
+    if (mobileOpen) {
+      setMobileOpen(false);
+    }
+  };
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
   };
 
   // Function to load conversation history
@@ -501,6 +512,29 @@ export default function HomePage() {
   const handleAction = useCallback(async (action, componentId, data = {}) => {
     console.log('UI Action triggered:', { action, componentId, data });
 
+    // Handle form_continue action - load next form
+    if (action?.type === 'form_continue') {
+      const nextSchema = getFormSchemaById(action.nextFormId);
+      
+      if (nextSchema) {
+        const formMessage = {
+          type: 'dynamic_form',
+          formSchema: nextSchema,
+          isBot: true,
+          timestamp: new Date().toISOString()
+        };
+        setChatHistory(prev => [...prev, formMessage]);
+      }
+      return;
+    }
+
+    // Handle form_submit action
+    if (action?.type === 'form_submit') {
+      console.log('Form data submitted:', action.data);
+      // You can send this data to backend here if needed
+      return;
+    }
+
     // Ignore OTP change events - they should not trigger automatic form submission
     if (data.type === 'otp_change') {
       console.log('OTP change detected, not triggering form submission');
@@ -681,6 +715,21 @@ export default function HomePage() {
         timestamp: new Date().toISOString() // Add timestamp for unique keys
       };
       setChatHistory(prev => [...prev, userMessage]);
+      
+      // Check if this triggers a dynamic form
+      const formSchema = getFormSchemaByKeyword(finalMessageText);
+      if (formSchema) {
+        setInputValue('');
+        // Add form response
+        const formMessage = {
+          type: 'dynamic_form',
+          formSchema: formSchema,
+          isBot: true,
+          timestamp: new Date().toISOString()
+        };
+        setChatHistory(prev => [...prev, formMessage]);
+        return;
+      }
       
       // Check if this is an analysis question
       if (isAnalysisQuestion(finalMessageText)) {
@@ -1015,7 +1064,7 @@ export default function HomePage() {
   }, []);
 
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   };
 
   useEffect(() => {
@@ -1034,11 +1083,43 @@ export default function HomePage() {
       // Only scroll if the message is recent (within the last 10 seconds)
       // This prevents scrolling when loading old conversation history
       if (now - messageTime < 10000) {
-        const timer = setTimeout(() => {
-          scrollToBottom();
-        }, 100);
-        
-        return () => clearTimeout(timer);
+        // Check if last message is a form
+        if (lastMessage.type === 'dynamic_form') {
+          // For forms, wait longer and scroll to the form container heading
+          const timer = setTimeout(() => {
+            // Find the form message by data attribute
+            const formMessages = document.querySelectorAll('[data-message-type="dynamic_form"]');
+            const lastFormEl = formMessages[formMessages.length - 1];
+            
+            if (lastFormEl) {
+              // Scroll to the top of the form with smooth, slower behavior
+              const scrollOptions = {
+                behavior: 'smooth',
+                block: 'start',  // Align to top of viewport
+                inline: 'nearest'
+              };
+              
+              // Add extra offset to show some space above the form
+              window.requestAnimationFrame(() => {
+                lastFormEl.scrollIntoView(scrollOptions);
+                // Slight adjustment to show header
+                window.scrollBy({ top: -20, behavior: 'smooth' });
+              });
+            } else {
+              // Fallback to normal scroll
+              scrollToBottom();
+            }
+          }, 500); // Give more time for form to fully render
+          
+          return () => clearTimeout(timer);
+        } else {
+          // For regular messages, scroll normally
+          const timer = setTimeout(() => {
+            scrollToBottom();
+          }, 100);
+          
+          return () => clearTimeout(timer);
+        }
       }
     }
   }, [chatHistory]);
@@ -1247,18 +1328,20 @@ export default function HomePage() {
           <div ref={chatEndRef} />
         </Box>
         <Box sx={{ 
-          p: 1, 
+          p: 2, 
           backgroundColor: '#ffffff', 
           borderTop: '1px solid #e9ecef',
           display: 'flex',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          alignItems: 'center'
         }}>
           <Box sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            gap: 2.5,
             width: '100%',
-            maxWidth: '800px'
+            maxWidth: '100%',
+            px: { xs: 0.2, sm: 3 }
           }}>
           {/* File Upload Button */}
           <input
@@ -1284,8 +1367,8 @@ export default function HomePage() {
                 backgroundColor: uploadedDocuments.length > 0 ? '#c8e6c9' : '#e0e0e0'
               },
               borderRadius: '12px',
-              width: 44,
-              height: 44,
+              width: 50,
+              height: 50,
               position: 'relative',
               overflow: 'hidden'
             }}
@@ -1324,7 +1407,7 @@ export default function HomePage() {
                 isPaused={isPaused}
                 recordingTime={recordingTime}
                 isTyping={isTyping || isAnalyzing}
-                placeholder={uploadedDocuments.length > 0 ? "Ask me about your data." : "Type your message here..."}
+                placeholder={uploadedDocuments.length > 0 ? "Ask about your data..." : "Type your message..."}
               />
             </Box>
           </Box>
@@ -1347,6 +1430,8 @@ export default function HomePage() {
         selectedTab={selectedTab}
         onTabChange={handleTabChange}
         onLoadConversation={loadConversationHistory}
+        mobileOpen={mobileOpen}
+        onMobileClose={handleDrawerToggle}
       />
 
       {/* Main Content Area */}
@@ -1354,11 +1439,10 @@ export default function HomePage() {
         flexGrow: 1, 
         display: 'flex', 
         flexDirection: 'column',
-        marginLeft: { xs: 0, md: '320px' },
-        width: { xs: '100vw', md: 'calc(100vw - 320px)' },
-        maxWidth: { xs: '100vw', md: 'calc(100vw - 320px)' },
+        width: { xs: '100%', md: 'calc(100% - 320px)' },
+        ml: { xs: 0, md: '0px' },
         height: '100vh',
-        overflowX: 'hidden'
+        overflow: 'hidden'
       }}>
         <AppBar position="static" sx={{ 
           background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)', 
@@ -1370,47 +1454,61 @@ export default function HomePage() {
           backdropFilter: 'blur(10px)'
         }}>
           <Toolbar sx={{ 
+            display: 'flex',
             justifyContent: 'space-between', 
+            alignItems: 'center',
             py: 1,
             minHeight: '64px',
-            maxWidth: '100%',
-            overflow: 'hidden',
+            width: '100%',
             px: { xs: 1, sm: 2 }
           }}>
-            {/* Left Side - New Chat Button */}
-            {selectedTab === 'chat' && (
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={handleNewChat}
+            {/* Left Side - Hamburger Menu and New Chat Icon */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 auto' }}>
+              {/* Hamburger Menu for Mobile */}
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={handleDrawerToggle}
                 sx={{ 
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontSize: '14px',
-                  color: '#1976d2',
-                  borderColor: '#e0e0e0',
-                  background: 'linear-gradient(145deg, #ffffff, #f8f9fa)',
-                  '&:hover': {
-                    backgroundColor: '#f5f5f5',
-                    borderColor: '#1976d2',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.15)'
-                  },
-                  transition: 'all 0.2s ease-in-out'
+                  display: { md: 'none' },
+                  color: '#1976d2'
                 }}
               >
-                New Chat
-              </Button>
-            )}
+                <MenuIcon />
+              </IconButton>
+
+              {/* New Chat Icon Button */}
+              {selectedTab === 'chat' && (
+                <IconButton
+                  onClick={handleNewChat}
+                  sx={{ 
+                    color: '#1976d2',
+                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                      transform: 'scale(1.05)',
+                    },
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                >
+                  <AddIcon />
+                </IconButton>
+              )}
+            </Box>
+
+            {/* Center Spacer */}
+            <Box sx={{ flex: '1 1 auto' }} />
             
             {/* Right Side - Unified Status & User Panel */}
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 2,
+              gap: { xs: 1, sm: 2 },
+              flex: '0 0 auto',
               background: 'linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,249,250,0.9))',
               borderRadius: 4,
-              px: 2,
+              px: { xs: 1, sm: 2 },
               py: 1,
               border: '1px solid rgba(25, 118, 210, 0.08)',
               boxShadow: '0 4px 20px rgba(25, 118, 210, 0.08)',
@@ -1421,8 +1519,8 @@ export default function HomePage() {
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: 1.5,
-                pr: 2,
-                borderRight: '1px solid rgba(25, 118, 210, 0.1)'
+                pr: { xs: 1, md: 2 },
+                borderRight: { xs: 'none', md: '1px solid rgba(25, 118, 210, 0.1)' }
               }}>
                 <Box sx={{ 
                   width: 36, 
@@ -1460,7 +1558,7 @@ export default function HomePage() {
                     boxShadow: '0 2px 4px rgba(76, 175, 80, 0.3)'
                   }} />
                 </Box>
-                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                   <Typography sx={{ 
                     fontWeight: 600, 
                     fontSize: '14px',
@@ -1486,7 +1584,7 @@ export default function HomePage() {
                 alignItems: 'center', 
                 gap: 1.5
               }}>
-                <Box sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'right' }}>
+                <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'right' }}>
                   <Typography sx={{ 
                     fontWeight: 600, 
                     fontSize: '14px',

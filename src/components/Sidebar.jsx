@@ -21,7 +21,8 @@ import {
   Chip,
   Fade,
   Skeleton,
-  Tooltip
+  Tooltip,
+  useMediaQuery
 } from '@mui/material';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -56,10 +57,11 @@ const ICON_MAP = {
   'SettingsIcon': SettingsIcon,
 };
 
-const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', onSelectAnalysis }) => {
+const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', onSelectAnalysis, mobileOpen, onMobileClose }) => {
   const theme = useTheme();
   const router = useRouter();
   const { user, getUserRoles, hasRole, isSuperAdmin, isRegularUser } = useAuth();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Get filtered menu items based on user roles
   const getFilteredMenuItems = () => {
@@ -187,6 +189,10 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
         // Call the callback to load the conversation in the main app
         if (onLoadConversation) {
           onLoadConversation(data.history);
+        }
+        // Close mobile drawer after loading conversation
+        if (isMobile && onMobileClose) {
+          onMobileClose();
         }
       }
     } catch (error) {
@@ -425,7 +431,15 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
                   <Fade in={true} timeout={300 + index * 100} key={item.id || `${item.title}-${index}`}>
                     <Paper
                       elevation={0}
-                      onClick={() => onSelectAnalysis && onSelectAnalysis(item.timestamp)}
+                      onClick={() => {
+                        if (onSelectAnalysis) {
+                          onSelectAnalysis(item.timestamp);
+                        }
+                        // Close mobile drawer after selecting analysis
+                        if (isMobile && onMobileClose) {
+                          onMobileClose();
+                        }
+                      }}
                       sx={{
                         p: 2.5,
                         borderRadius: 3,
@@ -672,21 +686,22 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
 
   return (
     <Box
+      component="nav"
       sx={{
-        position: 'fixed',
-        left: 0,
-        top: 0,
-        height: '100vh',
-        width: 320,
-        zIndex: 1200,
-        overflow: 'hidden'
+        width: { md: 320 },
+        flexShrink: { md: 0 },
       }}
     >
+      {/* Mobile Drawer */}
       <Drawer
-        variant="permanent"
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onMobileClose}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile
+        }}
         sx={{
-          width: 320,
-          flexShrink: 0,
+          display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
             width: 320,
             boxSizing: 'border-box',
@@ -695,6 +710,28 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
             boxShadow: '2px 0 8px rgba(0,0,0,0.08)',
           },
         }}
+      >
+        {drawerContent}
+      </Drawer>
+
+      {/* Desktop Drawer */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          '& .MuiDrawer-paper': {
+            width: 320,
+            boxSizing: 'border-box',
+            backgroundColor: '#fafbfc',
+            borderRight: '1px solid #e1e5e9',
+            boxShadow: '2px 0 8px rgba(0,0,0,0.08)',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            height: '100vh',
+          },
+        }}
+        open
       >
         {drawerContent}
       </Drawer>

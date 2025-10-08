@@ -274,23 +274,23 @@ const Dashboard = () => {
 
   const getAnalysisTypeGradient = (type) => {
     switch (type) {
-      case 'rmPerformance': return 'linear-gradient(90deg, #3b82f6, #2563eb)';
-      case 'pipeline': return 'linear-gradient(90deg, #10b981, #059669)';
-      case 'reconciliation': return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-      case 'bar': return 'linear-gradient(90deg, #f59e0b, #d97706)';
-      case 'pie': return 'linear-gradient(90deg, #ef4444, #dc2626)';
-      default: return 'linear-gradient(90deg, #6b7280, #4b5563)';
+      case 'rmPerformance': return `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`;
+      case 'pipeline': return `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`;
+      case 'reconciliation': return `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`;
+      case 'bar': return `linear-gradient(90deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`;
+      case 'pie': return `linear-gradient(90deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`;
+      default: return `linear-gradient(90deg, ${theme.palette.text.secondary}, ${theme.palette.text.disabled})`;
     }
   };
 
   const getAnalysisTypeColor = (type) => {
     switch (type) {
-      case 'rmPerformance': return '#37527e';
-      case 'pipeline': return '#f1641f';  
-      case 'reconciliation': return '#667eea';
-      case 'bar': return '#37527e';
-      case 'pie': return '#f1641f';
-      default: return '#6b7280';
+      case 'rmPerformance': return theme.palette.primary.main;
+      case 'pipeline': return theme.palette.success.main;  
+      case 'reconciliation': return theme.palette.secondary.main;
+      case 'bar': return theme.palette.warning.main;
+      case 'pie': return theme.palette.error.main;
+      default: return theme.palette.text.secondary;
     }
   };
 

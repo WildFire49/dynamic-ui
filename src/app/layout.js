@@ -4,6 +4,7 @@ import EmotionRegistry from '@/lib/theme/EmotionRegistry';
 import ErrorBoundaryWrapper from '@/components/error/ErrorBoundaryWrapper';
 import GlobalErrorHandler from '@/components/error/GlobalErrorHandler';
 import { AuthProvider } from '@/contexts/AuthContext';
+import ThemeCustomizer from '@/components/theme/ThemeCustomizer';
 
 export const metadata = {
   title: 'MiFiX AI',
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
                 </GlobalErrorHandler>
               </ErrorBoundaryWrapper>
             </AuthProvider>
+            <ThemeCustomizer />
           </MuiThemeProvider>
         </EmotionRegistry>
       </body>

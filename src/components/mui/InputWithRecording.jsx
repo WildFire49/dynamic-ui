@@ -6,7 +6,8 @@ import {
   Typography,
   Zoom,
   Fade,
-  Grow
+  Grow,
+  alpha
 } from '@mui/material';
 import {
   Mic as MicIcon,
@@ -79,12 +80,12 @@ const InputWithRecording = React.memo(({
 
   // Memoize TextField styles to prevent recalculation
   const textFieldStyles = useMemo(() => ({
-    flex: 1,
+    width: '100%',
     '& .MuiOutlinedInput-root': {
-      borderRadius: '24px',
+      borderRadius: { xs: '20px', sm: '24px' },
       backgroundColor: '#ffffff',
       border: '2px solid #f0f0f0',
-      minHeight: '48px',
+      minHeight: { xs: '44px', sm: '48px' },
       boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       '&:hover': {
@@ -103,9 +104,10 @@ const InputWithRecording = React.memo(({
       }
     },
     '& .MuiInputBase-input': {
-      py: 1,
-      px: 2,
-      fontSize: '15px',
+      py: { xs: 0.75, sm: 1 },
+      pl: { xs: 1.5, sm: 2 },
+      pr: { xs: '60px !important', sm: '64px !important' }, // Extra padding for mic icon
+      fontSize: { xs: '14px', sm: '15px' },
       lineHeight: 1.5,
       fontWeight: 400,
       '&::placeholder': {
@@ -274,54 +276,90 @@ const InputWithRecording = React.memo(({
   return (
     <Box sx={{ 
       display: 'flex', 
-      alignItems: 'center', 
-      gap: 0.5,
+      alignItems: 'center',
+      gap: { xs: 1.5, sm: 2 },
       width: '100%',
-      maxWidth: '600px',
+      maxWidth: '100%',
       mx: 'auto'
     }}>
-      <TextField
-        variant="outlined"
-        placeholder={placeholder || "Type your message here..."}
-        value={inputValue}
-        onChange={onInputChange}
-        onKeyPress={onKeyPress}
-        disabled={isTyping}
-        multiline
-        maxRows={4}
-        minRows={1}
-        sx={textFieldStyles}
-      />
-      
-      <Grow in={true} timeout={300}>
+      {/* Input Container - Clean centered layout */}
+      <Box sx={{ 
+        flex: 1, 
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        backgroundColor: '#ffffff',
+        borderRadius: { xs: '28px', sm: '32px' },
+        border: '2px solid #f0f0f0',
+        px: { xs: 2.5, sm: 2.5 },
+        py: { xs: 0.5, sm: 0.75 },
+        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        '&:hover': {
+          borderColor: '#e0e0e0',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        },
+        '&:focus-within': {
+          borderColor: '#1976d2',
+          boxShadow: '0 4px 24px rgba(25,118,210,0.15)',
+        }
+      }}>
+        {/* Text Input - No border, clean look */}
+        <TextField
+          variant="standard"
+          placeholder={placeholder || "Type your message..."}
+          value={inputValue}
+          onChange={onInputChange}
+          onKeyPress={onKeyPress}
+          disabled={isTyping}
+          multiline
+          maxRows={4}
+          minRows={1}
+          sx={{
+            flex: 1,
+            '& .MuiInput-root': {
+              fontSize: { xs: '15px', sm: '15px' },
+              lineHeight: 1.5,
+              fontWeight: 400,
+              '&:before, &:after': {
+                display: 'none'
+              }
+            },
+            '& .MuiInputBase-input': {
+              padding: { xs: '10px 0', sm: '12px 0' },
+              '&::placeholder': {
+                color: '#9e9e9e',
+                opacity: 1,
+                fontSize: { xs: '15px', sm: '15px' }
+              }
+            }
+          }}
+        />
+        
+        {/* Mic Icon - Inside input on the right */}
         <IconButton
           onClick={onStartRecording}
           disabled={isTyping}
+          size="small"
           sx={{
-            backgroundColor: '#ffffff',
             color: '#666666',
-            width: 44,
-            height: 44,
-            ml: 1,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-            border: '2px solid #f0f0f0',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            padding: { xs: '8px', sm: '10px' },
+            transition: 'all 0.2s ease',
             '&:hover': {
-              backgroundColor: '#f8f9fa',
               color: '#1976d2',
-              transform: 'scale(1.05)',
-              boxShadow: '0 4px 20px rgba(25,118,210,0.15)'
+              backgroundColor: alpha('#1976d2', 0.08),
+              transform: 'scale(1.1)'
             },
             '&.Mui-disabled': {
-              backgroundColor: '#f5f5f5',
               color: '#bdbdbd',
             }
           }}
         >
-          <MicIcon sx={{ fontSize: 20 }} />
+          <MicIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
         </IconButton>
-      </Grow>
+      </Box>
       
+      {/* Send Button - Only shows when there's text */}
       <Zoom in={inputValue.trim().length > 0} timeout={200}>
         <IconButton
           onClick={() => onSendMessage(inputValue)}
@@ -329,9 +367,9 @@ const InputWithRecording = React.memo(({
           sx={{
             backgroundColor: '#1976d2',
             color: 'white',
-            width: 44,
-            height: 44,
-            ml: 1,
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            flexShrink: 0,
             boxShadow: '0 4px 16px rgba(25,118,210,0.3)',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
@@ -349,7 +387,7 @@ const InputWithRecording = React.memo(({
           }}
         >
           <SendIcon sx={{ 
-            fontSize: 20,
+            fontSize: { xs: 22, sm: 24 },
             transition: 'transform 0.2s ease'
           }} />
         </IconButton>

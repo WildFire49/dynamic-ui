@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   AppBar,
@@ -8,7 +8,9 @@ import {
   Typography,
   useTheme,
   alpha,
+  IconButton,
 } from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '../../contexts/AuthContext';
 import UserMenu from '../auth/UserMenu';
 import Sidebar from '../Sidebar';
@@ -23,16 +25,29 @@ const AppLayout = ({
 }) => {
   const theme = useTheme();
   const { user } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
       {/* Sidebar */}
       <Sidebar
         selectedTab={selectedTab}
-        onTabChange={onTabChange}
+        onTabChange={(tabId) => {
+          onTabChange(tabId);
+          // Close mobile drawer when tab changes
+          if (mobileOpen) {
+            setMobileOpen(false);
+          }
+        }}
         onLoadConversation={onLoadConversation}
         mode={mode}
         onSelectAnalysis={onSelectAnalysis}
+        mobileOpen={mobileOpen}
+        onMobileClose={handleDrawerToggle}
       />
 
       {/* Main Content Area */}
@@ -40,7 +55,7 @@ const AppLayout = ({
         flexGrow: 1, 
         display: 'flex', 
         flexDirection: 'column',
-        marginLeft: { xs: 0, md: '320px' },
+        marginLeft: { xs: 0, md:'0px' },
         width: { xs: '100%', md: 'calc(100% - 320px)' },
         maxWidth: '100%',
         overflowX: 'hidden',
@@ -64,6 +79,19 @@ const AppLayout = ({
           }}>
             {/* Left side - App title/breadcrumb */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Hamburger Menu for Mobile */}
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={handleDrawerToggle}
+                sx={{ 
+                  display: { md: 'none' },
+                  color: theme.palette.primary.main
+                }}
+              >
+                <MenuIcon />
+              </IconButton>
               <Typography 
                 variant="h6" 
                 sx={{ 
