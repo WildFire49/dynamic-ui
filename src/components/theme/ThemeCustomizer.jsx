@@ -266,7 +266,7 @@ const ThemeCustomizer = () => {
     <>
       {/* Floating Button */}
       <Tooltip title="Customize Theme" placement="left">
-        <IconButton
+        {/* <IconButton
           onClick={() => setOpen(true)}
           sx={{
             position: 'fixed',
@@ -287,7 +287,7 @@ const ThemeCustomizer = () => {
           }}
         >
           <PaletteIcon />
-        </IconButton>
+        </IconButton> */}
       </Tooltip>
 
       {/* Theme Customizer Drawer */}

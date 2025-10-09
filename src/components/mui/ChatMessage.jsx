@@ -24,6 +24,7 @@ import AnalysisWidget from '../widgets/AnalysisWidget';
 import AccessDeniedResponse from './AccessDeniedResponse';
 import EmailSentResponse from './EmailSentResponse';
 import DynamicFormRenderer from '../dynamic-form/DynamicFormRenderer';
+import DynamicUIRenderer from '../dynamic-form/DynamicUIRenderer';
 import { getFormSchemaByKeyword } from '../dynamic-form/sampleFormSchemas';
 
 // Define keyframe animations
@@ -230,7 +231,81 @@ const ChatMessage = ({ message, index, onAction }) => {
   const messageKey = generateMessageKey();
 
   const renderMessageContent = () => {
-    // Check for dynamic form schema
+    console.log('🎨 renderMessageContent called for message:', message);
+    
+    // Check for form_schema type message (from page.js handler)
+    if (message.type === 'form_schema' && message.response?.schema) {
+      console.log('✅ MATCH: Rendering form_schema type message');
+      return (
+        <Box sx={{ width: '100%', maxWidth: '100%' }}>
+          <DynamicUIRenderer 
+            data={message}
+            onSubmit={(data) => {
+              console.log('Form submitted:', data);
+              if (onAction) {
+                onAction({ type: 'form_submit', data });
+              }
+            }}
+            onContinue={(nextFormId, formData) => {
+              console.log('Continue to next form:', nextFormId, formData);
+              if (onAction) {
+                onAction({ type: 'form_continue', nextFormId, formData });
+              }
+            }}
+          />
+        </Box>
+      );
+    }
+    
+    // Check for API response with form schema (new format) - PRIORITY CHECK
+    if (message.response?.type === 'form_schema' && message.response?.schema) {
+      console.log('✅ MATCH: Rendering form schema from message.response');
+      return (
+        <Box sx={{ width: '100%', maxWidth: '100%' }}>
+          <DynamicUIRenderer 
+            data={message}
+            onSubmit={(data) => {
+              console.log('Form submitted:', data);
+              if (onAction) {
+                onAction({ type: 'form_submit', data });
+              }
+            }}
+            onContinue={(nextFormId, formData) => {
+              console.log('Continue to next form:', nextFormId, formData);
+              if (onAction) {
+                onAction({ type: 'form_continue', nextFormId, formData });
+              }
+            }}
+          />
+        </Box>
+      );
+    }
+
+    // Also check if message.content has the response structure
+    if (message.content?.response?.type === 'form_schema' && message.content?.response?.schema) {
+      console.log('🎨 Rendering form schema from message.content.response');
+      return (
+        <Box sx={{ width: '100%', maxWidth: '100%' }}>
+          <DynamicUIRenderer 
+            data={message.content}
+            onSubmit={(data) => {
+              console.log('Form submitted:', data);
+              if (onAction) {
+                onAction({ type: 'form_submit', data });
+              }
+            }}
+            onContinue={(nextFormId, formData) => {
+              console.log('Continue to next form:', nextFormId, formData);
+              if (onAction) {
+                onAction({ type: 'form_continue', nextFormId, formData });
+              }
+            }}
+          />
+        </Box>
+      );
+    }
+
+    // Check for dynamic form schema (old format - backward compatibility)
     if (message.type === 'dynamic_form' && message.formSchema) {
       return (
         <Box sx={{ width: '100%', maxWidth: '100%' }}>
@@ -593,6 +668,31 @@ const ChatMessage = ({ message, index, onAction }) => {
     }
 
     // Default text message
+    // But first check one more time for form schema in content
+    if (message.content && typeof message.content === 'object' && 
+        message.content.response?.type === 'form_schema') {
+      console.log('🎨 Catching form schema in default handler');
+      return (
+        <Box sx={{ width: '100%', maxWidth: '100%' }}>
+          <DynamicUIRenderer 
+            data={message.content}
+            onSubmit={(data) => {
+              console.log('Form submitted:', data);
+              if (onAction) {
+                onAction({ type: 'form_submit', data });
+              }
+            }}
+            onContinue={(nextFormId, formData) => {
+              console.log('Continue to next form:', nextFormId, formData);
+              if (onAction) {
+                onAction({ type: 'form_continue', nextFormId, formData });
+              }
+            }}
+          />
+        </Box>
+      );
+    }
+
     return (
       <Typography sx={styles.typography}>
         {typeof message.content === 'string' ? message.content : (message.content.text || JSON.stringify(message.content, null, 2))}
@@ -606,8 +706,11 @@ const ChatMessage = ({ message, index, onAction }) => {
       return styles.userMessage;
     }
     
-    // Full width for dynamic forms
-    if (message.type === 'dynamic_form') {
+    // Full width for dynamic forms and form schemas
+    if (message.type === 'dynamic_form' || 
+        message.type === 'form_schema' ||
+        message.response?.type === 'form_schema' ||
+        message.content?.response?.type === 'form_schema') {
       return {
         ...styles.botMessage,
         maxWidth: '100%',

@@ -1,5 +1,195 @@
 // Sample form schemas for different use cases
 
+// API-enabled schema example
+export const apiEnabledCustomerSchema = {
+  id: "api_customer_onboarding",
+  title: "Customer Onboarding (API Enabled)",
+  description: "Form with API integration for dynamic data",
+
+  // Global API configuration
+  apiConfig: {
+    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || "",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    timeout: 30000,
+  },
+
+  // Form submission API
+  submitApi: {
+    endpoint: "/api/customers/onboard",
+    method: "POST",
+    onSuccess: {
+      action: "navigate",
+      path: "/success",
+      message: "Customer onboarded successfully!",
+    },
+    onError: {
+      action: "showMessage",
+      message: "Failed to submit. Please try again.",
+    },
+  },
+
+  sections: [
+    {
+      id: "location_api_section",
+      title: "Location Details (API Driven)",
+      subtitle: "Select your location",
+      icon: "home",
+      fields: [
+        {
+          id: "state",
+          type: "dropdown",
+          label: "State",
+          placeholder: "Select state",
+          required: true,
+          // API configuration for loading states
+          api: {
+            endpoint: "/api/locations/states",
+            method: "GET",
+            responseMapping: {
+              value: "stateCode",
+              label: "stateName",
+              dataPath: "data.states",
+            },
+            cache: {
+              enabled: true,
+              duration: 3600000,
+            },
+            loadingText: "Loading states...",
+            errorText: "Failed to load states",
+          },
+          // Fallback options
+          options: [
+            { value: "KA", label: "Karnataka" },
+            { value: "MH", label: "Maharashtra" },
+          ],
+        },
+        {
+          id: "district",
+          type: "dropdown",
+          label: "District",
+          placeholder: "Select district",
+          required: true,
+          enabledIf: {
+            field: "state",
+            hasValue: true,
+          },
+          // Dependent API call
+          api: {
+            endpoint: "/api/locations/districts",
+            method: "GET",
+            params: {
+              stateCode: "${state}",
+            },
+            triggerOn: {
+              field: "state",
+              onChange: true,
+            },
+            responseMapping: {
+              value: "districtCode",
+              label: "districtName",
+              dataPath: "data.districts",
+            },
+          },
+          options: [],
+        },
+        {
+          id: "verify_location",
+          type: "button",
+          label: "Verify Location",
+          buttonLabel: "Verify Now",
+          variant: "outlined",
+          icon: "home",
+          // API action on button click
+          api: {
+            endpoint: "/api/locations/verify",
+            method: "POST",
+            body: {
+              state: "${state}",
+              district: "${district}",
+            },
+            onSuccess: {
+              action: "updateFields",
+              fields: {
+                location_verified: "true",
+                verification_status: "response.data.status",
+              },
+              message: "Location verified successfully!",
+            },
+            onError: {
+              action: "showMessage",
+              message: "Verification failed. Please try again.",
+            },
+            loadingText: "Verifying...",
+          },
+        },
+      ],
+    },
+    {
+      id: "kyc_api_section",
+      title: "KYC Verification (API)",
+      subtitle: "Verify your identity",
+      icon: "fingerprint",
+      fields: [
+        {
+          id: "aadhaar_number",
+          type: "text",
+          label: "Aadhaar Number",
+          placeholder: "Enter 12 digit Aadhaar",
+          required: true,
+          validation: {
+            pattern: "^\\d{12}$",
+            message: "Enter valid 12 digit Aadhaar",
+          },
+          // API validation
+          apiValidation: {
+            endpoint: "/api/validate/aadhaar",
+            method: "POST",
+            body: {
+              aadhaar: "${aadhaar_number}",
+            },
+            debounce: 1000,
+            onSuccess: {
+              isValid: "response.data.isValid",
+              message: "response.data.message",
+            },
+          },
+        },
+        {
+          id: "verify_kyc",
+          type: "button",
+          buttonLabel: "Verify KYC",
+          variant: "contained",
+          icon: "fingerprint",
+          api: {
+            endpoint: "/api/kyc/verify",
+            method: "POST",
+            body: {
+              aadhaarNumber: "${aadhaar_number}",
+            },
+            onSuccess: {
+              action: "updateFields",
+              fields: {
+                full_name: "response.data.name",
+                date_of_birth: "response.data.dob",
+                gender: "response.data.gender",
+              },
+              message: "KYC verified successfully!",
+            },
+            loadingText: "Verifying KYC...",
+          },
+        },
+      ],
+    },
+  ],
+
+  submitButton: {
+    label: "Submit Application",
+    action: "submit",
+  },
+};
+
 export const hdfcCustomerOnboardingSchema = {
   title: "HDFC Agriculture Instant KCC",
   description: "Please fill in your details to complete the onboarding process",
@@ -19,25 +209,26 @@ export const hdfcCustomerOnboardingSchema = {
           icon: "fingerprint",
           validation: {
             pattern: "^\\d{12}$",
-            message: "Aadhaar number must be exactly 12 digits"
-          }
+            message: "Aadhaar number must be exactly 12 digits",
+          },
         },
         {
           id: "biometric_scan",
           type: "biometric",
           label: "Tap to scan",
-          required: false
+          required: false,
         },
         {
           id: "kyc_consent",
           type: "checkbox",
-          label: "I hereby state that I have no objection for HDFC Bank validating and fetching my e-KYC details from UIDAI through the HDFC Bank e-KYC system and consent to provide my Aadhar number, biometric for Aadhar based KYC. Also I give consent to store my eKYC details for the purpose of KYC verification process with HDFC Bank.",
+          label:
+            "I hereby state that I have no objection for HDFC Bank validating and fetching my e-KYC details from UIDAI through the HDFC Bank e-KYC system and consent to provide my Aadhar number, biometric for Aadhar based KYC. Also I give consent to store my eKYC details for the purpose of KYC verification process with HDFC Bank.",
           required: true,
           validation: {
-            message: "You must accept the terms to continue"
-          }
-        }
-      ]
+            message: "You must accept the terms to continue",
+          },
+        },
+      ],
     },
     {
       id: "applicant_details",
@@ -54,12 +245,12 @@ export const hdfcCustomerOnboardingSchema = {
           icon: "person",
           enabledIf: {
             field: "kyc_consent",
-            equals: true
+            equals: true,
           },
           validation: {
             minLength: 3,
-            message: "Full name must be at least 3 characters"
-          }
+            message: "Full name must be at least 3 characters",
+          },
         },
         {
           id: "date_of_birth",
@@ -69,12 +260,12 @@ export const hdfcCustomerOnboardingSchema = {
           icon: "calendar",
           enabledIf: {
             field: "kyc_consent",
-            equals: true
+            equals: true,
           },
           validation: {
             maxDate: "2006-01-01",
-            message: "Date of birth must be before 2006"
-          }
+            message: "Date of birth must be before 2006",
+          },
         },
         {
           id: "gender",
@@ -83,16 +274,16 @@ export const hdfcCustomerOnboardingSchema = {
           required: true,
           enabledIf: {
             field: "kyc_consent",
-            equals: true
+            equals: true,
           },
           validation: {
-            message: "Please select a gender"
+            message: "Please select a gender",
           },
           options: [
             { value: "male", label: "Male", icon: "male" },
             { value: "female", label: "Female", icon: "female" },
-            { value: "transgender", label: "Transgender", icon: "transgender" }
-          ]
+            { value: "transgender", label: "Transgender", icon: "transgender" },
+          ],
         },
         {
           id: "care_of",
@@ -103,8 +294,8 @@ export const hdfcCustomerOnboardingSchema = {
           icon: "home",
           enabledIf: {
             field: "kyc_consent",
-            equals: true
-          }
+            equals: true,
+          },
         },
         {
           id: "father_name",
@@ -115,8 +306,8 @@ export const hdfcCustomerOnboardingSchema = {
           icon: "person",
           enabledIf: {
             field: "kyc_consent",
-            equals: true
-          }
+            equals: true,
+          },
         },
         {
           id: "mother_name",
@@ -127,8 +318,8 @@ export const hdfcCustomerOnboardingSchema = {
           icon: "person",
           enabledIf: {
             field: "kyc_consent",
-            equals: true
-          }
+            equals: true,
+          },
         },
         {
           id: "pan_card_image",
@@ -138,11 +329,11 @@ export const hdfcCustomerOnboardingSchema = {
           required: true,
           enabledIf: {
             field: "kyc_consent",
-            equals: true
+            equals: true,
           },
           validation: {
-            message: "PAN card image is required"
-          }
+            message: "PAN card image is required",
+          },
         },
         {
           id: "customer_photo",
@@ -152,13 +343,13 @@ export const hdfcCustomerOnboardingSchema = {
           required: true,
           enabledIf: {
             field: "kyc_consent",
-            equals: true
+            equals: true,
           },
           validation: {
-            message: "Customer photo is required"
-          }
-        }
-      ]
+            message: "Customer photo is required",
+          },
+        },
+      ],
     },
     {
       id: "additional_details",
@@ -179,8 +370,8 @@ export const hdfcCustomerOnboardingSchema = {
             { value: "sikh", label: "Sikh" },
             { value: "buddhist", label: "Buddhist" },
             { value: "jain", label: "Jain" },
-            { value: "other", label: "Other" }
-          ]
+            { value: "other", label: "Other" },
+          ],
         },
         {
           id: "community",
@@ -193,8 +384,8 @@ export const hdfcCustomerOnboardingSchema = {
             { value: "obc", label: "OBC" },
             { value: "sc", label: "SC" },
             { value: "st", label: "ST" },
-            { value: "other", label: "Other" }
-          ]
+            { value: "other", label: "Other" },
+          ],
         },
         {
           id: "marital_status",
@@ -205,8 +396,8 @@ export const hdfcCustomerOnboardingSchema = {
             { value: "single", label: "Single" },
             { value: "married", label: "Married" },
             { value: "divorced", label: "Divorced" },
-            { value: "widow", label: "Widow" }
-          ]
+            { value: "widow", label: "Widow" },
+          ],
         },
         {
           id: "qualification",
@@ -221,10 +412,10 @@ export const hdfcCustomerOnboardingSchema = {
             { value: "diploma", label: "Diploma" },
             { value: "12th", label: "12th Pass" },
             { value: "10th", label: "10th Pass" },
-            { value: "other", label: "Other" }
-          ]
-        }
-      ]
+            { value: "other", label: "Other" },
+          ],
+        },
+      ],
     },
     {
       id: "contact_details",
@@ -241,8 +432,8 @@ export const hdfcCustomerOnboardingSchema = {
           icon: "phone",
           validation: {
             pattern: "^\\d{10}$",
-            message: "Mobile number must be exactly 10 digits"
-          }
+            message: "Mobile number must be exactly 10 digits",
+          },
         },
         {
           id: "email",
@@ -253,8 +444,8 @@ export const hdfcCustomerOnboardingSchema = {
           icon: "email",
           validation: {
             pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
-            message: "Please enter a valid email address"
-          }
+            message: "Please enter a valid email address",
+          },
         },
         {
           id: "address",
@@ -262,15 +453,15 @@ export const hdfcCustomerOnboardingSchema = {
           label: "Address",
           placeholder: "Enter your address",
           required: true,
-          icon: "home"
-        }
-      ]
-    }
+          icon: "home",
+        },
+      ],
+    },
   ],
   submitButton: {
     label: "Submit Application",
-    action: "submit"
-  }
+    action: "submit",
+  },
 };
 
 export const bankAccountOpeningSchema = {
@@ -289,8 +480,8 @@ export const bankAccountOpeningSchema = {
           required: true,
           options: [
             { value: "savings", label: "Savings Account", icon: "bank" },
-            { value: "current", label: "Current Account", icon: "bank" }
-          ]
+            { value: "current", label: "Current Account", icon: "bank" },
+          ],
         },
         {
           id: "full_name",
@@ -298,22 +489,22 @@ export const bankAccountOpeningSchema = {
           label: "Full Name",
           placeholder: "As per PAN card",
           required: true,
-          icon: "person"
+          icon: "person",
         },
         {
           id: "pan_number",
           type: "text",
           label: "PAN Number",
           placeholder: "Enter PAN number",
-          required: true
-        }
-      ]
-    }
+          required: true,
+        },
+      ],
+    },
   ],
   submitButton: {
     label: "Continue",
-    action: "next"
-  }
+    action: "next",
+  },
 };
 
 // Example: Simple customer registration form
@@ -332,7 +523,7 @@ export const simpleRegistrationSchema = {
           label: "Full Name",
           placeholder: "Enter your name",
           required: true,
-          icon: "person"
+          icon: "person",
         },
         {
           id: "email",
@@ -340,7 +531,7 @@ export const simpleRegistrationSchema = {
           label: "Email",
           placeholder: "your@email.com",
           required: true,
-          icon: "email"
+          icon: "email",
         },
         {
           id: "phone",
@@ -348,7 +539,7 @@ export const simpleRegistrationSchema = {
           label: "Phone Number",
           placeholder: "10 digit number",
           required: true,
-          icon: "phone"
+          icon: "phone",
         },
         {
           id: "gender",
@@ -357,26 +548,27 @@ export const simpleRegistrationSchema = {
           required: true,
           options: [
             { value: "male", label: "Male", icon: "male" },
-            { value: "female", label: "Female", icon: "female" }
-          ]
-        }
-      ]
-    }
+            { value: "female", label: "Female", icon: "female" },
+          ],
+        },
+      ],
+    },
   ],
   submitButton: {
     label: "Register",
-    action: "submit"
-  }
+    action: "submit",
+  },
 };
 
 // Helper function to get schema by ID
 export const getFormSchemaById = (formId) => {
   const schemaMap = {
-    'l1_customer_info': l1CustomerOnboardingSchema,
-    'instant_kcc': instantKCCSchema,
-    'bank_account_details': bankAccountDetailsSchema,
-    'esign_documents': eSignDocumentsSchema,
-    'loan_disbursement': loanDisbursementSchema
+    api_customer_onboarding: apiEnabledCustomerSchema,
+    l1_customer_info: l1CustomerOnboardingSchema,
+    instant_kcc: instantKCCSchema,
+    bank_account_details: bankAccountDetailsSchema,
+    esign_documents: eSignDocumentsSchema,
+    loan_disbursement: loanDisbursementSchema,
   };
   return schemaMap[formId] || null;
 };
@@ -384,56 +576,84 @@ export const getFormSchemaById = (formId) => {
 // Helper function to get schema by keyword
 export const getFormSchemaByKeyword = (message) => {
   const lowerMessage = message.toLowerCase();
-  
-  // L1 Customer Information - comprehensive form
-  if (lowerMessage.includes('l1') || 
-      (lowerMessage.includes('customer') && lowerMessage.includes('information')) ||
-      (lowerMessage.includes('complete') && lowerMessage.includes('kyc'))) {
+
+  // HDFC Bank Customer Onboarding - Start with L1 (PRIORITY)
+  if (
+    (lowerMessage.includes("onboard") || lowerMessage.includes("onboarding")) &&
+    lowerMessage.includes("customer") &&
+    (lowerMessage.includes("hdfc") || lowerMessage.includes("bank"))
+  ) {
+    console.log("🎯 Detected HDFC onboarding request - returning L1 schema");
     return l1CustomerOnboardingSchema;
   }
-  
+
+  // L1 Customer Information - comprehensive form
+  // if (lowerMessage.includes('l1') ||
+  //     (lowerMessage.includes('customer') && lowerMessage.includes('information')) ||
+  //     (lowerMessage.includes('complete') && lowerMessage.includes('kyc'))) {
+  //   console.log('🎯 Detected L1 request');
+  //   return l1CustomerOnboardingSchema;
+  // }
+  // L1 Customer Information - comprehensive form
+  if (
+    lowerMessage.includes("l1 customer") || // More specific
+    lowerMessage.includes("l1 form") ||
+    (lowerMessage.includes("complete") && lowerMessage.includes("kyc"))
+  ) {
+    console.log("🎯 Detected L1 request");
+    return l1CustomerOnboardingSchema;
+  }
+
   // L2 Instant KCC - Land & Crop Details
-  if (lowerMessage.includes('l2') || 
-      lowerMessage.includes('instant kcc') ||
-      lowerMessage.includes('land details') ||
-      lowerMessage.includes('crop details')) {
+  if (
+    lowerMessage.includes("l2") ||
+    lowerMessage.includes("instant kcc") ||
+    lowerMessage.includes("land details") ||
+    lowerMessage.includes("crop details")
+  ) {
+    console.log("🎯 Detected L2 request");
     return instantKCCSchema;
   }
-  
+
   // L3 Bank Account Details
-  if (lowerMessage.includes('l3') || 
-      lowerMessage.includes('bank account') ||
-      lowerMessage.includes('disbursement')) {
+  if (
+    lowerMessage.includes("l3") ||
+    lowerMessage.includes("bank account") ||
+    lowerMessage.includes("disbursement")
+  ) {
+    console.log("🎯 Detected L3 request");
     return bankAccountDetailsSchema;
   }
-  
-  // Complete Agriculture Customer Onboarding for HDFC
-  if ((lowerMessage.includes('onboard') || lowerMessage.includes('agriculture') || lowerMessage.includes('agri')) && 
-      (lowerMessage.includes('customer') || lowerMessage.includes('hdfc'))) {
-    // Return L1 first, then L2 and L3 will follow
-    return l1CustomerOnboardingSchema;
-  }
-  
-  if (lowerMessage.includes('onboard') && lowerMessage.includes('customer') && lowerMessage.includes('hdfc')) {
-    return hdfcCustomerOnboardingSchema;
-  }
-  
-  if (lowerMessage.includes('open') && lowerMessage.includes('account')) {
+
+  // Bank account opening
+  if (lowerMessage.includes("open") && lowerMessage.includes("account")) {
+    console.log("🎯 Detected bank account opening request");
     return bankAccountOpeningSchema;
   }
-  
-  if (lowerMessage.includes('register') || lowerMessage.includes('registration')) {
+
+  // Simple registration
+  if (
+    lowerMessage.includes("register") ||
+    lowerMessage.includes("registration")
+  ) {
+    console.log("🎯 Detected registration request");
     return simpleRegistrationSchema;
   }
-  
+
+  // HDFC Customer Onboarding (fallback - broader match)
+  if (lowerMessage.includes("hdfc") && lowerMessage.includes("customer")) {
+    console.log("🎯 Detected HDFC customer request - returning L1 schema");
+    return l1CustomerOnboardingSchema;
+  }
+
   return null;
 };
 
 /**
  * EXAMPLE JSON SCHEMA FORMAT
- * 
+ *
  * Use this template to create your own forms:
- * 
+ *
  * {
  *   "title": "Form Title",
  *   "description": "Form description",
@@ -479,7 +699,7 @@ export const getFormSchemaByKeyword = (message) => {
  *     "action": "submit"
  *   }
  * }
- * 
+ *
  * FIELD TYPES:
  * - text: Regular text input
  * - email: Email input with validation
@@ -491,7 +711,7 @@ export const getFormSchemaByKeyword = (message) => {
  * - checkbox: Single checkbox
  * - biometric: Fingerprint scan button
  * - image_capture: Camera capture or file upload for images (PAN card, photos, etc.)
- * 
+ *
  * VALIDATION OPTIONS (all optional):
  * - pattern: Regex pattern (e.g., "^\\d{12}$" for 12 digits)
  * - minLength: Minimum character length
@@ -501,12 +721,12 @@ export const getFormSchemaByKeyword = (message) => {
  * - minDate: Minimum date (for date fields)
  * - maxDate: Maximum date (for date fields)
  * - message: Custom error message to display
- * 
+ *
  * CONDITIONAL ENABLING (enabledIf):
  * - Enable if checkbox checked: { "field": "consent_checkbox", "equals": true }
  * - Enable if dropdown value: { "field": "country", "equals": "USA" }
  * - Enable if NOT equal: { "field": "status", "notEquals": "inactive" }
- * 
+ *
  * VALIDATION EXAMPLES:
  * - Aadhaar (12 digits): { "pattern": "^\\d{12}$", "message": "Must be 12 digits" }
  * - Phone (10 digits): { "pattern": "^\\d{10}$", "message": "Must be 10 digits" }
@@ -515,7 +735,7 @@ export const getFormSchemaByKeyword = (message) => {
  * - Age above 20: { "minValue": 20, "maxValue": 100, "message": "Age must be between 20 and 100" }
  * - Min 3 chars: { "minLength": 3, "message": "At least 3 characters required" }
  * - Required checkbox: { "message": "You must accept the terms" }
- * 
+ *
  * AVAILABLE ICONS:
  * - person, male, female, transgender
  * - calendar, phone, email, home
@@ -571,7 +791,7 @@ export const l1CustomerOnboardingSchema = {
     kyc_type: "aadhaar",
     kyc_document_number: "123456789012",
     id_issue_date: "2020-01-15",
-    id_expiry_date: "2030-01-15"
+    id_expiry_date: "2030-01-15",
   },
   sections: [
     {
@@ -589,8 +809,8 @@ export const l1CustomerOnboardingSchema = {
           icon: "person",
           validation: {
             pattern: "^[A-Za-z ]+$",
-            message: "Only alphabetic characters allowed"
-          }
+            message: "Only alphabetic characters allowed",
+          },
         },
         {
           id: "date_of_birth",
@@ -601,8 +821,8 @@ export const l1CustomerOnboardingSchema = {
           icon: "calendar",
           validation: {
             maxDate: "2006-01-01",
-            message: "Must be born before 2006"
-          }
+            message: "Must be born before 2006",
+          },
         },
         {
           id: "age",
@@ -614,8 +834,8 @@ export const l1CustomerOnboardingSchema = {
             pattern: "^\\d+$",
             minValue: 20,
             maxValue: 69,
-            message: "Age must be between 20 and 69"
-          }
+            message: "Age must be between 20 and 69",
+          },
         },
         {
           id: "gender",
@@ -625,8 +845,8 @@ export const l1CustomerOnboardingSchema = {
           options: [
             { value: "male", label: "Male", icon: "male" },
             { value: "female", label: "Female", icon: "female" },
-            { value: "other", label: "Other", icon: "transgender" }
-          ]
+            { value: "other", label: "Other", icon: "transgender" },
+          ],
         },
         {
           id: "co_type",
@@ -638,12 +858,13 @@ export const l1CustomerOnboardingSchema = {
             { value: "S/O", label: "S/O (Son of)" },
             { value: "D/O", label: "D/O (Daughter of)" },
             { value: "W/O", label: "W/O (Wife of)" },
-            { value: "C/O", label: "C/O (Care of)" }
+            { value: "C/O", label: "C/O (Care of)" },
           ],
           validation: {
             pattern: "^[A-Za-z /()]+$",
-            message: "Only alphabetic characters, slashes, and brackets allowed"
-          }
+            message:
+              "Only alphabetic characters, slashes, and brackets allowed",
+          },
         },
         {
           id: "father_name",
@@ -654,8 +875,8 @@ export const l1CustomerOnboardingSchema = {
           icon: "person",
           validation: {
             pattern: "^[A-Za-z ]+$",
-            message: "Only alphabetic characters allowed"
-          }
+            message: "Only alphabetic characters allowed",
+          },
         },
         {
           id: "mother_name",
@@ -666,8 +887,8 @@ export const l1CustomerOnboardingSchema = {
           icon: "person",
           validation: {
             pattern: "^[A-Za-z ]+$",
-            message: "Only alphabetic characters allowed"
-          }
+            message: "Only alphabetic characters allowed",
+          },
         },
         {
           id: "prospect_photo_kyc",
@@ -676,8 +897,8 @@ export const l1CustomerOnboardingSchema = {
           placeholder: "Capture or upload KYC photo",
           required: true,
           validation: {
-            message: "KYC photo is required"
-          }
+            message: "KYC photo is required",
+          },
         },
         {
           id: "prospect_recent_photo",
@@ -686,8 +907,8 @@ export const l1CustomerOnboardingSchema = {
           placeholder: "Capture or upload recent photo (max 1 image)",
           required: false,
           validation: {
-            message: "Recent photo is required"
-          }
+            message: "Recent photo is required",
+          },
         },
         {
           id: "prospect_ethnicity",
@@ -700,8 +921,8 @@ export const l1CustomerOnboardingSchema = {
             { value: "obc", label: "OBC" },
             { value: "sc", label: "SC" },
             { value: "st", label: "ST" },
-            { value: "others", label: "Others" }
-          ]
+            { value: "others", label: "Others" },
+          ],
         },
         {
           id: "prospect_community",
@@ -714,8 +935,8 @@ export const l1CustomerOnboardingSchema = {
             { value: "muslim", label: "Muslim" },
             { value: "christian", label: "Christian" },
             { value: "sikh", label: "Sikh" },
-            { value: "others", label: "Others" }
-          ]
+            { value: "others", label: "Others" },
+          ],
         },
         {
           id: "marital_status",
@@ -726,8 +947,8 @@ export const l1CustomerOnboardingSchema = {
             { value: "single", label: "Single" },
             { value: "married", label: "Married" },
             { value: "divorced", label: "Divorced" },
-            { value: "widowed", label: "Widowed" }
-          ]
+            { value: "widowed", label: "Widowed" },
+          ],
         },
         {
           id: "educational_qualification",
@@ -741,10 +962,10 @@ export const l1CustomerOnboardingSchema = {
             { value: "12th_pass", label: "12th Pass" },
             { value: "graduate", label: "Graduate" },
             { value: "post_graduate", label: "Post Graduate" },
-            { value: "professional", label: "Professional Degree" }
-          ]
-        }
-      ]
+            { value: "professional", label: "Professional Degree" },
+          ],
+        },
+      ],
     },
     {
       id: "kyc_address",
@@ -761,8 +982,8 @@ export const l1CustomerOnboardingSchema = {
           icon: "home",
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "kyc_street",
@@ -772,8 +993,8 @@ export const l1CustomerOnboardingSchema = {
           required: true,
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "kyc_locality",
@@ -783,8 +1004,8 @@ export const l1CustomerOnboardingSchema = {
           required: true,
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "kyc_landmark",
@@ -794,8 +1015,8 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "kyc_vtc",
@@ -805,8 +1026,8 @@ export const l1CustomerOnboardingSchema = {
           required: true,
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "kyc_state",
@@ -820,12 +1041,12 @@ export const l1CustomerOnboardingSchema = {
             { value: "tamil_nadu", label: "Tamil Nadu" },
             { value: "delhi", label: "Delhi" },
             { value: "west_bengal", label: "West Bengal" },
-            { value: "uttar_pradesh", label: "Uttar Pradesh" }
+            { value: "uttar_pradesh", label: "Uttar Pradesh" },
           ],
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "kyc_district",
@@ -838,12 +1059,12 @@ export const l1CustomerOnboardingSchema = {
             { value: "bangalore_rural", label: "Bangalore Rural" },
             { value: "mysore", label: "Mysore" },
             { value: "mumbai", label: "Mumbai" },
-            { value: "pune", label: "Pune" }
+            { value: "pune", label: "Pune" },
           ],
           validation: {
             maxLength: 36,
-            message: "Maximum 36 characters allowed"
-          }
+            message: "Maximum 36 characters allowed",
+          },
         },
         {
           id: "kyc_pin_code",
@@ -853,8 +1074,8 @@ export const l1CustomerOnboardingSchema = {
           required: true,
           validation: {
             pattern: "^\\d{6}$",
-            message: "Pin code must be exactly 6 digits"
-          }
+            message: "Pin code must be exactly 6 digits",
+          },
         },
         {
           id: "mobile_number",
@@ -865,10 +1086,10 @@ export const l1CustomerOnboardingSchema = {
           icon: "phone",
           validation: {
             pattern: "^\\d{10}$",
-            message: "Mobile number must be exactly 10 digits"
-          }
-        }
-      ]
+            message: "Mobile number must be exactly 10 digits",
+          },
+        },
+      ],
     },
     {
       id: "current_address",
@@ -880,7 +1101,7 @@ export const l1CustomerOnboardingSchema = {
           id: "same_as_kyc",
           type: "checkbox",
           label: "Same as KYC Address",
-          required: false
+          required: false,
         },
         {
           id: "current_house_number",
@@ -891,12 +1112,12 @@ export const l1CustomerOnboardingSchema = {
           icon: "home",
           enabledIf: {
             field: "same_as_kyc",
-            notEquals: true
+            notEquals: true,
           },
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "current_street",
@@ -906,12 +1127,12 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "same_as_kyc",
-            notEquals: true
+            notEquals: true,
           },
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "current_locality",
@@ -921,12 +1142,12 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "same_as_kyc",
-            notEquals: true
+            notEquals: true,
           },
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "current_landmark",
@@ -936,12 +1157,12 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "same_as_kyc",
-            notEquals: true
+            notEquals: true,
           },
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "current_vtc",
@@ -951,12 +1172,12 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "same_as_kyc",
-            notEquals: true
+            notEquals: true,
           },
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "current_state",
@@ -966,7 +1187,7 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "same_as_kyc",
-            notEquals: true
+            notEquals: true,
           },
           options: [
             { value: "karnataka", label: "Karnataka" },
@@ -974,12 +1195,12 @@ export const l1CustomerOnboardingSchema = {
             { value: "tamil_nadu", label: "Tamil Nadu" },
             { value: "delhi", label: "Delhi" },
             { value: "west_bengal", label: "West Bengal" },
-            { value: "uttar_pradesh", label: "Uttar Pradesh" }
+            { value: "uttar_pradesh", label: "Uttar Pradesh" },
           ],
           validation: {
             maxLength: 35,
-            message: "Maximum 35 characters allowed"
-          }
+            message: "Maximum 35 characters allowed",
+          },
         },
         {
           id: "current_district",
@@ -989,19 +1210,19 @@ export const l1CustomerOnboardingSchema = {
           required: true,
           enabledIf: {
             field: "same_as_kyc",
-            notEquals: true
+            notEquals: true,
           },
           options: [
             { value: "bangalore_urban", label: "Bangalore Urban" },
             { value: "bangalore_rural", label: "Bangalore Rural" },
             { value: "mysore", label: "Mysore" },
             { value: "mumbai", label: "Mumbai" },
-            { value: "pune", label: "Pune" }
+            { value: "pune", label: "Pune" },
           ],
           validation: {
             maxLength: 36,
-            message: "Maximum 36 characters allowed"
-          }
+            message: "Maximum 36 characters allowed",
+          },
         },
         {
           id: "current_pin_code",
@@ -1011,12 +1232,12 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "same_as_kyc",
-            notEquals: true
+            notEquals: true,
           },
           validation: {
             pattern: "^\\d{6}$",
-            message: "Pin code must be exactly 6 digits"
-          }
+            message: "Pin code must be exactly 6 digits",
+          },
         },
         {
           id: "alternate_mobile_number",
@@ -1027,10 +1248,10 @@ export const l1CustomerOnboardingSchema = {
           icon: "phone",
           validation: {
             pattern: "^\\d{10}$",
-            message: "Mobile number must be exactly 10 digits"
-          }
-        }
-      ]
+            message: "Mobile number must be exactly 10 digits",
+          },
+        },
+      ],
     },
     {
       id: "bank_master",
@@ -1048,8 +1269,8 @@ export const l1CustomerOnboardingSchema = {
             { value: "india", label: "India" },
             { value: "usa", label: "United States" },
             { value: "uk", label: "United Kingdom" },
-            { value: "australia", label: "Australia" }
-          ]
+            { value: "australia", label: "Australia" },
+          ],
         },
         {
           id: "bank_state",
@@ -1061,8 +1282,8 @@ export const l1CustomerOnboardingSchema = {
             { value: "karnataka", label: "Karnataka" },
             { value: "maharashtra", label: "Maharashtra" },
             { value: "tamil_nadu", label: "Tamil Nadu" },
-            { value: "delhi", label: "Delhi" }
-          ]
+            { value: "delhi", label: "Delhi" },
+          ],
         },
         {
           id: "bank_city",
@@ -1075,8 +1296,8 @@ export const l1CustomerOnboardingSchema = {
             { value: "mumbai", label: "Mumbai" },
             { value: "chennai", label: "Chennai" },
             { value: "delhi", label: "Delhi" },
-            { value: "pune", label: "Pune" }
-          ]
+            { value: "pune", label: "Pune" },
+          ],
         },
         {
           id: "sol_id",
@@ -1087,10 +1308,10 @@ export const l1CustomerOnboardingSchema = {
           icon: "bank",
           validation: {
             pattern: "^[A-Z]{4}\\d{7}$",
-            message: "Invalid SOL ID format"
-          }
-        }
-      ]
+            message: "Invalid SOL ID format",
+          },
+        },
+      ],
     },
     {
       id: "other_information",
@@ -1106,8 +1327,8 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           validation: {
             pattern: "^\\d+$",
-            message: "Only numeric values allowed"
-          }
+            message: "Only numeric values allowed",
+          },
         },
         {
           id: "profession",
@@ -1120,8 +1341,8 @@ export const l1CustomerOnboardingSchema = {
             { value: "business", label: "Business" },
             { value: "professional", label: "Professional" },
             { value: "agriculture", label: "Agriculture" },
-            { value: "retired", label: "Retired" }
-          ]
+            { value: "retired", label: "Retired" },
+          ],
         },
         {
           id: "belongs_to",
@@ -1134,10 +1355,10 @@ export const l1CustomerOnboardingSchema = {
             { value: "obc", label: "OBC" },
             { value: "sc", label: "SC" },
             { value: "st", label: "ST" },
-            { value: "minority", label: "Minority" }
-          ]
-        }
-      ]
+            { value: "minority", label: "Minority" },
+          ],
+        },
+      ],
     },
     {
       id: "pan_card_section",
@@ -1152,8 +1373,8 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           options: [
             { value: "yes", label: "Yes" },
-            { value: "no", label: "No" }
-          ]
+            { value: "no", label: "No" },
+          ],
         },
         {
           id: "pan_number",
@@ -1164,12 +1385,12 @@ export const l1CustomerOnboardingSchema = {
           icon: "fingerprint",
           enabledIf: {
             field: "pan_available",
-            equals: "yes"
+            equals: "yes",
           },
           validation: {
             pattern: "^[A-Z]{5}\\d{4}[A-Z]$",
-            message: "Invalid PAN format (e.g., ABCDE1234F)"
-          }
+            message: "Invalid PAN format (e.g., ABCDE1234F)",
+          },
         },
         {
           id: "pan_card_image",
@@ -1179,13 +1400,13 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "pan_available",
-            equals: "yes"
+            equals: "yes",
           },
           validation: {
-            message: "PAN card image is required"
-          }
-        }
-      ]
+            message: "PAN card image is required",
+          },
+        },
+      ],
     },
     {
       id: "other_kyc",
@@ -1204,8 +1425,8 @@ export const l1CustomerOnboardingSchema = {
             { value: "voter_id", label: "Voter ID" },
             { value: "driving_license", label: "Driving License" },
             { value: "passport", label: "Passport" },
-            { value: "ration_card", label: "Ration Card" }
-          ]
+            { value: "ration_card", label: "Ration Card" },
+          ],
         },
         {
           id: "kyc_document_number",
@@ -1215,11 +1436,11 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "kyc_type",
-            notEquals: ""
+            notEquals: "",
           },
           validation: {
-            message: "Document number is required"
-          }
+            message: "Document number is required",
+          },
         },
         {
           id: "id_issue_date",
@@ -1230,11 +1451,11 @@ export const l1CustomerOnboardingSchema = {
           icon: "calendar",
           enabledIf: {
             field: "kyc_type",
-            notEquals: ""
+            notEquals: "",
           },
           validation: {
-            message: "Issue date is required"
-          }
+            message: "Issue date is required",
+          },
         },
         {
           id: "id_expiry_date",
@@ -1245,11 +1466,11 @@ export const l1CustomerOnboardingSchema = {
           icon: "calendar",
           enabledIf: {
             field: "kyc_type",
-            notEquals: ""
+            notEquals: "",
           },
           validation: {
-            message: "Expiry date is required"
-          }
+            message: "Expiry date is required",
+          },
         },
         {
           id: "kyc_photo",
@@ -1259,19 +1480,19 @@ export const l1CustomerOnboardingSchema = {
           required: false,
           enabledIf: {
             field: "kyc_type",
-            notEquals: ""
+            notEquals: "",
           },
           validation: {
-            message: "KYC document photo is required"
-          }
-        }
-      ]
-    }
+            message: "KYC document photo is required",
+          },
+        },
+      ],
+    },
   ],
   submitButton: {
     label: "Submit",
-    action: "submit"
-  }
+    action: "submit",
+  },
 };
 
 // L2 Info - Instant KCC Section
@@ -1322,7 +1543,8 @@ export const instantKCCSchema = {
     family_farming: "yes",
     farming_experience: "15",
     able_to_carry: "yes",
-    agri_officer_comments: "Good land condition with proper irrigation facilities"
+    agri_officer_comments:
+      "Good land condition with proper irrigation facilities",
   },
   sections: [
     {
@@ -1341,8 +1563,8 @@ export const instantKCCSchema = {
             { value: "poultry", label: "Poultry" },
             { value: "dairy", label: "Dairy" },
             { value: "fishery", label: "Fishery" },
-            { value: "goatery", label: "Goatery" }
-          ]
+            { value: "goatery", label: "Goatery" },
+          ],
         },
         {
           id: "state",
@@ -1354,8 +1576,8 @@ export const instantKCCSchema = {
             { value: "karnataka", label: "Karnataka" },
             { value: "maharashtra", label: "Maharashtra" },
             { value: "tamil_nadu", label: "Tamil Nadu" },
-            { value: "kerala", label: "Kerala" }
-          ]
+            { value: "kerala", label: "Kerala" },
+          ],
         },
         {
           id: "district",
@@ -1367,8 +1589,8 @@ export const instantKCCSchema = {
             { value: "bangalore_urban", label: "Bangalore Urban" },
             { value: "bangalore_rural", label: "Bangalore Rural" },
             { value: "mysore", label: "Mysore" },
-            { value: "mangalore", label: "Mangalore" }
-          ]
+            { value: "mangalore", label: "Mangalore" },
+          ],
         },
         {
           id: "taluk",
@@ -1379,8 +1601,8 @@ export const instantKCCSchema = {
           options: [
             { value: "bangalore_north", label: "Bangalore North" },
             { value: "bangalore_south", label: "Bangalore South" },
-            { value: "anekal", label: "Anekal" }
-          ]
+            { value: "anekal", label: "Anekal" },
+          ],
         },
         {
           id: "village",
@@ -1391,8 +1613,8 @@ export const instantKCCSchema = {
           options: [
             { value: "yelahanka", label: "Yelahanka" },
             { value: "devanahalli", label: "Devanahalli" },
-            { value: "doddaballapur", label: "Doddaballapur" }
-          ]
+            { value: "doddaballapur", label: "Doddaballapur" },
+          ],
         },
         {
           id: "survey_number",
@@ -1401,8 +1623,8 @@ export const instantKCCSchema = {
           placeholder: "Enter survey number (e.g., SV-123/456)",
           required: true,
           validation: {
-            message: "Survey number is required"
-          }
+            message: "Survey number is required",
+          },
         },
         {
           id: "sub_division_number",
@@ -1411,8 +1633,8 @@ export const instantKCCSchema = {
           placeholder: "Enter sub division number (e.g., SD-01)",
           required: true,
           validation: {
-            message: "Sub division number is required"
-          }
+            message: "Sub division number is required",
+          },
         },
         {
           id: "land_owner_name",
@@ -1423,8 +1645,8 @@ export const instantKCCSchema = {
           icon: "person",
           validation: {
             pattern: "^[A-Za-z ]+$",
-            message: "Only alphabetic characters allowed"
-          }
+            message: "Only alphabetic characters allowed",
+          },
         },
         {
           id: "land_extent",
@@ -1434,8 +1656,8 @@ export const instantKCCSchema = {
           required: true,
           validation: {
             pattern: "^\\d+(\\.\\d+)?$",
-            message: "Enter valid numeric value with decimals"
-          }
+            message: "Enter valid numeric value with decimals",
+          },
         },
         {
           id: "patta_no",
@@ -1444,8 +1666,8 @@ export const instantKCCSchema = {
           placeholder: "Enter patta number",
           required: true,
           validation: {
-            message: "Patta number is required"
-          }
+            message: "Patta number is required",
+          },
         },
         {
           id: "land_record_verified",
@@ -1454,8 +1676,8 @@ export const instantKCCSchema = {
           required: true,
           options: [
             { value: "verified", label: "Verified" },
-            { value: "rejected", label: "Rejected" }
-          ]
+            { value: "rejected", label: "Rejected" },
+          ],
         },
         {
           id: "document_type",
@@ -1466,8 +1688,8 @@ export const instantKCCSchema = {
           options: [
             { value: "patta_chitta_adangal", label: "Patta/Chitta/Adangal" },
             { value: "patta", label: "Patta" },
-            { value: "chitta", label: "Chitta" }
-          ]
+            { value: "chitta", label: "Chitta" },
+          ],
         },
         {
           id: "document_image",
@@ -1476,8 +1698,8 @@ export const instantKCCSchema = {
           placeholder: "Capture or upload document images (multiple)",
           required: false,
           validation: {
-            message: "Document image is required"
-          }
+            message: "Document image is required",
+          },
         },
         {
           id: "land_photo",
@@ -1486,8 +1708,8 @@ export const instantKCCSchema = {
           placeholder: "Capture or upload land photos (multiple)",
           required: false,
           validation: {
-            message: "Land photo is required"
-          }
+            message: "Land photo is required",
+          },
         },
         {
           id: "land_classification",
@@ -1497,8 +1719,8 @@ export const instantKCCSchema = {
           required: false,
           options: [
             { value: "irrigated", label: "Irrigated Land Holding" },
-            { value: "non_irrigated", label: "Non Irrigated Land Holding" }
-          ]
+            { value: "non_irrigated", label: "Non Irrigated Land Holding" },
+          ],
         },
         {
           id: "joint_patta",
@@ -1507,8 +1729,8 @@ export const instantKCCSchema = {
           required: true,
           options: [
             { value: "yes", label: "Yes" },
-            { value: "no", label: "No" }
-          ]
+            { value: "no", label: "No" },
+          ],
         },
         {
           id: "possession_certificate",
@@ -1517,8 +1739,8 @@ export const instantKCCSchema = {
           placeholder: "Upload up to 3 images or PDF",
           required: true,
           validation: {
-            message: "Possession certificate is required"
-          }
+            message: "Possession certificate is required",
+          },
         },
         {
           id: "encumbrance_certificate",
@@ -1527,10 +1749,10 @@ export const instantKCCSchema = {
           placeholder: "Upload single image or PDF",
           required: true,
           validation: {
-            message: "Encumbrance certificate is required"
-          }
-        }
-      ]
+            message: "Encumbrance certificate is required",
+          },
+        },
+      ],
     },
     {
       id: "scale_of_finance",
@@ -1546,8 +1768,8 @@ export const instantKCCSchema = {
           required: true,
           validation: {
             pattern: "^\\d+(\\.\\d+)?$",
-            message: "Must not exceed total land extent"
-          }
+            message: "Must not exceed total land extent",
+          },
         },
         {
           id: "crop_group",
@@ -1560,8 +1782,8 @@ export const instantKCCSchema = {
             { value: "pulses", label: "Pulses" },
             { value: "oilseeds", label: "Oilseeds" },
             { value: "commercial_crops", label: "Commercial Crops" },
-            { value: "horticulture", label: "Horticulture" }
-          ]
+            { value: "horticulture", label: "Horticulture" },
+          ],
         },
         {
           id: "crop_name",
@@ -1574,8 +1796,8 @@ export const instantKCCSchema = {
             { value: "wheat", label: "Wheat" },
             { value: "maize", label: "Maize" },
             { value: "cotton", label: "Cotton" },
-            { value: "sugarcane", label: "Sugarcane" }
-          ]
+            { value: "sugarcane", label: "Sugarcane" },
+          ],
         },
         {
           id: "scale_of_finance",
@@ -1584,15 +1806,15 @@ export const instantKCCSchema = {
           placeholder: "Auto calculated",
           required: true,
           validation: {
-            message: "Scale of finance is required"
-          }
+            message: "Scale of finance is required",
+          },
         },
         {
           id: "land_holding",
           type: "number",
           label: "Land Holding (in hectares)",
           placeholder: "Auto calculated",
-          required: true
+          required: true,
         },
         {
           id: "land_holding_by_applicant",
@@ -1602,8 +1824,8 @@ export const instantKCCSchema = {
           required: true,
           validation: {
             pattern: "^\\d+(\\.\\d+)?$",
-            message: "Enter valid numeric value"
-          }
+            message: "Enter valid numeric value",
+          },
         },
         {
           id: "season",
@@ -1614,11 +1836,11 @@ export const instantKCCSchema = {
           options: [
             { value: "rabi", label: "Rabi" },
             { value: "kharif", label: "Kharif" },
-            { value: "summer", label: "Summer" }
-          ]
-        }
-      ]
-    }, 
+            { value: "summer", label: "Summer" },
+          ],
+        },
+      ],
+    },
     {
       id: "livestock_details",
       title: "Add Animal",
@@ -1638,8 +1860,8 @@ export const instantKCCSchema = {
             { value: "rabbit", label: "Rabbit", icon: "rabbit" },
             { value: "birds", label: "Birds", icon: "bird" },
             { value: "fish_seedlings", label: "Fish Seedlings", icon: "fish" },
-            { value: "others", label: "Others", icon: "paw" }
-          ]
+            { value: "others", label: "Others", icon: "paw" },
+          ],
         },
         {
           id: "breed",
@@ -1658,8 +1880,8 @@ export const instantKCCSchema = {
             { value: "gir", label: "Gir" },
             { value: "red_sindhi", label: "Red Sindhi" },
             { value: "jersey", label: "Jersey" },
-            { value: "holstein_friesian", label: "Holstein Friesian" }
-          ]
+            { value: "holstein_friesian", label: "Holstein Friesian" },
+          ],
         },
         {
           id: "number_of_animals",
@@ -1670,8 +1892,8 @@ export const instantKCCSchema = {
           validation: {
             pattern: "^[1-9]\\d*$",
             minValue: 1,
-            message: "Enter valid number of animals (minimum 1)"
-          }
+            message: "Enter valid number of animals (minimum 1)",
+          },
         },
         {
           id: "scale_of_finance",
@@ -1682,8 +1904,8 @@ export const instantKCCSchema = {
           validation: {
             pattern: "^\\d+(\\.\\d{1,2})?$",
             minValue: 0,
-            message: "Enter valid amount"
-          }
+            message: "Enter valid amount",
+          },
         },
         {
           id: "milk_society_name",
@@ -1697,10 +1919,10 @@ export const instantKCCSchema = {
             { value: "payagri", label: "Pay Agri Innovations Pvt.Ltd" },
             { value: "amul", label: "Amul Dairy" },
             { value: "mother_dairy", label: "Mother Dairy" },
-            { value: "nandini", label: "Nandini" }
-          ]
-        }
-      ]
+            { value: "nandini", label: "Nandini" },
+          ],
+        },
+      ],
     },
     {
       id: "household_members",
@@ -1717,8 +1939,8 @@ export const instantKCCSchema = {
           icon: "person",
           validation: {
             pattern: "^[A-Za-z ]+$",
-            message: "Only alphabetic characters allowed"
-          }
+            message: "Only alphabetic characters allowed",
+          },
         },
         {
           id: "member_gender",
@@ -1727,8 +1949,8 @@ export const instantKCCSchema = {
           required: true,
           options: [
             { value: "male", label: "Male", icon: "male" },
-            { value: "female", label: "Female", icon: "female" }
-          ]
+            { value: "female", label: "Female", icon: "female" },
+          ],
         },
         {
           id: "member_dob",
@@ -1736,7 +1958,7 @@ export const instantKCCSchema = {
           label: "Date of Birth",
           placeholder: "Select date of birth",
           required: true,
-          icon: "calendar"
+          icon: "calendar",
         },
         {
           id: "member_relationship",
@@ -1751,10 +1973,10 @@ export const instantKCCSchema = {
             { value: "father", label: "Father" },
             { value: "mother", label: "Mother" },
             { value: "brother", label: "Brother" },
-            { value: "sister", label: "Sister" }
-          ]
-        }
-      ]
+            { value: "sister", label: "Sister" },
+          ],
+        },
+      ],
     },
     {
       id: "loan_details",
@@ -1769,8 +1991,8 @@ export const instantKCCSchema = {
           placeholder: "₹1,60,000 (default)",
           required: true,
           validation: {
-            message: "Default limit is ₹1,60,000"
-          }
+            message: "Default limit is ₹1,60,000",
+          },
         },
         {
           id: "eligible_loan_amount",
@@ -1780,8 +2002,8 @@ export const instantKCCSchema = {
           required: true,
           validation: {
             pattern: "^\\d+(\\.\\d+)?$",
-            message: "Numeric with decimals (round-down)"
-          }
+            message: "Numeric with decimals (round-down)",
+          },
         },
         {
           id: "opted_loan_amount",
@@ -1791,8 +2013,8 @@ export const instantKCCSchema = {
           required: true,
           validation: {
             pattern: "^\\d+$",
-            message: "Enter valid numeric value"
-          }
+            message: "Enter valid numeric value",
+          },
         },
         {
           id: "scheme_type",
@@ -1803,8 +2025,8 @@ export const instantKCCSchema = {
           options: [
             { value: "kisan_credit_card", label: "Kisan Credit Card (KCC)" },
             { value: "crop_loan", label: "Crop Loan" },
-            { value: "term_loan", label: "Term Loan" }
-          ]
+            { value: "term_loan", label: "Term Loan" },
+          ],
         },
         {
           id: "loan_tenor",
@@ -1816,8 +2038,8 @@ export const instantKCCSchema = {
             { value: "6_months", label: "6 Months" },
             { value: "12_months", label: "12 Months" },
             { value: "18_months", label: "18 Months" },
-            { value: "24_months", label: "24 Months" }
-          ]
+            { value: "24_months", label: "24 Months" },
+          ],
         },
         {
           id: "prospect_consent",
@@ -1825,8 +2047,8 @@ export const instantKCCSchema = {
           label: "Prospect consent for the loan amount",
           required: true,
           validation: {
-            message: "Consent is required to proceed"
-          }
+            message: "Consent is required to proceed",
+          },
         },
         {
           id: "security_value",
@@ -1836,8 +2058,8 @@ export const instantKCCSchema = {
           required: false,
           enabledIf: {
             field: "prospect_consent",
-            equals: true
-          }
+            equals: true,
+          },
         },
         {
           id: "opt_pmfby",
@@ -1846,14 +2068,14 @@ export const instantKCCSchema = {
           required: false,
           enabledIf: {
             field: "prospect_consent",
-            equals: true
+            equals: true,
           },
           options: [
             { value: "yes", label: "Yes" },
-            { value: "no", label: "No" }
-          ]
-        }
-      ]
+            { value: "no", label: "No" },
+          ],
+        },
+      ],
     },
     {
       id: "bank_assessment",
@@ -1869,8 +2091,8 @@ export const instantKCCSchema = {
           required: false,
           validation: {
             pattern: "^\\d+(\\.\\d+)?$",
-            message: "Enter valid numeric value with decimals"
-          }
+            message: "Enter valid numeric value with decimals",
+          },
         },
         {
           id: "applicant_farming",
@@ -1879,18 +2101,19 @@ export const instantKCCSchema = {
           required: false,
           options: [
             { value: "yes", label: "Yes" },
-            { value: "no", label: "No" }
-          ]
+            { value: "no", label: "No" },
+          ],
         },
         {
           id: "irrigation_electricity",
           type: "radio",
-          label: "Whether source of irrigation, electricity facility available?",
+          label:
+            "Whether source of irrigation, electricity facility available?",
           required: false,
           options: [
             { value: "yes", label: "Yes" },
-            { value: "no", label: "No" }
-          ]
+            { value: "no", label: "No" },
+          ],
         },
         {
           id: "land_proof_submitted",
@@ -1899,8 +2122,8 @@ export const instantKCCSchema = {
           required: false,
           options: [
             { value: "yes", label: "Yes" },
-            { value: "no", label: "No" }
-          ]
+            { value: "no", label: "No" },
+          ],
         },
         {
           id: "market_availability",
@@ -1910,8 +2133,8 @@ export const instantKCCSchema = {
           required: false,
           validation: {
             pattern: "^\\d+(\\.\\d+)?$",
-            message: "Enter valid numeric value with decimals"
-          }
+            message: "Enter valid numeric value with decimals",
+          },
         },
         {
           id: "family_farming",
@@ -1920,8 +2143,8 @@ export const instantKCCSchema = {
           required: false,
           options: [
             { value: "yes", label: "Yes" },
-            { value: "no", label: "No" }
-          ]
+            { value: "no", label: "No" },
+          ],
         },
         {
           id: "farming_experience",
@@ -1931,33 +2154,34 @@ export const instantKCCSchema = {
           required: false,
           validation: {
             pattern: "^\\d+(\\.\\d+)?$",
-            message: "Enter valid numeric value"
-          }
+            message: "Enter valid numeric value",
+          },
         },
         {
           id: "able_to_carry",
           type: "radio",
-          label: "Whether the applicant able to carry out set forth activities?",
+          label:
+            "Whether the applicant able to carry out set forth activities?",
           required: false,
           options: [
             { value: "yes", label: "Yes" },
-            { value: "no", label: "No" }
-          ]
+            { value: "no", label: "No" },
+          ],
         },
         {
           id: "agri_officer_comments",
           type: "text",
           label: "Agri Officer Comments",
           placeholder: "Enter comments",
-          required: false
-        }
-      ]
-    }
+          required: false,
+        },
+      ],
+    },
   ],
   submitButton: {
     label: "Submit",
-    action: "submit"
-  }
+    action: "submit",
+  },
 };
 
 // L3 Info - Bank Account Details Section
@@ -1975,7 +2199,7 @@ export const bankAccountDetailsSchema = {
     ifsc_code: "HDFC0001234",
     bank_branch_name: "Koramangala Branch",
     bank_branch_address: "123 Main Road, Koramangala, Bangalore - 560034",
-    bank_name: "HDFC Bank"
+    bank_name: "HDFC Bank",
   },
   sections: [
     {
@@ -1991,8 +2215,8 @@ export const bankAccountDetailsSchema = {
           required: true,
           options: [
             { value: "new_to_bank", label: "New to Bank Account" },
-            { value: "other_bank", label: "Other Bank Account" }
-          ]
+            { value: "other_bank", label: "Other Bank Account" },
+          ],
         },
         {
           id: "account_holder_name",
@@ -2003,11 +2227,11 @@ export const bankAccountDetailsSchema = {
           icon: "person",
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
+            equals: "other_bank",
           },
           validation: {
-            message: "Auto-populated from UIDAI e-KYC"
-          }
+            message: "Auto-populated from UIDAI e-KYC",
+          },
         },
         {
           id: "account_number",
@@ -2017,12 +2241,12 @@ export const bankAccountDetailsSchema = {
           required: true,
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
+            equals: "other_bank",
           },
           validation: {
             pattern: "^[0-9]{9,18}$",
-            message: "Enter valid account number (9-18 digits)"
-          }
+            message: "Enter valid account number (9-18 digits)",
+          },
         },
         {
           id: "re_enter_account_number",
@@ -2032,12 +2256,12 @@ export const bankAccountDetailsSchema = {
           required: true,
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
+            equals: "other_bank",
           },
           validation: {
             pattern: "^[0-9]{9,18}$",
-            message: "Account numbers must match"
-          }
+            message: "Account numbers must match",
+          },
         },
         {
           id: "ifsc_code",
@@ -2047,12 +2271,12 @@ export const bankAccountDetailsSchema = {
           required: true,
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
+            equals: "other_bank",
           },
           validation: {
             pattern: "^[A-Z]{4}0[A-Z0-9]{6}$",
-            message: "Enter valid IFSC code"
-          }
+            message: "Enter valid IFSC code",
+          },
         },
         {
           id: "bank_branch_name",
@@ -2062,8 +2286,8 @@ export const bankAccountDetailsSchema = {
           required: true,
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
-          }
+            equals: "other_bank",
+          },
         },
         {
           id: "bank_branch_address",
@@ -2073,8 +2297,8 @@ export const bankAccountDetailsSchema = {
           required: true,
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
-          }
+            equals: "other_bank",
+          },
         },
         {
           id: "bank_name",
@@ -2084,8 +2308,8 @@ export const bankAccountDetailsSchema = {
           required: true,
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
-          }
+            equals: "other_bank",
+          },
         },
         {
           id: "proof_of_account",
@@ -2095,11 +2319,11 @@ export const bankAccountDetailsSchema = {
           required: true,
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
+            equals: "other_bank",
           },
           validation: {
-            message: "Account proof is required"
-          }
+            message: "Account proof is required",
+          },
         },
         {
           id: "customer_signature_other_bank",
@@ -2109,11 +2333,11 @@ export const bankAccountDetailsSchema = {
           required: false,
           showIf: {
             field: "disbursement_preference",
-            equals: "other_bank"
+            equals: "other_bank",
           },
           validation: {
-            message: "Signature required for new to bank customers"
-          }
+            message: "Signature required for new to bank customers",
+          },
         },
         {
           id: "customer_signature_new_bank",
@@ -2123,29 +2347,30 @@ export const bankAccountDetailsSchema = {
           required: false,
           showIf: {
             field: "disbursement_preference",
-            equals: "new_to_bank"
+            equals: "new_to_bank",
           },
           validation: {
-            message: "Signature required for new bank account"
-          }
+            message: "Signature required for new bank account",
+          },
         },
         {
           id: "bank_consent",
           type: "checkbox",
-          label: "Kindly confirm with the customer if there is a HDFC Bank branch within the radius of 10 kilometers of the customer's house",
+          label:
+            "Kindly confirm with the customer if there is a HDFC Bank branch within the radius of 10 kilometers of the customer's house",
           required: false,
           showIf: {
             field: "disbursement_preference",
-            equals: "new_to_bank"
-          }
-        }
-      ]
-    }
+            equals: "new_to_bank",
+          },
+        },
+      ],
+    },
   ],
   submitButton: {
     label: "Submit",
-    action: "submit"
-  }
+    action: "submit",
+  },
 };
 
 // E-Sign Documents Schema
@@ -2157,7 +2382,7 @@ export const eSignDocumentsSchema = {
   nextFormTitle: "Loan Disbursement",
   mockData: {
     customer_name: "Rajesh Kumar",
-    biometric_captured: false
+    biometric_captured: false,
   },
   sections: [
     {
@@ -2174,7 +2399,7 @@ export const eSignDocumentsSchema = {
           required: false,
           readOnly: true,
           defaultValue: "Rajesh Kumar",
-          icon: "person"
+          icon: "person",
         },
         {
           id: "biometric_scan",
@@ -2182,8 +2407,8 @@ export const eSignDocumentsSchema = {
           label: "Tap to scan fingerprint",
           required: true,
           validation: {
-            message: "Please complete fingerprint authentication to proceed"
-          }
+            message: "Please complete fingerprint authentication to proceed",
+          },
         },
         {
           id: "pdf_preview",
@@ -2193,15 +2418,15 @@ export const eSignDocumentsSchema = {
           required: false,
           action: "view_pdf",
           variant: "outlined",
-          icon: "pdf"
-        }
-      ]
-    }
+          icon: "pdf",
+        },
+      ],
+    },
   ],
   submitButton: {
     label: "Complete E-Sign",
-    action: "submit"
-  }
+    action: "submit",
+  },
 };
 
 // Loan Disbursement Success Schema
@@ -2225,13 +2450,13 @@ export const loanDisbursementSchema = {
           required: false,
           action: "view_pdf",
           variant: "contained",
-          icon: "pdf"
-        }
-      ]
-    }
+          icon: "pdf",
+        },
+      ],
+    },
   ],
   submitButton: {
     label: "Done",
-    action: "complete"
-  }
+    action: "complete",
+  },
 };
