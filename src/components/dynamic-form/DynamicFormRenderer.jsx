@@ -758,11 +758,8 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
               sx={{
                 opacity: isEnabled ? 1 : 0.5,
                 pointerEvents: isEnabled ? 'auto' : 'none',
-                display: 'grid',
-                gridTemplateColumns: { 
-                  xs: '1fr', // Single column on mobile
-                  sm: field.options?.length <= 2 ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' 
-                },
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 1.5,
               }}
             >
@@ -775,12 +772,15 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
                     key={option.value}
                     elevation={0}
                     sx={{
+                      width: '100%',
+                      maxWidth: '100%',
                       p: 2,
                       border: `2px solid ${isSelected ? theme.palette.primary.main : alpha(theme.palette.divider, 0.3)}`,
                       borderRadius: '12px',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
                       backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.05) : '#ffffff',
+                      boxSizing: 'border-box',
                       '&:hover': {
                         borderColor: theme.palette.primary.main,
                         backgroundColor: alpha(theme.palette.primary.main, 0.02),

@@ -55,10 +55,37 @@ import {
   PictureAsPdf,
   Speed as SpeedIcon,
   Visibility as VisibilityIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  AccountTree as WorkflowIcon,
+  DynamicForm as FormIcon
 } from '@mui/icons-material';
 import { embeddingsApi } from '@/lib/api/embeddingsApi';
 import RouteGuard from '../../components/auth/RouteGuard';
+
+const CONFIGURATOR_OPTIONS = [
+  {
+    id: 'ui_workflow',
+    title: 'UI Workflow Builder',
+    description: 'Visual drag-and-drop form workflow designer',
+    subtitle: 'Build Custom Flows',
+    icon: WorkflowIcon,
+    color: '#2196F3',
+    gradient: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
+    route: '/configurator/ui',
+    features: ['Drag & Drop', 'Visual Flow', 'API Config', 'Real-time Preview']
+  },
+  {
+    id: 'knowledge_upload',
+    title: 'Knowledge Upload',
+    description: 'Upload documents to AI agent knowledge base',
+    subtitle: 'Embed Documents',
+    icon: UploadIcon,
+    color: '#4CAF50',
+    gradient: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
+    route: null, // Opens dialog
+    features: ['PDF Upload', 'Auto Embedding', 'Smart Chunking', 'Vector Search']
+  }
+];
 
 const AGENT_TYPES = [
   {
@@ -204,6 +231,7 @@ export default function ConfiguratorPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const [mounted, setMounted] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [hoveredOption, setHoveredOption] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploadStep, setUploadStep] = useState('select'); // select, preview, processing, success
   const [previewFile, setPreviewFile] = useState(null);
@@ -729,6 +757,156 @@ export default function ConfiguratorPage() {
           </Fade>
         </Box>
 
+        {/* Configurator Options Section */}
+        <Box sx={{ py: 6 }}>
+          <Fade in={mounted} timeout={1200}>
+            <Typography 
+              variant="h4" 
+              component="h3" 
+              sx={{ 
+                textAlign: 'center',
+                mb: 6,
+                fontWeight: 700,
+                color: '#e3f2fd',
+                textShadow: '0 2px 8px rgba(0,0,0,0.5)'
+              }}
+            >
+              Configuration Tools
+            </Typography>
+          </Fade>
+          
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            px: { xs: 2, sm: 4, md: 6 },
+            mb: 8
+          }}>
+            <Grid 
+              container 
+              spacing={{ xs: 3, sm: 4 }}
+              justifyContent="center" 
+              sx={{ maxWidth: 900 }}
+            >
+              {CONFIGURATOR_OPTIONS.map((option, index) => {
+                const IconComponent = option.icon;
+                const isHovered = hoveredOption === option.id;
+                
+                return (
+                  <Grid item xs={12} sm={6} key={option.id}>
+                    <Grow in={mounted} timeout={1000 + index * 200}>
+                      <Card
+                        onMouseEnter={() => setHoveredOption(option.id)}
+                        onMouseLeave={() => setHoveredOption(null)}
+                        onClick={() => {
+                          if (option.route) {
+                            router.push(option.route);
+                          } else {
+                            // For knowledge upload, show agent selection
+                            setUploadDialogOpen(true);
+                          }
+                        }}
+                        sx={{
+                          height: 300,
+                          background: alpha('#0d1b2a', 0.8),
+                          backdropFilter: 'blur(20px)',
+                          borderRadius: 4,
+                          border: `2px solid ${alpha(option.color, 0.3)}`,
+                          position: 'relative',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: `0 8px 32px ${alpha('#000', 0.3)}`,
+                          '&:hover': {
+                            transform: 'translateY(-12px) scale(1.02)',
+                            boxShadow: `0 25px 50px ${alpha(option.color, 0.4)}`,
+                            border: `2px solid ${option.color}`,
+                            background: alpha('#1b263b', 0.9),
+                          },
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 4,
+                            background: option.gradient,
+                            opacity: 0.8,
+                          }
+                        }}
+                      >
+                        <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          {/* Icon */}
+                          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                            <Box
+                              sx={{
+                                width: 80,
+                                height: 80,
+                                borderRadius: '50%',
+                                background: option.gradient,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.3s ease',
+                                transform: isHovered ? 'scale(1.1) rotate(5deg)' : 'scale(1)',
+                                boxShadow: `0 8px 25px ${alpha(option.color, 0.3)}`
+                              }}
+                            >
+                              <IconComponent sx={{ fontSize: 40, color: 'white' }} />
+                            </Box>
+                          </Box>
+                          
+                          {/* Content */}
+                          <Box sx={{ textAlign: 'center', flexGrow: 1 }}>
+                            <Typography variant="h5" sx={{ mb: 1, fontWeight: 700, color: '#e3f2fd' }}>
+                              {option.title}
+                            </Typography>
+                            
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                color: option.color,
+                                fontWeight: 600,
+                                display: 'block',
+                                mb: 2,
+                                textTransform: 'uppercase',
+                                letterSpacing: 1
+                              }}
+                            >
+                              {option.subtitle}
+                            </Typography>
+                            
+                            <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.6, color: '#b3e5fc' }}>
+                              {option.description}
+                            </Typography>
+                            
+                            {/* Features */}
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
+                              {option.features.map((feature, idx) => (
+                                <Chip
+                                  key={idx}
+                                  label={feature}
+                                  size="small"
+                                  sx={{
+                                    fontSize: '0.7rem',
+                                    height: 22,
+                                    background: alpha(option.color, 0.1),
+                                    color: option.color,
+                                    border: `1px solid ${alpha(option.color, 0.2)}`
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grow>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Box>
+        </Box>
+
         {/* Agent Cards Section */}
         <Box sx={{ py: 6 }}>
           <Fade in={mounted} timeout={1200}>
@@ -743,7 +921,7 @@ export default function ConfiguratorPage() {
                 textShadow: '0 2px 8px rgba(0,0,0,0.5)'
               }}
             >
-              Choose Your AI Agent
+              AI Agent Knowledge Base
             </Typography>
           </Fade>
           
