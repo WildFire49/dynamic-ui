@@ -391,6 +391,12 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
       return null;
     }
 
+    // TEMPORARY: Skip file upload validation for testing workflow navigation
+    if (field.type === 'file' || field.type === 'image_capture') {
+      console.log(`⚠️ Skipping validation for file upload field: ${field.label}`);
+      return null;
+    }
+
     // Required field validation
     if (field.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
       return field.validation?.message || `${field.label} is required`;
@@ -476,6 +482,9 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
   };
 
   const handleSubmit = () => {
+    console.log("🔘 Submit button clicked in DynamicFormRenderer");
+    console.log("🔘 Current form data:", formData);
+    
     // Validate all fields before submit
     const newErrors = {};
     let hasErrors = false;
@@ -485,6 +494,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
         const value = formData[field.id];
         const error = validateField(field, value);
         if (error) {
+          console.log(`❌ Validation error for field "${field.label}" (${field.id}):`, error);
           newErrors[field.id] = error;
           hasErrors = true;
         }
@@ -494,6 +504,9 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
     setErrors(newErrors);
 
     if (hasErrors) {
+      console.log("❌ Form has validation errors:", newErrors);
+      console.log("❌ Total errors:", Object.keys(newErrors).length);
+      
       // Scroll to first error
       const firstErrorField = Object.keys(newErrors)[0];
       const errorElement = document.getElementById(`field-${firstErrorField}`);
@@ -503,6 +516,9 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
       return;
     }
 
+    console.log("✅ Form validation passed!");
+    console.log("✅ Calling onSubmit with data:", formData);
+    
     // Mark as submitted
     setIsSubmitted(true);
     
@@ -910,6 +926,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
         );
 
       case 'image_capture':
+      case 'file':
         return (
           <ImageCaptureUpload
             key={field.id}

@@ -97,6 +97,9 @@ export default function HomePage() {
   const taskPollingRef = useRef(null);
   const [pdfPopupOpen, setPdfPopupOpen] = useState(false);
   const [pdfPopupData, setPdfPopupData] = useState(null);
+  
+  // Access control state
+  const [isAccessDenied, setIsAccessDenied] = useState(false);
 
   // Sidebar states
   const [selectedTab, setSelectedTab] = useState("chat");
@@ -390,6 +393,16 @@ export default function HomePage() {
           isBot: true,
         };
       }
+      // Handle access denied response
+      else if (data.response?.type === "access_denied") {
+        console.log("✅ Detected access_denied response in handleApiResponse");
+        setIsAccessDenied(true); // Block further API calls
+        botMessage = {
+          type: "access_denied",
+          content: data,
+          isBot: true,
+        };
+      }
       // Handle scheduler response
       else if (data.response?.type === "scheduler_response") {
         botMessage = {
@@ -530,6 +543,30 @@ export default function HomePage() {
 
   const callChatApi = useCallback(
     async (body) => {
+      // Block API calls if access is denied
+      if (isAccessDenied) {
+        console.log("🚫 API call blocked - Access denied");
+        setIsTyping(false);
+        
+        // Show a reminder message
+        const reminderMessage = {
+          type: "access_denied",
+          content: {
+            response: {
+              type: "access_denied",
+              message: "Request limit exceeded. Please contact support to continue.",
+              current_usage: 0,
+              limit: 0,
+              remaining: 0
+            }
+          },
+          isBot: true,
+          timestamp: new Date().toISOString(),
+        };
+        setChatHistory((prev) => [...prev, reminderMessage]);
+        return;
+      }
+      
       setIsTyping(true);
       try {
         const requestBody = { ...body };
@@ -567,19 +604,46 @@ export default function HomePage() {
         handleApiResponse(data);
       } catch (error) {
         console.error("Error calling chat API:", error);
-        const errorMessage = {
-          type: "user",
-          content: { text: `Error: ${error.message}` },
-          isBot: true,
-          isError: true,
-          timestamp: new Date().toISOString(),
-        };
-        setChatHistory((prev) => [...prev, errorMessage]);
+        
+        // Check if it's a CORS or network error
+        const isCorsError = error.message.includes('Failed to fetch') || 
+                           error.message.includes('CORS') ||
+                           error.message.includes('NetworkError');
+        
+        if (isCorsError) {
+          // Show access denied card for CORS/network errors
+          setIsAccessDenied(true);
+          const errorMessage = {
+            type: "access_denied",
+            content: {
+              response: {
+                type: "access_denied",
+                message: "Unable to connect to server. This could be due to network issues or CORS restrictions. Please contact support for assistance.",
+                current_usage: 0,
+                limit: 0,
+                remaining: 0
+              }
+            },
+            isBot: true,
+            timestamp: new Date().toISOString(),
+          };
+          setChatHistory((prev) => [...prev, errorMessage]);
+        } else {
+          // Show regular error message for other errors
+          const errorMessage = {
+            type: "user",
+            content: { text: `Error: ${error.message}` },
+            isBot: true,
+            isError: true,
+            timestamp: new Date().toISOString(),
+          };
+          setChatHistory((prev) => [...prev, errorMessage]);
+        }
       } finally {
         setIsTyping(false);
       }
     },
-    [conversationId, handleApiResponse]
+    [conversationId, handleApiResponse, isAccessDenied]
   );
 
   const handleAction = useCallback(
@@ -1598,8 +1662,11 @@ export default function HomePage() {
                 isPaused={isPaused}
                 recordingTime={recordingTime}
                 isTyping={isTyping || isAnalyzing}
+                disabled={isAccessDenied}
                 placeholder={
-                  uploadedDocuments.length > 0
+                  isAccessDenied
+                    ? "Access limit exceeded - Contact support to continue"
+                    : uploadedDocuments.length > 0
                     ? "Ask about your data..."
                     : "Type your message..."
                 }

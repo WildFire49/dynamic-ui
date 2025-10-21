@@ -30,9 +30,15 @@ import {
 
 // Custom equality check for memo - only re-render if data actually changed
 const arePropsEqual = (prevProps, nextProps) => {
-  return prevProps.data.component?.id === nextProps.data.component?.id &&
-         prevProps.selected === nextProps.selected &&
-         prevProps.isConnectable === nextProps.isConnectable;
+  return (
+    prevProps.data.component?.id === nextProps.data.component?.id &&
+    prevProps.data.component?.name === nextProps.data.component?.name &&
+    prevProps.data.schema?.id === nextProps.data.schema?.id &&
+    prevProps.data.schema?.sections?.length ===
+      nextProps.data.schema?.sections?.length &&
+    prevProps.selected === nextProps.selected &&
+    prevProps.isConnectable === nextProps.isConnectable
+  );
 };
 
 const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
@@ -54,33 +60,34 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
   const IconComponent = getIconComponent(component?.icon);
 
   // Memoize expensive calculations
-  const totalFields = React.useMemo(() => 
-    schema?.sections?.reduce(
-      (sum, section) => sum + (section.fields?.length || 0),
-      0
-    ) || 0,
+  const totalFields = React.useMemo(
+    () =>
+      schema?.sections?.reduce(
+        (sum, section) => sum + (section.fields?.length || 0),
+        0
+      ) || 0,
     [schema]
   );
-  
-  const totalSections = React.useMemo(() => 
-    schema?.sections?.length || 0,
+
+  const totalSections = React.useMemo(
+    () => schema?.sections?.length || 0,
     [schema]
   );
 
   // Memoize color values
-  const componentColor = React.useMemo(() => 
-    component?.color || "#1976d2",
+  const componentColor = React.useMemo(
+    () => component?.color || "#1976d2",
     [component?.color]
   );
-  
-  const borderColor = React.useMemo(() => 
-    selected ? theme.palette.primary.main : alpha(componentColor, 0.3),
+
+  const borderColor = React.useMemo(
+    () => (selected ? theme.palette.primary.main : alpha(componentColor, 0.3)),
     [selected, theme.palette.primary.main, componentColor]
   );
 
   // Memoize callbacks to prevent re-renders
   const handleExpand = useCallback(() => {
-    setExpanded(prev => !prev);
+    setExpanded((prev) => !prev);
   }, []);
 
   const handleDelete = useCallback(() => {
@@ -92,15 +99,16 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
   }, [onConfigure, component]);
 
   const handlePreview = useCallback(() => {
-    onPreview && onPreview(component);
-  }, [onPreview, component]);
+    // Pass component with updated schema
+    onPreview && onPreview({ ...component, schema });
+  }, [onPreview, component, schema]);
 
   return (
     <Paper
       elevation={selected ? 8 : 3}
       sx={{
-        minWidth: 320,
-        maxWidth: 400,
+        minWidth: 260,
+        maxWidth: 300,
         background: alpha("#fff", 0.98),
         border: `2px solid ${borderColor}`,
         borderRadius: 3,
@@ -122,14 +130,17 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
       <Box
         sx={{
           height: 4,
-          background: `linear-gradient(90deg, ${componentColor} 0%, ${alpha(componentColor, 0.6)} 100%)`,
+          background: `linear-gradient(90deg, ${componentColor} 0%, ${alpha(
+            componentColor,
+            0.6
+          )} 100%)`,
         }}
       />
 
       {/* Header */}
       <Box
         sx={{
-          p: 2,
+          p: 1.5,
           background: alpha(componentColor, 0.05),
           borderBottom: `1px solid ${alpha(componentColor, 0.1)}`,
         }}
@@ -138,10 +149,13 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
           {/* Icon */}
           <Box
             sx={{
-              width: 48,
-              height: 48,
+              width: 40,
+              height: 40,
               borderRadius: 2,
-              background: `linear-gradient(135deg, ${componentColor} 0%, ${alpha(componentColor, 0.8)} 100%)`,
+              background: `linear-gradient(135deg, ${componentColor} 0%, ${alpha(
+                componentColor,
+                0.8
+              )} 100%)`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -149,7 +163,7 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
               flexShrink: 0,
             }}
           >
-            <IconComponent sx={{ color: "white", fontSize: 28 }} />
+            <IconComponent sx={{ color: "white", fontSize: 24 }} />
           </Box>
 
           {/* Title and Badges */}
@@ -158,13 +172,13 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
               variant="subtitle1"
               sx={{
                 fontWeight: 700,
-                fontSize: "0.95rem",
+                fontSize: "0.85rem",
                 mb: 0.5,
-                lineHeight: 1.3,
+                lineHeight: 1.2,
                 color: theme.palette.text.primary,
               }}
             >
-              {component?.name || "Form Component"}
+              {data.title || component?.name || schema?.title || "Form Component"}
             </Typography>
             <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
               <Chip
@@ -222,7 +236,7 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
       </Box>
 
       {/* Compact Stats (Always Visible) */}
-      <Box sx={{ p: 2, py: 1.5 }}>
+      <Box sx={{ p: 1.5, py: 1 }}>
         <Box
           sx={{
             display: "flex",
@@ -284,7 +298,12 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
         >
           <Typography
             variant="caption"
-            sx={{ fontWeight: 600, mb: 1, display: "block", color: "text.secondary" }}
+            sx={{
+              fontWeight: 600,
+              mb: 1,
+              display: "block",
+              color: "text.secondary",
+            }}
           >
             Form Sections Preview:
           </Typography>
@@ -299,7 +318,9 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
                 "&:last-child": { mb: 0 },
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+              >
                 <CheckCircle
                   sx={{
                     fontSize: 16,

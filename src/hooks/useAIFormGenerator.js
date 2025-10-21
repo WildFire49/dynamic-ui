@@ -1,0 +1,99 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+import uiConfiguratorService from '@/services/uiConfiguratorService';
+import authService from '@/services/authService';
+
+/**
+ * Custom hook for AI form generation
+ * @returns {Object} Form generation state and methods
+ */
+export const useAIFormGenerator = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
+  const [currentFormId, setCurrentFormId] = useState(null);
+
+  /**
+   * Generate or update a form
+   * @param {string} prompt - User's prompt
+   * @param {Function} onSuccess - Success callback
+   * @param {Function} onError - Error callback
+   */
+  const generateForm = useCallback(async (prompt, onSuccess, onError) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const username = authService.getUsername();
+      
+      const response = await uiConfiguratorService.generateForm({
+        prompt,
+        userId: username || 'anonymous',
+        conversationId,
+        formId: currentFormId,
+      });
+
+      if (response.success && response.data?.schema) {
+        // Update conversation ID if this is a new conversation
+        if (response.data.conversation_id && !conversationId) {
+          setConversationId(response.data.conversation_id);
+        }
+
+        // Update current form ID
+        if (response.data.form_id) {
+          setCurrentFormId(response.data.form_id);
+        }
+
+        // Call success callback
+        if (onSuccess) {
+          onSuccess(response.data);
+        }
+
+        return response.data;
+      } else {
+        throw new Error(response.data?.message || 'Form generation failed');
+      }
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to generate form';
+      setError(errorMessage);
+      
+      if (onError) {
+        onError(errorMessage);
+      }
+      
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [conversationId, currentFormId]);
+
+  /**
+   * Reset conversation state
+   */
+  const resetConversation = useCallback(() => {
+    setConversationId(null);
+    setCurrentFormId(null);
+    setError(null);
+  }, []);
+
+  /**
+   * Load an existing conversation
+   * @param {string} convId - Conversation ID
+   * @param {string} formId - Form ID
+   */
+  const loadConversation = useCallback((convId, formId) => {
+    setConversationId(convId);
+    setCurrentFormId(formId);
+  }, []);
+
+  return {
+    loading,
+    error,
+    conversationId,
+    currentFormId,
+    generateForm,
+    resetConversation,
+    loadConversation,
+  };
+};
