@@ -458,15 +458,17 @@ const UIConfiguratorPage = () => {
     navbarContent: {
       display: "flex",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "flex-start",
       py: 1.5,
-      px: 2,
+      px: 0,
+      gap: 0,
     },
 
     navbarLogo: {
       display: "flex",
       alignItems: "center",
       gap: 1.5,
+      px: 2,
     },
 
     navbarLogoImage: {
@@ -1709,8 +1711,26 @@ const UIConfiguratorPage = () => {
     <Box sx={styles.navbarContainer}>
       {/* Professional Navbar */}
       <Paper elevation={0} sx={styles.navbarPaper}>
-        <Container maxWidth="xl">
+        <Container maxWidth="xl" disableGutters>
           <Box sx={styles.navbarContent}>
+            {/* Back Button - Extreme Left */}
+            <Tooltip title="Back to Configurator">
+              <IconButton
+                onClick={() => router.push("/configurator")}
+                size="small"
+                sx={{
+                  color: "primary.main",
+                  borderRadius: 0,
+                  px: 2,
+                  "&:hover": {
+                    bgcolor: "action.hover",
+                  },
+                }}
+              >
+                <ArrowBack fontSize="medium" />
+              </IconButton>
+            </Tooltip>
+
             {/* Logo & Title */}
             <Box sx={styles.navbarLogo}>
               <img
@@ -1723,16 +1743,8 @@ const UIConfiguratorPage = () => {
               </Typography>
             </Box>
 
-            <Box sx={styles.navbarActions}>
-              <Tooltip title="Back to Configurator">
-                <IconButton
-                  onClick={() => router.push("/configurator")}
-                  size="small"
-                  sx={styles.navbarBackButton}
-                >
-                  <ArrowBack fontSize="small" />
-                </IconButton>
-              </Tooltip>
+            {/* Workflow Info - Centered Right */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "center" }}>
               <Box sx={styles.navbarWorkflowInfo}>
                 <Box sx={styles.navbarWorkflowIcon}>
                   <AccountTree sx={styles.navbarWorkflowIconSvg} />

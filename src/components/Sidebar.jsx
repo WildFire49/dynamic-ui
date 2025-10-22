@@ -37,9 +37,13 @@ import {
   Assessment as IncentiveIcon,
   Close as CloseIcon,
   Build as ConfiguratorIcon,
+  Build as BuildIcon,
   Settings as SettingsIcon,
   History as HistoryIcon,
   Security as AccessControlIcon,
+  Storage as DataIcon,
+  Psychology as AIIcon,
+  AccountTree as GraphIcon,
 } from '@mui/icons-material';
 // import NewStreetLogo from '../../public/assets/NewStreetLogo'; // Replaced with MiFiX logo
 import MiFixLogoLight from '../../public/assets/MiFixLogoLight';
@@ -55,7 +59,29 @@ const ICON_MAP = {
   'ConfiguratorIcon': ConfiguratorIcon,
   'AccessControlIcon': AccessControlIcon,
   'SettingsIcon': SettingsIcon,
+  'BuildIcon': BuildIcon,
+  'DataIcon': DataIcon,
+  'AIIcon': AIIcon,
+  'GraphIcon': GraphIcon,
 };
+
+// Additional menu items for configurator modules
+const CONFIGURATOR_ITEMS = [
+  {
+    id: 'ui-configurator',
+    label: 'UI Configurator',
+    path: '/configurator/ui',
+    icon: ConfiguratorIcon,
+    color: '#1976d2'
+  },
+  {
+    id: 'data-configurator', 
+    label: 'Data Configurator',
+    path: '/configurator/retriever',
+    icon: BuildIcon,
+    color: '#48bb78'
+  }
+];
 
 const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', onSelectAnalysis, mobileOpen, onMobileClose }) => {
   const theme = useTheme();
@@ -350,6 +376,71 @@ const Sidebar = ({ selectedTab, onTabChange, onLoadConversation, mode = 'chat', 
               );
             })}
         </List>
+
+        {/* Configurator Section */}
+        <Box sx={{ px: 2, mb: 2 }}>
+          <Typography 
+            variant="subtitle2" 
+            sx={{ 
+              color: '#64748b',
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+              mb: 1,
+              px: 1
+            }}
+          >
+            Configurators
+          </Typography>
+          <List sx={{ py: 0 }}>
+            {CONFIGURATOR_ITEMS.map((item, index) => {
+              const Icon = item.icon;
+              const isActive = router.pathname === item.path;
+              
+              return (
+                <ListItem 
+                  key={item.id} 
+                  disablePadding 
+                  sx={{ mb: 0.5 }}
+                >
+                  <ListItemButton
+                    onClick={() => router.push(item.path)}
+                    sx={{
+                      borderRadius: 2,
+                      minHeight: 44,
+                      backgroundColor: isActive ? `${item.color}15` : 'transparent',
+                      border: isActive ? `1px solid ${item.color}25` : '1px solid transparent',
+                      '&:hover': {
+                        backgroundColor: `${item.color}10`,
+                        border: `1px solid ${item.color}20`,
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        color: item.color,
+                        minWidth: 36,
+                      }}
+                    >
+                      <Icon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.label}
+                      sx={{
+                        '& .MuiListItemText-primary': {
+                          fontSize: '0.875rem',
+                          fontWeight: isActive ? 600 : 500,
+                          color: isActive ? item.color : '#374151',
+                        },
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </List>
+        </Box>
       </Box>
 
       <Divider />
