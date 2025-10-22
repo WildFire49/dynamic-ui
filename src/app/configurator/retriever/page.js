@@ -150,8 +150,8 @@ const RetrieverConfiguratorPage = () => {
     },
     {
       id: 1,
-      title: "Build Knowledge Graph",
-      description: "Select tables and build KG",
+      title: "Setup Knowledge Base",
+      description: "Select tables and build knowledge base",
       icon: Hub,
       color: "#48bb78",
       completed: kgExists,

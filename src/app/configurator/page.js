@@ -58,6 +58,7 @@ import {
   ArrowBack as ArrowBackIcon,
   AccountTree as WorkflowIcon,
   DynamicForm as FormIcon,
+  SatelliteAlt as EventIcon,
 } from "@mui/icons-material";
 import { embeddingsApi } from "@/lib/api/embeddingsApi";
 import RouteGuard from "../../components/auth/RouteGuard";
@@ -67,7 +68,7 @@ const CONFIGURATOR_OPTIONS = [
     id: "ui_workflow",
     title: "UI Workflow Builder",
     description: "Visual drag-and-drop form workflow designer",
-    subtitle: "Build Custom Flows",
+    subtitle: "Workflow Builder Agent",
     icon: WorkflowIcon,
     color: "#2196F3",
     gradient: "linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)",
@@ -76,36 +77,36 @@ const CONFIGURATOR_OPTIONS = [
   },
   {
     id: "retriever_configurator",
-    title: "Retriever Configurator",
-    description: "Knowledge graph-based SQL query generation",
-    subtitle: "AI-Powered SQL",
+    title: "Data Retriever Configurator",
+    description: "Data retrieval and SQL query generation",
+    subtitle: "Retriever Configurator Agent",
     icon: BrainIcon,
     color: "#9C27B0",
     gradient: "linear-gradient(135deg, #9C27B0 0%, #E91E63 100%)",
     route: "/configurator/retriever",
     features: [
-      "Knowledge Graph",
+      "Data Retrieval",
       "Natural Language",
       "SQL Generation",
-      "Schema Explorer",
+      "Data Schema",
     ],
   },
-  {
-    id: "knowledge_upload",
-    title: "Knowledge Upload",
-    description: "Upload documents to AI agent knowledge base",
-    subtitle: "Embed Documents",
-    icon: UploadIcon,
-    color: "#4CAF50",
-    gradient: "linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)",
-    route: null, // Opens dialog
-    features: [
-      "PDF Upload",
-      "Auto Embedding",
-      "Smart Chunking",
-      "Vector Search",
-    ],
-  },
+  // {
+  //   id: "knowledge_upload",
+  //   title: "Knowledge Upload",
+  //   description: "Upload documents to AI agent knowledge base",
+  //   subtitle: "Embed Documents",
+  //   icon: UploadIcon,
+  //   color: "#4CAF50",
+  //   gradient: "linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)",
+  //   route: null, // Opens dialog
+  //   features: [
+  //     "PDF Upload",
+  //     "Auto Embedding",
+  //     "Smart Chunking",
+  //     "Vector Search",
+  //   ],
+  // },
 ];
 
 const AGENT_TYPES = [
@@ -120,8 +121,18 @@ const AGENT_TYPES = [
     stats: "99.9% Uptime",
   },
   {
-    id: "rule_agent",
-    title: "Rule Processor",
+    id: "retriever",
+    title: "Retriever",
+    description: "Data retrieval and SQL query generation",
+    subtitle: "Retriever Agent",
+    icon: BrainIcon,
+    color: "#4CAF50",
+    gradient: "linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)",
+    stats: "Accurate",
+  },
+  {
+    id: "action_agent",
+    title: "Action",
     description: "Intelligent\nbusiness logic automation",
     subtitle: "Smart Decision Making",
     icon: RuleIcon,
@@ -137,7 +148,19 @@ const AGENT_TYPES = [
     icon: RocketIcon,
     color: "#f06292",
     gradient: "linear-gradient(135deg, #ec407a 0%, #f06292 100%)",
-    stats: "Dynamics 365",
+    stats: "Dynamic",
+  },
+  {
+    id: "communication",
+    title: "Communication",
+    description:
+      "Communication and Notification through various platforms like WhatsApp, Mails, SMS, etc",
+    subtitle: "Smart Communication",
+    icon: EventIcon,
+    color: "#D9DE35",
+    gradient:
+      "linear-gradient(135deg,rgb(198, 213, 59) 0%,rgb(118, 186, 58) 100%)",
+    stats: "Real-time",
   },
   {
     id: "analysis_agent",
@@ -147,7 +170,7 @@ const AGENT_TYPES = [
     icon: AnalyticsIcon,
     color: "#ba68c8",
     gradient: "linear-gradient(135deg, #ab47bc 0%, #ba68c8 100%)",
-    stats: "Real-time",
+    stats: "Insights",
   },
   {
     id: "scheduler",
@@ -167,7 +190,7 @@ const AGENT_TYPES = [
     icon: VoiceIcon,
     color: "#4db6ac",
     gradient: "linear-gradient(135deg, #26a69a 0%, #4db6ac 100%)",
-    stats: "24/7 Active",
+    stats: "NLP",
   },
 ];
 
