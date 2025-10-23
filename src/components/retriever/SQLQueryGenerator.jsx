@@ -405,28 +405,18 @@ const SQLQueryGenerator = () => {
           sx={{
             fontWeight: 700,
             color: "#1a202c",
-            mb: 1,
             fontSize: { xs: "1.75rem", md: "2.25rem" },
           }}
         >
-          Natural Language Query
-        </Typography>
-        <Typography
-          variant="body1"
-          sx={{
-            color: "#64748b",
-            fontSize: "1.1rem",
-          }}
-        >
-          Ask questions in plain English and get intelligent data visualizations
+          Ask Questions
         </Typography>
       </Box>
 
       {/* Connection Selection & Query Input */}
       <Paper
         sx={{
-          p: 4,
-          mb: 4,
+          p: 2,
+          mb: 2,
           borderRadius: 3,
           boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
         }}
@@ -454,7 +444,7 @@ const SQLQueryGenerator = () => {
                 <MenuItem key={conn.id} value={conn.id}>
                   <Box>
                     <Typography variant="body2" fontWeight="medium">
-                      {conn.connection_name}
+                      {conn.name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {conn.host}:{conn.port} / {conn.database_name}
@@ -1350,7 +1340,7 @@ const SQLQueryGenerator = () => {
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
+        autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
       >

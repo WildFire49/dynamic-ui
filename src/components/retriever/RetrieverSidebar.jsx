@@ -10,6 +10,8 @@ import {
   Dashboard as DashboardIcon,
   AccountTree as WorkflowIcon,
   ArrowForward as ArrowIcon,
+  School as TrainingIcon,
+  History as HistoryIcon,
 } from "@mui/icons-material";
 
 const RetrieverSidebar = ({
@@ -50,7 +52,17 @@ const RetrieverSidebar = ({
   ];
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box
+      sx={{
+        width: "100%",
+        height: "100%",
+        overflow: "auto",
+        pb: 2,
+        "&::-webkit-scrollbar": {
+          width: 0,
+        },
+      }}
+    >
       <Box sx={{ mb: 2 }}>
         <Typography
           variant="subtitle1"
@@ -67,7 +79,7 @@ const RetrieverSidebar = ({
       </Box>
 
       {/* Vertical Tabs */}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.7 }}>
         {steps.map((step, index) => {
           const IconComponent = step.icon;
           const isActive = activeStep === step.id;
@@ -204,10 +216,10 @@ const RetrieverSidebar = ({
           </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           {/* Home Link */}
           <Paper
-            elevation={0}
+            elevation={2}
             onClick={() => router.push("/")}
             sx={{
               width: "100%",
@@ -223,7 +235,7 @@ const RetrieverSidebar = ({
               "&:hover": {
                 backgroundColor: "#f8fafc",
                 borderColor: "#0078d7",
-                transform: "translateX(4px)",
+                transform: "translateX(2px)",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
               },
             }}
@@ -274,7 +286,7 @@ const RetrieverSidebar = ({
               "&:hover": {
                 backgroundColor: "#f8fafc",
                 borderColor: "#48bb78",
-                transform: "translateX(4px)",
+                transform: "translateX(2px)",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
               },
             }}
@@ -325,7 +337,7 @@ const RetrieverSidebar = ({
               "&:hover": {
                 backgroundColor: "#f8fafc",
                 borderColor: "#9c27b0",
-                transform: "translateX(4px)",
+                transform: "translateX(2px)",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
               },
             }}
@@ -353,6 +365,129 @@ const RetrieverSidebar = ({
                 }}
               >
                 Workflow Configurator
+              </Typography>
+            </Box>
+            <ArrowIcon sx={{ fontSize: 16, color: "#64748b" }} />
+          </Paper>
+        </Box>
+      </Box>
+
+      {/* Training & History Section */}
+      <Box sx={{ mt: 4 }}>
+        <Divider sx={{ mb: 2 }} />
+        <Box sx={{ mb: 1.5 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: 600, color: "text.primary", fontSize: "0.9rem" }}
+          >
+            Query Management
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: "text.secondary", fontSize: "0.75rem" }}
+          >
+            Manage and review queries
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          {/* Training Directory Link */}
+          <Paper
+            elevation={0}
+            onClick={() => router.push("/configurator/retriever/training")}
+            sx={{
+              width: "100%",
+              p: 1.5,
+              border: "1px solid #e2e8f0",
+              borderRadius: 2,
+              cursor: "pointer",
+              backgroundColor: "#ffffff",
+              transition: "all 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              "&:hover": {
+                backgroundColor: "#f8fafc",
+                borderColor: "#ed8936",
+                transform: "translateX(2px)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              },
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 1.5,
+                  bgcolor: "#ed893615",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <TrainingIcon sx={{ color: "#ed8936", fontSize: 16 }} />
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 500,
+                  color: "text.primary",
+                  fontSize: "0.85rem",
+                }}
+              >
+                Training Directory
+              </Typography>
+            </Box>
+            <ArrowIcon sx={{ fontSize: 16, color: "#64748b" }} />
+          </Paper>
+
+          {/* Query History Link */}
+          <Paper
+            elevation={0}
+            onClick={() => router.push("/configurator/retriever/history")}
+            sx={{
+              width: "100%",
+              p: 1.5,
+              border: "1px solid #e2e8f0",
+              borderRadius: 2,
+              cursor: "pointer",
+              backgroundColor: "#ffffff",
+              transition: "all 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              "&:hover": {
+                backgroundColor: "#f8fafc",
+                borderColor: "#3b82f6",
+                transform: "translateX(2px)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              },
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 1.5,
+                  bgcolor: "#3b82f615",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <HistoryIcon sx={{ color: "#3b82f6", fontSize: 16 }} />
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 500,
+                  color: "text.primary",
+                  fontSize: "0.85rem",
+                }}
+              >
+                Query History
               </Typography>
             </Box>
             <ArrowIcon sx={{ fontSize: 16, color: "#64748b" }} />
