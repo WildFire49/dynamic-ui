@@ -262,10 +262,18 @@ const RetrieverConfiguratorPage = () => {
           )}
 
           {/* Main Content */}
-          <Box sx={{ flex: 1, p: 3, overflow: "auto" }}>
+          <Box
+            sx={{
+              flex: 1,
+              p: 3,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             <Card
               sx={{
-                height: "100%",
+                flex: 1,
                 borderRadius: 3,
                 overflow: "hidden",
                 boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
@@ -274,7 +282,13 @@ const RetrieverConfiguratorPage = () => {
               }}
             >
               <CardContent
-                sx={{ p: 0, flex: 1, display: "flex", flexDirection: "column" }}
+                sx={{
+                  p: 0,
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
               >
                 {/* Step 0: Connection */}
                 {activeStep === 0 && (
@@ -307,7 +321,7 @@ const RetrieverConfiguratorPage = () => {
                 {/* Step 1: Build KG */}
                 {activeStep === 1 && (
                   <Fade in timeout={300}>
-                    <Box sx={{ p: 4 }}>
+                    <Box sx={{ p: 4, height: "100%", overflow: "auto" }}>
                       {currentConnection && !kgExists ? (
                         <Box>
                           {loading ? (
@@ -478,7 +492,7 @@ const RetrieverConfiguratorPage = () => {
                 {/* Step 2: Query */}
                 {activeStep === 2 && (
                   <Fade in timeout={300}>
-                    <Box>
+                    <Box sx={{ height: "100%", overflow: "auto" }}>
                       {kgExists ? (
                         <SQLQueryGenerator />
                       ) : (

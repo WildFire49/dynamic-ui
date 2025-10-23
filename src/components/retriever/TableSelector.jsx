@@ -399,7 +399,12 @@ const TableSelector = ({ connectionData, onTablesSelected }) => {
       </Box>
 
       {/* Content Section */}
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ 
+        p: 3, 
+        maxHeight: 'calc(100vh - 350px)', 
+        overflow: 'auto',
+        overflowX: 'hidden'
+      }}>
 
         {availableTables.length > 50 && (
           <Alert 
@@ -501,14 +506,25 @@ const TableSelector = ({ connectionData, onTablesSelected }) => {
         )}
 
         {!loading && filteredTables.length > 0 && (
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 3, overflow: 'visible' }}>
             {renderTableGroup('Large Tables (>100K rows)', tableGroups.large, COLORS.error)}
             {renderTableGroup('Medium Tables (10K-100K rows)', tableGroups.medium, COLORS.warning)}
             {renderTableGroup('Small Tables (<10K rows)', tableGroups.small, COLORS.success)}
           </Box>
         )}
 
-        <Box sx={{ pt: 3, borderTop: `2px solid ${COLORS.borderLight}` }}>
+      </Box>
+
+      {/* Action Buttons Section - Sticky at bottom */}
+      <Box sx={{ 
+        p: 3, 
+        pt: 3, 
+        borderTop: `2px solid ${COLORS.borderLight}`,
+        backgroundColor: 'white',
+        position: 'sticky',
+        bottom: 0,
+        zIndex: 10
+      }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Button
@@ -571,7 +587,6 @@ const TableSelector = ({ connectionData, onTablesSelected }) => {
               </Typography>
             </Grid>
           </Grid>
-        </Box>
       </Box>
     </Paper>
   );

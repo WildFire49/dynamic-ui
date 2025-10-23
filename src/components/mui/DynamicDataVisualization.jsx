@@ -20,7 +20,7 @@ import {
   Snackbar,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   Bar,
   BarChart,
@@ -296,6 +296,44 @@ const DynamicDataVisualization = ({
       };
     }
 
+    // Check for time-series data (date + numeric fields)
+    const dateField = fields.find(
+      (field) =>
+        field.toLowerCase().includes("date") ||
+        field.toLowerCase().includes("time") ||
+        field.toLowerCase().includes("created") ||
+        field.toLowerCase().includes("updated")
+    );
+    
+    const hasDateData = dateField && data.some(item => {
+      const dateValue = item[dateField];
+      return dateValue && (dateValue instanceof Date || !isNaN(Date.parse(dateValue)));
+    });
+
+    if (hasDateData) {
+      console.log("🔍 [DEBUG] Detected as time-series data");
+      
+      // Find the main numeric field
+      const numericFields = fields.filter((key) => {
+        const value = firstItem[key];
+        return key !== dateField && (
+          typeof value === "number" ||
+          (value !== null && !isNaN(parseFloat(value)))
+        );
+      });
+      
+      const valueField = numericFields[0]; // Use first numeric field
+      
+      return {
+        type: "timeseries",
+        dateField: dateField,
+        valueField: valueField,
+        scoreField: valueField,
+        pipelineStages: [],
+        isTargetVsAchievement: false,
+      };
+    }
+
     // Check for Target vs Achievement data (RM performance)
     const hasTargetField = fields.some(
       (field) =>
@@ -434,6 +472,8 @@ const DynamicDataVisualization = ({
     targetField,
     achievementField,
     nameField,
+    dateField,
+    valueField,
   } = dataAnalysis;
 
   console.log("🔍 [DEBUG] ✅ Data Analysis Result:", dataAnalysis);
@@ -446,6 +486,8 @@ const DynamicDataVisualization = ({
     targetField,
     achievementField,
     nameField,
+    dateField,
+    valueField,
   });
 
   // Pipeline chart generation function
@@ -902,6 +944,37 @@ const DynamicDataVisualization = ({
       "📊 [DEBUG] ✅ Supporting data available, length:",
       supportingData.length
     );
+
+    // Handle time-series data
+    if (dataType === "timeseries" && dateField && valueField) {
+      console.log("📊 [DEBUG] Processing as time-series data");
+      
+      const timeSeriesData = supportingData
+        .map(item => ({
+          date: item[dateField],
+          value: parseFloat(item[valueField]) || 0,
+          name: new Date(item[dateField]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          fullDate: item[dateField],
+          fill: "#0078d7"
+        }))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      const fieldLabel = valueField
+        .replace(/_/g, " ")
+        .replace(/([A-Z])/g, " $1")
+        .trim();
+      
+      return {
+        pieChart: null,
+        barChart: {
+          title: `${fieldLabel} Over Time`,
+          data: timeSeriesData,
+          isTimeSeries: true,
+        },
+        branchChart: null,
+        waterfallChart: null,
+      };
+    }
 
     // Handle pipeline data differently
     if (dataType === "pipeline") {
@@ -2293,18 +2366,50 @@ const DynamicDataVisualization = ({
     );
   }
 
+  // Auto-scroll to visualization section only when new data arrives
+  const visualizationRef = useRef(null);
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const previousTimestamp = useRef(null);
+  
+  useEffect(() => {
+    // Only scroll if:
+    // 1. Not in dashboard mode
+    // 2. We have data
+    // 3. The timestamp has changed (new API response)
+    const currentTimestamp = analysisResult?.metadata?.timestamp || analysisResult?.analysis_result?.summary?.timestamp;
+    
+    if (
+      visualizationRef.current && 
+      !isFromDashboard && 
+      !loading &&
+      currentTimestamp &&
+      currentTimestamp !== previousTimestamp.current &&
+      (gridRows.length > 0 || chartData.barChart || chartData.pieChart)
+    ) {
+      previousTimestamp.current = currentTimestamp;
+      
+      // Delay scroll slightly to ensure content is rendered
+      setTimeout(() => {
+        visualizationRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 300);
+    }
+  }, [analysisResult, isFromDashboard, loading, gridRows.length, chartData]);
+
   return (
     <Box
+      ref={visualizationRef}
       sx={{
         width: "100%",
         maxWidth: "100%",
-        overflow: "hidden",
+        overflow: "visible",
         boxSizing: "border-box",
-        px: { xs: 0.5, sm: 1, md: 2 },
+        px: { xs: 1, sm: 2, md: 3 },
         py: { xs: 1, sm: 2 },
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
       }}
     >
       {/* Save All to Dashboard Button */}
@@ -2346,7 +2451,9 @@ const DynamicDataVisualization = ({
           sx={{
             border: "1px solid #e0e0e0",
             mb: { xs: 3, sm: 4 },
-            mx: { xs: 0.5, sm: 0 },
+            width: "100%",
+            maxWidth: "100%",
+            borderRadius: 2,
           }}
         >
           <CardContent sx={{ p: 0 }}>
@@ -2418,7 +2525,7 @@ const DynamicDataVisualization = ({
                 </Button>
               </Box>
             </Box>
-            <Box sx={{ mt: { xs: 2, sm: 4 } }}>
+            <Box sx={{ mt: { xs: 2, sm: 4 }, width: "100%", overflow: "auto" }}>
               <DataGridComponent
                 rows={gridRows}
                 columns={gridColumns}

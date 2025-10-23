@@ -24,6 +24,12 @@ import {
   CardContent,
   Skeleton,
   Fade,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Fab,
+  Snackbar,
 } from "@mui/material";
 import {
   Send as SendIcon,
@@ -38,13 +44,19 @@ import {
   PlayArrow as PlayIcon,
   BarChart as ChartIcon,
   TableChart as TableChartIcon,
+  ThumbUp as ThumbUpIcon,
+  ThumbDown as ThumbDownIcon,
+  Edit as EditIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import fastKgService from "../../services/fastKgService";
 import connectionService from "../../services/connectionService";
 import useRetrieverStore from "../../store/retrieverStore";
 import DynamicDataVisualization from "../mui/DynamicDataVisualization";
+import { useAuth } from "../../contexts/AuthContext";
 
 const SQLQueryGenerator = () => {
+  const { user } = useAuth();
   const { userId, savedConnections, setSavedConnections, currentConnection } =
     useRetrieverStore();
 
@@ -52,44 +64,125 @@ const SQLQueryGenerator = () => {
   const [selectedConnection, setSelectedConnection] = useState("");
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'chart'
+  const [viewMode, setViewMode] = useState("table"); // 'table' or 'chart'
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loadingConnections, setLoadingConnections] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [showCorrectionDialog, setShowCorrectionDialog] = useState(false);
+  const [correctedSql, setCorrectedSql] = useState("");
+  const [correctionNotes, setCorrectionNotes] = useState("");
+  const [testingCorrection, setTestingCorrection] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  const [markingFeedback, setMarkingFeedback] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   // SQL Keywords for syntax highlighting
   const SQL_KEYWORDS = [
-    'SELECT', 'FROM', 'WHERE', 'JOIN', 'INNER', 'LEFT', 'RIGHT', 'OUTER', 'FULL',
-    'ON', 'AND', 'OR', 'NOT', 'IN', 'EXISTS', 'BETWEEN', 'LIKE', 'IS', 'NULL',
-    'ORDER', 'BY', 'GROUP', 'HAVING', 'LIMIT', 'OFFSET', 'DISTINCT', 'COUNT',
-    'SUM', 'AVG', 'MIN', 'MAX', 'AS', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
-    'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'TABLE', 'INDEX',
-    'VIEW', 'UNION', 'ALL', 'WITH', 'RECURSIVE', 'CAST', 'EXTRACT', 'DATE',
-    'TIMESTAMP', 'INTERVAL', 'TRUE', 'FALSE'
+    "SELECT",
+    "FROM",
+    "WHERE",
+    "JOIN",
+    "INNER",
+    "LEFT",
+    "RIGHT",
+    "OUTER",
+    "FULL",
+    "ON",
+    "AND",
+    "OR",
+    "NOT",
+    "IN",
+    "EXISTS",
+    "BETWEEN",
+    "LIKE",
+    "IS",
+    "NULL",
+    "ORDER",
+    "BY",
+    "GROUP",
+    "HAVING",
+    "LIMIT",
+    "OFFSET",
+    "DISTINCT",
+    "COUNT",
+    "SUM",
+    "AVG",
+    "MIN",
+    "MAX",
+    "AS",
+    "CASE",
+    "WHEN",
+    "THEN",
+    "ELSE",
+    "END",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "CREATE",
+    "ALTER",
+    "DROP",
+    "TABLE",
+    "INDEX",
+    "VIEW",
+    "UNION",
+    "ALL",
+    "WITH",
+    "RECURSIVE",
+    "CAST",
+    "EXTRACT",
+    "DATE",
+    "TIMESTAMP",
+    "INTERVAL",
+    "TRUE",
+    "FALSE",
   ];
 
   // Function to highlight SQL syntax
   const highlightSQL = (sql) => {
-    if (!sql) return '';
-    
+    if (!sql) return "";
+
     let highlightedSQL = sql;
-    
-    // Highlight keywords
-    SQL_KEYWORDS.forEach(keyword => {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-      highlightedSQL = highlightedSQL.replace(regex, `<span class="sql-keyword">${keyword.toUpperCase()}</span>`);
+
+    // First, protect strings from keyword replacement
+    const stringPlaceholders = [];
+    highlightedSQL = highlightedSQL.replace(/'([^']*)'/g, (match) => {
+      stringPlaceholders.push(match);
+      return `__STRING_${stringPlaceholders.length - 1}__`;
     });
-    
-    // Highlight strings (single and double quotes)
-    highlightedSQL = highlightedSQL.replace(/'([^']*)'/g, '<span class="sql-string">\'$1\'</span>');
-    highlightedSQL = highlightedSQL.replace(/"([^"]*)"/g, '<span class="sql-string">"$1"</span>');
-    
+
+    // Highlight keywords (from longest to shortest to avoid partial matches)
+    const sortedKeywords = [...SQL_KEYWORDS].sort(
+      (a, b) => b.length - a.length
+    );
+    sortedKeywords.forEach((keyword) => {
+      const regex = new RegExp(`\\b${keyword}\\b`, "gi");
+      highlightedSQL = highlightedSQL.replace(
+        regex,
+        `<span class="sql-keyword">${keyword.toUpperCase()}</span>`
+      );
+    });
+
+    // Restore strings and highlight them
+    stringPlaceholders.forEach((str, index) => {
+      highlightedSQL = highlightedSQL.replace(
+        `__STRING_${index}__`,
+        `<span class="sql-string">${str}</span>`
+      );
+    });
+
     // Highlight numbers
-    highlightedSQL = highlightedSQL.replace(/\b\d+(\.\d+)?\b/g, '<span class="sql-number">$&</span>');
-    
+    highlightedSQL = highlightedSQL.replace(
+      /\b\d+(\.\d+)?\b/g,
+      '<span class="sql-number">$&</span>'
+    );
+
     return highlightedSQL;
   };
 
@@ -118,6 +211,107 @@ const SQLQueryGenerator = () => {
     }
   }, [currentConnection]);
 
+  const handleMarkCorrect = async () => {
+    if (!result?.query?.query_id || !currentConnection?.id) return;
+
+    setMarkingFeedback(true);
+    try {
+      await fastKgService.markQueryCorrect(
+        result.query.query_id,
+        currentConnection.id,
+        user?.username || user?.userId || "unknown",
+        "Marked as correct from UI"
+      );
+
+      setSnackbar({
+        open: true,
+        message: "✅ Query marked as correct and added to training directory!",
+        severity: "success",
+      });
+    } catch (err) {
+      console.error("Error marking query as correct:", err);
+      setSnackbar({
+        open: true,
+        message: "Failed to mark query as correct",
+        severity: "error",
+      });
+    } finally {
+      setMarkingFeedback(false);
+    }
+  };
+
+  const handleMarkWrong = () => {
+    if (!result?.query?.generated_sql && !result?.sql) return;
+
+    setCorrectedSql(result.query?.generated_sql || result.sql || "");
+    setShowCorrectionDialog(true);
+  };
+
+  const handleTestCorrection = async () => {
+    if (!correctedSql.trim() || !currentConnection?.id) return;
+
+    setTestingCorrection(true);
+    setTestResult(null);
+
+    try {
+      const response = await fastKgService.testCustomSql(
+        currentConnection.id,
+        correctedSql,
+        user?.username || user?.userId || "unknown",
+        false // Don't save to history yet
+      );
+
+      setTestResult(response.data);
+    } catch (err) {
+      console.error("Error testing SQL:", err);
+      setTestResult({
+        success: false,
+        error: err.message,
+      });
+    } finally {
+      setTestingCorrection(false);
+    }
+  };
+
+  const handleSaveCorrection = async () => {
+    if (
+      !correctedSql.trim() ||
+      !result?.query?.query_id ||
+      !currentConnection?.id
+    )
+      return;
+
+    setMarkingFeedback(true);
+    try {
+      await fastKgService.provideCorrectSql(
+        result.query.query_id,
+        currentConnection.id,
+        correctedSql,
+        user?.username || user?.userId || "unknown",
+        correctionNotes
+      );
+
+      setSnackbar({
+        open: true,
+        message: "✅ Corrected SQL saved successfully!",
+        severity: "success",
+      });
+      setShowCorrectionDialog(false);
+      setCorrectedSql("");
+      setCorrectionNotes("");
+      setTestResult(null);
+    } catch (err) {
+      console.error("Error saving correction:", err);
+      setSnackbar({
+        open: true,
+        message: "Failed to save correction",
+        severity: "error",
+      });
+    } finally {
+      setMarkingFeedback(false);
+    }
+  };
+
   const handleGenerateSQL = async () => {
     const connId = selectedConnection || currentConnection?.id;
     if (!connId || !query.trim()) {
@@ -142,7 +336,8 @@ const SQLQueryGenerator = () => {
         connection.id,
         query,
         connection.schema_name || connection.schema || "public",
-        true
+        true,
+        user?.username || user?.userId || null
       );
 
       setResult(response.data);
@@ -194,7 +389,15 @@ const SQLQueryGenerator = () => {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 } }}>
+    <Box
+      sx={{
+        p: { xs: 2, md: 4 },
+        height: "100%",
+        overflow: "auto",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       {/* Header Section */}
       <Box sx={{ mb: 4 }}>
         <Typography
@@ -263,10 +466,13 @@ const SQLQueryGenerator = () => {
           </FormControl>
 
           {selectedConnection && (
-            <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
               <Chip
                 icon={<DatabaseIcon />}
-                label={`${getSelectedConnectionDetails()?.connection_name || getSelectedConnectionDetails()?.name}`}
+                label={`${
+                  getSelectedConnectionDetails()?.connection_name ||
+                  getSelectedConnectionDetails()?.name
+                }`}
                 sx={{
                   bgcolor: "#0078d715",
                   color: "#0078d7",
@@ -309,7 +515,7 @@ const SQLQueryGenerator = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
                 handleGenerateSQL();
               }
@@ -592,28 +798,37 @@ const SQLQueryGenerator = () => {
                   border: "2px solid #e2e8f0",
                   borderRadius: 2,
                   p: 3,
-                  fontFamily: "monospace",
-                  fontSize: "1rem",
-                  lineHeight: 1.6,
-                  overflow: "auto",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  color: "#1a202c",
-                  "& .sql-keyword": {
-                    color: "#0078d7",
-                    fontWeight: 600,
-                  },
-                  "& .sql-string": {
-                    color: "#48bb78",
-                  },
-                  "& .sql-number": {
-                    color: "#ed8936",
-                  },
                 }}
-                dangerouslySetInnerHTML={{
-                  __html: highlightSQL(result.query?.generated_sql || result.sql)
-                }}
-              />
+              >
+                <div
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: "1rem",
+                    lineHeight: 1.6,
+                    overflow: "auto",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    color: "#1a202c",
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: highlightSQL(
+                      result.query?.generated_sql || result.sql
+                    ),
+                  }}
+                />
+                <style>{`
+                  .sql-keyword {
+                    color: #0078d7;
+                    font-weight: 600;
+                  }
+                  .sql-string {
+                    color: #48bb78;
+                  }
+                  .sql-number {
+                    color: #ed8936;
+                  }
+                `}</style>
+              </Box>
 
               {/* Query Performance Info */}
               <Box sx={{ mt: 3, display: "flex", gap: 3, flexWrap: "wrap" }}>
@@ -654,12 +869,20 @@ const SQLQueryGenerator = () => {
 
             {/* Data Visualization Results */}
             {result.execution && (
-              <Paper sx={{ borderRadius: 2, overflow: "hidden" }}>
+              <Paper
+                sx={{
+                  borderRadius: 2,
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 <Box
                   sx={{
                     p: 3,
                     borderBottom: "1px solid #e2e8f0",
                     bgcolor: "#f8fafc",
+                    flexShrink: 0,
                   }}
                 >
                   <Box
@@ -704,7 +927,13 @@ const SQLQueryGenerator = () => {
                   </Box>
                 </Box>
 
-                <Box sx={{ p: 0 }}>
+                <Box
+                  sx={{
+                    p: 0,
+                    overflow: "auto",
+                    flex: 1,
+                  }}
+                >
                   {result.execution.results &&
                   result.execution.results.length > 0 ? (
                     <DynamicDataVisualization
@@ -941,6 +1170,199 @@ const SQLQueryGenerator = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Floating Feedback Buttons */}
+      {result && !error && (
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: 32,
+            right: 32,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            zIndex: 1000,
+          }}
+        >
+          <Tooltip title="Mark as Correct" placement="left">
+            <Fab
+              color="success"
+              onClick={handleMarkCorrect}
+              disabled={markingFeedback}
+              sx={{
+                boxShadow: "0 8px 16px rgba(72, 187, 120, 0.3)",
+                "&:hover": {
+                  transform: "scale(1.1)",
+                  boxShadow: "0 12px 24px rgba(72, 187, 120, 0.4)",
+                },
+                transition: "all 0.2s ease-in-out",
+              }}
+            >
+              <ThumbUpIcon />
+            </Fab>
+          </Tooltip>
+          <Tooltip title="Provide Correction" placement="left">
+            <Fab
+              color="error"
+              onClick={handleMarkWrong}
+              disabled={markingFeedback}
+              sx={{
+                boxShadow: "0 8px 16px rgba(244, 67, 54, 0.3)",
+                "&:hover": {
+                  transform: "scale(1.1)",
+                  boxShadow: "0 12px 24px rgba(244, 67, 54, 0.4)",
+                },
+                transition: "all 0.2s ease-in-out",
+              }}
+            >
+              <ThumbDownIcon />
+            </Fab>
+          </Tooltip>
+        </Box>
+      )}
+
+      {/* SQL Correction Dialog */}
+      <Dialog
+        open={showCorrectionDialog}
+        onClose={() => setShowCorrectionDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <EditIcon color="error" />
+              <Typography variant="h6">Provide Corrected SQL</Typography>
+            </Box>
+            <IconButton
+              onClick={() => setShowCorrectionDialog(false)}
+              size="small"
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Edit the SQL query below to provide the correct version. You can
+              test it before saving.
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={8}
+              value={correctedSql}
+              onChange={(e) => setCorrectedSql(e.target.value)}
+              placeholder="Enter corrected SQL query..."
+              sx={{
+                fontFamily: "monospace",
+                "& .MuiInputBase-input": {
+                  fontFamily: "monospace",
+                  fontSize: "0.9rem",
+                },
+              }}
+            />
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              multiline
+              rows={2}
+              value={correctionNotes}
+              onChange={(e) => setCorrectionNotes(e.target.value)}
+              label="Correction Notes (Optional)"
+              placeholder="Explain what was wrong and how you fixed it..."
+            />
+          </Box>
+
+          <Box sx={{ mb: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={
+                testingCorrection ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  <PlayIcon />
+                )
+              }
+              onClick={handleTestCorrection}
+              disabled={!correctedSql.trim() || testingCorrection}
+              fullWidth
+            >
+              {testingCorrection ? "Testing SQL..." : "Test SQL"}
+            </Button>
+          </Box>
+
+          {testResult && (
+            <Alert
+              severity={testResult.success ? "success" : "error"}
+              sx={{ mt: 2 }}
+            >
+              {testResult.success ? (
+                <Box>
+                  <Typography variant="body2" fontWeight="600">
+                    ✅ Query executed successfully!
+                  </Typography>
+                  <Typography variant="caption">
+                    {testResult.row_count} rows returned in{" "}
+                    {testResult.execution_time_ms}ms
+                  </Typography>
+                </Box>
+              ) : (
+                <Box>
+                  <Typography variant="body2" fontWeight="600">
+                    ❌ Query failed
+                  </Typography>
+                  <Typography variant="caption">{testResult.error}</Typography>
+                </Box>
+              )}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setShowCorrectionDialog(false)}
+            disabled={markingFeedback}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveCorrection}
+            disabled={!correctedSql.trim() || markingFeedback}
+            startIcon={
+              markingFeedback ? <CircularProgress size={16} /> : <CheckIcon />
+            }
+          >
+            {markingFeedback ? "Saving..." : "Save Correction"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

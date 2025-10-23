@@ -218,15 +218,23 @@ const fastKgService = {
     connectionId,
     query,
     schemaName,
-    includeReasoning = true
+    includeReasoning = true,
+    userId = null
   ) => {
+    const requestBody = {
+      connection_id: connectionId,
+      query: query,
+    };
+
+    // Add user_id if provided
+    if (userId) {
+      requestBody.user_id = userId;
+    }
+
     const response = await fetch(`${BASE_URL}/generate-and-execute`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        connection_id: connectionId,
-        query: query,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -277,18 +285,151 @@ const fastKgService = {
   /**
    * Get query history
    */
-  getQueryHistory: async (connectionId, limit = 20) => {
-    const response = await fetch(
-      `${BASE_URL}/query-history/${connectionId}?limit=${limit}`,
-      {
-        method: "GET",
-        headers: { accept: "application/json" },
-      }
-    );
+  getQueryHistory: async (connectionId, limit = 50, userId = null) => {
+    let url = `${BASE_URL}/query-history/${connectionId}?limit=${limit}`;
+    if (userId) {
+      url += `&user_id=${userId}`;
+    }
+    
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { accept: "application/json" },
+    });
 
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || "Failed to get query history");
+    }
+
+    return { data: await response.json() };
+  },
+
+  /**
+   * Mark query as correct for training directory
+   */
+  markQueryCorrect: async (queryId, connectionId, markedBy, notes = "") => {
+    const response = await fetch(`${BASE_URL}/mark-query-correct`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query_id: queryId,
+        connection_id: connectionId,
+        marked_by: markedBy,
+        notes: notes,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to mark query as correct");
+    }
+
+    return { data: await response.json() };
+  },
+
+  /**
+   * Unmark query as correct
+   */
+  unmarkQueryCorrect: async (queryId) => {
+    const response = await fetch(`${BASE_URL}/mark-query-correct/${queryId}`, {
+      method: "DELETE",
+      headers: { accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to unmark query");
+    }
+
+    return { data: await response.json() };
+  },
+
+  /**
+   * Provide corrected SQL for a wrong query
+   */
+  provideCorrectSql: async (queryId, connectionId, correctedSql, correctedBy, notes = "") => {
+    const response = await fetch(`${BASE_URL}/provide-correct-sql`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query_id: queryId,
+        connection_id: connectionId,
+        corrected_sql: correctedSql,
+        corrected_by: correctedBy,
+        correction_notes: notes,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to save corrected SQL");
+    }
+
+    return { data: await response.json() };
+  },
+
+  /**
+   * Test custom SQL before saving as correction
+   */
+  testCustomSql: async (connectionId, sql, userId, saveToHistory = false) => {
+    const response = await fetch(`${BASE_URL}/test-custom-sql`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        connection_id: connectionId,
+        sql: sql,
+        user_id: userId,
+        save_to_history: saveToHistory,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to execute test SQL");
+    }
+
+    return { data: await response.json() };
+  },
+
+  /**
+   * Get training directory (queries marked as correct)
+   */
+  getTrainingDirectory: async (connectionId, limit = 100, markedBy = null) => {
+    let url = `${BASE_URL}/training-directory/${connectionId}?limit=${limit}`;
+    if (markedBy) {
+      url += `&marked_by=${markedBy}`;
+    }
+    
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to get training directory");
+    }
+
+    return { data: await response.json() };
+  },
+
+  /**
+   * Get corrected queries (learn from mistakes)
+   */
+  getCorrectedQueries: async (connectionId, limit = 100, correctedBy = null) => {
+    let url = `${BASE_URL}/corrected-queries/${connectionId}?limit=${limit}`;
+    if (correctedBy) {
+      url += `&corrected_by=${correctedBy}`;
+    }
+    
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to get corrected queries");
     }
 
     return { data: await response.json() };

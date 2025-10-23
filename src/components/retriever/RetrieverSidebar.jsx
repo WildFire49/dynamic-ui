@@ -32,7 +32,7 @@ const RetrieverSidebar = ({
     {
       id: 1,
       title: "Knowledge Base",
-      description: "Select tables and build knowledge base",
+      description: "Build knowledge base",
       icon: GraphIcon,
       color: "#48bb78",
       completed: kgExists,
