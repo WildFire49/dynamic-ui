@@ -49,6 +49,15 @@ const RetrieverSidebar = ({
       completed: false,
       disabled: !kgExists,
     },
+    {
+      id: 3,
+      title: "Self Learning",
+      description: "Upload and manage documents",
+      icon: TrainingIcon,
+      color: "#f59e0b",
+      completed: false,
+      disabled: !kgExists,
+    },
   ];
 
   return (

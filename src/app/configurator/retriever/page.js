@@ -33,6 +33,12 @@ import TableSelector from "@/components/retriever/TableSelector";
 import KnowledgeGraphBuilder from "@/components/retriever/KnowledgeGraphBuilder";
 import SQLQueryGenerator from "@/components/retriever/SQLQueryGenerator";
 import RetrieverSidebar from "@/components/retriever/RetrieverSidebar";
+import dynamic from "next/dynamic";
+
+const SelfLearningPage = dynamic(
+  () => import("./self-learning/page"),
+  { ssr: false }
+);
 import fastKgService from "@/services/fastKgService";
 import useRetrieverStore from "@/store/retrieverStore";
 
@@ -133,6 +139,13 @@ const RetrieverConfiguratorPage = () => {
     if (step === 2) {
       if (!kgExists) return;
       setActiveStep(2);
+      return;
+    }
+
+    // Step 3: Self Learning - Only if KG exists
+    if (step === 3) {
+      if (!kgExists) return;
+      setActiveStep(3);
       return;
     }
   };
@@ -524,6 +537,48 @@ const RetrieverConfiguratorPage = () => {
                           >
                             Please build the knowledge graph first before you
                             can start querying your data.
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Fade>
+                )}
+
+                {/* Step 3: Self Learning */}
+                {activeStep === 3 && (
+                  <Fade in timeout={300}>
+                    <Box sx={{ height: "100%", overflow: "hidden" }}>
+                      {kgExists ? (
+                        <SelfLearningPage />
+                      ) : (
+                        <Box sx={{ textAlign: "center", py: 8, px: 4 }}>
+                          <Box
+                            sx={{
+                              width: 80,
+                              height: 80,
+                              borderRadius: "50%",
+                              bgcolor: "#f59e0b15",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              mx: "auto",
+                              mb: 3,
+                            }}
+                          >
+                            <UncheckedIcon sx={{ fontSize: 40, color: "#f59e0b" }} />
+                          </Box>
+                          <Typography
+                            variant="h5"
+                            sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
+                          >
+                            Knowledge Graph Required
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: "#64748b", maxWidth: 400, mx: "auto" }}
+                          >
+                            Please build the knowledge graph first before you
+                            can access the self-learning portal.
                           </Typography>
                         </Box>
                       )}
