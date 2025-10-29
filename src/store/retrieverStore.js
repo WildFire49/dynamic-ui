@@ -1,26 +1,26 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 const useRetrieverStore = create(
   persist(
     (set, get) => ({
       // Cached table lists by connection ID
       tableListCache: {},
-      
+
       // Saved connections list
       savedConnections: [],
-      
+
       // Current connection (full object with ID)
       currentConnection: null,
-      
+
       // Selected tables
       selectedTables: [],
-      
+
       // KG Status
       kgStatus: null,
-      
+
       // User ID
-      userId: 'vaishakhsk',
+      userId: "vaishakhsk",
 
       /**
        * Get connection key for caching
@@ -36,10 +36,10 @@ const useRetrieverStore = create(
       getCachedTableList: (connectionData) => {
         const key = get().getConnectionKey(connectionData);
         if (!key) return null;
-        
+
         const cached = get().tableListCache[key];
         if (!cached) return null;
-        
+
         // Check if cache is still valid (optional: add expiry)
         return cached;
       },
@@ -50,7 +50,7 @@ const useRetrieverStore = create(
       setCachedTableList: (connectionData, tableList) => {
         const key = get().getConnectionKey(connectionData);
         if (!key) return;
-        
+
         set((state) => ({
           tableListCache: {
             ...state.tableListCache,
@@ -68,7 +68,7 @@ const useRetrieverStore = create(
       clearTableListCache: (connectionData) => {
         const key = get().getConnectionKey(connectionData);
         if (!key) return;
-        
+
         set((state) => {
           const newCache = { ...state.tableListCache };
           delete newCache[key];
@@ -125,7 +125,9 @@ const useRetrieverStore = create(
        */
       removeSavedConnection: (connectionId) => {
         set((state) => ({
-          savedConnections: state.savedConnections.filter(c => c.id !== connectionId),
+          savedConnections: state.savedConnections.filter(
+            (c) => c.id !== connectionId
+          ),
         }));
       },
 
@@ -148,7 +150,7 @@ const useRetrieverStore = create(
       },
     }),
     {
-      name: 'retriever-storage',
+      name: "retriever-storage",
       partialize: (state) => ({
         // Only persist table cache, not other state
         tableListCache: state.tableListCache,
@@ -157,4 +159,5 @@ const useRetrieverStore = create(
   )
 );
 
+export { useRetrieverStore };
 export default useRetrieverStore;
