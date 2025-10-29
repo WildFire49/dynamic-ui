@@ -16,10 +16,11 @@ import {
   Tab,
   Tabs,
   Badge,
-  Chip
-} from '@mui/material';
-import StatisticsCard from './StatisticsCard';
-import AnalysisWidgetSkeleton from './AnalysisWidgetSkeleton';
+  Chip,
+} from "@mui/material";
+import StatisticsCard from "./StatisticsCard";
+import AnalysisWidgetSkeleton from "./AnalysisWidgetSkeleton";
+import AnalysisSummaryWidget from "./AnalysisSummaryWidget";
 import {
   Assessment as AssessmentIcon,
   TrendingUp as TrendingUpIcon,
@@ -88,16 +89,21 @@ const float = keyframes`
   50% { transform: translateY(-8px); }
 `;
 
-const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpandedStates }) => {
+const AnalysisWidget = ({
+  data,
+  title = "Analysis Results",
+  onSave,
+  initialExpandedStates,
+}) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
-  
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+
   // Loading state for complex data processing
   const [isProcessing, setIsProcessing] = useState(true);
-  
+
   // Log for debugging
-  console.log('AnalysisWidget received data:', data);
+  console.log("AnalysisWidget received data:", data);
 
   const [hasAnimated, setHasAnimated] = useState(false);
   const [reviewPopover, setReviewPopover] = useState({
@@ -207,44 +213,52 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
       const chartElement = chartRefs.current[chartIndex];
       if (chartElement) {
         // Find the SVG or canvas element within the chart
-        const svgElement = chartElement.querySelector('svg');
-        const canvasElement = chartElement.querySelector('canvas');
-        
+        const svgElement = chartElement.querySelector("svg");
+        const canvasElement = chartElement.querySelector("canvas");
+
         if (svgElement) {
           // Convert SVG to image and download
           const svgData = new XMLSerializer().serializeToString(svgElement);
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
           const img = new Image();
-          
+
           canvas.width = svgElement.clientWidth || 800;
           canvas.height = svgElement.clientHeight || 600;
-          
-          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+
+          const svgBlob = new Blob([svgData], {
+            type: "image/svg+xml;charset=utf-8",
+          });
           const url = URL.createObjectURL(svgBlob);
-          
+
           img.onload = () => {
-            ctx.fillStyle = 'white';
+            ctx.fillStyle = "white";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0);
-            
+
             canvas.toBlob((blob) => {
-              const link = document.createElement('a');
-              link.download = `${chartTitle.replace(/[^a-zA-Z0-9]/g, '_')}_chart.png`;
+              const link = document.createElement("a");
+              link.download = `${chartTitle.replace(
+                /[^a-zA-Z0-9]/g,
+                "_"
+              )}_chart.png`;
               link.href = URL.createObjectURL(blob);
               link.click();
               URL.revokeObjectURL(link.href);
             });
-            
+
             URL.revokeObjectURL(url);
           };
-          
+
           img.src = url;
         } else if (canvasElement) {
           // Download canvas directly
           canvasElement.toBlob((blob) => {
-            const link = document.createElement('a');
-            link.download = `${chartTitle.replace(/[^a-zA-Z0-9]/g, '_')}_chart.png`;
+            const link = document.createElement("a");
+            link.download = `${chartTitle.replace(
+              /[^a-zA-Z0-9]/g,
+              "_"
+            )}_chart.png`;
             link.href = URL.createObjectURL(blob);
             link.click();
             URL.revokeObjectURL(link.href);
@@ -252,39 +266,45 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
         }
       }
     } catch (error) {
-      console.error('Error downloading chart:', error);
+      console.error("Error downloading chart:", error);
     }
   };
 
   // Handle chart type change
   const handleChartTypeChange = (chartIndex, newType) => {
-    setChartTypes(prev => ({
+    setChartTypes((prev) => ({
       ...prev,
-      [chartIndex]: newType
+      [chartIndex]: newType,
     }));
   };
 
   // Get current chart type for a chart
   const getCurrentChartType = (chartIndex, defaultType) => {
-    return chartTypes[chartIndex] || defaultType || 'donut';
+    return chartTypes[chartIndex] || defaultType || "donut";
   };
 
   // Handle chart expansion
   const handleChartExpansion = (chartKey) => {
-    console.log('Chart expansion clicked:', chartKey, 'Current state:', expandedCharts[chartKey]);
-    setExpandedCharts(prev => {
+    console.log(
+      "Chart expansion clicked:",
+      chartKey,
+      "Current state:",
+      expandedCharts[chartKey]
+    );
+    setExpandedCharts((prev) => {
       const newState = {
         ...prev,
-        [chartKey]: !prev[chartKey]
+        [chartKey]: !prev[chartKey],
       };
-      console.log('New chart state:', newState[chartKey]);
+      console.log("New chart state:", newState[chartKey]);
       // Persist the last opened chart for the current tab category when expanded
       if (newState[chartKey]) {
-        const tabCategories = ['reconciliation', 'mismatch', 'messageTypes'];
-        const currentCategory = tabCategories[selectedChartTab] || 'reconciliation';
-        setLastExpandedChartKeyByTab(prevMap => ({
+        const tabCategories = ["reconciliation", "mismatch", "messageTypes"];
+        const currentCategory =
+          tabCategories[selectedChartTab] || "reconciliation";
+        setLastExpandedChartKeyByTab((prevMap) => ({
           ...prevMap,
-          [currentCategory]: chartKey
+          [currentCategory]: chartKey,
         }));
       }
       return newState;
@@ -293,9 +313,9 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
   // Handle table expansion
   const handleTableExpansion = (tableKey) => {
-    setExpandedTables(prev => ({
+    setExpandedTables((prev) => ({
       ...prev,
-      [tableKey]: !prev[tableKey]
+      [tableKey]: !prev[tableKey],
     }));
   };
 
@@ -313,40 +333,45 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
   // Categorize tables into tabs
   const categorizeTables = (tables) => {
-    console.log('Categorizing tables:', tables.map(t => t.title));
-    
+    console.log(
+      "Categorizing tables:",
+      tables.map((t) => t.title)
+    );
+
     const categories = {
       referenceMatches: [],
       fullyMatched: [],
       mismatches: {
         messageType: [],
         amount: [],
-        bic: []
+        bic: [],
       },
-      extraRecords: []
+      extraRecords: [],
     };
 
     tables.forEach((table, index) => {
       const title = table.title.toLowerCase();
       const tableWithIndex = { ...table, originalIndex: index };
-  
-      
-      if (title.includes('reference') && (title.includes('match') || title.includes('id'))) {
+
+      if (
+        title.includes("reference") &&
+        (title.includes("match") || title.includes("id"))
+      ) {
         categories.referenceMatches.push(tableWithIndex);
-      } else if (title.includes('fully') && title.includes('match')) {
+      } else if (title.includes("fully") && title.includes("match")) {
         categories.fullyMatched.push(tableWithIndex);
-      } else if (title.includes('mismatch')) {
-        if (title.includes('message') || title.includes('type')) {
+      } else if (title.includes("mismatch")) {
+        if (title.includes("message") || title.includes("type")) {
           categories.mismatches.messageType.push(tableWithIndex);
-        } else if (title.includes('amount')) {
+        } else if (title.includes("amount")) {
           categories.mismatches.amount.push(tableWithIndex);
-        } else if (title.includes('bic')) {
+        } else if (title.includes("bic")) {
           categories.mismatches.bic.push(tableWithIndex);
         } else {
           // Default mismatch category
           categories.mismatches.messageType.push(tableWithIndex);
         }
-      } else if (title.includes('extra') || title.includes('additional')) {
+      } else if (title.includes("extra") || title.includes("additional")) {
         categories.extraRecords.push(tableWithIndex);
       } else {
         // Default to reference matches if unclear
@@ -354,15 +379,15 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
       }
     });
 
-    console.log('Final categories:', {
+    console.log("Final categories:", {
       referenceMatches: categories.referenceMatches.length,
       fullyMatched: categories.fullyMatched.length,
       mismatches: {
         messageType: categories.mismatches.messageType.length,
         amount: categories.mismatches.amount.length,
-        bic: categories.mismatches.bic.length
+        bic: categories.mismatches.bic.length,
       },
-      extraRecords: categories.extraRecords.length
+      extraRecords: categories.extraRecords.length,
     });
 
     return categories;
@@ -370,10 +395,14 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
   // Handle category-wise download
   const handleCategoryDownload = (categoryName, tables) => {
-    console.log('handleCategoryDownload called with:', { categoryName, tablesCount: tables?.length, tables });
-    
+    console.log("handleCategoryDownload called with:", {
+      categoryName,
+      tablesCount: tables?.length,
+      tables,
+    });
+
     if (!tables || tables.length === 0) {
-      console.log('No tables to download');
+      console.log("No tables to download");
       return;
     }
 
@@ -384,28 +413,33 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
       // First pass: collect all unique headers
       tables.forEach((table, index) => {
-        console.log(`Processing table ${index + 1}:`, table.title, 'Data rows:', table.data?.length);
+        console.log(
+          `Processing table ${index + 1}:`,
+          table.title,
+          "Data rows:",
+          table.data?.length
+        );
         if (table.data && table.data.length > 0) {
-          Object.keys(table.data[0]).forEach(header => {
+          Object.keys(table.data[0]).forEach((header) => {
             combinedHeaders.add(header);
           });
         }
       });
 
       const headersArray = Array.from(combinedHeaders);
-      console.log('Combined headers:', headersArray);
+      console.log("Combined headers:", headersArray);
 
       // Second pass: combine data with consistent headers
       tables.forEach((table, tableIndex) => {
         if (table.data && table.data.length > 0) {
           // Add table data directly without separator rows
-          table.data.forEach(row => {
+          table.data.forEach((row) => {
             const normalizedRow = {};
-            headersArray.forEach(header => {
-              normalizedRow[header] = row[header] || '';
+            headersArray.forEach((header) => {
+              normalizedRow[header] = row[header] || "";
             });
             // Add a source table identifier as a new column
-            normalizedRow['Source_Table'] = table.title;
+            normalizedRow["Source_Table"] = table.title;
             combinedData.push(normalizedRow);
           });
         }
@@ -413,24 +447,31 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
       // Add Source_Table to headers if we have multiple tables
       if (tables.length > 1) {
-        headersArray.push('Source_Table');
+        headersArray.push("Source_Table");
       }
 
-      console.log('Combined data rows:', combinedData.length);
+      console.log("Combined data rows:", combinedData.length);
 
       // Create CSV content
       const csvContent = [
         headersArray.join(","),
-        ...combinedData.map(row => 
-          headersArray.map(header => {
-            const value = row[header];
-            // Escape quotes and wrap in quotes if contains comma or quote
-            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-              return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-          }).join(",")
-        )
+        ...combinedData.map((row) =>
+          headersArray
+            .map((header) => {
+              const value = row[header];
+              // Escape quotes and wrap in quotes if contains comma or quote
+              if (
+                typeof value === "string" &&
+                (value.includes(",") ||
+                  value.includes('"') ||
+                  value.includes("\n"))
+              ) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            })
+            .join(",")
+        ),
       ].join("\n");
 
       // Download the file
@@ -438,14 +479,17 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
-      link.setAttribute("download", `${categoryName}_combined_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `${categoryName}_combined_${new Date().toISOString().split("T")[0]}.csv`
+      );
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error downloading category:', error);
+      console.error("Error downloading category:", error);
     }
   };
 
@@ -455,66 +499,73 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
     const categories = {
       matches: {
-        title: 'Successful Matches',
+        title: "Successful Matches",
         icon: <CheckCircleIcon />,
         color: theme.palette.success.main,
-        priority: 'medium',
+        priority: "medium",
         stats: [],
-        totalValue: 0
+        totalValue: 0,
       },
       critical: {
-        title: 'Attention Points',
+        title: "Attention Points",
         icon: <ErrorIcon />,
         color: theme.palette.error.main,
-        priority: 'high',
+        priority: "high",
         stats: [],
-        totalValue: 0
+        totalValue: 0,
       },
-      
+
       records: {
-        title: 'Total Records',
+        title: "Total Records",
         icon: <DataObjectIcon />,
         color: theme.palette.info.main,
-        priority: 'medium',
+        priority: "medium",
         stats: [],
-        totalValue: 0
+        totalValue: 0,
       },
       extras: {
-        title: 'Extra Records',
+        title: "Extra Records",
         icon: <WarningIcon />,
         color: theme.palette.warning.main,
-        priority: 'low',
+        priority: "low",
         stats: [],
-        totalValue: 0
-      }
+        totalValue: 0,
+      },
     };
 
-    stats.forEach(stat => {
+    stats.forEach((stat) => {
       const title = stat.title.toLowerCase();
       // Remove commas and parse the numeric value properly
-      const value = parseInt(stat.value.toString().replace(/,/g, '')) || 0;
-      
-      console.log(`📝 [CATEGORIZE] Processing: "${stat.title}" (value: ${value})`);
-      
-      if (title.includes('mismatch')) {
+      const value = parseInt(stat.value.toString().replace(/,/g, "")) || 0;
+
+      console.log(
+        `📝 [CATEGORIZE] Processing: "${stat.title}" (value: ${value})`
+      );
+
+      if (title.includes("mismatch")) {
         console.log(`  → 🔴 Assigning to CRITICAL (mismatch)`);
         categories.critical.stats.push(stat);
         categories.critical.totalValue += value;
-      } else if (title.includes('match') || title.includes('reference')) {
+      } else if (title.includes("match") || title.includes("reference")) {
         console.log(`  → 🟢 Assigning to MATCHES (match/reference)`);
         categories.matches.stats.push(stat);
         categories.matches.totalValue += value;
-      } else if (title.includes('total') && (title.includes('ktp') || title.includes('xmm') || title.includes('sam'))) {
+      } else if (
+        title.includes("total") &&
+        (title.includes("ktp") ||
+          title.includes("xmm") ||
+          title.includes("sam"))
+      ) {
         console.log(`  → 🔵 Assigning to RECORDS (total ktp/xmm/sam)`);
         categories.records.stats.push(stat);
         categories.records.totalValue += value;
-      } else if (title.includes('extra') || title.includes('additional')) {
+      } else if (title.includes("extra") || title.includes("additional")) {
         console.log(`  → 🟠 Assigning to EXTRAS (extra/additional)`);
         categories.extras.stats.push(stat);
         categories.extras.totalValue += value;
       } else {
         // Default categorization based on keywords
-        if (title.includes('error') || title.includes('fail')) {
+        if (title.includes("error") || title.includes("fail")) {
           console.log(`  → 🔴 Assigning to CRITICAL (error/fail default)`);
           categories.critical.stats.push(stat);
           categories.critical.totalValue += value;
@@ -529,23 +580,43 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
     return categories;
   };
 
-
   // Categorize charts into tabs
   const categorizeCharts = (charts) => {
+    // Check if charts have category metadata (new productivity data)
+    const hasCategories = charts.some((chart) => chart.category);
+
+    if (hasCategories) {
+      // Group by metric category (Actions, Counts, Collections, etc.)
+      const categoryGroups = {};
+      charts.forEach((chart, index) => {
+        const category = chart.category || "Other";
+        if (!categoryGroups[category]) {
+          categoryGroups[category] = [];
+        }
+        categoryGroups[category].push({ ...chart, originalIndex: index });
+      });
+      return categoryGroups;
+    }
+
+    // Fallback to old categorization for reconciliation data
     const categories = {
       reconciliation: [],
       mismatch: [],
-      messageTypes: []
+      messageTypes: [],
     };
 
     charts.forEach((chart, index) => {
       const title = chart.title.toLowerCase();
-      
-      if (title.includes('reconciliation') || title.includes('overview')) {
+
+      if (title.includes("reconciliation") || title.includes("overview")) {
         categories.reconciliation.push({ ...chart, originalIndex: index });
-      } else if (title.includes('mismatch') || title.includes('breakdown')) {
+      } else if (title.includes("mismatch") || title.includes("breakdown")) {
         categories.mismatch.push({ ...chart, originalIndex: index });
-      } else if (title.includes('message') || title.includes('types') || title.includes('distribution')) {
+      } else if (
+        title.includes("message") ||
+        title.includes("types") ||
+        title.includes("distribution")
+      ) {
         categories.messageTypes.push({ ...chart, originalIndex: index });
       } else {
         // Default to reconciliation if unclear
@@ -596,13 +667,13 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
   const handleAuditReport = (tableName, tableData) => {
     if (!tableData || tableData.length === 0) return;
-    
+
     // Get reviews for this specific table using the store's getState method
     const tableReviews = useReviewStore.getState().getTableReviews(tableName);
-    
+
     // Generate and download the audit report
     const filename = generateAuditReport(tableName, tableData, tableReviews);
-    
+
     // Show success message or notification if needed
     console.log(`Audit report generated: ${filename}`);
   };
@@ -884,57 +955,88 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
     }
 
     // Check if this is RM performance data
-    const hasRMName = allKeys.some(key => 
-      key.includes('RM_Name') || key.includes('RM Name') || key.toLowerCase().includes('rm_name')
+    const hasRMName = allKeys.some(
+      (key) =>
+        key.includes("RM_Name") ||
+        key.includes("RM Name") ||
+        key.toLowerCase().includes("rm_name")
     );
-    const hasBranch = allKeys.some(key => 
-      key.includes('Branch') || key.includes('branch') || key.includes('Branches_afer_merger')
+    const hasBranch = allKeys.some(
+      (key) =>
+        key.includes("Branch") ||
+        key.includes("branch") ||
+        key.includes("Branches_afer_merger")
     );
-    const hasDemand = allKeys.some(key => 
-      key.includes('Dem') || key.includes('demand') || key.includes('MTD_Dem')
+    const hasDemand = allKeys.some(
+      (key) =>
+        key.includes("Dem") || key.includes("demand") || key.includes("MTD_Dem")
     );
-    const hasCollection = allKeys.some(key => 
-      key.includes('Coll') || key.includes('collection') || key.includes('MTD_Coll')
+    const hasCollection = allKeys.some(
+      (key) =>
+        key.includes("Coll") ||
+        key.includes("collection") ||
+        key.includes("MTD_Coll")
     );
-    const hasOTR = allKeys.some(key => 
-      key.includes('OTR') || key.includes('otr')
+    const hasOTR = allKeys.some(
+      (key) => key.includes("OTR") || key.includes("otr")
     );
 
     if (hasRMName && hasBranch && (hasDemand || hasCollection || hasOTR)) {
-      console.log('🔍 [ANALYSIS] Detected RM performance data, generating RM performance charts');
-      console.log('🔍 [ANALYSIS] Sample RM data:', supportingData[0]);
-      console.log('🔍 [ANALYSIS] Detection flags:', { hasRMName, hasBranch, hasDemand, hasCollection, hasOTR });
+      console.log(
+        "🔍 [ANALYSIS] Detected RM performance data, generating RM performance charts"
+      );
+      console.log("🔍 [ANALYSIS] Sample RM data:", supportingData[0]);
+      console.log("🔍 [ANALYSIS] Detection flags:", {
+        hasRMName,
+        hasBranch,
+        hasDemand,
+        hasCollection,
+        hasOTR,
+      });
 
       // 1. Collection Efficiency Bar Chart
-      const rmData = supportingData.map(rm => {
-        const demand = rm.MTD_Dem_incl_adv || 0;
-        const collection = rm.MTD_Coll_incl_adv || 0;
-        const efficiency = demand > 0 ? (collection / demand) * 100 : 0;
-        
-        return {
-          name: rm.RM_Name && rm.RM_Name.length > 12 ? rm.RM_Name.substring(0, 10) + '..' : rm.RM_Name,
-          value: Math.round(efficiency * 100) / 100,
-          efficiency,
-          demand,
-          collection,
-          otr: Math.round((rm.OTR || 0) * 100),
-          color: efficiency >= 90 ? '#10b981' : efficiency >= 80 ? '#f59e0b' : '#ef4444'
-        };
-      }).sort((a, b) => b.efficiency - a.efficiency);
+      const rmData = supportingData
+        .map((rm) => {
+          const demand = rm.MTD_Dem_incl_adv || 0;
+          const collection = rm.MTD_Coll_incl_adv || 0;
+          const efficiency = demand > 0 ? (collection / demand) * 100 : 0;
+
+          return {
+            name:
+              rm.RM_Name && rm.RM_Name.length > 12
+                ? rm.RM_Name.substring(0, 10) + ".."
+                : rm.RM_Name,
+            value: Math.round(efficiency * 100) / 100,
+            efficiency,
+            demand,
+            collection,
+            otr: Math.round((rm.OTR || 0) * 100),
+            color:
+              efficiency >= 90
+                ? "#10b981"
+                : efficiency >= 80
+                ? "#f59e0b"
+                : "#ef4444",
+          };
+        })
+        .sort((a, b) => b.efficiency - a.efficiency);
 
       charts.push({
-        type: 'bar',
-        title: 'Collection Efficiency by RM (%)',
+        type: "bar",
+        title: "Collection Efficiency by RM (%)",
         data: rmData,
-        yAxisLabel: 'Collection Efficiency (%)',
-        formatValue: (value) => `${value}%`
+        yAxisLabel: "Collection Efficiency (%)",
+        formatValue: (value) => `${value}%`,
       });
-      
-      console.log('🔍 [ANALYSIS] Collection Efficiency chart data:', rmData.slice(0, 3));
+
+      console.log(
+        "🔍 [ANALYSIS] Collection Efficiency chart data:",
+        rmData.slice(0, 3)
+      );
 
       // 2. OTR Performance Distribution (Pie Chart)
       const otrCategories = { excellent: 0, good: 0, average: 0, poor: 0 };
-      supportingData.forEach(rm => {
+      supportingData.forEach((rm) => {
         const otr = (rm.OTR || 0) * 100;
         if (otr >= 95) otrCategories.excellent++;
         else if (otr >= 85) otrCategories.good++;
@@ -943,51 +1045,272 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
       });
 
       const otrPieData = [
-        { name: 'Excellent (95%+)', value: otrCategories.excellent, color: '#10b981' },
-        { name: 'Good (85-94%)', value: otrCategories.good, color: '#f59e0b' },
-        { name: 'Average (70-84%)', value: otrCategories.average, color: '#f97316' },
-        { name: 'Poor (<70%)', value: otrCategories.poor, color: '#ef4444' }
-      ].filter(item => item.value > 0);
+        {
+          name: "Excellent (95%+)",
+          value: otrCategories.excellent,
+          color: "#10b981",
+        },
+        { name: "Good (85-94%)", value: otrCategories.good, color: "#f59e0b" },
+        {
+          name: "Average (70-84%)",
+          value: otrCategories.average,
+          color: "#f97316",
+        },
+        { name: "Poor (<70%)", value: otrCategories.poor, color: "#ef4444" },
+      ].filter((item) => item.value > 0);
 
       if (otrPieData.length > 0) {
         charts.push({
-          type: 'donut',
-          title: 'OTR Performance Distribution',
-          data: otrPieData
+          type: "donut",
+          title: "OTR Performance Distribution",
+          data: otrPieData,
         });
-        
-        console.log('🔍 [ANALYSIS] OTR Distribution chart data:', otrPieData);
+
+        console.log("🔍 [ANALYSIS] OTR Distribution chart data:", otrPieData);
       }
 
       // 3. Top Performing RMs by Collection Amount (Bar Chart)
       const topRMsData = supportingData
-        .filter(rm => (rm.MTD_Coll_incl_adv || 0) > 0)
+        .filter((rm) => (rm.MTD_Coll_incl_adv || 0) > 0)
         .sort((a, b) => (b.MTD_Coll_incl_adv || 0) - (a.MTD_Coll_incl_adv || 0))
         .slice(0, 10)
         .map((rm, index) => ({
-          name: rm.RM_Name && rm.RM_Name.length > 12 ? rm.RM_Name.substring(0, 10) + '..' : rm.RM_Name,
+          name:
+            rm.RM_Name && rm.RM_Name.length > 12
+              ? rm.RM_Name.substring(0, 10) + ".."
+              : rm.RM_Name,
           value: rm.MTD_Coll_incl_adv || 0,
           demand: rm.MTD_Dem_incl_adv || 0,
           collection: rm.MTD_Coll_incl_adv || 0,
-          efficiency: rm.MTD_Dem_incl_adv > 0 ? ((rm.MTD_Coll_incl_adv / rm.MTD_Dem_incl_adv) * 100) : 0,
-          color: index < 3 ? '#10b981' : index < 6 ? '#3b82f6' : '#6366f1'
+          efficiency:
+            rm.MTD_Dem_incl_adv > 0
+              ? (rm.MTD_Coll_incl_adv / rm.MTD_Dem_incl_adv) * 100
+              : 0,
+          color: index < 3 ? "#10b981" : index < 6 ? "#3b82f6" : "#6366f1",
         }));
 
       if (topRMsData.length > 0) {
         charts.push({
-          type: 'bar',
-          title: 'TOP 10 RMs by Collection Amount',
+          type: "bar",
+          title: "TOP 10 RMs by Collection Amount",
           data: topRMsData,
-          yAxisLabel: 'Collection Amount',
-          formatValue: (value) => `₹${value.toLocaleString()}`
+          yAxisLabel: "Collection Amount",
+          formatValue: (value) => `₹${value.toLocaleString()}`,
         });
-        
-        console.log('🔍 [ANALYSIS] Top RMs chart data:', topRMsData.slice(0, 3));
+
+        console.log(
+          "🔍 [ANALYSIS] Top RMs chart data:",
+          topRMsData.slice(0, 3)
+        );
       }
-      
-      console.log('🔍 [ANALYSIS] Final RM charts generated:', charts.length, 'charts');
+
+      console.log(
+        "🔍 [ANALYSIS] Final RM charts generated:",
+        charts.length,
+        "charts"
+      );
 
       return charts.slice(0, 2); // Limit to 2 charts for clean layout
+    }
+
+    // Check if this is productivity data - look for numeric fields and grouping fields
+    const hasWorkDate =
+      allKeys.includes("work_date") || allKeys.includes("work_day");
+    const hasRegionField = allKeys.includes("region");
+    const hasStateField = allKeys.includes("state");
+    const workDateField = allKeys.includes("work_date")
+      ? "work_date"
+      : "work_day";
+
+    // Find all numeric fields that could be charted
+    const numericFields = allKeys.filter((key) => {
+      const sampleValue = supportingData[0]?.[key];
+      return (
+        typeof sampleValue === "number" &&
+        !key.toLowerCase().includes("id") &&
+        !key.toLowerCase().includes("percentage") &&
+        key !== "work_date" &&
+        key !== "work_day" &&
+        key !== "region" &&
+        key !== "state"
+      );
+    });
+
+    // Check if this looks like productivity/action data
+    const isProductivityData =
+      numericFields.length > 0 &&
+      (hasWorkDate || hasRegionField || hasStateField);
+
+    if (isProductivityData) {
+      console.log(
+        "🔍 [ANALYSIS] Detected productivity data with numeric fields:",
+        numericFields
+      );
+
+      // Dynamic chart generation for all numeric fields
+      const colorPalettes = [
+        [
+          "#10b981",
+          "#3b82f6",
+          "#6366f1",
+          "#f59e0b",
+          "#ef4444",
+          "#8b5cf6",
+          "#06b6d4",
+          "#f97316",
+        ],
+        [
+          "#8b5cf6",
+          "#06b6d4",
+          "#10b981",
+          "#f59e0b",
+          "#ef4444",
+          "#3b82f6",
+          "#f97316",
+          "#ec4899",
+        ],
+        [
+          "#6366f1",
+          "#10b981",
+          "#f59e0b",
+          "#ef4444",
+          "#8b5cf6",
+          "#06b6d4",
+          "#3b82f6",
+          "#f97316",
+        ],
+        [
+          "#f59e0b",
+          "#10b981",
+          "#3b82f6",
+          "#8b5cf6",
+          "#ef4444",
+          "#06b6d4",
+          "#6366f1",
+          "#f97316",
+        ],
+      ];
+
+      // Helper function to format field names for display
+      const formatFieldName = (fieldName) => {
+        return fieldName
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase());
+      };
+
+      // Helper function to categorize fields by metric type
+      const categorizeField = (fieldName) => {
+        const lowerField = fieldName.toLowerCase();
+        if (lowerField.includes("action")) return "Actions";
+        if (lowerField.includes("count")) return "Counts";
+        if (lowerField.includes("rm") || lowerField.includes("productive"))
+          return "Resources";
+        if (lowerField.includes("collection")) return "Collections";
+        if (lowerField.includes("onboarding")) return "Onboarding";
+        return "Other Metrics";
+      };
+
+      // Group charts by category and dimension
+      const chartsByCategory = {};
+
+      // Generate charts by region for each numeric field
+      if (hasRegionField) {
+        numericFields.forEach((field, fieldIndex) => {
+          const category = categorizeField(field);
+          if (!chartsByCategory[category]) {
+            chartsByCategory[category] = { byRegion: [], byDate: [] };
+          }
+
+          const regionData = {};
+          supportingData.forEach((item) => {
+            const region = item.region?.trim();
+            if (region && item[field] != null) {
+              regionData[region] =
+                (regionData[region] || 0) + (item[field] || 0);
+            }
+          });
+
+          const chartData = Object.entries(regionData).map(
+            ([region, total], index) => {
+              const colors = colorPalettes[fieldIndex % colorPalettes.length];
+              return {
+                name: region,
+                value: total,
+                color: colors[index % colors.length],
+              };
+            }
+          );
+
+          if (chartData.length > 0) {
+            chartsByCategory[category].byRegion.push({
+              type: "bar",
+              title: `${formatFieldName(field)} by Region`,
+              data: chartData,
+              yAxisLabel: formatFieldName(field),
+              fieldName: field,
+            });
+          }
+        });
+      }
+
+      // Generate charts by date for each numeric field
+      if (hasWorkDate) {
+        numericFields.forEach((field, fieldIndex) => {
+          const category = categorizeField(field);
+          if (!chartsByCategory[category]) {
+            chartsByCategory[category] = { byRegion: [], byDate: [] };
+          }
+
+          const dateData = {};
+          supportingData.forEach((item) => {
+            const date = item[workDateField]
+              ? new Date(item[workDateField]).toLocaleDateString()
+              : null;
+            if (date && item[field] != null) {
+              dateData[date] = (dateData[date] || 0) + (item[field] || 0);
+            }
+          });
+
+          const chartData = Object.entries(dateData)
+            .sort(([dateA], [dateB]) => new Date(dateA) - new Date(dateB))
+            .map(([date, total], index) => {
+              const colors = colorPalettes[fieldIndex % colorPalettes.length];
+              return {
+                name: date,
+                value: total,
+                color: colors[index % colors.length],
+              };
+            });
+
+          if (chartData.length > 0) {
+            chartsByCategory[category].byDate.push({
+              type: "line",
+              title: `${formatFieldName(field)} by Date`,
+              data: chartData,
+              yAxisLabel: formatFieldName(field),
+              fieldName: field,
+            });
+          }
+        });
+      }
+
+      // Flatten charts with category metadata for rendering
+      Object.entries(chartsByCategory).forEach(([category, dimensions]) => {
+        dimensions.byRegion.forEach((chart) => {
+          charts.push({ ...chart, category, dimension: "byRegion" });
+        });
+        dimensions.byDate.forEach((chart) => {
+          charts.push({ ...chart, category, dimension: "byDate" });
+        });
+      });
+
+      console.log(
+        "🔍 [ANALYSIS] Productivity charts generated:",
+        charts.length,
+        "charts"
+      );
+
+      return charts;
     }
 
     // Original logic for other data types
@@ -1209,31 +1532,53 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
     }
 
     // Check if this is RM performance data
-    const hasRMName = allKeys.some(key => 
-      key.includes('RM_Name') || key.includes('RM Name') || key.toLowerCase().includes('rm_name')
+    const hasRMName = allKeys.some(
+      (key) =>
+        key.includes("RM_Name") ||
+        key.includes("RM Name") ||
+        key.toLowerCase().includes("rm_name")
     );
-    const hasBranch = allKeys.some(key => 
-      key.includes('Branch') || key.includes('branch') || key.includes('Branches_afer_merger')
+    const hasBranch = allKeys.some(
+      (key) =>
+        key.includes("Branch") ||
+        key.includes("branch") ||
+        key.includes("Branches_afer_merger")
     );
-    const hasDemand = allKeys.some(key => 
-      key.includes('Dem') || key.includes('demand') || key.includes('MTD_Dem')
+    const hasDemand = allKeys.some(
+      (key) =>
+        key.includes("Dem") || key.includes("demand") || key.includes("MTD_Dem")
     );
-    const hasCollection = allKeys.some(key => 
-      key.includes('Coll') || key.includes('collection') || key.includes('MTD_Coll')
+    const hasCollection = allKeys.some(
+      (key) =>
+        key.includes("Coll") ||
+        key.includes("collection") ||
+        key.includes("MTD_Coll")
     );
-    const hasOTR = allKeys.some(key => 
-      key.includes('OTR') || key.includes('otr')
+    const hasOTR = allKeys.some(
+      (key) => key.includes("OTR") || key.includes("otr")
     );
 
     if (hasRMName && hasBranch && (hasDemand || hasCollection || hasOTR)) {
-      console.log('🔍 [STATS] Generating RM performance stats');
+      console.log("🔍 [STATS] Generating RM performance stats");
       // RM performance-specific statistics
-      const totalDemand = supportingData.reduce((sum, rm) => sum + (rm.MTD_Dem_incl_adv || 0), 0);
-      const totalCollection = supportingData.reduce((sum, rm) => sum + (rm.MTD_Coll_incl_adv || 0), 0);
-      const overallEfficiency = totalDemand > 0 ? (totalCollection / totalDemand) * 100 : 0;
-      const avgOTR = supportingData.reduce((sum, rm) => sum + ((rm.OTR || 0) * 100), 0) / supportingData.length;
-      const topPerformers = supportingData.filter(rm => {
-        const efficiency = rm.MTD_Dem_incl_adv > 0 ? (rm.MTD_Coll_incl_adv / rm.MTD_Dem_incl_adv) * 100 : 0;
+      const totalDemand = supportingData.reduce(
+        (sum, rm) => sum + (rm.MTD_Dem_incl_adv || 0),
+        0
+      );
+      const totalCollection = supportingData.reduce(
+        (sum, rm) => sum + (rm.MTD_Coll_incl_adv || 0),
+        0
+      );
+      const overallEfficiency =
+        totalDemand > 0 ? (totalCollection / totalDemand) * 100 : 0;
+      const avgOTR =
+        supportingData.reduce((sum, rm) => sum + (rm.OTR || 0) * 100, 0) /
+        supportingData.length;
+      const topPerformers = supportingData.filter((rm) => {
+        const efficiency =
+          rm.MTD_Dem_incl_adv > 0
+            ? (rm.MTD_Coll_incl_adv / rm.MTD_Dem_incl_adv) * 100
+            : 0;
         return efficiency >= 90;
       }).length;
 
@@ -1246,7 +1591,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
           trend: "+5%",
         },
         {
-          title: "Total Demand", 
+          title: "Total Demand",
           value: Math.round(totalDemand).toLocaleString(),
           icon: AssessmentIcon,
           color: theme.palette.warning.main,
@@ -1256,16 +1601,24 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
           title: "Collection Efficiency",
           value: `${Math.round(overallEfficiency)}%`,
           icon: CheckCircleIcon,
-          color: overallEfficiency >= 90 ? theme.palette.success.main : 
-                 overallEfficiency >= 80 ? theme.palette.warning.main : theme.palette.error.main,
+          color:
+            overallEfficiency >= 90
+              ? theme.palette.success.main
+              : overallEfficiency >= 80
+              ? theme.palette.warning.main
+              : theme.palette.error.main,
           trend: overallEfficiency >= 85 ? "+2%" : "-1%",
         },
         {
           title: "Average OTR",
           value: `${Math.round(avgOTR)}%`,
           icon: AnalyticsIcon,
-          color: avgOTR >= 90 ? theme.palette.success.main :
-                 avgOTR >= 80 ? theme.palette.info.main : theme.palette.error.main,
+          color:
+            avgOTR >= 90
+              ? theme.palette.success.main
+              : avgOTR >= 80
+              ? theme.palette.info.main
+              : theme.palette.error.main,
           trend: avgOTR >= 85 ? "+4%" : "-2%",
         },
       ];
@@ -1544,7 +1897,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
     Object.keys(result).forEach((key) => {
       const item = result[key];
       console.log(`🔍 Processing result key: ${key}`, item.summary);
-      
+
       if (item.summary) {
         // Handle new API format - only use detailed_field_matches and reference_matches
         if (
@@ -1564,12 +1917,13 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
           ktpOnlyReferences += item.summary.ktp_only_references || 0;
           xmmOnlyReferences += item.summary.xmm_only_references || 0;
           samOnlyReferences += item.summary.sam_only_references || 0;
-          
+
           console.log(`🔍 After processing ${key}:`, {
             ktpOnlyReferences,
             xmmOnlyReferences,
             samOnlyReferences,
-            totalSamRecords: totalSamRecords + (item.summary.total_sam_records || 0)
+            totalSamRecords:
+              totalSamRecords + (item.summary.total_sam_records || 0),
           });
 
           // Total record counts
@@ -1620,13 +1974,13 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
       totalRecords > 0 ? (totalMatches / totalRecords) * 100 : 0;
 
     // Debug final values
-    console.log('🔍 FINAL VALUES:', {
+    console.log("🔍 FINAL VALUES:", {
       totalKtpRecords,
-      totalXmmRecords, 
+      totalXmmRecords,
       totalSamRecords,
       ktpOnlyReferences,
       xmmOnlyReferences,
-      samOnlyReferences
+      samOnlyReferences,
     });
 
     return [
@@ -1882,16 +2236,34 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
         Array.isArray(item.mismatched_message_type_but_same_ref) &&
         item.mismatched_message_type_but_same_ref.length > 0
       ) {
-        const messageTypeMismatches = item.mismatched_message_type_but_same_ref.map(record => ({
-          ...record,
-          key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
-          mismatch_type: 'Message Type Mismatch',
-          ktp_value: record.KTP_msg_type ? `${record.KTP_msg_type} (${record.KTP_normalized_msg_code || 'N/A'})` : 'N/A',
-          xmm_value: record.XMM_msg_type ? `${record.XMM_msg_type} (${record.XMM_normalized_msg_code || 'N/A'})` : 'N/A',
-          sam_value: record.SAM_Identifier ? `${record.SAM_Identifier} (${record.SAM_normalized_msg_code || 'N/A'})` : 'N/A',
-          discrepancy: `KTP: ${record.KTP_normalized_msg_code || 'N/A'} vs XMM: ${record.XMM_normalized_msg_code || 'N/A'} vs SAM: ${record.SAM_normalized_msg_code || 'N/A'}`
-        }));
-        
+        const messageTypeMismatches =
+          item.mismatched_message_type_but_same_ref.map((record) => ({
+            ...record,
+            key_ref:
+              record.Reference || record.sender_ref || record.ref || "Unknown",
+            mismatch_type: "Message Type Mismatch",
+            ktp_value: record.KTP_msg_type
+              ? `${record.KTP_msg_type} (${
+                  record.KTP_normalized_msg_code || "N/A"
+                })`
+              : "N/A",
+            xmm_value: record.XMM_msg_type
+              ? `${record.XMM_msg_type} (${
+                  record.XMM_normalized_msg_code || "N/A"
+                })`
+              : "N/A",
+            sam_value: record.SAM_Identifier
+              ? `${record.SAM_Identifier} (${
+                  record.SAM_normalized_msg_code || "N/A"
+                })`
+              : "N/A",
+            discrepancy: `KTP: ${
+              record.KTP_normalized_msg_code || "N/A"
+            } vs XMM: ${record.XMM_normalized_msg_code || "N/A"} vs SAM: ${
+              record.SAM_normalized_msg_code || "N/A"
+            }`,
+          }));
+
         tables.push({
           title: `${formattedName} - Message Type Mismatches (${messageTypeMismatches.length} records)`,
           data: messageTypeMismatches,
@@ -1905,19 +2277,34 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
         Array.isArray(item.mismatched_amount_but_same_ref) &&
         item.mismatched_amount_but_same_ref.length > 0
       ) {
-        const amountMismatches = item.mismatched_amount_but_same_ref.map(record => ({
-          ...record,
-          key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
-          mismatch_type: 'Amount Mismatch',
-          ktp_value: record.KTP_amount?.toLocaleString() || record.KTP_normalized_amount?.toLocaleString() || 'N/A',
-          xmm_value: record.XMM_amount?.toLocaleString() || record.XMM_normalized_amount?.toLocaleString() || 'N/A',
-          sam_value: record.SAM_Cur_Amt || record.SAM_normalized_amount?.toLocaleString() || 'N/A',
-          // Add normalized comparison for clarity
-          normalized_diff: record.SAM_normalized_amount && record.XMM_normalized_amount 
-            ? `${(record.SAM_normalized_amount - record.XMM_normalized_amount).toLocaleString()}` 
-            : 'N/A'
-        }));
-        
+        const amountMismatches = item.mismatched_amount_but_same_ref.map(
+          (record) => ({
+            ...record,
+            key_ref:
+              record.Reference || record.sender_ref || record.ref || "Unknown",
+            mismatch_type: "Amount Mismatch",
+            ktp_value:
+              record.KTP_amount?.toLocaleString() ||
+              record.KTP_normalized_amount?.toLocaleString() ||
+              "N/A",
+            xmm_value:
+              record.XMM_amount?.toLocaleString() ||
+              record.XMM_normalized_amount?.toLocaleString() ||
+              "N/A",
+            sam_value:
+              record.SAM_Cur_Amt ||
+              record.SAM_normalized_amount?.toLocaleString() ||
+              "N/A",
+            // Add normalized comparison for clarity
+            normalized_diff:
+              record.SAM_normalized_amount && record.XMM_normalized_amount
+                ? `${(
+                    record.SAM_normalized_amount - record.XMM_normalized_amount
+                  ).toLocaleString()}`
+                : "N/A",
+          })
+        );
+
         tables.push({
           title: `${formattedName} - Amount Mismatches (${amountMismatches.length} records)`,
           data: amountMismatches,
@@ -1931,19 +2318,30 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
         Array.isArray(item.mismatched_bic_but_same_ref) &&
         item.mismatched_bic_but_same_ref.length > 0
       ) {
-        const bicMismatches = item.mismatched_bic_but_same_ref.map(record => ({
-          ...record,
-          key_ref: record.Reference || record.sender_ref || record.ref || 'Unknown',
-          mismatch_type: 'BIC Mismatch',
-          xmm_sent_bic: record.omh_sent_bic || 'N/A',
-          xmm_recv_bic: record.omh_recv_bic || 'N/A',
-          sam_correspondent: record.Correspondent || 'N/A',
-          sam_sender_receiver: record.Sender_Receiver || 'N/A',
-          xmm_value: record.omh_sent_bic && record.omh_recv_bic ? `${record.omh_sent_bic} -> ${record.omh_recv_bic}` : 'N/A',
-          sam_value: record.Correspondent && record.Sender_Receiver ? `${record.Correspondent} (${record.Sender_Receiver})` : 'N/A',
-          mismatch_details: `XMM recv BIC equals SAM Correspondent: ${record.XMM_recv_equals_SAM_Correspondent ? 'Yes' : 'No'}`
-        }));
-        
+        const bicMismatches = item.mismatched_bic_but_same_ref.map(
+          (record) => ({
+            ...record,
+            key_ref:
+              record.Reference || record.sender_ref || record.ref || "Unknown",
+            mismatch_type: "BIC Mismatch",
+            xmm_sent_bic: record.omh_sent_bic || "N/A",
+            xmm_recv_bic: record.omh_recv_bic || "N/A",
+            sam_correspondent: record.Correspondent || "N/A",
+            sam_sender_receiver: record.Sender_Receiver || "N/A",
+            xmm_value:
+              record.omh_sent_bic && record.omh_recv_bic
+                ? `${record.omh_sent_bic} -> ${record.omh_recv_bic}`
+                : "N/A",
+            sam_value:
+              record.Correspondent && record.Sender_Receiver
+                ? `${record.Correspondent} (${record.Sender_Receiver})`
+                : "N/A",
+            mismatch_details: `XMM recv BIC equals SAM Correspondent: ${
+              record.XMM_recv_equals_SAM_Correspondent ? "Yes" : "No"
+            }`,
+          })
+        );
+
         tables.push({
           title: `${formattedName} - BIC Mismatches (${bicMismatches.length} records)`,
           data: bicMismatches,
@@ -2051,7 +2449,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
   // Dynamic analysis of API response - now helper functions are defined
   const computedAnalysis = useMemo(() => {
-    console.log('Processing analysis data:', data);
+    console.log("Processing analysis data:", data);
 
     // Handle supporting_data structure (primary use case) - check both nested and direct structures
     const supportingData =
@@ -2114,11 +2512,11 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
       const newChartTypes = {};
       finalAnalysis.charts.forEach((chart, index) => {
         if (!chartTypes[index]) {
-          newChartTypes[index] = chart.type || 'donut';
+          newChartTypes[index] = chart.type || "donut";
         }
       });
       if (Object.keys(newChartTypes).length > 0) {
-        setChartTypes(prev => ({ ...prev, ...newChartTypes }));
+        setChartTypes((prev) => ({ ...prev, ...newChartTypes }));
       }
     }
     setHasAnimated(true);
@@ -2132,70 +2530,262 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
       const timer = setTimeout(() => {
         setIsProcessing(false);
       }, 400);
-      
+
       return () => clearTimeout(timer);
     }
   }, [data]);
-  
+
   // Monitor when user manually expands charts
   useEffect(() => {
-    const hasAnyExpanded = Object.values(expandedCharts).some(isExpanded => isExpanded);
-    console.log('📊 Checking if user expanded charts:', { hasAnyExpanded, hasUserExpandedCharts, expandedCharts });
+    const hasAnyExpanded = Object.values(expandedCharts).some(
+      (isExpanded) => isExpanded
+    );
+    console.log("📊 Checking if user expanded charts:", {
+      hasAnyExpanded,
+      hasUserExpandedCharts,
+      expandedCharts,
+    });
     if (hasAnyExpanded && !hasUserExpandedCharts) {
-      console.log('✅ Setting hasUserExpandedCharts to true');
+      console.log("✅ Setting hasUserExpandedCharts to true");
       setHasUserExpandedCharts(true);
     }
   }, [expandedCharts, hasUserExpandedCharts]);
-  
+
+  // Auto-expand Visual Analytics when only Total Records card is present
+  useEffect(() => {
+    if (finalAnalysis?.stats && finalAnalysis?.charts?.length > 0) {
+      const organizedStats = organizeStatistics(finalAnalysis.stats);
+      if (organizedStats) {
+        const topRowCount = [
+          organizedStats.matches,
+          organizedStats.critical,
+        ].filter((stat) => stat?.stats?.length > 0).length;
+        const bottomRowCount = [
+          organizedStats.records,
+          organizedStats.extras,
+        ].filter((stat) => stat?.stats?.length > 0).length;
+
+        // Auto-expand if only Total Records is present (bottomRowCount === 1 and topRowCount === 0)
+        if (
+          bottomRowCount === 1 &&
+          topRowCount === 0 &&
+          !visualAnalyticsExpanded
+        ) {
+          console.log(
+            "🔓 Auto-expanding Visual Analytics (only Total Records present)"
+          );
+          setVisualAnalyticsExpanded(true);
+        }
+      }
+    }
+  }, [finalAnalysis, visualAnalyticsExpanded]);
+
   // Auto-expand chart when switching tabs (smart behavior based on previous interactions)
   useEffect(() => {
-    console.log('🔄 Auto-expand effect triggered:', {
+    console.log("🔄 Auto-expand effect triggered:", {
       hasCharts: !!finalAnalysis?.charts,
       visualAnalyticsExpanded,
       selectedChartTab,
       hasUserExpandedCharts,
-      chartsLength: finalAnalysis?.charts?.length
+      chartsLength: finalAnalysis?.charts?.length,
     });
-    
-    if (finalAnalysis?.charts && visualAnalyticsExpanded && selectedChartTab >= 0 && hasUserExpandedCharts) {
+
+    if (
+      finalAnalysis?.charts &&
+      visualAnalyticsExpanded &&
+      selectedChartTab >= 0 &&
+      hasUserExpandedCharts
+    ) {
       // Use existing categorizeCharts function
       const chartCategories = categorizeCharts(finalAnalysis.charts);
-      
-      const tabCategories = ['reconciliation', 'mismatch', 'messageTypes'];
+
+      const tabCategories = ["reconciliation", "mismatch", "messageTypes"];
       const currentCategory = tabCategories[selectedChartTab];
       const currentTabCharts = chartCategories[currentCategory] || [];
-      
-      console.log('📋 Tab switching details:', {
+
+      console.log("📋 Tab switching details:", {
         currentCategory,
         currentTabChartsLength: currentTabCharts.length,
-        allCategories: Object.keys(chartCategories).map(key => ({ key, length: chartCategories[key].length }))
+        allCategories: Object.keys(chartCategories).map((key) => ({
+          key,
+          length: chartCategories[key].length,
+        })),
       });
-      
+
       // Determine which chart key to open: last opened in this tab, else the first chart in this tab
       if (currentTabCharts.length > 0) {
         const storedKey = lastExpandedChartKeyByTab[currentCategory];
         const fallbackKey = `${currentTabCharts[0].title}-0`;
         const chartKeyToOpen = storedKey || fallbackKey;
-        console.log('🎯 Computed chartKeyToOpen:', { storedKey, fallbackKey, chartKeyToOpen });
+        console.log("🎯 Computed chartKeyToOpen:", {
+          storedKey,
+          fallbackKey,
+          chartKeyToOpen,
+        });
 
-        setExpandedCharts(prev => {
+        setExpandedCharts((prev) => {
           if (!prev[chartKeyToOpen]) {
-            console.log('🚀 Auto-expanding chart by key:', chartKeyToOpen);
+            console.log("🚀 Auto-expanding chart by key:", chartKeyToOpen);
             return {
               ...prev,
-              [chartKeyToOpen]: true
+              [chartKeyToOpen]: true,
             };
           }
-          console.log('⏭️ Chart already expanded for key:', chartKeyToOpen);
+          console.log("⏭️ Chart already expanded for key:", chartKeyToOpen);
           return prev;
         });
       } else {
-        console.log('❌ No charts in current tab category:', currentCategory);
+        console.log("❌ No charts in current tab category:", currentCategory);
       }
     } else {
-      console.log('❌ Auto-expand conditions not met');
+      console.log("❌ Auto-expand conditions not met");
     }
-  }, [selectedChartTab, visualAnalyticsExpanded, finalAnalysis?.charts, hasUserExpandedCharts, lastExpandedChartKeyByTab]);
+  }, [
+    selectedChartTab,
+    visualAnalyticsExpanded,
+    finalAnalysis?.charts,
+    hasUserExpandedCharts,
+    lastExpandedChartKeyByTab,
+  ]);
+
+  // Memoize chart rendering to prevent re-renders
+  const memoizedChartContent = useMemo(() => {
+    if (!finalAnalysis?.charts || finalAnalysis.charts.length === 0) {
+      return null;
+    }
+
+    const chartCategories = categorizeCharts(finalAnalysis.charts);
+
+    // Generate dynamic labels based on the data context
+    const getTabLabel = (category, charts) => {
+      if (!charts || charts.length === 0) return "";
+
+      // For new category-based structure, use the category name directly
+      if (
+        category &&
+        !["reconciliation", "mismatch", "messageTypes"].includes(category)
+      ) {
+        return category;
+      }
+
+      // Check if this is pipeline/regional data
+      const hasRegionalData =
+        Array.isArray(finalAnalysis.data) &&
+        finalAnalysis.data?.some((item) =>
+          Object.keys(item || {}).some(
+            (key) =>
+              key.toLowerCase().includes("region") ||
+              key.toLowerCase().includes("pipeline")
+          )
+        );
+
+      // Check if this is reconciliation data
+      const isReconciliation =
+        finalAnalysis.type === "reconciliation" ||
+        charts.some(
+          (chart) =>
+            chart.title?.toLowerCase().includes("reconciliation") ||
+            chart.title?.toLowerCase().includes("match")
+        );
+
+      if (hasRegionalData) {
+        switch (category) {
+          case "reconciliation":
+            return "Data Overview";
+          case "mismatch":
+            return "Analysis Breakdown";
+          case "messageTypes":
+            return "Regional Distribution";
+          default:
+            return charts[0]?.title || "Data Analysis";
+        }
+      } else if (isReconciliation) {
+        switch (category) {
+          case "reconciliation":
+            return "Reconciliation Overview";
+          case "mismatch":
+            return "Mismatch Analysis";
+          case "messageTypes":
+            return "Message Types";
+          default:
+            return charts[0]?.title || "Analysis";
+        }
+      } else {
+        // Generic data analysis labels
+        switch (category) {
+          case "reconciliation":
+            return "Data Overview";
+          case "mismatch":
+            return "Analysis Results";
+          case "messageTypes":
+            return "Data Distribution";
+          default:
+            return charts[0]?.title || "Data Analysis";
+        }
+      }
+    };
+
+    // Get icon for category
+    const getCategoryIcon = (category) => {
+      switch (category) {
+        case "Actions":
+          return <AssessmentIcon />;
+        case "Counts":
+          return <PieChartIcon />;
+        case "Collections":
+          return <TrendingUpIcon />;
+        case "Onboarding":
+          return <PieChartIcon />;
+        case "Resources":
+          return <AssessmentIcon />;
+        case "reconciliation":
+          return <AssessmentIcon />;
+        case "mismatch":
+          return <ErrorIcon />;
+        case "messageTypes":
+          return <PieChartIcon />;
+        default:
+          return <AssessmentIcon />;
+      }
+    };
+
+    // Get color for category
+    const getCategoryColor = (category) => {
+      switch (category) {
+        case "Actions":
+          return theme.palette.primary.main;
+        case "Counts":
+          return theme.palette.info.main;
+        case "Collections":
+          return theme.palette.success.main;
+        case "Onboarding":
+          return theme.palette.secondary.main;
+        case "Resources":
+          return theme.palette.warning.main;
+        case "reconciliation":
+          return theme.palette.success.main;
+        case "mismatch":
+          return theme.palette.error.main;
+        case "messageTypes":
+          return theme.palette.info.main;
+        default:
+          return theme.palette.primary.main;
+      }
+    };
+
+    // Dynamically create tabs based on available categories
+    const tabData = Object.entries(chartCategories)
+      .map(([category, charts]) => ({
+        label: getTabLabel(category, charts),
+        icon: getCategoryIcon(category),
+        charts: charts || [],
+        color: getCategoryColor(category),
+        category,
+      }))
+      .filter((tab) => tab.charts.length > 0);
+
+    return { chartCategories, tabData };
+  }, [finalAnalysis?.charts, finalAnalysis?.data, finalAnalysis?.type, theme]);
 
   // Show skeleton while processing - AFTER all hooks are declared
   if (isProcessing) {
@@ -2203,15 +2793,15 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
   }
 
   const handleSaveToLoginboard = () => {
-    console.log('🔥 [WIDGET SAVE DEBUG] Save button clicked');
-    console.log('🔥 [WIDGET SAVE DEBUG] finalAnalysis:', finalAnalysis);
-    console.log('🔥 [WIDGET SAVE DEBUG] onSave function:', onSave);
-    
+    console.log("🔥 [WIDGET SAVE DEBUG] Save button clicked");
+    console.log("🔥 [WIDGET SAVE DEBUG] finalAnalysis:", finalAnalysis);
+    console.log("🔥 [WIDGET SAVE DEBUG] onSave function:", onSave);
+
     if (finalAnalysis && onSave) {
       const dashboardData = {
         id: Date.now().toString(), // Add unique ID
         type: "analysis_widget",
-        title: finalAnalysis.title || title || 'Untitled Analysis',
+        title: finalAnalysis.title || title || "Untitled Analysis",
         analysis: finalAnalysis,
         data: data, // Include original data for Dashboard rendering
         timestamp: new Date().toISOString(),
@@ -2226,23 +2816,26 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
           expandedTables: expandedTables,
           selectedChartTab: selectedChartTab,
           selectedTableTab: selectedTableTab,
-          lastExpandedChartKeyByTab: lastExpandedChartKeyByTab
-        }
+          lastExpandedChartKeyByTab: lastExpandedChartKeyByTab,
+        },
       };
-      
-      console.log('🔥 [WIDGET SAVE DEBUG] Calling onSave with dashboardData:', dashboardData);
+
+      console.log(
+        "🔥 [WIDGET SAVE DEBUG] Calling onSave with dashboardData:",
+        dashboardData
+      );
       onSave(dashboardData);
 
       // Navigate to dashboard in new tab
       window.open("/dashboard", "_blank");
     } else {
-      console.error('❌ [WIDGET SAVE ERROR] Missing finalAnalysis or onSave:', {
+      console.error("❌ [WIDGET SAVE ERROR] Missing finalAnalysis or onSave:", {
         hasFinalAnalysis: !!finalAnalysis,
         hasOnSave: !!onSave,
         finalAnalysis,
-        onSave
+        onSave,
       });
-      alert('Cannot save: Missing analysis data or save function');
+      alert("Cannot save: Missing analysis data or save function");
     }
   };
 
@@ -2272,17 +2865,19 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
   }
 
   return (
-    <Box sx={{ 
-      width: "100%", 
-      maxWidth: '100vw',
-      overflow: 'hidden',
-      px: isMobile ? 1 : 2
-    }}>
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: "100vw",
+        overflow: "hidden",
+        px: isMobile ? 1 : 2,
+      }}
+    >
       {/* Header with Save Button */}
       <Box
         sx={{
           display: "flex",
-          flexDirection: isMobile ? 'column' : 'row',
+          flexDirection: isMobile ? "column" : "row",
           justifyContent: "space-between",
           alignItems: isMobile ? "stretch" : "center",
           mb: isMobile ? 3 : 4,
@@ -2294,15 +2889,15 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
           variant={isMobile ? "h5" : "h4"}
           sx={{
             fontWeight: 700,
-            fontSize: isMobile ? '1.5rem' : isTablet ? '2rem' : '2.125rem',
+            fontSize: isMobile ? "1.5rem" : isTablet ? "2rem" : "2.125rem",
             background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             animation: `${slideIn} 0.8s ease-out`,
             flex: 1,
             minWidth: 0,
-            textAlign: isMobile ? 'center' : 'left',
-            color: '#37527e',
+            textAlign: isMobile ? "center" : "left",
+            color: "#37527e",
           }}
         >
           MiFiX.ai
@@ -2316,7 +2911,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
             borderRadius: isMobile ? 2 : 3,
             px: isMobile ? 2 : 3,
             py: isMobile ? 1 : 1.5,
-            fontSize: isMobile ? '0.75rem' : '0.875rem',
+            fontSize: isMobile ? "0.75rem" : "0.875rem",
             background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
             boxShadow: `0 8px 32px ${theme.palette.primary.main}40`,
             "&:hover": {
@@ -2325,30 +2920,30 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
             },
             transition: "all 0.2s ease",
             animation: `${float} 2s ease-in-out infinite`,
-            minWidth: isMobile ? '100px' : 'auto',
+            minWidth: isMobile ? "100px" : "auto",
             mt: isMobile ? 4 : 2,
           }}
         >
-          {isMobile ? 'Save' : 'Save to Dashboard'}
+          {isMobile ? "Save" : "Save to Dashboard"}
         </Button>
       </Box>
 
       {/* Overall Statistics Section */}
       <Fade in={currentSection >= 0} timeout={800}>
-        <Box sx={{ mb: 5 }}>
-          <Typography
+        <Box sx={{ mb: 2 }}>
+          {/* <Typography
             variant={isMobile ? "h5" : "h4"}
             sx={{
               mb: isMobile ? 3 : 4,
-              fontSize: isMobile ? '1.5rem' : '2.125rem',
+              fontSize: isMobile ? "1.5rem" : "2.125rem",
               fontWeight: 700,
               color: theme.palette.text.primary,
               animation: `${fadeInUp} 0.6s ease-out 0.1s both`,
-              textAlign: "center",
+              textAlign: "left",
             }}
           >
-            Overall Summary 
-          </Typography>
+            Overall Summary
+          </Typography> */}
 
           <Box
             sx={{
@@ -2366,31 +2961,39 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
               // Note: Using direct component rendering instead of category mapping
 
               // Count visible cards for layout decisions
-              const topRowCount = [organizedStats.matches, organizedStats.critical]
-                .filter(stat => stat?.stats?.length > 0).length;
-              const bottomRowCount = [organizedStats.records, organizedStats.extras]
-                .filter(stat => stat?.stats?.length > 0).length;
+              const topRowCount = [
+                organizedStats.matches,
+                organizedStats.critical,
+              ].filter((stat) => stat?.stats?.length > 0).length;
+              const bottomRowCount = [
+                organizedStats.records,
+                organizedStats.extras,
+              ].filter((stat) => stat?.stats?.length > 0).length;
 
               return (
-                <Box sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: { xs: 3, sm: 5 },
-                  mb: 4
-                }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: { xs: 3, sm: 5 },
+                    mb: 4,
+                  }}
+                >
                   {/* Top Row - Independent Statistics Cards */}
-                  <Box sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm: topRowCount === 1 ? '1fr' : 'repeat(2, 1fr)',
-                      md: topRowCount === 1 ? '1fr' : 'repeat(2, 1fr)'
-                    },
-                    gap: { xs: 2, sm: 4, md: 6 },
-                    justifyItems: topRowCount === 1 ? 'center' : 'stretch',
-                    maxWidth: topRowCount === 1 ? '500px' : '100%',
-                    margin: topRowCount === 1 ? '0 auto' : '0'
-                  }}>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        sm: topRowCount === 1 ? "1fr" : "repeat(2, 1fr)",
+                        md: topRowCount === 1 ? "1fr" : "repeat(2, 1fr)",
+                      },
+                      gap: { xs: 2, sm: 4, md: 6 },
+                      justifyItems: topRowCount === 1 ? "center" : "stretch",
+                      maxWidth: topRowCount === 1 ? "500px" : "100%",
+                      margin: topRowCount === 1 ? "0 auto" : "0",
+                    }}
+                  >
                     {/* Successful Matches - Independent Component */}
                     {organizedStats.matches?.stats?.length > 0 && (
                       <StatisticsCard
@@ -2400,10 +3003,10 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                         icon={organizedStats.matches.icon}
                         color={organizedStats.matches.color}
                         totalValue={organizedStats.matches.totalValue}
-                        isPrimary={organizedStats.matches.priority === 'high'}
+                        isPrimary={organizedStats.matches.priority === "high"}
                       />
                     )}
-                    
+
                     {/* Attention Points - Independent Component */}
                     {organizedStats.critical?.stats?.length > 0 && (
                       <StatisticsCard
@@ -2413,24 +3016,26 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                         icon={organizedStats.critical.icon}
                         color={organizedStats.critical.color}
                         totalValue={organizedStats.critical.totalValue}
-                        isPrimary={organizedStats.critical.priority === 'high'}
+                        isPrimary={organizedStats.critical.priority === "high"}
                       />
                     )}
                   </Box>
 
                   {/* Bottom Row - Independent Statistics Cards */}
-                  <Box sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm: bottomRowCount === 1 ? '1fr' : 'repeat(2, 1fr)',
-                      md: bottomRowCount === 1 ? '1fr' : 'repeat(2, 1fr)'
-                    },
-                    gap: { xs: 2, sm: 4, md: 6 },
-                    justifyItems: bottomRowCount === 1 ? 'center' : 'stretch',
-                    maxWidth: bottomRowCount === 1 ? '500px' : '100%',
-                    margin: bottomRowCount === 1 ? '0 auto' : '0'
-                  }}>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        sm: bottomRowCount === 1 ? "1fr" : "repeat(2, 1fr)",
+                        md: bottomRowCount === 1 ? "1fr" : "repeat(2, 1fr)",
+                      },
+                      gap: { xs: 2, sm: 4, md: 6 },
+                      justifyItems: bottomRowCount === 1 ? "center" : "stretch",
+                      maxWidth: bottomRowCount === 1 ? "500px" : "100%",
+                      margin: bottomRowCount === 1 ? "0 auto" : "0",
+                    }}
+                  >
                     {/* Total Records - Independent Component */}
                     {organizedStats.records?.stats?.length > 0 && (
                       <StatisticsCard
@@ -2440,10 +3045,10 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                         icon={organizedStats.records.icon}
                         color={organizedStats.records.color}
                         totalValue={organizedStats.records.totalValue}
-                        isPrimary={organizedStats.records.priority === 'high'}
+                        isPrimary={organizedStats.records.priority === "high"}
                       />
                     )}
-                    
+
                     {/* Extra Records - Independent Component */}
                     {organizedStats.extras?.stats?.length > 0 && (
                       <StatisticsCard
@@ -2453,7 +3058,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                         icon={organizedStats.extras.icon}
                         color={organizedStats.extras.color}
                         totalValue={organizedStats.extras.totalValue}
-                        isPrimary={organizedStats.extras.priority === 'high'}
+                        isPrimary={organizedStats.extras.priority === "high"}
                       />
                     )}
                   </Box>
@@ -2538,596 +3143,60 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
         </Fade>
       )} */}
 
-      {/* Enhanced Visual Analytics Section with Collapsible Tabs */}
-      {finalAnalysis.charts && finalAnalysis.charts.length > 0 && (
-        <Fade in={currentSection >= 1} timeout={800}>
-          <Box sx={{ mb: 5 }}>
-            {/* Collapsible Section Header */}
-            <Paper 
-              elevation={2}
-              sx={{
-                borderRadius: 3,
-                overflow: 'hidden',
-                mb: 3,
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
-              }}
-            >
-              <Box 
-                onClick={() => setVisualAnalyticsExpanded(!visualAnalyticsExpanded)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  p: 3,
-                  cursor: 'pointer',
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
-                  '&:hover': {
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.secondary.main, 0.08)} 100%)`
-                  },
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`
-                  }}>  
-                    <AnalyticsIcon sx={{ color: 'white', fontSize: 24 }} />
-                  </Box>
-                  <Box>
-                    <Typography
-                      variant={isMobile ? "h5" : "h4"}
-                      sx={{
-                        fontWeight: 700,
-                        color: theme.palette.text.primary,
-                        mb: 0.5
-                      }}
-                    >
-                      Visual Analytics
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: theme.palette.text.secondary
-                      }}
-                    >
-                      Interactive charts and visualizations for comprehensive data analysis
-                    </Typography>
-                  </Box>
-                </Box>
-                <IconButton
-                  sx={{
-                    color: theme.palette.primary.main,
-                    transform: visualAnalyticsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.3s ease'
-                  }}
-                >
-                  <ExpandMoreIcon />
-                </IconButton>
-              </Box>
-
-              <Collapse in={visualAnalyticsExpanded} timeout={300}>
-
-                {/* Tabbed Chart Interface */}
-                <Box sx={{
-                  background: 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)'
-                }}>
-              {(() => {
-                const chartCategories = categorizeCharts(finalAnalysis.charts);
-                
-                // Generate dynamic labels based on the data context
-                const getTabLabel = (category, charts) => {
-                  if (charts.length === 0) return '';
-                  
-                  // Check if this is pipeline/regional data
-                  const hasRegionalData = Array.isArray(finalAnalysis.data) && finalAnalysis.data?.some(item => 
-                    Object.keys(item || {}).some(key => 
-                      key.toLowerCase().includes('region') || 
-                      key.toLowerCase().includes('pipeline')
-                    )
-                  );
-                  
-                  // Check if this is reconciliation data
-                  const isReconciliation = finalAnalysis.type === 'reconciliation' || 
-                    charts.some(chart => 
-                      chart.title?.toLowerCase().includes('reconciliation') ||
-                      chart.title?.toLowerCase().includes('match')
-                    );
-                  
-                  if (hasRegionalData) {
-                    switch(category) {
-                      case 'reconciliation': return 'Data Overview';
-                      case 'mismatch': return 'Analysis Breakdown';
-                      case 'messageTypes': return 'Regional Distribution';
-                      default: return charts[0]?.title || 'Data Analysis';
-                    }
-                  } else if (isReconciliation) {
-                    switch(category) {
-                      case 'reconciliation': return 'Reconciliation Overview';
-                      case 'mismatch': return 'Mismatch Analysis';
-                      case 'messageTypes': return 'Message Types';
-                      default: return charts[0]?.title || 'Analysis';
-                    }
-                  } else {
-                    // Generic data analysis labels
-                    switch(category) {
-                      case 'reconciliation': return 'Data Overview';
-                      case 'mismatch': return 'Analysis Results';
-                      case 'messageTypes': return 'Data Distribution';
-                      default: return charts[0]?.title || 'Data Analysis';
-                    }
-                  }
-                };
-                
-                const tabData = [
-                  {
-                    label: getTabLabel('reconciliation', chartCategories.reconciliation),
-                    icon: <AssessmentIcon />,
-                    charts: chartCategories.reconciliation,
-                    color: theme.palette.success.main
-                  },
-                  {
-                    label: getTabLabel('mismatch', chartCategories.mismatch),
-                    icon: <ErrorIcon />,
-                    charts: chartCategories.mismatch,
-                    color: theme.palette.error.main
-                  },
-                  {
-                    label: getTabLabel('messageTypes', chartCategories.messageTypes),
-                    icon: <PieChartIcon />,
-                    charts: chartCategories.messageTypes,
-                    color: theme.palette.info.main
-                  }
-                ].filter(tab => tab.charts.length > 0);
-
-                return (
-                  <>
-                    {/* Tab Headers */}
-                    <Box sx={{ 
-                      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.secondary.main, 0.08)} 100%)`,
-                      borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-                    }}>
-                      <Tabs
-                        value={selectedChartTab}
-                        onChange={(event, newValue) => {
-                          setSelectedChartTab(newValue);
-                          // Proactively auto-expand when switching tabs
-                          if (visualAnalyticsExpanded) {
-                            const nextTab = newValue;
-                            const tabCategories = ['reconciliation', 'mismatch', 'messageTypes'];
-                            const currentCategory = tabCategories[nextTab];
-                            const chartsInTab = (tabData[nextTab]?.charts) || [];
-                            if (chartsInTab.length > 0) {
-                              const storedKey = lastExpandedChartKeyByTab[currentCategory];
-                              const fallbackKey = `${chartsInTab[0].title}-0`;
-                              const chartKeyToOpen = storedKey || fallbackKey;
-                              setExpandedCharts(prev => ({
-                                ...prev,
-                                [chartKeyToOpen]: true
-                              }));
-                              // Mark user intent so effect continues to work
-                              if (!hasUserExpandedCharts) setHasUserExpandedCharts(true);
-                            }
-                          }
-                        }}
-                        variant={isMobile ? "scrollable" : "fullWidth"}
-                        scrollButtons="auto"
-                        sx={{
-                          '& .MuiTabs-indicator': {
-                            height: 3,
-                            borderRadius: '3px 3px 0 0',
-                            background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
-                          },
-                          '& .MuiTab-root': {
-                            minHeight: 72,
-                            textTransform: 'none',
-                            fontSize: '0.95rem',
-                            fontWeight: 600,
-                            color: theme.palette.text.secondary,
-                            '&.Mui-selected': {
-                              color: theme.palette.primary.main,
-                              fontWeight: 700
-                            },
-                            '&:hover': {
-                              color: theme.palette.primary.main,
-                              backgroundColor: alpha(theme.palette.primary.main, 0.04)
-                            }
-                          }
-                        }}
-                      >
-                        {tabData.map((tab, index) => (
-                          <Tab
-                            key={index}
-                            icon={tab.icon}
-                            label={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 'inherit' }}>
-                                  {tab.label}
-                                </Typography>
-                                <Box sx={{
-                                  backgroundColor: alpha(tab.color, 0.1),
-                                  color: tab.color,
-                                  borderRadius: '12px',
-                                  px: 1,
-                                  py: 0.25,
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  minWidth: '20px',
-                                  textAlign: 'center'
-                                }}>
-                                  {tab.charts.length}
-                                </Box>
-                              </Box>
-                            }
-                            iconPosition="start"
-                          />
-                        ))}
-                      </Tabs>
-                    </Box>
-
-                    {/* Tab Content */}
-                    <Box sx={{ p: { xs: 2, md: 4 } }}>
-                      {tabData[selectedChartTab] && (
-                        <Box>
-
-                          {/* Charts Grid - Individual Collapsible Charts */}
-                          <Box sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 3
-                          }}>
-                            {tabData[selectedChartTab].charts.map((chart, chartIndex) => {
-                              const chartKey = `${chart.title}-${chartIndex}`;
-                              const isExpanded = expandedCharts[chartKey] || false; // Default to collapsed
-                              
-                              return (
-                                <Paper
-                                  key={chartIndex}
-                                  elevation={2}
-                                  sx={{
-                                    borderRadius: 3,
-                                    overflow: 'hidden',
-                                    background: 'linear-gradient(145deg, #ffffff 0%, #fafafa 100%)',
-                                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                                  }}
-                                >
-                                  {/* Individual Chart Header - Collapsible */}
-                                  <Box 
-                                    onClick={() => handleChartExpansion(chartKey)}
-                                    sx={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      p: 2,
-                                      cursor: 'pointer',
-                                      background: `linear-gradient(135deg, ${alpha(tabData[selectedChartTab].color, 0.06)} 0%, ${alpha(tabData[selectedChartTab].color, 0.08)} 100%)`,
-                                      borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                                      '&:hover': {
-                                        background: `linear-gradient(135deg, ${alpha(tabData[selectedChartTab].color, 0.1)} 0%, ${alpha(tabData[selectedChartTab].color, 0.12)} 100%)`
-                                      },
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    <Typography variant="h6" sx={{
-                                      fontWeight: 600,
-                                      color: theme.palette.text.primary,
-                                      fontSize: '1.1rem'
-                                    }}>
-                                      {chart.title}
-                                    </Typography>
-                                    
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Tooltip title="Download Chart" arrow>
-                                        <IconButton
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDownloadChart(chart.title, chart.originalIndex);
-                                          }}
-                                          size="small"
-                                          sx={{
-                                            backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                                            color: theme.palette.primary.main,
-                                            width: 36,
-                                            height: 36,
-                                            '&:hover': {
-                                              backgroundColor: alpha(theme.palette.primary.main, 0.15),
-                                              transform: 'scale(1.08)'
-                                            },
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`
-                                          }}
-                                        >
-                                          <GetAppIcon fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
-                                      <IconButton
-                                        sx={{
-                                          color: theme.palette.text.secondary,
-                                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                                          transition: 'transform 0.3s ease'
-                                        }}
-                                      >
-                                        <ExpandMoreIcon />
-                                      </IconButton>
-                                    </Box>
-                                  </Box>
-
-                                  {/* Collapsible Chart Content */}
-                                  <Collapse in={isExpanded} timeout={300}>
-
-                                    {/* Chart Content with Legend and Controls */}
-                                    <Box sx={{
-                                      height: { xs: '500px', md: '650px' },
-                                      display: 'flex',
-                                      background: 'linear-gradient(145deg, #fafafa 0%, #ffffff 100%)'
-                                    }}>
-                                  {/* Left Panel - Legend and Info */}
-                                  <Box sx={{
-                                    width: { xs: '35%', md: '30%' },
-                                    p: { xs: 1.5, md: 2 },
-                                    borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 2
-                                  }}>
-                                    {/* Chart Type Controls */}
-                                    <Box>
-                                      <Typography variant="body2" sx={{
-                                        fontWeight: 600,
-                                        color: theme.palette.text.secondary,
-                                        mb: 1,
-                                        fontSize: '1rem',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
-                                      }}>
-                                        Chart Type
-                                      </Typography>
-                                      <Box sx={{
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        gap: 3
-                                      }}>
-                                        {[
-                                          { key: 'bar', icon: BarChartIcon, label: 'Bar' },
-                                          { key: 'pie', icon: PieChartIcon, label: 'Pie' },
-                                          { key: 'donut', icon: PieChartIcon, label: 'Donut' },
-                                          { key: 'line', icon: ShowChartIcon, label: 'Line' }
-                                        ].map((chartType) => {
-                                          const IconComponent = chartType.icon;
-                                          const currentType = getCurrentChartType(chart.originalIndex, chart.type);
-                                          const isSelected = currentType === chartType.key;
-                                          
-                                          return (
-                                            <Tooltip key={chartType.key} title={chartType.label} arrow>
-                                              <IconButton
-                                                onClick={() => handleChartTypeChange(chart.originalIndex, chartType.key)}
-                                                size="medium"
-                                                sx={{
-                                                  width: 40,
-                                                  height: 40,
-                                                  backgroundColor: isSelected 
-                                                    ? alpha(theme.palette.primary.main, 0.15)
-                                                    : alpha(theme.palette.primary.main, 0.08),
-                                                  color: isSelected 
-                                                    ? theme.palette.primary.main
-                                                    : theme.palette.text.secondary,
-                                                  border: isSelected 
-                                                    ? `2px solid ${theme.palette.primary.main}`
-                                                    : `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                                                  '&:hover': {
-                                                    backgroundColor: alpha(theme.palette.primary.main, 0.2),
-                                                    color: theme.palette.primary.main,
-                                                    transform: 'scale(1.08)',
-                                                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`
-                                                  },
-                                                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                                }}
-                                              >
-                                                <IconComponent sx={{ fontSize: 18 }} />
-                                              </IconButton>
-                                            </Tooltip>
-                                          );
-                                        })}
-                                      </Box>
-                                    </Box>
-
-                                    {/* Legend */}
-                                    <Box sx={{ flex: 1 }}>
-                                      <Typography variant="body2" sx={{
-                                        fontWeight: 600,
-                                        color: theme.palette.text.secondary,
-                                        mb: 1.5,
-                                        fontSize: '0.75rem',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
-                                      }}>
-                                        Legend
-                                      </Typography>
-                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                        {chart.data?.map((item, index) => (
-                                          <Box key={index} sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 1.5,
-                                            p: 1,
-                                            borderRadius: 1,
-                                            backgroundColor: alpha(item.color || theme.palette.primary.main, 0.05),
-                                            border: `1px solid ${alpha(item.color || theme.palette.primary.main, 0.1)}`,
-                                            transition: 'all 0.2s ease',
-                                            '&:hover': {
-                                              backgroundColor: alpha(item.color || theme.palette.primary.main, 0.1),
-                                              transform: 'translateX(2px)'
-                                            }
-                                          }}>
-                                            <Box sx={{
-                                              width: 15,
-                                              height: 15,
-                                              borderRadius: '50%',
-                                              backgroundColor: item.color || theme.palette.primary.main,
-                                              flexShrink: 0
-                                            }} />
-                                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                                              <Typography variant="body2" sx={{
-                                                fontWeight: 500,
-                                                color: theme.palette.text.primary,
-                                                fontSize: '1rem',
-                                                lineHeight: 1.2,
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap'
-                                              }}>
-                                                {item.name}
-                                              </Typography>
-                                              <Typography variant="caption" sx={{
-                                                color: theme.palette.text.secondary,
-                                                fontSize: '0.7rem',
-                                                fontWeight: 600
-                                              }}>
-                                                {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
-                                              </Typography>
-                                            </Box>
-                                          </Box>
-                                        )) || []}
-                                      </Box>
-                                    </Box>
-                                  </Box>
-
-                                  {/* Right Panel - Chart */}
-                                  <Box 
-                                    ref={(el) => {
-                                      if (el) {
-                                        chartRefs.current[chart.originalIndex] = el;
-                                      }
-                                    }}
-                                    sx={{
-                                      flex: 1,
-                                      p: { xs: 1, md: 2 },
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      '& > div': {
-                                        width: '100% !important',
-                                        height: '100% !important',
-                                        minHeight: '100%',
-                                        flex: 1
-                                      },
-                                      '& .recharts-wrapper, & .recharts-surface': {
-                                        width: '100% !important',
-                                        height: '100% !important'
-                                      }
-                                    }}
-                                  >
-                                    {/* Error Boundary for Chart Rendering */}
-                                    <ChartErrorBoundary height={isMobile ? 450 : 580}>
-                                      {chart && chart.data && Array.isArray(chart.data) && chart.data.length > 0 ? (
-                                        <React.Suspense fallback={
-                                          <Box sx={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center',
-                                            height: isMobile ? 450 : 580,
-                                            minHeight: 400
-                                          }}>
-                                            <CircularProgress />
-                                          </Box>
-                                        }>
-                                          <InteractiveChart 
-                                            key={`chart-${chart.originalIndex}-${getCurrentChartType(chart.originalIndex, chart.type)}-${Date.now()}`}
-                                            {...chart} 
-                                            type={getCurrentChartType(chart.originalIndex, chart.type)}
-                                            index={chart.originalIndex} 
-                                            height={isMobile ? 450 : 580}
-                                            width="100%"
-                                            responsive={true}
-                                            hideHeader={true}
-                                            allowTypeChange={false}
-                                          />
-                                        </React.Suspense>
-                                      ) : (
-                                        <Box sx={{ 
-                                          display: 'flex', 
-                                          alignItems: 'center', 
-                                          justifyContent: 'center',
-                                          height: isMobile ? 450 : 580,
-                                          minHeight: 400,
-                                          color: 'text.secondary',
-                                          bgcolor: 'background.paper',
-                                          border: '1px solid',
-                                          borderColor: 'divider',
-                                          borderRadius: 2
-                                        }}>
-                                          <Typography>Chart data unavailable</Typography>
-                                        </Box>
-                                      )}
-                                    </ChartErrorBoundary>
-                                      </Box>
-                                    </Box>
-                                  </Collapse>
-                                </Paper>
-                              );
-                            })}
-                          </Box>
-                        </Box>
-                      )}
-                    </Box>
-                  </>
-                );
-              })()}
-                </Box>
-              </Collapse>
-            </Paper>
-          </Box>
-        </Fade>
-      )}
-
       {/* Enhanced Tabular Results Section with Collapsible Tabs */}
       {finalAnalysis.tables && finalAnalysis.tables.length > 0 && (
         <Fade in={currentSection >= 2} timeout={800}>
           <Box sx={{ mb: 5 }}>
             {/* Collapsible Section Header */}
-            <Paper 
+            <Paper
               elevation={2}
               sx={{
                 borderRadius: 3,
-                overflow: 'hidden',
+                overflow: "hidden",
                 mb: 3,
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
               }}
             >
-              <Box 
-                onClick={() => setTabularResultsExpanded(!tabularResultsExpanded)}
+              <Box
+                onClick={() =>
+                  setTabularResultsExpanded(!tabularResultsExpanded)
+                }
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   p: 3,
-                  cursor: 'pointer',
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.05)} 0%, ${alpha(theme.palette.success.main, 0.05)} 100%)`,
-                  '&:hover': {
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.success.main, 0.08)} 100%)`
+                  cursor: "pointer",
+                  background: `linear-gradient(135deg, ${alpha(
+                    theme.palette.info.main,
+                    0.05
+                  )} 0%, ${alpha(theme.palette.success.main, 0.05)} 100%)`,
+                  "&:hover": {
+                    background: `linear-gradient(135deg, ${alpha(
+                      theme.palette.info.main,
+                      0.08
+                    )} 0%, ${alpha(theme.palette.success.main, 0.08)} 100%)`,
                   },
-                  transition: 'all 0.2s ease'
+                  transition: "all 0.2s ease",
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    background: `linear-gradient(135deg, ${theme.palette.info.main}, ${theme.palette.success.main})`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: `0 8px 32px ${alpha(theme.palette.info.main, 0.3)}`
-                  }}>  
-                    <DataObjectIcon sx={{ color: 'white', fontSize: 24 }} />
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Box
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      background: `linear-gradient(135deg, ${theme.palette.info.main}, ${theme.palette.success.main})`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: `0 8px 32px ${alpha(
+                        theme.palette.info.main,
+                        0.3
+                      )}`,
+                    }}
+                  >
+                    <DataObjectIcon sx={{ color: "white", fontSize: 24 }} />
                   </Box>
                   <Box>
                     <Typography
@@ -3135,7 +3204,7 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                       sx={{
                         fontWeight: 700,
                         color: theme.palette.text.primary,
-                        mb: 0.5
+                        mb: 0.5,
                       }}
                     >
                       Tabular Results
@@ -3143,18 +3212,21 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                     <Typography
                       variant="body2"
                       sx={{
-                        color: theme.palette.text.secondary
+                        color: theme.palette.text.secondary,
                       }}
                     >
-                      Detailed data tables organized by categories with download options
+                      Detailed data tables organized by categories with download
+                      options
                     </Typography>
                   </Box>
                 </Box>
                 <IconButton
                   sx={{
                     color: theme.palette.info.main,
-                    transform: tabularResultsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.3s ease'
+                    transform: tabularResultsExpanded
+                      ? "rotate(180deg)"
+                      : "rotate(0deg)",
+                    transition: "transform 0.3s ease",
                   }}
                 >
                   <ExpandMoreIcon />
@@ -3163,165 +3235,239 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
 
               <Collapse in={tabularResultsExpanded} timeout={300}>
                 {/* Tabbed Table Interface */}
-                <Box sx={{
-                  background: 'linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)'
-                }}>
+                <Box
+                  sx={{
+                    background:
+                      "linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)",
+                  }}
+                >
                   {(() => {
-                    const tableCategories = categorizeTables(finalAnalysis.tables);
-                    
+                    const tableCategories = categorizeTables(
+                      finalAnalysis.tables
+                    );
+
                     // Generate dynamic table labels based on the data context
                     const getTableLabel = (category, tables) => {
-                      if (tables.length === 0) return '';
-                      
+                      if (tables.length === 0) return "";
+
                       // Check if this is pipeline/regional data
-                      const hasRegionalData = Array.isArray(finalAnalysis.data) && finalAnalysis.data?.some(item => 
-                        Object.keys(item || {}).some(key => 
-                          key.toLowerCase().includes('region') || 
-                          key.toLowerCase().includes('pipeline')
-                        )
-                      );
-                      
-                      // Check if this is reconciliation data
-                      const isReconciliation = finalAnalysis.type === 'reconciliation' || 
-                        tables.some(table => 
-                          table.title?.toLowerCase().includes('reconciliation') ||
-                          table.title?.toLowerCase().includes('match')
+                      const hasRegionalData =
+                        Array.isArray(finalAnalysis.data) &&
+                        finalAnalysis.data?.some((item) =>
+                          Object.keys(item || {}).some(
+                            (key) =>
+                              key.toLowerCase().includes("region") ||
+                              key.toLowerCase().includes("pipeline")
+                          )
                         );
-                      
+
+                      // Check if this is reconciliation data
+                      const isReconciliation =
+                        finalAnalysis.type === "reconciliation" ||
+                        tables.some(
+                          (table) =>
+                            table.title
+                              ?.toLowerCase()
+                              .includes("reconciliation") ||
+                            table.title?.toLowerCase().includes("match")
+                        );
+
                       if (hasRegionalData) {
-                        switch(category) {
-                          case 'referenceMatches': return 'Federal Pipeline Report';
-                          case 'fullyMatched': return 'Complete Data Report';
-                          case 'mismatches': return 'Analysis Breakdown';
-                          case 'extraRecords': return 'Additional Data';
-                          default: return tables[0]?.title || 'Data Report';
+                        switch (category) {
+                          case "referenceMatches":
+                            return "Pipeline Report";
+                          case "fullyMatched":
+                            return "Complete Data Report";
+                          case "mismatches":
+                            return "Analysis Breakdown";
+                          case "extraRecords":
+                            return "Additional Data";
+                          default:
+                            return tables[0]?.title || "Data Report";
                         }
                       } else if (isReconciliation) {
-                        switch(category) {
-                          case 'referenceMatches': return 'Reference ID Matches Report';
-                          case 'fullyMatched': return 'Fully Matched Report';
-                          case 'mismatches': return 'Mismatches Report';
-                          case 'extraRecords': return 'Extra Records Report';
-                          default: return tables[0]?.title || 'Analysis Report';
+                        switch (category) {
+                          case "referenceMatches":
+                            return "Reference ID Matches Report";
+                          case "fullyMatched":
+                            return "Fully Matched Report";
+                          case "mismatches":
+                            return "Mismatches Report";
+                          case "extraRecords":
+                            return "Extra Records Report";
+                          default:
+                            return tables[0]?.title || "Analysis Report";
                         }
                       } else {
                         // Generic data analysis labels
-                        switch(category) {
-                          case 'referenceMatches': return 'Detailed Results';
-                          case 'fullyMatched': return 'Complete Data';
-                          case 'mismatches': return 'Analysis Results';
-                          case 'extraRecords': return 'Additional Data';
-                          default: return tables[0]?.title || 'Data Report';
+                        switch (category) {
+                          case "referenceMatches":
+                            return "Detailed Results";
+                          case "fullyMatched":
+                            return "Complete Data";
+                          case "mismatches":
+                            return "Analysis Results";
+                          case "extraRecords":
+                            return "Additional Data";
+                          default:
+                            return tables[0]?.title || "Data Report";
                         }
                       }
                     };
-                    
+
                     const getTableDescription = (category, tables) => {
-                      if (tables.length === 0) return '';
-                      
+                      if (tables.length === 0) return "";
+
                       // Check if this is pipeline/regional data
-                      const hasRegionalData = Array.isArray(finalAnalysis.data) && finalAnalysis.data?.some(item => 
-                        Object.keys(item || {}).some(key => 
-                          key.toLowerCase().includes('region') || 
-                          key.toLowerCase().includes('pipeline')
-                        )
-                      );
-                      
+                      const hasRegionalData =
+                        Array.isArray(finalAnalysis.data) &&
+                        finalAnalysis.data?.some((item) =>
+                          Object.keys(item || {}).some(
+                            (key) =>
+                              key.toLowerCase().includes("region") ||
+                              key.toLowerCase().includes("pipeline")
+                          )
+                        );
+
                       if (hasRegionalData) {
-                        switch(category) {
-                          case 'referenceMatches': return 'Federal client pipeline data by regions';
-                          case 'fullyMatched': return 'Complete regional pipeline data';
-                          case 'mismatches': return 'Detailed regional analysis breakdown';
-                          case 'extraRecords': return 'Additional regional data points';
-                          default: return 'Data analysis results';
+                        switch (category) {
+                          case "referenceMatches":
+                            return "Pipeline data by regions";
+                          case "fullyMatched":
+                            return "Complete regional pipeline data";
+                          case "mismatches":
+                            return "Detailed regional analysis breakdown";
+                          case "extraRecords":
+                            return "Additional regional data points";
+                          default:
+                            return "Data analysis results";
                         }
                       } else {
-                        switch(category) {
-                          case 'referenceMatches': return 'Tables showing reference ID matches';
-                          case 'fullyMatched': return 'Tables with complete matches';
-                          case 'mismatches': return 'Tables showing various types of mismatches';
-                          case 'extraRecords': return 'Tables with additional or unmatched records';
-                          default: return 'Analysis results';
+                        switch (category) {
+                          case "referenceMatches":
+                            return "Tables showing reference ID matches";
+                          case "fullyMatched":
+                            return "Tables with complete matches";
+                          case "mismatches":
+                            return "Tables showing various types of mismatches";
+                          case "extraRecords":
+                            return "Tables with additional or unmatched records";
+                          default:
+                            return "Analysis results";
                         }
                       }
                     };
-                    
+
                     const tabData = [
                       {
-                        label: getTableLabel('referenceMatches', tableCategories.referenceMatches),
+                        label: getTableLabel(
+                          "referenceMatches",
+                          tableCategories.referenceMatches
+                        ),
                         icon: <CheckCircleIcon />,
                         tables: tableCategories.referenceMatches,
                         color: theme.palette.success.main,
-                        description: getTableDescription('referenceMatches', tableCategories.referenceMatches)
+                        description: getTableDescription(
+                          "referenceMatches",
+                          tableCategories.referenceMatches
+                        ),
                       },
                       {
-                        label: getTableLabel('fullyMatched', tableCategories.fullyMatched),
+                        label: getTableLabel(
+                          "fullyMatched",
+                          tableCategories.fullyMatched
+                        ),
                         icon: <DoneAllIcon />,
                         tables: tableCategories.fullyMatched,
                         color: theme.palette.info.main,
-                        description: getTableDescription('fullyMatched', tableCategories.fullyMatched)
+                        description: getTableDescription(
+                          "fullyMatched",
+                          tableCategories.fullyMatched
+                        ),
                       },
                       {
-                        label: getTableLabel('mismatches', [
+                        label: getTableLabel("mismatches", [
                           ...tableCategories.mismatches.messageType,
                           ...tableCategories.mismatches.amount,
-                          ...tableCategories.mismatches.bic
+                          ...tableCategories.mismatches.bic,
                         ]),
                         icon: <ErrorIcon />,
                         tables: [
                           ...tableCategories.mismatches.messageType,
                           ...tableCategories.mismatches.amount,
-                          ...tableCategories.mismatches.bic
+                          ...tableCategories.mismatches.bic,
                         ],
                         color: theme.palette.error.main,
-                        description: getTableDescription('mismatches', [
+                        description: getTableDescription("mismatches", [
                           ...tableCategories.mismatches.messageType,
                           ...tableCategories.mismatches.amount,
-                          ...tableCategories.mismatches.bic
-                        ])
+                          ...tableCategories.mismatches.bic,
+                        ]),
                       },
                       {
-                        label: getTableLabel('extraRecords', tableCategories.extraRecords),
+                        label: getTableLabel(
+                          "extraRecords",
+                          tableCategories.extraRecords
+                        ),
                         icon: <WarningIcon />,
                         tables: tableCategories.extraRecords,
                         color: theme.palette.warning.main,
-                        description: getTableDescription('extraRecords', tableCategories.extraRecords)
-                      }
-                    ].filter(tab => tab.tables.length > 0);
+                        description: getTableDescription(
+                          "extraRecords",
+                          tableCategories.extraRecords
+                        ),
+                      },
+                    ].filter((tab) => tab.tables.length > 0);
 
                     return (
                       <>
                         {/* Tab Headers */}
-                        <Box sx={{ 
-                          background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${alpha(theme.palette.success.main, 0.08)} 100%)`,
-                          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-                        }}>
+                        <Box
+                          sx={{
+                            background: `linear-gradient(135deg, ${alpha(
+                              theme.palette.info.main,
+                              0.08
+                            )} 0%, ${alpha(
+                              theme.palette.success.main,
+                              0.08
+                            )} 100%)`,
+                            borderBottom: `1px solid ${alpha(
+                              theme.palette.divider,
+                              0.1
+                            )}`,
+                          }}
+                        >
                           <Tabs
                             value={selectedTableTab}
-                            onChange={(event, newValue) => setSelectedTableTab(newValue)}
+                            onChange={(event, newValue) =>
+                              setSelectedTableTab(newValue)
+                            }
                             variant={isMobile ? "scrollable" : "fullWidth"}
                             scrollButtons="auto"
                             sx={{
-                              '& .MuiTabs-indicator': {
+                              "& .MuiTabs-indicator": {
                                 height: 3,
-                                borderRadius: '3px 3px 0 0',
-                                background: `linear-gradient(90deg, ${theme.palette.info.main}, ${theme.palette.success.main})`
+                                borderRadius: "3px 3px 0 0",
+                                background: `linear-gradient(90deg, ${theme.palette.info.main}, ${theme.palette.success.main})`,
                               },
-                              '& .MuiTab-root': {
+                              "& .MuiTab-root": {
                                 minHeight: 72,
-                                textTransform: 'none',
-                                fontSize: '0.95rem',
+                                textTransform: "none",
+                                fontSize: "0.95rem",
                                 fontWeight: 600,
                                 color: theme.palette.text.secondary,
-                                '&.Mui-selected': {
+                                "&.Mui-selected": {
                                   color: theme.palette.info.main,
-                                  fontWeight: 700
+                                  fontWeight: 700,
                                 },
-                                '&:hover': {
+                                "&:hover": {
                                   color: theme.palette.info.main,
-                                  backgroundColor: alpha(theme.palette.info.main, 0.04)
-                                }
-                              }
+                                  backgroundColor: alpha(
+                                    theme.palette.info.main,
+                                    0.04
+                                  ),
+                                },
+                              },
                             }}
                           >
                             {tabData.map((tab, index) => (
@@ -3329,30 +3475,41 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                                 key={index}
                                 icon={tab.icon}
                                 label={
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Typography variant="body2" sx={{ fontWeight: 'inherit' }}>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 1,
+                                    }}
+                                  >
+                                    <Typography
+                                      variant="body2"
+                                      sx={{ fontWeight: "inherit" }}
+                                    >
                                       {tab.label}
                                     </Typography>
-                                    <Box sx={{
-                                      backgroundColor: alpha(tab.color, 0.1),
-                                      color: tab.color,
-                                      borderRadius: '12px',
-                                      px: 1,
-                                      py: 0.25,
-                                      fontSize: '0.75rem',
-                                      fontWeight: 600,
-                                      minWidth: '20px',
-                                      textAlign: 'center'
-                                    }}>
+                                    <Box
+                                      sx={{
+                                        backgroundColor: alpha(tab.color, 0.1),
+                                        color: tab.color,
+                                        borderRadius: "12px",
+                                        px: 1,
+                                        py: 0.25,
+                                        fontSize: "0.75rem",
+                                        fontWeight: 600,
+                                        minWidth: "20px",
+                                        textAlign: "center",
+                                      }}
+                                    >
                                       {tab.tables.length}
                                     </Box>
                                   </Box>
                                 }
                                 iconPosition="start"
                                 sx={{
-                                  '& .MuiTab-iconWrapper': {
-                                    color: 'inherit'
-                                  }
+                                  "& .MuiTab-iconWrapper": {
+                                    color: "inherit",
+                                  },
                                 }}
                               />
                             ))}
@@ -3364,31 +3521,48 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                           {tabData[selectedTableTab] && (
                             <Box>
                               {/* Category Header with Download All */}
-                              <Box sx={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                mb: 3,
-                                p: 2,
-                                background: `linear-gradient(135deg, ${alpha(tabData[selectedTableTab].color, 0.05)} 0%, ${alpha(tabData[selectedTableTab].color, 0.08)} 100%)`,
-                                borderRadius: 2,
-                                border: `1px solid ${alpha(tabData[selectedTableTab].color, 0.1)}`
-                              }}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  mb: 3,
+                                  p: 2,
+                                  background: `linear-gradient(135deg, ${alpha(
+                                    tabData[selectedTableTab].color,
+                                    0.05
+                                  )} 0%, ${alpha(
+                                    tabData[selectedTableTab].color,
+                                    0.08
+                                  )} 100%)`,
+                                  borderRadius: 2,
+                                  border: `1px solid ${alpha(
+                                    tabData[selectedTableTab].color,
+                                    0.1
+                                  )}`,
+                                }}
+                              >
                                 <Box>
-                                  <Typography variant="h6" sx={{
-                                    fontWeight: 600,
-                                    color: theme.palette.text.primary,
-                                    mb: 0.5
-                                  }}>
+                                  <Typography
+                                    variant="h6"
+                                    sx={{
+                                      fontWeight: 600,
+                                      color: theme.palette.text.primary,
+                                      mb: 0.5,
+                                    }}
+                                  >
                                     {tabData[selectedTableTab].label}
                                   </Typography>
-                                  <Typography variant="body2" sx={{
-                                    color: theme.palette.text.secondary
-                                  }}>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: theme.palette.text.secondary,
+                                    }}
+                                  >
                                     {tabData[selectedTableTab].description}
                                   </Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Box sx={{ display: "flex", gap: 1 }}>
                                   {/* Show audit report button only for mismatches tab */}
                                   {/* {tabData[selectedTableTab].label.toLowerCase().includes("mismatch") && (
                                     
@@ -3397,16 +3571,22 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                                   <Button
                                     variant="contained"
                                     startIcon={<DownloadIcon />}
-                                    onClick={() => handleCategoryDownload(
-                                      tabData[selectedTableTab].label.replace(/\s+/g, '_').toLowerCase(),
-                                      tabData[selectedTableTab].tables
-                                    )}
+                                    onClick={() =>
+                                      handleCategoryDownload(
+                                        tabData[selectedTableTab].label
+                                          .replace(/\s+/g, "_")
+                                          .toLowerCase(),
+                                        tabData[selectedTableTab].tables
+                                      )
+                                    }
                                     sx={{
-                                      backgroundColor: tabData[selectedTableTab].color,
-                                      '&:hover': {
-                                        backgroundColor: tabData[selectedTableTab].color,
-                                        filter: 'brightness(0.9)'
-                                      }
+                                      backgroundColor:
+                                        tabData[selectedTableTab].color,
+                                      "&:hover": {
+                                        backgroundColor:
+                                          tabData[selectedTableTab].color,
+                                        filter: "brightness(0.9)",
+                                      },
                                     }}
                                   >
                                     Download Report
@@ -3415,164 +3595,262 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                               </Box>
 
                               {/* Tables List */}
-                              <Box sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 3
-                              }}>
-                                {tabData[selectedTableTab].tables.map((table, tableIndex) => {
-                                  const tableKey = `${table.title}-${tableIndex}`;
-                                  const isTableExpanded = expandedTables[tableKey] || false; // Default to collapsed
-                                  
-                                  return (
-                                    <Paper
-                                      key={tableIndex}
-                                      elevation={1}
-                                      sx={{
-                                        borderRadius: 2,
-                                        overflow: 'hidden',
-                                        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                                        '&:hover': {
-                                          boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.1)}`
-                                        },
-                                        transition: 'all 0.2s ease'
-                                      }}
-                                      ref={(el) => {
-                                        if (el) {
-                                          tableRefs.current[table.title] = el;
-                                        }
-                                      }}
-                                    >
-                                      {/* Table Header - Collapsible */}
-                                      <Box 
-                                        onClick={() => handleTableExpansion(tableKey)}
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 3,
+                                }}
+                              >
+                                {tabData[selectedTableTab].tables.map(
+                                  (table, tableIndex) => {
+                                    const tableKey = `${table.title}-${tableIndex}`;
+                                    const isTableExpanded =
+                                      expandedTables[tableKey] || false; // Default to collapsed
+
+                                    return (
+                                      <Paper
+                                        key={tableIndex}
+                                        elevation={1}
                                         sx={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'space-between',
-                                          p: 2,
-                                          cursor: 'pointer',
-                                          background: `linear-gradient(135deg, ${alpha(tabData[selectedTableTab].color, 0.03)} 0%, ${alpha(tabData[selectedTableTab].color, 0.05)} 100%)`,
-                                          borderBottom: isTableExpanded ? `1px solid ${alpha(theme.palette.divider, 0.08)}` : 'none',
-                                          '&:hover': {
-                                            background: `linear-gradient(135deg, ${alpha(tabData[selectedTableTab].color, 0.08)} 0%, ${alpha(tabData[selectedTableTab].color, 0.1)} 100%)`
+                                          borderRadius: 2,
+                                          overflow: "hidden",
+                                          border: `1px solid ${alpha(
+                                            theme.palette.divider,
+                                            0.1
+                                          )}`,
+                                          "&:hover": {
+                                            boxShadow: `0 4px 20px ${alpha(
+                                              theme.palette.primary.main,
+                                              0.1
+                                            )}`,
                                           },
-                                          transition: 'all 0.2s ease'
+                                          transition: "all 0.2s ease",
+                                        }}
+                                        ref={(el) => {
+                                          if (el) {
+                                            tableRefs.current[table.title] = el;
+                                          }
                                         }}
                                       >
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                          <Typography variant="h6" sx={{
-                                            fontWeight: 600,
-                                            color: theme.palette.text.primary,
-                                            fontSize: '1.1rem'
-                                          }}>
-                                            {table.title}
-                                          </Typography>
-                                          {table.data && (
-                                            <Box sx={{
-                                              backgroundColor: alpha(tabData[selectedTableTab].color, 0.1),
-                                              color: tabData[selectedTableTab].color,
-                                              borderRadius: '12px',
-                                              px: 1.5,
-                                              py: 0.25,
-                                              fontSize: '0.75rem',
-                                              fontWeight: 600
-                                            }}>
-                                              {table.data.length} records
-                                            </Box>
-                                          )}
-                                        </Box>
-                                        
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                          {/* Show audit report button only for mismatch tables */}
-                                          {table.title.toLowerCase().includes("mismatch") && (
-                                            <Tooltip title="Generate Audit Report" arrow>
+                                        {/* Table Header - Collapsible */}
+                                        <Box
+                                          onClick={() =>
+                                            handleTableExpansion(tableKey)
+                                          }
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            p: 2,
+                                            cursor: "pointer",
+                                            background: `linear-gradient(135deg, ${alpha(
+                                              tabData[selectedTableTab].color,
+                                              0.03
+                                            )} 0%, ${alpha(
+                                              tabData[selectedTableTab].color,
+                                              0.05
+                                            )} 100%)`,
+                                            borderBottom: isTableExpanded
+                                              ? `1px solid ${alpha(
+                                                  theme.palette.divider,
+                                                  0.08
+                                                )}`
+                                              : "none",
+                                            "&:hover": {
+                                              background: `linear-gradient(135deg, ${alpha(
+                                                tabData[selectedTableTab].color,
+                                                0.08
+                                              )} 0%, ${alpha(
+                                                tabData[selectedTableTab].color,
+                                                0.1
+                                              )} 100%)`,
+                                            },
+                                            transition: "all 0.2s ease",
+                                          }}
+                                        >
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 2,
+                                            }}
+                                          >
+                                            <Typography
+                                              variant="h6"
+                                              sx={{
+                                                fontWeight: 600,
+                                                color:
+                                                  theme.palette.text.primary,
+                                                fontSize: "1.1rem",
+                                              }}
+                                            >
+                                              {table.title}
+                                            </Typography>
+                                            {table.data && (
+                                              <Box
+                                                sx={{
+                                                  backgroundColor: alpha(
+                                                    tabData[selectedTableTab]
+                                                      .color,
+                                                    0.1
+                                                  ),
+                                                  color:
+                                                    tabData[selectedTableTab]
+                                                      .color,
+                                                  borderRadius: "12px",
+                                                  px: 1.5,
+                                                  py: 0.25,
+                                                  fontSize: "0.75rem",
+                                                  fontWeight: 600,
+                                                }}
+                                              >
+                                                {table.data.length} records
+                                              </Box>
+                                            )}
+                                          </Box>
+
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 1,
+                                            }}
+                                          >
+                                            {/* Show audit report button only for mismatch tables */}
+                                            {table.title
+                                              .toLowerCase()
+                                              .includes("mismatch") && (
+                                              <Tooltip
+                                                title="Generate Audit Report"
+                                                arrow
+                                              >
+                                                <IconButton
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAuditReport(
+                                                      table.title,
+                                                      table.data
+                                                    );
+                                                  }}
+                                                  size="small"
+                                                  sx={{
+                                                    backgroundColor: alpha(
+                                                      theme.palette.info.main,
+                                                      0.08
+                                                    ),
+                                                    color:
+                                                      theme.palette.info.main,
+                                                    width: 32,
+                                                    height: 32,
+                                                    "&:hover": {
+                                                      backgroundColor: alpha(
+                                                        theme.palette.info.main,
+                                                        0.15
+                                                      ),
+                                                      transform: "scale(1.05)",
+                                                    },
+                                                    transition: "all 0.2s ease",
+                                                  }}
+                                                >
+                                                  <AssignmentIcon fontSize="small" />
+                                                </IconButton>
+                                              </Tooltip>
+                                            )}
+                                            <Tooltip
+                                              title="Download Table"
+                                              arrow
+                                            >
                                               <IconButton
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  handleAuditReport(table.title, table.data);
+                                                  handleDownloadTable(
+                                                    table.title,
+                                                    table.data
+                                                  );
                                                 }}
                                                 size="small"
                                                 sx={{
-                                                  backgroundColor: alpha(theme.palette.info.main, 0.08),
-                                                  color: theme.palette.info.main,
+                                                  backgroundColor: alpha(
+                                                    theme.palette.success.main,
+                                                    0.08
+                                                  ),
+                                                  color:
+                                                    theme.palette.success.main,
                                                   width: 32,
                                                   height: 32,
-                                                  '&:hover': {
-                                                    backgroundColor: alpha(theme.palette.info.main, 0.15),
-                                                    transform: 'scale(1.05)'
+                                                  "&:hover": {
+                                                    backgroundColor: alpha(
+                                                      theme.palette.success
+                                                        .main,
+                                                      0.15
+                                                    ),
+                                                    transform: "scale(1.05)",
                                                   },
-                                                  transition: 'all 0.2s ease'
+                                                  transition: "all 0.2s ease",
                                                 }}
                                               >
-                                                <AssignmentIcon fontSize="small" />
+                                                <DownloadIcon fontSize="small" />
                                               </IconButton>
                                             </Tooltip>
-                                          )}
-                                          <Tooltip title="Download Table" arrow>
                                             <IconButton
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDownloadTable(table.title, table.data);
-                                              }}
-                                              size="small"
                                               sx={{
-                                                backgroundColor: alpha(theme.palette.success.main, 0.08),
-                                                color: theme.palette.success.main,
-                                                width: 32,
-                                                height: 32,
-                                                '&:hover': {
-                                                  backgroundColor: alpha(theme.palette.success.main, 0.15),
-                                                  transform: 'scale(1.05)'
-                                                },
-                                                transition: 'all 0.2s ease'
+                                                color:
+                                                  theme.palette.text.secondary,
+                                                transform: isTableExpanded
+                                                  ? "rotate(180deg)"
+                                                  : "rotate(0deg)",
+                                                transition:
+                                                  "transform 0.3s ease",
                                               }}
                                             >
-                                              <DownloadIcon fontSize="small" />
+                                              <ExpandMoreIcon />
                                             </IconButton>
-                                          </Tooltip>
-                                          <IconButton
-                                            sx={{
-                                              color: theme.palette.text.secondary,
-                                              transform: isTableExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                                              transition: 'transform 0.3s ease'
-                                            }}
-                                          >
-                                            <ExpandMoreIcon />
-                                          </IconButton>
+                                          </Box>
                                         </Box>
-                                      </Box>
 
-                                      {/* Collapsible Table Content */}
-                                      <Collapse in={isTableExpanded} timeout={300}>
-                                        <EnhancedDataGrid
-                                        data={table.data}
-                                        title={table.title}
-                                        height={isMobile ? 500 : 700}
-                                        pageSize={isMobile ? 15 : 50}
-                                        index={table.originalIndex || tableIndex}
-                                        exportFileName={`${finalAnalysis.title}_${table.title}`}
-                                        hideHeader={true}
-                                        onRefresh={
-                                          table.title.toLowerCase().includes("mismatch")
-                                            ? () => window.location.reload()
-                                            : undefined
-                                        }
-                                        type={
-                                          table.title.toLowerCase().includes("mismatch")
-                                            ? "mismatched_records"
-                                            : null
-                                        }
-                                        onReviewClick={
-                                          table.title.toLowerCase().includes("mismatch")
-                                            ? handleOpenReview
-                                            : null
-                                        }
-                                      />
-                                      </Collapse>
-                                    </Paper>
-                                  );
-                                })}
+                                        {/* Collapsible Table Content */}
+                                        <Collapse
+                                          in={isTableExpanded}
+                                          timeout={300}
+                                        >
+                                          <EnhancedDataGrid
+                                            data={table.data}
+                                            title={table.title}
+                                            height={isMobile ? 500 : 700}
+                                            pageSize={isMobile ? 15 : 50}
+                                            index={
+                                              table.originalIndex || tableIndex
+                                            }
+                                            exportFileName={`${finalAnalysis.title}_${table.title}`}
+                                            hideHeader={true}
+                                            onRefresh={
+                                              table.title
+                                                .toLowerCase()
+                                                .includes("mismatch")
+                                                ? () => window.location.reload()
+                                                : undefined
+                                            }
+                                            type={
+                                              table.title
+                                                .toLowerCase()
+                                                .includes("mismatch")
+                                                ? "mismatched_records"
+                                                : null
+                                            }
+                                            onReviewClick={
+                                              table.title
+                                                .toLowerCase()
+                                                .includes("mismatch")
+                                                ? handleOpenReview
+                                                : null
+                                            }
+                                          />
+                                        </Collapse>
+                                      </Paper>
+                                    );
+                                  }
+                                )}
                               </Box>
                             </Box>
                           )}
@@ -3583,6 +3861,810 @@ const AnalysisWidget = ({ data, title = "Analysis Results", onSave, initialExpan
                 </Box>
               </Collapse>
             </Paper>
+          </Box>
+        </Fade>
+      )}
+      {/* Enhanced Visual Analytics Section with Collapsible Tabs */}
+      {finalAnalysis.charts && finalAnalysis.charts.length > 0 && (
+        <Fade in={currentSection >= 1} timeout={800}>
+          <Box sx={{ mb: 5 }}>
+            {/* Collapsible Section Header */}
+            <Paper
+              elevation={2}
+              sx={{
+                borderRadius: 3,
+                overflow: "hidden",
+                mb: 3,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+              }}
+            >
+              <Box
+                onClick={() =>
+                  setVisualAnalyticsExpanded(!visualAnalyticsExpanded)
+                }
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 3,
+                  cursor: "pointer",
+                  background: `linear-gradient(135deg, ${alpha(
+                    theme.palette.primary.main,
+                    0.05
+                  )} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+                  "&:hover": {
+                    background: `linear-gradient(135deg, ${alpha(
+                      theme.palette.primary.main,
+                      0.08
+                    )} 0%, ${alpha(theme.palette.secondary.main, 0.08)} 100%)`,
+                  },
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Box
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: `0 8px 32px ${alpha(
+                        theme.palette.primary.main,
+                        0.3
+                      )}`,
+                    }}
+                  >
+                    <AnalyticsIcon sx={{ color: "white", fontSize: 24 }} />
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant={isMobile ? "h5" : "h4"}
+                      sx={{
+                        fontWeight: 700,
+                        color: theme.palette.text.primary,
+                        mb: 0.5,
+                      }}
+                    >
+                      Visual Analytics
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: theme.palette.text.secondary,
+                      }}
+                    >
+                      Interactive charts and visualizations for comprehensive
+                      data analysis
+                    </Typography>
+                  </Box>
+                </Box>
+                <IconButton
+                  sx={{
+                    color: theme.palette.primary.main,
+                    transform: visualAnalyticsExpanded
+                      ? "rotate(180deg)"
+                      : "rotate(0deg)",
+                    transition: "transform 0.3s ease",
+                  }}
+                >
+                  <ExpandMoreIcon />
+                </IconButton>
+              </Box>
+
+              <Collapse in={visualAnalyticsExpanded} timeout={300}>
+                {/* Tabbed Chart Interface */}
+                <Box
+                  sx={{
+                    background:
+                      "linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%)",
+                  }}
+                >
+                  {(() => {
+                    if (!memoizedChartContent) return null;
+
+                    const { tabData } = memoizedChartContent;
+
+                    return (
+                      <>
+                        {/* Tab Headers */}
+                        <Box
+                          sx={{
+                            background: `linear-gradient(135deg, ${alpha(
+                              theme.palette.primary.main,
+                              0.08
+                            )} 0%, ${alpha(
+                              theme.palette.secondary.main,
+                              0.08
+                            )} 100%)`,
+                            borderBottom: `1px solid ${alpha(
+                              theme.palette.divider,
+                              0.1
+                            )}`,
+                          }}
+                        >
+                          <Tabs
+                            value={selectedChartTab}
+                            onChange={(event, newValue) => {
+                              setSelectedChartTab(newValue);
+                              // Proactively auto-expand when switching tabs
+                              if (visualAnalyticsExpanded) {
+                                const nextTab = newValue;
+                                const tabCategories = [
+                                  "reconciliation",
+                                  "mismatch",
+                                  "messageTypes",
+                                ];
+                                const currentCategory = tabCategories[nextTab];
+                                const chartsInTab =
+                                  tabData[nextTab]?.charts || [];
+                                if (chartsInTab.length > 0) {
+                                  const storedKey =
+                                    lastExpandedChartKeyByTab[currentCategory];
+                                  const fallbackKey = `${chartsInTab[0].title}-0`;
+                                  const chartKeyToOpen =
+                                    storedKey || fallbackKey;
+                                  setExpandedCharts((prev) => ({
+                                    ...prev,
+                                    [chartKeyToOpen]: true,
+                                  }));
+                                  // Mark user intent so effect continues to work
+                                  if (!hasUserExpandedCharts)
+                                    setHasUserExpandedCharts(true);
+                                }
+                              }
+                            }}
+                            variant={isMobile ? "scrollable" : "fullWidth"}
+                            scrollButtons="auto"
+                            sx={{
+                              "& .MuiTabs-indicator": {
+                                height: 3,
+                                borderRadius: "3px 3px 0 0",
+                                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                              },
+                              "& .MuiTab-root": {
+                                minHeight: 72,
+                                textTransform: "none",
+                                fontSize: "0.95rem",
+                                fontWeight: 600,
+                                color: theme.palette.text.secondary,
+                                "&.Mui-selected": {
+                                  color: theme.palette.primary.main,
+                                  fontWeight: 700,
+                                },
+                                "&:hover": {
+                                  color: theme.palette.primary.main,
+                                  backgroundColor: alpha(
+                                    theme.palette.primary.main,
+                                    0.04
+                                  ),
+                                },
+                              },
+                            }}
+                          >
+                            {tabData.map((tab, index) => (
+                              <Tab
+                                key={index}
+                                icon={tab.icon}
+                                label={
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 1,
+                                    }}
+                                  >
+                                    <Typography
+                                      variant="body2"
+                                      sx={{ fontWeight: "inherit" }}
+                                    >
+                                      {tab.label}
+                                    </Typography>
+                                    <Box
+                                      sx={{
+                                        backgroundColor: alpha(tab.color, 0.1),
+                                        color: tab.color,
+                                        borderRadius: "12px",
+                                        px: 1,
+                                        py: 0.25,
+                                        fontSize: "0.75rem",
+                                        fontWeight: 600,
+                                        minWidth: "20px",
+                                        textAlign: "center",
+                                      }}
+                                    >
+                                      {tab.charts.length}
+                                    </Box>
+                                  </Box>
+                                }
+                                iconPosition="start"
+                              />
+                            ))}
+                          </Tabs>
+                        </Box>
+
+                        {/* Tab Content */}
+                        <Box sx={{ p: { xs: 2, md: 4 } }}>
+                          {tabData[selectedChartTab] && (
+                            <Box>
+                              {/* Charts Grid - Individual Collapsible Charts */}
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 3,
+                                }}
+                              >
+                                {tabData[selectedChartTab].charts.map(
+                                  (chart, chartIndex) => {
+                                    const chartKey = `${chart.title}-${chartIndex}`;
+                                    const isExpanded =
+                                      expandedCharts[chartKey] || false; // Default to collapsed
+
+                                    return (
+                                      <Paper
+                                        key={chartIndex}
+                                        elevation={2}
+                                        sx={{
+                                          borderRadius: 3,
+                                          overflow: "hidden",
+                                          background:
+                                            "linear-gradient(145deg, #ffffff 0%, #fafafa 100%)",
+                                          border: `1px solid ${alpha(
+                                            theme.palette.divider,
+                                            0.1
+                                          )}`,
+                                          transition:
+                                            "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                        }}
+                                      >
+                                        {/* Individual Chart Header - Collapsible */}
+                                        <Box
+                                          onClick={() =>
+                                            handleChartExpansion(chartKey)
+                                          }
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            p: 2,
+                                            cursor: "pointer",
+                                            background: `linear-gradient(135deg, ${alpha(
+                                              tabData[selectedChartTab].color,
+                                              0.06
+                                            )} 0%, ${alpha(
+                                              tabData[selectedChartTab].color,
+                                              0.08
+                                            )} 100%)`,
+                                            borderBottom: `1px solid ${alpha(
+                                              theme.palette.divider,
+                                              0.08
+                                            )}`,
+                                            "&:hover": {
+                                              background: `linear-gradient(135deg, ${alpha(
+                                                tabData[selectedChartTab].color,
+                                                0.1
+                                              )} 0%, ${alpha(
+                                                tabData[selectedChartTab].color,
+                                                0.12
+                                              )} 100%)`,
+                                            },
+                                            transition: "all 0.2s ease",
+                                          }}
+                                        >
+                                          <Typography
+                                            variant="h6"
+                                            sx={{
+                                              fontWeight: 600,
+                                              color: theme.palette.text.primary,
+                                              fontSize: "1.1rem",
+                                            }}
+                                          >
+                                            {chart.title}
+                                          </Typography>
+
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 1,
+                                            }}
+                                          >
+                                            <Tooltip
+                                              title="Download Chart"
+                                              arrow
+                                            >
+                                              <IconButton
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDownloadChart(
+                                                    chart.title,
+                                                    chart.originalIndex
+                                                  );
+                                                }}
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor: alpha(
+                                                    theme.palette.primary.main,
+                                                    0.08
+                                                  ),
+                                                  color:
+                                                    theme.palette.primary.main,
+                                                  width: 36,
+                                                  height: 36,
+                                                  "&:hover": {
+                                                    backgroundColor: alpha(
+                                                      theme.palette.primary
+                                                        .main,
+                                                      0.15
+                                                    ),
+                                                    transform: "scale(1.08)",
+                                                  },
+                                                  transition:
+                                                    "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                                  boxShadow: `0 2px 8px ${alpha(
+                                                    theme.palette.primary.main,
+                                                    0.15
+                                                  )}`,
+                                                }}
+                                              >
+                                                <GetAppIcon fontSize="small" />
+                                              </IconButton>
+                                            </Tooltip>
+                                            <IconButton
+                                              sx={{
+                                                color:
+                                                  theme.palette.text.secondary,
+                                                transform: isExpanded
+                                                  ? "rotate(180deg)"
+                                                  : "rotate(0deg)",
+                                                transition:
+                                                  "transform 0.3s ease",
+                                              }}
+                                            >
+                                              <ExpandMoreIcon />
+                                            </IconButton>
+                                          </Box>
+                                        </Box>
+
+                                        {/* Collapsible Chart Content */}
+                                        <Collapse in={isExpanded} timeout={300}>
+                                          {/* Chart Content with Legend and Controls */}
+                                          <Box
+                                            sx={{
+                                              height: {
+                                                xs: "500px",
+                                                md: "650px",
+                                              },
+                                              display: "flex",
+                                              background:
+                                                "linear-gradient(145deg, #fafafa 0%, #ffffff 100%)",
+                                            }}
+                                          >
+                                            {/* Left Panel - Legend and Info */}
+                                            <Box
+                                              sx={{
+                                                width: { xs: "35%", md: "30%" },
+                                                p: { xs: 1.5, md: 2 },
+                                                borderRight: `1px solid ${alpha(
+                                                  theme.palette.divider,
+                                                  0.1
+                                                )}`,
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: 2,
+                                              }}
+                                            >
+                                              {/* Chart Type Controls */}
+                                              <Box>
+                                                <Typography
+                                                  variant="body2"
+                                                  sx={{
+                                                    fontWeight: 600,
+                                                    color:
+                                                      theme.palette.text
+                                                        .secondary,
+                                                    mb: 1,
+                                                    fontSize: "1rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.5px",
+                                                  }}
+                                                >
+                                                  Chart Type
+                                                </Typography>
+                                                <Box
+                                                  sx={{
+                                                    display: "flex",
+                                                    flexWrap: "wrap",
+                                                    gap: 3,
+                                                  }}
+                                                >
+                                                  {[
+                                                    {
+                                                      key: "bar",
+                                                      icon: BarChartIcon,
+                                                      label: "Bar",
+                                                    },
+                                                    {
+                                                      key: "pie",
+                                                      icon: PieChartIcon,
+                                                      label: "Pie",
+                                                    },
+                                                    {
+                                                      key: "donut",
+                                                      icon: PieChartIcon,
+                                                      label: "Donut",
+                                                    },
+                                                    {
+                                                      key: "line",
+                                                      icon: ShowChartIcon,
+                                                      label: "Line",
+                                                    },
+                                                  ].map((chartType) => {
+                                                    const IconComponent =
+                                                      chartType.icon;
+                                                    const currentType =
+                                                      getCurrentChartType(
+                                                        chart.originalIndex,
+                                                        chart.type
+                                                      );
+                                                    const isSelected =
+                                                      currentType ===
+                                                      chartType.key;
+
+                                                    return (
+                                                      <Tooltip
+                                                        key={chartType.key}
+                                                        title={chartType.label}
+                                                        arrow
+                                                      >
+                                                        <IconButton
+                                                          onClick={() =>
+                                                            handleChartTypeChange(
+                                                              chart.originalIndex,
+                                                              chartType.key
+                                                            )
+                                                          }
+                                                          size="medium"
+                                                          sx={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            backgroundColor:
+                                                              isSelected
+                                                                ? alpha(
+                                                                    theme
+                                                                      .palette
+                                                                      .primary
+                                                                      .main,
+                                                                    0.15
+                                                                  )
+                                                                : alpha(
+                                                                    theme
+                                                                      .palette
+                                                                      .primary
+                                                                      .main,
+                                                                    0.08
+                                                                  ),
+                                                            color: isSelected
+                                                              ? theme.palette
+                                                                  .primary.main
+                                                              : theme.palette
+                                                                  .text
+                                                                  .secondary,
+                                                            border: isSelected
+                                                              ? `2px solid ${theme.palette.primary.main}`
+                                                              : `1px solid ${alpha(
+                                                                  theme.palette
+                                                                    .divider,
+                                                                  0.2
+                                                                )}`,
+                                                            "&:hover": {
+                                                              backgroundColor:
+                                                                alpha(
+                                                                  theme.palette
+                                                                    .primary
+                                                                    .main,
+                                                                  0.2
+                                                                ),
+                                                              color:
+                                                                theme.palette
+                                                                  .primary.main,
+                                                              transform:
+                                                                "scale(1.08)",
+                                                              boxShadow: `0 4px 12px ${alpha(
+                                                                theme.palette
+                                                                  .primary.main,
+                                                                0.25
+                                                              )}`,
+                                                            },
+                                                            transition:
+                                                              "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                                          }}
+                                                        >
+                                                          <IconComponent
+                                                            sx={{
+                                                              fontSize: 18,
+                                                            }}
+                                                          />
+                                                        </IconButton>
+                                                      </Tooltip>
+                                                    );
+                                                  })}
+                                                </Box>
+                                              </Box>
+
+                                              {/* Legend */}
+                                              <Box sx={{ flex: 1 }}>
+                                                <Typography
+                                                  variant="body2"
+                                                  sx={{
+                                                    fontWeight: 600,
+                                                    color:
+                                                      theme.palette.text
+                                                        .secondary,
+                                                    mb: 1.5,
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.5px",
+                                                  }}
+                                                >
+                                                  Legend
+                                                </Typography>
+                                                <Box
+                                                  sx={{
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    gap: 3,
+                                                  }}
+                                                >
+                                                  {chart.data?.map(
+                                                    (item, index) => (
+                                                      <Box
+                                                        key={index}
+                                                        sx={{
+                                                          display: "flex",
+                                                          alignItems: "center",
+                                                          gap: 1.5,
+                                                          p: 1,
+                                                          borderRadius: 1,
+                                                          backgroundColor:
+                                                            alpha(
+                                                              item.color ||
+                                                                theme.palette
+                                                                  .primary.main,
+                                                              0.05
+                                                            ),
+                                                          border: `1px solid ${alpha(
+                                                            item.color ||
+                                                              theme.palette
+                                                                .primary.main,
+                                                            0.1
+                                                          )}`,
+                                                          transition:
+                                                            "all 0.2s ease",
+                                                          "&:hover": {
+                                                            backgroundColor:
+                                                              alpha(
+                                                                item.color ||
+                                                                  theme.palette
+                                                                    .primary
+                                                                    .main,
+                                                                0.1
+                                                              ),
+                                                            transform:
+                                                              "translateX(2px)",
+                                                          },
+                                                        }}
+                                                      >
+                                                        <Box
+                                                          sx={{
+                                                            width: 15,
+                                                            height: 15,
+                                                            borderRadius: "50%",
+                                                            backgroundColor:
+                                                              item.color ||
+                                                              theme.palette
+                                                                .primary.main,
+                                                            flexShrink: 0,
+                                                          }}
+                                                        />
+                                                        <Box
+                                                          sx={{
+                                                            flex: 1,
+                                                            minWidth: 0,
+                                                          }}
+                                                        >
+                                                          <Typography
+                                                            variant="body2"
+                                                            sx={{
+                                                              fontWeight: 500,
+                                                              color:
+                                                                theme.palette
+                                                                  .text.primary,
+                                                              fontSize: "1rem",
+                                                              lineHeight: 1.2,
+                                                              overflow:
+                                                                "hidden",
+                                                              textOverflow:
+                                                                "ellipsis",
+                                                              whiteSpace:
+                                                                "nowrap",
+                                                            }}
+                                                          >
+                                                            {item.name}
+                                                          </Typography>
+                                                          <Typography
+                                                            variant="caption"
+                                                            sx={{
+                                                              color:
+                                                                theme.palette
+                                                                  .text
+                                                                  .secondary,
+                                                              fontSize:
+                                                                "0.7rem",
+                                                              fontWeight: 600,
+                                                            }}
+                                                          >
+                                                            {typeof item.value ===
+                                                            "number"
+                                                              ? item.value.toLocaleString()
+                                                              : item.value}
+                                                          </Typography>
+                                                        </Box>
+                                                      </Box>
+                                                    )
+                                                  ) || []}
+                                                </Box>
+                                              </Box>
+                                            </Box>
+
+                                            {/* Right Panel - Chart */}
+                                            <Box
+                                              ref={(el) => {
+                                                if (el) {
+                                                  chartRefs.current[
+                                                    chart.originalIndex
+                                                  ] = el;
+                                                }
+                                              }}
+                                              sx={{
+                                                flex: 1,
+                                                p: { xs: 1, md: 2 },
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                "& > div": {
+                                                  width: "100% !important",
+                                                  height: "100% !important",
+                                                  minHeight: "100%",
+                                                  flex: 1,
+                                                },
+                                                "& .recharts-wrapper, & .recharts-surface":
+                                                  {
+                                                    width: "100% !important",
+                                                    height: "100% !important",
+                                                  },
+                                              }}
+                                            >
+                                              {/* Error Boundary for Chart Rendering */}
+                                              <ChartErrorBoundary
+                                                height={isMobile ? 450 : 580}
+                                              >
+                                                {chart &&
+                                                chart.data &&
+                                                Array.isArray(chart.data) &&
+                                                chart.data.length > 0 ? (
+                                                  <React.Suspense
+                                                    fallback={
+                                                      <Box
+                                                        sx={{
+                                                          display: "flex",
+                                                          alignItems: "center",
+                                                          justifyContent:
+                                                            "center",
+                                                          height: isMobile
+                                                            ? 450
+                                                            : 580,
+                                                          minHeight: 400,
+                                                        }}
+                                                      >
+                                                        <CircularProgress />
+                                                      </Box>
+                                                    }
+                                                  >
+                                                    <InteractiveChart
+                                                      key={`chart-${
+                                                        chart.originalIndex
+                                                      }-${getCurrentChartType(
+                                                        chart.originalIndex,
+                                                        chart.type
+                                                      )}`}
+                                                      {...chart}
+                                                      type={getCurrentChartType(
+                                                        chart.originalIndex,
+                                                        chart.type
+                                                      )}
+                                                      index={
+                                                        chart.originalIndex
+                                                      }
+                                                      height={
+                                                        isMobile ? 450 : 580
+                                                      }
+                                                      width="100%"
+                                                      responsive={true}
+                                                      hideHeader={true}
+                                                      allowTypeChange={false}
+                                                    />
+                                                  </React.Suspense>
+                                                ) : (
+                                                  <Box
+                                                    sx={{
+                                                      display: "flex",
+                                                      alignItems: "center",
+                                                      justifyContent: "center",
+                                                      height: isMobile
+                                                        ? 450
+                                                        : 580,
+                                                      minHeight: 400,
+                                                      color: "text.secondary",
+                                                      bgcolor:
+                                                        "background.paper",
+                                                      border: "1px solid",
+                                                      borderColor: "divider",
+                                                      borderRadius: 2,
+                                                    }}
+                                                  >
+                                                    <Typography>
+                                                      Chart data unavailable
+                                                    </Typography>
+                                                  </Box>
+                                                )}
+                                              </ChartErrorBoundary>
+                                            </Box>
+                                          </Box>
+                                        </Collapse>
+                                      </Paper>
+                                    );
+                                  }
+                                )}
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                      </>
+                    );
+                  })()}
+                </Box>
+              </Collapse>
+            </Paper>
+          </Box>
+        </Fade>
+      )}
+      {/* Analysis Summary Widget with Metrics and Insights */}
+      {finalAnalysis && (
+        <Fade in timeout={500}>
+          <Box sx={{ mb: { xs: 3, md: 4 } }}>
+            <AnalysisSummaryWidget
+              data={{
+                supporting_data:
+                  finalAnalysis.supporting_data ||
+                  finalAnalysis.tables?.[0]?.data ||
+                  [],
+                summary: {
+                  total_records:
+                    finalAnalysis.supporting_data?.length ||
+                    finalAnalysis.tables?.[0]?.data?.length ||
+                    0,
+                  query: title || "Analysis Results",
+                },
+                analysis: finalAnalysis.analysis || [],
+              }}
+              loading={isProcessing}
+              title="Analysis Summary"
+              metadata={finalAnalysis.metadata || {}}
+            />
           </Box>
         </Fade>
       )}

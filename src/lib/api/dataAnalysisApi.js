@@ -8,7 +8,7 @@ const BASE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis`;
 class DataAnalysisApiError extends Error {
   constructor(message, status, response) {
     super(message);
-    this.name = 'DataAnalysisApiError';
+    this.name = "DataAnalysisApiError";
     this.status = status;
     this.response = response;
   }
@@ -16,7 +16,9 @@ class DataAnalysisApiError extends Error {
 
 const handleApiResponse = async (response) => {
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }));
     throw new DataAnalysisApiError(
       errorData.message || `HTTP ${response.status}`,
       response.status,
@@ -34,15 +36,15 @@ export const dataAnalysisApi = {
    * @param {string} context - Optional additional context for the document
    * @returns {Promise<Object>} Upload response with document details
    */
-  uploadDocument: async (connectionId, file, context = '') => {
+  uploadDocument: async (connectionId, file, context = "") => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     if (context) {
-      formData.append('context', context);
+      formData.append("context", context);
     }
 
     const response = await fetch(`${BASE_URL}/upload/${connectionId}`, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
 
@@ -67,11 +69,11 @@ export const dataAnalysisApi = {
    * @param {string} context - Optional additional context
    * @returns {Promise<Object>} Analysis results optimized for graph rendering
    */
-  analyzeData: async (connectionId, documentKey, question, context = '') => {
+  analyzeData: async (connectionId, documentKey, question, context = "") => {
     const response = await fetch(`${BASE_URL}/analyze/${connectionId}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         document_key: documentKey,
@@ -90,9 +92,12 @@ export const dataAnalysisApi = {
    * @returns {Promise<Object>} Delete confirmation
    */
   deleteDocument: async (connectionId, documentKey) => {
-    const response = await fetch(`${BASE_URL}/documents/${connectionId}/${documentKey}`, {
-      method: 'DELETE',
-    });
+    const response = await fetch(
+      `${BASE_URL}/api/v1/data-analysis/documents/${connectionId}/${documentKey}`,
+      {
+        method: "DELETE",
+      }
+    );
 
     return handleApiResponse(response);
   },
@@ -113,11 +118,13 @@ export const dataAnalysisApi = {
    * @returns {Promise<Object>} Response data
    */
   testConnection: async (endpoint, options = {}) => {
-    const url = endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`;
+    const url = endpoint.startsWith("http")
+      ? endpoint
+      : `${BASE_URL}${endpoint}`;
     const response = await fetch(url, {
-      method: options.method || 'GET',
+      method: options.method || "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
       body: options.body ? JSON.stringify(options.body) : undefined,

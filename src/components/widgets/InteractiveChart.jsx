@@ -502,7 +502,7 @@ const InteractiveChart = ({
   };
 
   return (
-    <Fade in={mounted} timeout={1000}>
+    <Fade in={mounted} timeout={0}>
       <ChartWrapper {...wrapperProps}>
         {/* Header - Conditionally rendered */}
         {!hideHeader && (
@@ -628,4 +628,13 @@ const InteractiveChart = ({
   );
 };
 
-export default InteractiveChart;
+export default React.memo(InteractiveChart, (prevProps, nextProps) => {
+  // Only re-render if these props change
+  return (
+    prevProps.data === nextProps.data &&
+    prevProps.type === nextProps.type &&
+    prevProps.title === nextProps.title &&
+    prevProps.height === nextProps.height &&
+    prevProps.width === nextProps.width
+  );
+});

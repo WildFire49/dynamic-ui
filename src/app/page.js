@@ -4,8 +4,11 @@ import TypingIndicator from "@/components/mui/TypingIndicator";
 import {
   Description as DocumentIcon,
   Menu as MenuIcon,
+  CloudDone as CloudDoneIcon,
+  CloudOff as CloudOffIcon,
+  Add as AddIcon,
+  UploadFile as UploadFileIcon,
 } from "@mui/icons-material";
-import AddIcon from "@mui/icons-material/Add";
 import {
   AppBar,
   Box,
@@ -15,6 +18,15 @@ import {
   Paper,
   Toolbar,
   Typography,
+  Chip,
+  Tooltip,
+  Popover,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from "@mui/material";
 import Sidebar from "../components/Sidebar";
 import Image from "next/image";
@@ -89,6 +101,12 @@ export default function HomePage() {
     process.env.NEXT_PUBLIC_CONNECTION_ID ||
     "a949f2cc-37ae-4db2-9702-a28148ec741f";
 
+  // Document Selector states (Popover)
+  const [filePopoverAnchor, setFilePopoverAnchor] = useState(null);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [availableDocuments, setAvailableDocuments] = useState([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+
   const [recordingTime, setRecordingTime] = useState(0);
   const [scheduledTasks, setScheduledTasks] = useState(new Map());
   const [activeJobIds, setActiveJobIds] = useState(new Set());
@@ -97,7 +115,7 @@ export default function HomePage() {
   const taskPollingRef = useRef(null);
   const [pdfPopupOpen, setPdfPopupOpen] = useState(false);
   const [pdfPopupData, setPdfPopupData] = useState(null);
-  
+
   // Access control state
   const [isAccessDenied, setIsAccessDenied] = useState(false);
 
@@ -547,18 +565,19 @@ export default function HomePage() {
       if (isAccessDenied) {
         console.log("🚫 API call blocked - Access denied");
         setIsTyping(false);
-        
+
         // Show a reminder message
         const reminderMessage = {
           type: "access_denied",
           content: {
             response: {
               type: "access_denied",
-              message: "Request limit exceeded. Please contact support to continue.",
+              message:
+                "Request limit exceeded. Please contact support to continue.",
               current_usage: 0,
               limit: 0,
-              remaining: 0
-            }
+              remaining: 0,
+            },
           },
           isBot: true,
           timestamp: new Date().toISOString(),
@@ -566,7 +585,7 @@ export default function HomePage() {
         setChatHistory((prev) => [...prev, reminderMessage]);
         return;
       }
-      
+
       setIsTyping(true);
       try {
         const requestBody = { ...body };
@@ -604,12 +623,13 @@ export default function HomePage() {
         handleApiResponse(data);
       } catch (error) {
         console.error("Error calling chat API:", error);
-        
+
         // Check if it's a CORS or network error
-        const isCorsError = error.message.includes('Failed to fetch') || 
-                           error.message.includes('CORS') ||
-                           error.message.includes('NetworkError');
-        
+        const isCorsError =
+          error.message.includes("Failed to fetch") ||
+          error.message.includes("CORS") ||
+          error.message.includes("NetworkError");
+
         if (isCorsError) {
           // Show access denied card for CORS/network errors
           setIsAccessDenied(true);
@@ -618,11 +638,12 @@ export default function HomePage() {
             content: {
               response: {
                 type: "access_denied",
-                message: "Unable to connect to server. This could be due to network issues or CORS restrictions. Please contact support for assistance.",
+                message:
+                  "Unable to connect to server. This could be due to network issues or CORS restrictions. Please contact support for assistance.",
                 current_usage: 0,
                 limit: 0,
-                remaining: 0
-              }
+                remaining: 0,
+              },
             },
             isBot: true,
             timestamp: new Date().toISOString(),
@@ -718,6 +739,49 @@ export default function HomePage() {
     },
     [currentResponseData, callChatApi, conversationId, currentUserId, sessionId]
   );
+
+  // Fetch available documents
+  const fetchAvailableDocuments = useCallback(async () => {
+    setLoadingDocuments(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch documents: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setAvailableDocuments(data.documents || []);
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+      setAvailableDocuments([]);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  }, [CONNECTION_ID]);
+
+  // Handle file popover open
+  const handleFilePopoverOpen = useCallback(
+    (event) => {
+      setFilePopoverAnchor(event.currentTarget);
+      fetchAvailableDocuments();
+    },
+    [fetchAvailableDocuments]
+  );
+
+  // Handle file popover close
+  const handleFilePopoverClose = useCallback(() => {
+    setFilePopoverAnchor(null);
+  }, []);
+
+  // Handle document selection from popover
+  const handleSelectDocumentFromPopover = useCallback((doc) => {
+    setSelectedDocument(doc);
+    setFilePopoverAnchor(null);
+    console.log("Selected document:", doc);
+  }, []);
 
   // File upload handler
   const handleFileUpload = useCallback(
@@ -819,11 +883,6 @@ export default function HomePage() {
 
   const handleDataAnalysis = useCallback(
     async (question) => {
-      const latestDocument =
-        uploadedDocuments.length > 0
-          ? uploadedDocuments[uploadedDocuments.length - 1]
-          : null;
-
       try {
         setIsAnalyzing(true);
         setIsTyping(true);
@@ -834,7 +893,9 @@ export default function HomePage() {
           user_id: currentUserId,
           message: question,
           ...(conversationId && { conversation_id: conversationId }),
-          ...(latestDocument && { document_key: latestDocument.document_key }),
+          ...(selectedDocument && {
+            document_key: selectedDocument.document_key,
+          }),
           ...(roleCode && { roleCode }),
         };
 
@@ -881,7 +942,7 @@ export default function HomePage() {
         setIsTyping(false);
       }
     },
-    [uploadedDocuments, conversationId, currentUserId]
+    [selectedDocument, conversationId, currentUserId]
   );
 
   const handleSendMessage = useCallback(
@@ -923,10 +984,15 @@ export default function HomePage() {
 
       setInputValue("");
 
+      const roleCode = authService.getRoleCode();
       const requestBody = {
         user_id: currentUserId,
         message: finalMessageText,
         ...(conversationId && { conversation_id: conversationId }),
+        ...(selectedDocument && {
+          document_key: selectedDocument.document_key,
+        }),
+        ...(roleCode && { roleCode }),
       };
 
       // Add audio key if provided (instead of audio file)
@@ -943,6 +1009,7 @@ export default function HomePage() {
       handleDataAnalysis,
       conversationId,
       currentUserId,
+      selectedDocument,
     ]
   );
 
@@ -1597,7 +1664,7 @@ export default function HomePage() {
               px: { xs: 0.2, sm: 3 },
             }}
           >
-            {/* File Upload Button */}
+            {/* File Upload Button with Popover */}
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
@@ -1608,44 +1675,207 @@ export default function HomePage() {
                 if (file) {
                   await handleFileUpload(file);
                   e.target.value = ""; // Reset input
+                  handleFilePopoverClose();
                 }
               }}
             />
-            <IconButton
-              component="label"
-              htmlFor="file-upload-input"
-              sx={{
-                color: uploadedDocuments.length > 0 ? "#4caf50" : "#666",
-                backgroundColor:
-                  uploadedDocuments.length > 0 ? "#e8f5e9" : "#f5f5f5",
-                "&:hover": {
-                  backgroundColor:
-                    uploadedDocuments.length > 0 ? "#c8e6c9" : "#e0e0e0",
-                },
-                borderRadius: "12px",
-                width: 50,
-                height: 50,
-                position: "relative",
-                overflow: "hidden",
-              }}
-              disabled={isLoading}
+            <Tooltip
+              title={
+                selectedDocument
+                  ? `Selected: ${selectedDocument.filename}`
+                  : "Select or Upload Document"
+              }
+              arrow
             >
-              {isLoading ? (
-                <CircularProgress size={20} />
-              ) : uploadedDocuments.length > 0 ? (
-                <Image
-                  src="/excel.png"
-                  alt="Excel file"
-                  width={24}
-                  height={24}
-                  style={{
-                    animation: "bounce 0.6s ease-in-out",
-                  }}
-                />
+              <IconButton
+                onClick={handleFilePopoverOpen}
+                sx={{
+                  color: selectedDocument ? "#10b981" : "#666",
+                  backgroundColor: selectedDocument
+                    ? "rgba(16, 185, 129, 0.1)"
+                    : "#f5f5f5",
+                  "&:hover": {
+                    backgroundColor: selectedDocument
+                      ? "rgba(16, 185, 129, 0.2)"
+                      : "#e0e0e0",
+                  },
+                  borderRadius: "12px",
+                  width: 50,
+                  height: 50,
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <CircularProgress size={20} />
+                ) : selectedDocument ? (
+                  <Image
+                    src="/excel.png"
+                    alt="Excel file"
+                    width={24}
+                    height={24}
+                    style={{
+                      animation: "bounce 0.6s ease-in-out",
+                    }}
+                  />
+                ) : (
+                  <DocumentIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+
+            {/* File Popover */}
+            <Popover
+              open={Boolean(filePopoverAnchor)}
+              anchorEl={filePopoverAnchor}
+              onClose={handleFilePopoverClose}
+              anchorOrigin={{
+                vertical: "top",
+                horizontal: "left",
+              }}
+              transformOrigin={{
+                vertical: "bottom",
+                horizontal: "left",
+              }}
+              PaperProps={{
+                sx: {
+                  mt: -1,
+                  borderRadius: 2,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  minWidth: 320,
+                  maxWidth: 400,
+                  maxHeight: 500,
+                },
+              }}
+            >
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  Documents
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Select a document or upload new
+                </Typography>
+              </Box>
+
+              {loadingDocuments ? (
+                <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+                  <CircularProgress size={24} />
+                </Box>
               ) : (
-                <DocumentIcon />
+                <List sx={{ p: 0, maxHeight: 350, overflow: "auto" }}>
+                  {/* Upload New File Option */}
+                  <ListItem disablePadding>
+                    <ListItemButton
+                      component="label"
+                      htmlFor="file-upload-input"
+                      sx={{
+                        py: 1.5,
+                        borderBottom:
+                          availableDocuments.filter((doc) => doc.in_memory)
+                            .length > 0
+                            ? 1
+                            : 0,
+                        borderColor: "divider",
+                        bgcolor: "rgba(25, 118, 210, 0.04)",
+                        "&:hover": {
+                          bgcolor: "rgba(25, 118, 210, 0.08)",
+                        },
+                      }}
+                    >
+                      <ListItemIcon>
+                        <UploadFileIcon color="primary" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Upload New File"
+                        secondary="Upload .xlsx, .xls, or .csv"
+                        primaryTypographyProps={{ fontWeight: 500 }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+
+                  {/* Available Documents - Only show in_memory documents */}
+                  {availableDocuments.filter((doc) => doc.in_memory).length ===
+                  0 ? (
+                    <Box sx={{ p: 3, textAlign: "center" }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No documents loaded in memory
+                      </Typography>
+                    </Box>
+                  ) : (
+                    availableDocuments
+                      .filter((doc) => doc.in_memory)
+                      .map((doc) => (
+                        <ListItem key={doc.document_key} disablePadding>
+                          <ListItemButton
+                            onClick={() => handleSelectDocumentFromPopover(doc)}
+                            selected={
+                              selectedDocument?.document_key ===
+                              doc.document_key
+                            }
+                            sx={{
+                              py: 1.5,
+                              borderBottom: 1,
+                              borderColor: "divider",
+                              "&.Mui-selected": {
+                                bgcolor: "rgba(16, 185, 129, 0.08)",
+                                "&:hover": {
+                                  bgcolor: "rgba(16, 185, 129, 0.12)",
+                                },
+                              },
+                            }}
+                          >
+                            <ListItemIcon>
+                              {doc.in_memory ? (
+                                <CloudDoneIcon sx={{ color: "#10b981" }} />
+                              ) : (
+                                <CloudOffIcon color="disabled" />
+                              )}
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
+                                >
+                                  <Typography
+                                    variant="body2"
+                                    noWrap
+                                    sx={{ flex: 1 }}
+                                  >
+                                    {doc.filename}
+                                  </Typography>
+                                  {doc.in_memory && (
+                                    <Chip
+                                      label="Ready"
+                                      size="small"
+                                      color="success"
+                                      sx={{ height: 20, fontSize: "0.7rem" }}
+                                    />
+                                  )}
+                                </Box>
+                              }
+                              secondary={
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  {doc.shape
+                                    ? `${doc.shape[0]} rows × ${doc.shape[1]} cols`
+                                    : "Not loaded"}
+                                </Typography>
+                              }
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))
+                  )}
+                </List>
               )}
-            </IconButton>
+            </Popover>
 
             <Box sx={{ flexGrow: 1 }}>
               <InputWithRecording
@@ -1756,20 +1986,22 @@ export default function HomePage() {
 
                 {/* New Chat Icon Button */}
                 {selectedTab === "chat" && (
-                  <IconButton
-                    onClick={handleNewChat}
-                    sx={{
-                      color: "#1976d2",
-                      backgroundColor: "rgba(25, 118, 210, 0.08)",
-                      "&:hover": {
-                        backgroundColor: "rgba(25, 118, 210, 0.15)",
-                        transform: "scale(1.05)",
-                      },
-                      transition: "all 0.2s ease-in-out",
-                    }}
-                  >
-                    <AddIcon />
-                  </IconButton>
+                  <>
+                    <IconButton
+                      onClick={handleNewChat}
+                      sx={{
+                        color: "#1976d2",
+                        backgroundColor: "rgba(25, 118, 210, 0.08)",
+                        "&:hover": {
+                          backgroundColor: "rgba(25, 118, 210, 0.15)",
+                          transform: "scale(1.05)",
+                        },
+                        transition: "all 0.2s ease-in-out",
+                      }}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                  </>
                 )}
               </Box>
 

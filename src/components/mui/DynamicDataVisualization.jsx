@@ -3,6 +3,9 @@ import {
   FileDownload,
   GetApp,
   TableChart,
+  Assessment,
+  TrendingUp,
+  Insights,
 } from "@mui/icons-material";
 import {
   Alert,
@@ -19,6 +22,7 @@ import {
   Skeleton,
   Snackbar,
   Typography,
+  alpha,
 } from "@mui/material";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
@@ -41,6 +45,7 @@ import {
 import RMComparisonChart from "./RMComparisonChart";
 import RMPerformanceComparison from "./RMPerformanceComparison";
 import RMPerformanceOverview from "./RMPerformanceOverview";
+import AnalysisSummaryWidget from "../widgets/AnalysisSummaryWidget";
 
 // Color definitions for various chart elements
 const colors = {
@@ -304,26 +309,32 @@ const DynamicDataVisualization = ({
         field.toLowerCase().includes("created") ||
         field.toLowerCase().includes("updated")
     );
-    
-    const hasDateData = dateField && data.some(item => {
-      const dateValue = item[dateField];
-      return dateValue && (dateValue instanceof Date || !isNaN(Date.parse(dateValue)));
-    });
+
+    const hasDateData =
+      dateField &&
+      data.some((item) => {
+        const dateValue = item[dateField];
+        return (
+          dateValue &&
+          (dateValue instanceof Date || !isNaN(Date.parse(dateValue)))
+        );
+      });
 
     if (hasDateData) {
       console.log("🔍 [DEBUG] Detected as time-series data");
-      
+
       // Find the main numeric field
       const numericFields = fields.filter((key) => {
         const value = firstItem[key];
-        return key !== dateField && (
-          typeof value === "number" ||
-          (value !== null && !isNaN(parseFloat(value)))
+        return (
+          key !== dateField &&
+          (typeof value === "number" ||
+            (value !== null && !isNaN(parseFloat(value))))
         );
       });
-      
+
       const valueField = numericFields[0]; // Use first numeric field
-      
+
       return {
         type: "timeseries",
         dateField: dateField,
@@ -948,22 +959,25 @@ const DynamicDataVisualization = ({
     // Handle time-series data
     if (dataType === "timeseries" && dateField && valueField) {
       console.log("📊 [DEBUG] Processing as time-series data");
-      
+
       const timeSeriesData = supportingData
-        .map(item => ({
+        .map((item) => ({
           date: item[dateField],
           value: parseFloat(item[valueField]) || 0,
-          name: new Date(item[dateField]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          name: new Date(item[dateField]).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
           fullDate: item[dateField],
-          fill: "#0078d7"
+          fill: "#0078d7",
         }))
         .sort((a, b) => new Date(a.date) - new Date(b.date));
-      
+
       const fieldLabel = valueField
         .replace(/_/g, " ")
         .replace(/([A-Z])/g, " $1")
         .trim();
-      
+
       return {
         pieChart: null,
         barChart: {
@@ -2370,29 +2384,31 @@ const DynamicDataVisualization = ({
   const visualizationRef = useRef(null);
   const [hasScrolled, setHasScrolled] = useState(false);
   const previousTimestamp = useRef(null);
-  
+
   useEffect(() => {
     // Only scroll if:
     // 1. Not in dashboard mode
     // 2. We have data
     // 3. The timestamp has changed (new API response)
-    const currentTimestamp = analysisResult?.metadata?.timestamp || analysisResult?.analysis_result?.summary?.timestamp;
-    
+    const currentTimestamp =
+      analysisResult?.metadata?.timestamp ||
+      analysisResult?.analysis_result?.summary?.timestamp;
+
     if (
-      visualizationRef.current && 
-      !isFromDashboard && 
+      visualizationRef.current &&
+      !isFromDashboard &&
       !loading &&
       currentTimestamp &&
       currentTimestamp !== previousTimestamp.current &&
       (gridRows.length > 0 || chartData.barChart || chartData.pieChart)
     ) {
       previousTimestamp.current = currentTimestamp;
-      
+
       // Delay scroll slightly to ensure content is rendered
       setTimeout(() => {
-        visualizationRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
+        visualizationRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
         });
       }, 300);
     }
@@ -3748,6 +3764,135 @@ const DynamicDataVisualization = ({
           <ListItemText>Export as Excel</ListItemText>
         </MenuItem>
       </Menu>
+
+      {/* Analysis Summary Section */}
+      {analysisResult?.analysis && analysisResult.analysis.length > 0 && (
+        <Card
+          sx={{
+            border: "1px solid #e0e0e0",
+            mb: { xs: 3, sm: 4 },
+            width: "100%",
+            maxWidth: "100%",
+            borderRadius: 2,
+            background: `linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)`,
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                mb: 3,
+                gap: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  background: `linear-gradient(135deg, #6366f1, #8b5cf6)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: `0 8px 32px ${alpha("#6366f1", 0.3)}`,
+                }}
+              >
+                <Assessment sx={{ color: "white", fontSize: 24 }} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 700,
+                    color: "#1f2937",
+                    fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.5rem" },
+                  }}
+                >
+                  Analysis Summary
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#6b7280",
+                  }}
+                >
+                  Key insights and findings from the data analysis
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+              {analysisResult.analysis.map((point, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 2,
+                    p: 2.5,
+                    borderRadius: 2,
+                    backgroundColor:
+                      index % 2 === 0
+                        ? alpha("#6366f1", 0.02)
+                        : alpha("#10b981", 0.02),
+                    border: `1px solid ${
+                      index % 2 === 0
+                        ? alpha("#6366f1", 0.1)
+                        : alpha("#10b981", 0.1)
+                    }`,
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      backgroundColor:
+                        index % 2 === 0
+                          ? alpha("#6366f1", 0.05)
+                          : alpha("#10b981", 0.05),
+                      transform: "translateY(-2px)",
+                      boxShadow: `0 4px 20px ${
+                        index % 2 === 0
+                          ? alpha("#6366f1", 0.1)
+                          : alpha("#10b981", 0.1)
+                      }`,
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      minWidth: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      background: `linear-gradient(135deg, ${
+                        index % 2 === 0 ? "#6366f1" : "#10b981"
+                      }, ${index % 2 === 0 ? "#8b5cf6" : "#06b6d4"})`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mt: 0.5,
+                    }}
+                  >
+                    {index % 2 === 0 ? (
+                      <TrendingUp sx={{ color: "white", fontSize: 16 }} />
+                    ) : (
+                      <Insights sx={{ color: "white", fontSize: 16 }} />
+                    )}
+                  </Box>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: "#374151",
+                      lineHeight: 1.6,
+                      fontSize: { xs: "0.9rem", sm: "0.95rem", md: "1rem" },
+                      flex: 1,
+                    }}
+                  >
+                    {point}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Success/Error Snackbar */}
       <Snackbar

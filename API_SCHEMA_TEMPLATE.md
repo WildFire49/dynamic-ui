@@ -1,6 +1,7 @@
 # API-Enabled Form Schema Template
 
 ## Overview
+
 This template extends the form schema to support API integration for dynamic data loading and action handling.
 
 ## Schema Structure with API Support
@@ -14,7 +15,7 @@ This template extends the form schema to support API integration for dynamic dat
   label: "State",
   placeholder: "Select state",
   required: true,
-  
+
   // API configuration for loading options
   api: {
     endpoint: "/api/locations/states",
@@ -44,7 +45,7 @@ This template extends the form schema to support API integration for dynamic dat
     errorText: "Failed to load states",
     onError: "useDefault" // or "showError" or "retry"
   },
-  
+
   // Fallback static options if API fails
   options: [
     { value: "default", label: "Select a state" }
@@ -61,13 +62,13 @@ This template extends the form schema to support API integration for dynamic dat
   label: "District",
   placeholder: "Select district",
   required: true,
-  
+
   // Enable only when state is selected
   enabledIf: {
     field: "state",
     hasValue: true
   },
-  
+
   // API call triggered when state changes
   api: {
     endpoint: "/api/locations/districts",
@@ -99,7 +100,7 @@ This template extends the form schema to support API integration for dynamic dat
   buttonLabel: "Verify Now",
   variant: "contained",
   icon: "fingerprint",
-  
+
   // API configuration for button action
   api: {
     endpoint: "/api/kyc/verify-aadhaar",
@@ -146,7 +147,7 @@ This template extends the form schema to support API integration for dynamic dat
   id: "customer_onboarding",
   title: "Customer Onboarding",
   description: "Complete your profile",
-  
+
   // API configuration for form submission
   submitApi: {
     endpoint: "/api/customers/onboard",
@@ -194,7 +195,7 @@ This template extends the form schema to support API integration for dynamic dat
       message: "Please fix the errors and try again"
     }
   },
-  
+
   sections: [...]
 }
 ```
@@ -208,13 +209,13 @@ This template extends the form schema to support API integration for dynamic dat
   label: "Bank Branch",
   placeholder: "Search branch by name or IFSC",
   required: true,
-  
+
   api: {
     endpoint: "/api/banks/search-branches",
     method: "GET",
     params: {
       query: "${searchText}",  // User input
-      bankName: "HDFC Bank",
+      bankName: "KVB Bank",
       limit: 10
     },
     responseMapping: {
@@ -240,7 +241,7 @@ This template extends the form schema to support API integration for dynamic dat
   type: "image_capture",
   label: "Upload Document",
   required: true,
-  
+
   api: {
     endpoint: "/api/documents/upload",
     method: "POST",
@@ -276,7 +277,7 @@ This template extends the form schema to support API integration for dynamic dat
   type: "dropdown",
   label: "Loan Product",
   required: true,
-  
+
   api: {
     endpoint: "/api/loans/products",
     method: "GET",
@@ -306,13 +307,13 @@ This template extends the form schema to support API integration for dynamic dat
   type: "tel",
   label: "Mobile Number",
   required: true,
-  
+
   // Client-side validation
   validation: {
     pattern: "^[6-9]\\d{9}$",
     message: "Enter valid 10 digit mobile number"
   },
-  
+
   // Server-side validation
   apiValidation: {
     endpoint: "/api/validate/mobile",
@@ -341,29 +342,29 @@ export const apiEnabledSchema = {
   id: "customer_kyc",
   title: "Customer KYC",
   description: "Complete your KYC process",
-  
+
   // Global API configuration
   apiConfig: {
     baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
     headers: {
       "Content-Type": "application/json",
-      "X-Client-Id": "web-app"
+      "X-Client-Id": "web-app",
     },
-    timeout: 30000,  // 30 seconds
+    timeout: 30000, // 30 seconds
     retryAttempts: 3,
-    retryDelay: 1000
+    retryDelay: 1000,
   },
-  
+
   // Form submission API
   submitApi: {
     endpoint: "/api/kyc/submit",
     method: "POST",
     onSuccess: {
       action: "navigate",
-      path: "/kyc/success"
-    }
+      path: "/kyc/success",
+    },
   },
-  
+
   sections: [
     {
       id: "location_section",
@@ -380,9 +381,9 @@ export const apiEnabledSchema = {
             responseMapping: {
               value: "code",
               label: "name",
-              dataPath: "data"
-            }
-          }
+              dataPath: "data",
+            },
+          },
         },
         {
           id: "district",
@@ -391,24 +392,24 @@ export const apiEnabledSchema = {
           required: true,
           enabledIf: {
             field: "state",
-            hasValue: true
+            hasValue: true,
           },
           api: {
             endpoint: "/api/locations/districts",
             method: "GET",
             params: {
-              stateCode: "${state}"
+              stateCode: "${state}",
             },
             triggerOn: {
               field: "state",
-              onChange: true
+              onChange: true,
             },
             responseMapping: {
               value: "code",
               label: "name",
-              dataPath: "data"
-            }
-          }
+              dataPath: "data",
+            },
+          },
         },
         {
           id: "verify_location",
@@ -420,20 +421,20 @@ export const apiEnabledSchema = {
             method: "POST",
             body: {
               state: "${state}",
-              district: "${district}"
+              district: "${district}",
             },
             onSuccess: {
               action: "updateFields",
               fields: {
-                "location_verified": "true"
+                location_verified: "true",
               },
-              message: "Location verified successfully"
-            }
-          }
-        }
-      ]
-    }
-  ]
+              message: "Location verified successfully",
+            },
+          },
+        },
+      ],
+    },
+  ],
 };
 ```
 
@@ -470,6 +471,7 @@ export const apiEnabledSchema = {
 ## Usage in DynamicFormRenderer
 
 The renderer will need to handle:
+
 1. API calls on field mount (for dropdowns)
 2. API calls on field change (for dependent fields)
 3. API calls on button click

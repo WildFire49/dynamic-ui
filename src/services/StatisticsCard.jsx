@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Box,
@@ -9,8 +9,10 @@ import {
   Tooltip,
   Collapse,
   Fade,
+  LinearProgress,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import BarChartIcon from "@mui/icons-material/BarChart";
 
 const StatisticsCard = ({
   category,
@@ -20,16 +22,31 @@ const StatisticsCard = ({
   color,
   totalValue,
   isPrimary = false,
+  alwaysExpanded = false,
+  showVisualization = true,
 }) => {
   const theme = useTheme();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(alwaysExpanded);
+
+  // Keep expanded if alwaysExpanded prop is true
+  useEffect(() => {
+    if (alwaysExpanded) {
+      setIsExpanded(true);
+    }
+  }, [alwaysExpanded]);
 
   const handleExpansion = () => {
+    // Don't allow collapse if alwaysExpanded is true
+    if (alwaysExpanded) return;
+
     console.log(
       `🎯 [${title.toUpperCase()}] Independent expansion: ${!isExpanded}`
     );
     setIsExpanded((prev) => !prev);
   };
+
+  // Calculate max value for bar chart scaling
+  const maxValue = Math.max(...stats.map((s) => parseFloat(s.value) || 0));
 
   // Don't render if no stats
   if (!stats || stats.length === 0) {
@@ -123,15 +140,17 @@ const StatisticsCard = ({
           </Box>
         </Box>
 
-        <IconButton
-          sx={{
-            color: color,
-            transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.3s ease",
-          }}
-        >
-          <ExpandMoreIcon />
-        </IconButton>
+        {!alwaysExpanded && (
+          <IconButton
+            sx={{
+              color: color,
+              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.3s ease",
+            }}
+          >
+            <ExpandMoreIcon />
+          </IconButton>
+        )}
       </Box>
 
       {/* Expandable Content - Smooth Animation */}
@@ -193,9 +212,6 @@ const StatisticsCard = ({
                 >
                   <Box
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
                       p: 2.5,
                       borderRadius: 2,
                       background: "linear-gradient(135deg, #ffffff, #f8f9fa)",
@@ -223,38 +239,78 @@ const StatisticsCard = ({
                       },
                     }}
                   >
-                    <Tooltip
-                      title={isLongText ? stat.title : ""}
-                      arrow
-                      placement="top"
-                    >
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          color: theme.palette.text.primary,
-                          fontSize: "0.95rem",
-                          fontWeight: 600,
-                          lineHeight: 1.2,
-                          flex: 1,
-                          cursor: isLongText ? "help" : "default",
-                        }}
-                      >
-                        {truncatedTitle}
-                      </Typography>
-                    </Tooltip>
-                    <Typography
-                      variant="h5"
+                    {/* Title and Value Row */}
+                    <Box
                       sx={{
-                        fontWeight: 800,
-                        color: color,
-                        fontSize: "1.5rem",
-                        lineHeight: 1,
-                        minWidth: "fit-content",
-                        ml: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        mb: showVisualization ? 1.5 : 0,
                       }}
                     >
-                      {stat.value}
-                    </Typography>
+                      <Tooltip
+                        title={isLongText ? stat.title : ""}
+                        arrow
+                        placement="top"
+                      >
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            color: theme.palette.text.primary,
+                            fontSize: "0.95rem",
+                            fontWeight: 600,
+                            lineHeight: 1.2,
+                            flex: 1,
+                            cursor: isLongText ? "help" : "default",
+                          }}
+                        >
+                          {truncatedTitle}
+                        </Typography>
+                      </Tooltip>
+                      <Typography
+                        variant="h5"
+                        sx={{
+                          fontWeight: 800,
+                          color: color,
+                          fontSize: "1.5rem",
+                          lineHeight: 1,
+                          minWidth: "fit-content",
+                          ml: 2,
+                        }}
+                      >
+                        {stat.value}
+                      </Typography>
+                    </Box>
+
+                    {/* Visual Bar Chart */}
+                    {showVisualization && (
+                      <Box sx={{ mt: 1 }}>
+                        <Box
+                          sx={{
+                            height: 8,
+                            borderRadius: 1,
+                            background: alpha(color, 0.1),
+                            overflow: "hidden",
+                            position: "relative",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              height: "100%",
+                              width: `${
+                                (parseFloat(stat.value) / maxValue) * 100
+                              }%`,
+                              background: `linear-gradient(90deg, ${color}, ${alpha(
+                                color,
+                                0.7
+                              )})`,
+                              borderRadius: 1,
+                              transition: "width 0.5s ease-in-out",
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    )}
                   </Box>
                 </Fade>
               );

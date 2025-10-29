@@ -1,6 +1,6 @@
 // Chat API Integration Service
 // Handles communication with backend chat API and manages conversation state
-import { API_BASE_URL, CHAT_ENDPOINT } from '@/lib/config';
+import { API_BASE_URL, CHAT_ENDPOINT } from "@/lib/config";
 
 /**
  * Chat API Service for Dynamic UI Workflow
@@ -11,7 +11,7 @@ class ChatApiService {
     this.conversationId = null;
     this.sessionId = null;
     this.customerId = null;
-    this.userId = 'vaishakh_workflow1'; // Default user ID
+    this.userId = "vaishakh_workflow1"; // Default user ID
   }
 
   /**
@@ -24,18 +24,18 @@ class ChatApiService {
     try {
       const requestBody = {
         user_id: userId || this.userId,
-        message: message
+        message: message,
         // No conversation_id for new conversations
       };
 
-      console.log('Starting new conversation:', requestBody);
+      console.log("Starting new conversation:", requestBody);
 
       const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -43,29 +43,29 @@ class ChatApiService {
       }
 
       const data = await response.json();
-      
+
       // Store conversation and session data for future requests
       if (data.conversation_id) {
         this.conversationId = data.conversation_id;
       }
-      
+
       if (data.response?.session_data?.session_id) {
         this.sessionId = data.response.session_data.session_id;
       }
-      
+
       if (data.response?.session_data?.customer_id) {
         this.customerId = data.response.session_data.customer_id;
       }
 
-      console.log('New conversation started:', {
+      console.log("New conversation started:", {
         conversationId: this.conversationId,
         sessionId: this.sessionId,
-        customerId: this.customerId
+        customerId: this.customerId,
       });
 
       return data;
     } catch (error) {
-      console.error('Error starting new conversation:', error);
+      console.error("Error starting new conversation:", error);
       throw error;
     }
   }
@@ -78,7 +78,9 @@ class ChatApiService {
    */
   async continueConversation(message, additionalData = {}) {
     if (!this.conversationId) {
-      throw new Error('No active conversation. Start a new conversation first.');
+      throw new Error(
+        "No active conversation. Start a new conversation first."
+      );
     }
 
     try {
@@ -86,17 +88,17 @@ class ChatApiService {
         user_id: this.userId,
         conversation_id: this.conversationId,
         message: message,
-        ...additionalData
+        ...additionalData,
       };
 
-      console.log('Continuing conversation:', requestBody);
+      console.log("Continuing conversation:", requestBody);
 
       const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -104,7 +106,7 @@ class ChatApiService {
       }
 
       const data = await response.json();
-      
+
       // Update session data if provided
       if (data.response?.session_data?.session_id) {
         this.sessionId = data.response.session_data.session_id;
@@ -112,7 +114,7 @@ class ChatApiService {
 
       return data;
     } catch (error) {
-      console.error('Error continuing conversation:', error);
+      console.error("Error continuing conversation:", error);
       throw error;
     }
   }
@@ -125,9 +127,19 @@ class ChatApiService {
    * @param {string} nextActionId - Expected next action ID
    * @returns {Promise<Object>} API response with next UI schema
    */
-  async sendActionMessage(actionId, actionType, formData = {}, nextActionId = null) {
-    const message = this.formatActionMessage(actionId, actionType, formData, nextActionId);
-    
+  async sendActionMessage(
+    actionId,
+    actionType,
+    formData = {},
+    nextActionId = null
+  ) {
+    const message = this.formatActionMessage(
+      actionId,
+      actionType,
+      formData,
+      nextActionId
+    );
+
     const additionalData = {
       action_context: {
         current_action_id: actionId,
@@ -135,8 +147,8 @@ class ChatApiService {
         next_action_id: nextActionId,
         form_data: formData,
         session_id: this.sessionId,
-        customer_id: this.customerId
-      }
+        customer_id: this.customerId,
+      },
     };
 
     return await this.continueConversation(message, additionalData);
@@ -152,16 +164,16 @@ class ChatApiService {
    */
   formatActionMessage(actionId, actionType, formData, nextActionId) {
     switch (actionType) {
-      case 'navigate_to':
+      case "navigate_to":
         return `User clicked to navigate from ${actionId} to ${nextActionId}`;
-      
-      case 'submit_form':
-        const formFields = Object.keys(formData).join(', ');
+
+      case "submit_form":
+        const formFields = Object.keys(formData).join(", ");
         return `User submitted form on ${actionId} with data: ${formFields}. Moving to ${nextActionId}`;
-      
-      case 'button_click':
+
+      case "button_click":
         return `User clicked button on ${actionId} screen`;
-      
+
       default:
         return `User performed ${actionType} action on ${actionId}`;
     }
@@ -177,7 +189,7 @@ class ChatApiService {
       sessionId: this.sessionId,
       customerId: this.customerId,
       userId: this.userId,
-      hasActiveConversation: !!this.conversationId
+      hasActiveConversation: !!this.conversationId,
     };
   }
 
@@ -188,7 +200,7 @@ class ChatApiService {
     this.conversationId = null;
     this.sessionId = null;
     this.customerId = null;
-    console.log('Conversation state reset');
+    console.log("Conversation state reset");
   }
 
   /**
@@ -212,8 +224,18 @@ export const continueChat = async (message, additionalData = {}) => {
   return await chatApiService.continueConversation(message, additionalData);
 };
 
-export const sendActionMessage = async (actionId, actionType, formData = {}, nextActionId = null) => {
-  return await chatApiService.sendActionMessage(actionId, actionType, formData, nextActionId);
+export const sendActionMessage = async (
+  actionId,
+  actionType,
+  formData = {},
+  nextActionId = null
+) => {
+  return await chatApiService.sendActionMessage(
+    actionId,
+    actionType,
+    formData,
+    nextActionId
+  );
 };
 
 export const getCurrentChatState = () => {

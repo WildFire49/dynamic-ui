@@ -52,7 +52,7 @@ const RetrieverSidebar = ({
     {
       id: 3,
       title: "Self Learning",
-      description: "Upload and manage documents",
+      description: "Manage templates and training data",
       icon: TrainingIcon,
       color: "#f59e0b",
       completed: false,

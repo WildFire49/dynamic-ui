@@ -185,7 +185,7 @@ const Sidebar = ({
       }
 
       const response = await fetch(
-        `https://supervisory-dev.mifix.io/users/${username}/conversations?page=${pageNum}&limit=10`
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/users/${username}/conversations?page=${pageNum}&limit=10`
       );
       if (response.ok) {
         const data = await response.json();
@@ -234,7 +234,7 @@ const Sidebar = ({
   const loadConversation = async (conversationId) => {
     try {
       const response = await fetch(
-        `https://supervisory-dev.mifix.io/conversations/${conversationId}/history`
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/conversations/${conversationId}/history`
       );
       if (response.ok) {
         const data = await response.json();

@@ -1,6 +1,7 @@
 # Workflow Configurator API Specification
 
 ## Overview
+
 The UI Workflow Configurator allows users to visually create, configure, and manage form workflows by dragging and dropping components, connecting them, and configuring API integrations.
 
 ---
@@ -22,6 +23,7 @@ yarn add reactflow
 **Endpoint:** `GET /api/configurator/components`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -33,7 +35,7 @@ yarn add reactflow
         {
           "id": "l1_customer_info",
           "name": "L1 - Customer Information",
-          "description": "Complete customer details for HDFC onboarding",
+          "description": "Complete customer details for KVB onboarding",
           "category": "onboarding",
           "icon": "person",
           "color": "#1976d2",
@@ -44,7 +46,15 @@ yarn add reactflow
           "is_exit_point": false,
           "default_next": "instant_kcc",
           "schema_preview": {
-            "sections": ["Applicant Details", "KYC Address", "Current Address", "Bank Master", "Other Information", "PAN Card", "Other KYC"]
+            "sections": [
+              "Applicant Details",
+              "KYC Address",
+              "Current Address",
+              "Bank Master",
+              "Other Information",
+              "PAN Card",
+              "Other KYC"
+            ]
           },
           "api_requirements": {
             "submit_endpoint": "/api/customer/l1/submit",
@@ -54,7 +64,13 @@ yarn add reactflow
         }
       ]
     },
-    "categories": ["onboarding", "loan", "banking", "verification", "completion"]
+    "categories": [
+      "onboarding",
+      "loan",
+      "banking",
+      "verification",
+      "completion"
+    ]
   }
 }
 ```
@@ -68,6 +84,7 @@ yarn add reactflow
 **Example:** `GET /api/configurator/components/l1_customer_info/schema`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -76,7 +93,7 @@ yarn add reactflow
     "full_schema": {
       "id": "l1_customer_info",
       "title": "L1 - Customer Information",
-      "description": "Complete customer details for HDFC onboarding",
+      "description": "Complete customer details for KVB onboarding",
       "nextFormId": "instant_kcc",
       "nextFormTitle": "Instant KCC - Land & Crop Details",
       "sections": [
@@ -118,10 +135,11 @@ yarn add reactflow
 **Method:** `POST`
 
 **Request Body:**
+
 ```json
 {
   "workflow": {
-    "name": "HDFC Agriculture KCC Onboarding",
+    "name": "KVB Agriculture KCC Onboarding",
     "description": "Complete customer onboarding flow for Kisan Credit Card",
     "version": "1.0.0",
     "metadata": {
@@ -217,12 +235,13 @@ yarn add reactflow
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
   "data": {
     "workflow_id": "workflow_12345",
-    "name": "HDFC Agriculture KCC Onboarding",
+    "name": "KVB Agriculture KCC Onboarding",
     "status": "draft",
     "created_at": "2025-10-09T12:57:59+05:30",
     "version": "1.0.0"
@@ -237,11 +256,13 @@ yarn add reactflow
 **Endpoint:** `GET /api/configurator/workflows`
 
 **Query Parameters:**
+
 - `status` (optional): `draft`, `active`, `archived`
 - `page` (optional): Page number (default: 1)
 - `limit` (optional): Items per page (default: 20)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -249,12 +270,12 @@ yarn add reactflow
     "workflows": [
       {
         "id": "workflow_123",
-        "name": "HDFC Agriculture KCC",
+        "name": "KVB Agriculture KCC",
         "status": "active",
         "version": "2.0.0",
         "created_at": "2025-10-08T10:00:00+05:30",
         "updated_at": "2025-10-09T11:00:00+05:30",
-        "created_by": "admin@hdfc.com",
+        "created_by": "admin@KVB.com",
         "node_count": 5,
         "execution_count": 1234
       }
@@ -276,19 +297,20 @@ yarn add reactflow
 **Endpoint:** `GET /api/configurator/workflows/{workflow_id}`
 
 **Response:**
+
 ```json
 {
   "success": true,
   "data": {
     "workflow": {
       "id": "workflow_123",
-      "name": "HDFC Agriculture KCC Onboarding",
+      "name": "KVB Agriculture KCC Onboarding",
       "description": "Complete customer onboarding flow for Kisan Credit Card",
       "version": "2.0.0",
       "status": "active",
       "created_at": "2025-10-08T10:00:00+05:30",
       "updated_at": "2025-10-09T11:00:00+05:30",
-      "created_by": "admin@hdfc.com",
+      "created_by": "admin@KVB.com",
       "nodes": [...],
       "global_config": {...}
     }
@@ -303,6 +325,7 @@ yarn add reactflow
 **Endpoint:** `PUT /api/configurator/workflows/{workflow_id}`
 
 **Request Body:**
+
 ```json
 {
   "name": "Updated Workflow Name",
@@ -313,6 +336,7 @@ yarn add reactflow
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -331,6 +355,7 @@ yarn add reactflow
 **Endpoint:** `POST /api/configurator/workflows/{workflow_id}/publish`
 
 **Request Body:**
+
 ```json
 {
   "version": "1.0.0",
@@ -339,6 +364,7 @@ yarn add reactflow
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -358,6 +384,7 @@ yarn add reactflow
 **Endpoint:** `POST /api/configurator/workflows/{workflow_id}/validate`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -389,6 +416,7 @@ yarn add reactflow
 **Endpoint:** `POST /api/configurator/workflows/{workflow_id}/test`
 
 **Request Body:**
+
 ```json
 {
   "test_data": {
@@ -400,6 +428,7 @@ yarn add reactflow
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -420,6 +449,7 @@ yarn add reactflow
 **Endpoint:** `DELETE /api/configurator/workflows/{workflow_id}`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -439,6 +469,7 @@ yarn add reactflow
 **Endpoint:** `POST /api/workflow/start`
 
 **Request Body:**
+
 ```json
 {
   "workflow_id": "workflow_123",
@@ -456,6 +487,7 @@ yarn add reactflow
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -480,6 +512,7 @@ yarn add reactflow
 **Endpoint:** `GET /api/workflow/session/{session_id}/current`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -504,6 +537,7 @@ yarn add reactflow
 **Endpoint:** `POST /api/workflow/session/{session_id}/submit`
 
 **Request Body:**
+
 ```json
 {
   "node_id": "node_1",
@@ -516,6 +550,7 @@ yarn add reactflow
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -541,6 +576,7 @@ yarn add reactflow
 **Endpoint:** `POST /api/workflow/session/{session_id}/draft`
 
 **Request Body:**
+
 ```json
 {
   "current_node_id": "node_2",
@@ -549,6 +585,7 @@ yarn add reactflow
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -568,6 +605,7 @@ yarn add reactflow
 **Endpoint:** `POST /api/workflow/resume/{draft_id}`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -585,6 +623,7 @@ yarn add reactflow
 ## 📊 Condition Types for Node Connections
 
 ### 1. **Always (Unconditional)**
+
 ```json
 {
   "type": "always",
@@ -593,6 +632,7 @@ yarn add reactflow
 ```
 
 ### 2. **Conditional (Field-based)**
+
 ```json
 {
   "type": "conditional",
@@ -608,11 +648,12 @@ yarn add reactflow
       "value": 650
     }
   ],
-  "logic": "AND"  // or "OR"
+  "logic": "AND" // or "OR"
 }
 ```
 
 **Supported Operators:**
+
 - `equals`
 - `not_equals`
 - `greater_than`
@@ -627,6 +668,7 @@ yarn add reactflow
 - `is_not_empty`
 
 ### 3. **API Response Based**
+
 ```json
 {
   "type": "api_response",
@@ -647,12 +689,14 @@ yarn add reactflow
 All API endpoints require authentication via:
 
 **Header:**
+
 ```
 Authorization: Bearer {jwt_token}
 X-Workflow-Session: {session_id}  // For runtime APIs
 ```
 
 **Error Responses:**
+
 ```json
 {
   "success": false,
@@ -669,9 +713,11 @@ X-Workflow-Session: {session_id}  // For runtime APIs
 ## 📈 Analytics APIs (Future Enhancement)
 
 ### Workflow Analytics
+
 **Endpoint:** `GET /api/configurator/workflows/{workflow_id}/analytics`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -697,37 +743,37 @@ X-Workflow-Session: {session_id}  // For runtime APIs
 ```javascript
 // Load component library
 const loadComponents = async () => {
-  const response = await fetch('/api/configurator/components');
+  const response = await fetch("/api/configurator/components");
   const data = await response.json();
   return data.data.library.components;
 };
 
 // Save workflow
 const saveWorkflow = async (workflowConfig) => {
-  const response = await fetch('/api/configurator/workflows', {
-    method: 'POST',
+  const response = await fetch("/api/configurator/workflows", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(workflowConfig)
+    body: JSON.stringify(workflowConfig),
   });
   return await response.json();
 };
 
 // Start workflow execution
 const startWorkflow = async (workflowId, initialData) => {
-  const response = await fetch('/api/workflow/start', {
-    method: 'POST',
+  const response = await fetch("/api/workflow/start", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       workflow_id: workflowId,
       user_id: currentUserId,
-      initial_data: initialData
-    })
+      initial_data: initialData,
+    }),
   });
   return await response.json();
 };
@@ -744,6 +790,7 @@ const startWorkflow = async (workflowId, initialData) => {
 **Endpoint:** `GET /api/configurator/components/{component_id}/preview`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -784,6 +831,7 @@ const startWorkflow = async (workflowId, initialData) => {
 **Endpoint:** `POST /api/configurator/components/{component_id}/actions/{action_id}/api`
 
 **Request Body:**
+
 ```json
 {
   "api_config": {
@@ -798,9 +846,7 @@ const startWorkflow = async (workflowId, initialData) => {
     },
     "body": {
       "model": "gpt-4o",
-      "messages": [
-        {"role": "user", "content": "Hello"}
-      ]
+      "messages": [{ "role": "user", "content": "Hello" }]
     },
     "response_mapping": {
       "success_field": "choices[0].message.content",
@@ -822,6 +868,7 @@ const startWorkflow = async (workflowId, initialData) => {
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -841,6 +888,7 @@ const startWorkflow = async (workflowId, initialData) => {
 **Endpoint:** `GET /api/configurator/components/{component_id}/actions/{action_id}/api`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -865,6 +913,7 @@ const startWorkflow = async (workflowId, initialData) => {
 **Endpoint:** `POST /api/configurator/components/{component_id}/actions/{action_id}/api/test`
 
 **Request Body:**
+
 ```json
 {
   "test_data": {
@@ -876,6 +925,7 @@ const startWorkflow = async (workflowId, initialData) => {
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -901,6 +951,7 @@ const startWorkflow = async (workflowId, initialData) => {
 **Endpoint:** `POST /api/configurator/workflows/{workflow_id}/api-configs/bulk`
 
 **Request Body:**
+
 ```json
 {
   "configurations": [
@@ -928,6 +979,7 @@ const startWorkflow = async (workflowId, initialData) => {
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -954,6 +1006,7 @@ const startWorkflow = async (workflowId, initialData) => {
 **Endpoint:** `PUT /api/configurator/components/{component_id}/fields/{field_id}`
 
 **Request Body:**
+
 ```json
 {
   "field_updates": {
@@ -982,6 +1035,7 @@ const startWorkflow = async (workflowId, initialData) => {
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -1000,6 +1054,7 @@ const startWorkflow = async (workflowId, initialData) => {
 **Endpoint:** `POST /api/configurator/components/{component_id}/fields`
 
 **Request Body:**
+
 ```json
 {
   "field": {
@@ -1019,6 +1074,7 @@ const startWorkflow = async (workflowId, initialData) => {
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -1037,6 +1093,7 @@ const startWorkflow = async (workflowId, initialData) => {
 **Endpoint:** `PUT /api/configurator/components/{component_id}/fields/reorder`
 
 **Request Body:**
+
 ```json
 {
   "section_id": "applicant_details",
@@ -1058,41 +1115,45 @@ const startWorkflow = async (workflowId, initialData) => {
 
 ```javascript
 // components/configurator/ComponentLibrary.jsx
-import React, { useEffect, useState } from 'react';
-import { Box, Card, Typography, Chip } from '@mui/material';
+import React, { useEffect, useState } from "react";
+import { Box, Card, Typography, Chip } from "@mui/material";
 
 const ComponentLibrary = ({ onAddComponent }) => {
   const [components, setComponents] = useState([]);
 
   useEffect(() => {
     // Load component library
-    fetch('/api/configurator/components')
-      .then(res => res.json())
-      .then(data => {
+    fetch("/api/configurator/components")
+      .then((res) => res.json())
+      .then((data) => {
         setComponents(data.data.library.components);
       });
   }, []);
 
   const handleDragStart = (e, component) => {
-    e.dataTransfer.setData('component', JSON.stringify(component));
+    e.dataTransfer.setData("component", JSON.stringify(component));
   };
 
   return (
     <Box sx={{ p: 2 }}>
-      {components.map(component => (
+      {components.map((component) => (
         <Card
           key={component.id}
           draggable
           onDragStart={(e) => handleDragStart(e, component)}
-          sx={{ mb: 2, p: 2, cursor: 'grab' }}
+          sx={{ mb: 2, p: 2, cursor: "grab" }}
         >
           <Typography variant="h6">{component.name}</Typography>
           <Typography variant="body2" color="text.secondary">
             {component.description}
           </Typography>
-          <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+          <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
             <Chip label={`${component.fields_count} fields`} size="small" />
-            <Chip label={component.estimated_time} size="small" color="primary" />
+            <Chip
+              label={component.estimated_time}
+              size="small"
+              color="primary"
+            />
           </Box>
         </Card>
       ))}
@@ -1107,8 +1168,8 @@ const ComponentLibrary = ({ onAddComponent }) => {
 
 ```javascript
 // components/configurator/ComponentPreview.jsx
-import React, { useEffect, useState } from 'react';
-import { Box, Paper, Typography, List, ListItem } from '@mui/material';
+import React, { useEffect, useState } from "react";
+import { Box, Paper, Typography, List, ListItem } from "@mui/material";
 
 const ComponentPreview = ({ componentId }) => {
   const [preview, setPreview] = useState(null);
@@ -1116,8 +1177,8 @@ const ComponentPreview = ({ componentId }) => {
   useEffect(() => {
     if (componentId) {
       fetch(`/api/configurator/components/${componentId}/preview`)
-        .then(res => res.json())
-        .then(data => setPreview(data.data.preview));
+        .then((res) => res.json())
+        .then((data) => setPreview(data.data.preview));
     }
   }, [componentId]);
 
@@ -1137,9 +1198,9 @@ const ComponentPreview = ({ componentId }) => {
             {section.preview_fields.map((field, fIdx) => (
               <ListItem key={fIdx}>
                 <Typography variant="body2">
-                  {field.label} 
-                  {field.required && <span style={{ color: 'red' }}>*</span>}
-                  <span style={{ color: '#666', marginLeft: 8 }}>
+                  {field.label}
+                  {field.required && <span style={{ color: "red" }}>*</span>}
+                  <span style={{ color: "#666", marginLeft: 8 }}>
                     ({field.type})
                   </span>
                 </Typography>
@@ -1159,9 +1220,9 @@ const ComponentPreview = ({ componentId }) => {
 
 ```javascript
 // components/configurator/NodeSettings.jsx
-import React, { useState } from 'react';
-import { Box, Button, Typography } from '@mui/material';
-import ApiConfigDialog from './ApiConfigDialog';
+import React, { useState } from "react";
+import { Box, Button, Typography } from "@mui/material";
+import ApiConfigDialog from "./ApiConfigDialog";
 
 const NodeSettings = ({ node, onUpdate }) => {
   const [apiDialogOpen, setApiDialogOpen] = useState(false);
@@ -1177,9 +1238,9 @@ const NodeSettings = ({ node, onUpdate }) => {
     const response = await fetch(
       `/api/configurator/components/${node.component_id}/actions/${selectedAction.id}/api`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_config: apiConfig })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_config: apiConfig }),
       }
     );
 
@@ -1187,11 +1248,9 @@ const NodeSettings = ({ node, onUpdate }) => {
       // Update local state
       onUpdate({
         ...node,
-        actions: node.actions.map(a => 
-          a.id === selectedAction.id 
-            ? { ...a, api: apiConfig }
-            : a
-        )
+        actions: node.actions.map((a) =>
+          a.id === selectedAction.id ? { ...a, api: apiConfig } : a
+        ),
       });
       setApiDialogOpen(false);
     }
@@ -1207,8 +1266,11 @@ const NodeSettings = ({ node, onUpdate }) => {
         Actions & API Configuration
       </Typography>
 
-      {node.actions?.map(action => (
-        <Box key={action.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+      {node.actions?.map((action) => (
+        <Box
+          key={action.id}
+          sx={{ mb: 2, p: 2, border: "1px solid #e0e0e0", borderRadius: 1 }}
+        >
           <Typography variant="body1" sx={{ fontWeight: 600 }}>
             {action.label}
           </Typography>
@@ -1221,7 +1283,7 @@ const NodeSettings = ({ node, onUpdate }) => {
             onClick={() => handleConfigureApi(action)}
             sx={{ mt: 1 }}
           >
-            {action.api ? 'Edit API' : 'Add API'}
+            {action.api ? "Edit API" : "Add API"}
           </Button>
         </Box>
       ))}
@@ -1250,7 +1312,7 @@ export const serializeWorkflow = (nodes, edges) => {
       name: "My Workflow",
       description: "Workflow description",
       version: "1.0.0",
-      nodes: nodes.map(node => ({
+      nodes: nodes.map((node) => ({
         node_id: node.id,
         component_id: node.data.component_id,
         position: node.position,
@@ -1267,39 +1329,39 @@ export const serializeWorkflow = (nodes, edges) => {
             acc[field.id] = {
               label: field.label,
               required: field.required,
-              validation: field.validation
+              validation: field.validation,
             };
             return acc;
-          }, {})
+          }, {}),
         },
         connections: edges
-          .filter(edge => edge.source === node.id)
-          .map(edge => ({
+          .filter((edge) => edge.source === node.id)
+          .map((edge) => ({
             target_node_id: edge.target,
-            condition: edge.data?.condition || { type: 'always', rules: [] },
-            label: edge.label
-          }))
+            condition: edge.data?.condition || { type: "always", rules: [] },
+            label: edge.label,
+          })),
       })),
       global_config: {
         enable_save_draft: true,
         enable_navigation_back: true,
-        session_timeout_minutes: 30
-      }
-    }
+        session_timeout_minutes: 30,
+      },
+    },
   };
 };
 
 // Save workflow
 export const saveWorkflow = async (nodes, edges) => {
   const workflowData = serializeWorkflow(nodes, edges);
-  
-  const response = await fetch('/api/configurator/workflows', {
-    method: 'POST',
+
+  const response = await fetch("/api/configurator/workflows", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
     },
-    body: JSON.stringify(workflowData)
+    body: JSON.stringify(workflowData),
   });
 
   return await response.json();
@@ -1312,8 +1374,8 @@ export const saveWorkflow = async (nodes, edges) => {
 
 ```javascript
 // components/workflow/WorkflowRunner.jsx
-import React, { useState, useEffect } from 'react';
-import DynamicUIRenderer from '../DynamicUIRenderer';
+import React, { useState, useEffect } from "react";
+import DynamicUIRenderer from "../DynamicUIRenderer";
 
 const WorkflowRunner = ({ workflowId }) => {
   const [session, setSession] = useState(null);
@@ -1326,14 +1388,14 @@ const WorkflowRunner = ({ workflowId }) => {
   }, [workflowId]);
 
   const startWorkflow = async () => {
-    const response = await fetch('/api/workflow/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/workflow/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         workflow_id: workflowId,
-        user_id: 'user_123',
-        initial_data: {}
-      })
+        user_id: "user_123",
+        initial_data: {},
+      }),
     });
 
     const data = await response.json();
@@ -1348,12 +1410,12 @@ const WorkflowRunner = ({ workflowId }) => {
     const response = await fetch(
       `/api/workflow/session/${session.session_id}/submit`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           node_id: session.current_node_id,
-          form_data: formData
-        })
+          form_data: formData,
+        }),
       }
     );
 
@@ -1364,11 +1426,11 @@ const WorkflowRunner = ({ workflowId }) => {
         setSession({
           ...session,
           current_node_id: data.data.next_node_id,
-          progress: data.data.progress
+          progress: data.data.progress,
         });
       } else {
         // Workflow complete
-        console.log('Workflow completed!');
+        console.log("Workflow completed!");
       }
     }
   };
@@ -1380,11 +1442,12 @@ const WorkflowRunner = ({ workflowId }) => {
       {/* Progress Indicator */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2">
-          Step {session.progress?.current_step} of {session.progress?.total_steps}
+          Step {session.progress?.current_step} of{" "}
+          {session.progress?.total_steps}
         </Typography>
-        <LinearProgress 
-          variant="determinate" 
-          value={session.progress?.percentage || 0} 
+        <LinearProgress
+          variant="determinate"
+          value={session.progress?.percentage || 0}
         />
       </Box>
 
@@ -1404,6 +1467,7 @@ const WorkflowRunner = ({ workflowId }) => {
 ## 🔄 Complete Integration Flow
 
 ### Step 1: Configure Workflow
+
 ```
 1. User drags components from library
 2. Components are placed on canvas (ReactFlow)
@@ -1420,6 +1484,7 @@ const WorkflowRunner = ({ workflowId }) => {
 ```
 
 ### Step 2: Execute Workflow
+
 ```
 1. User clicks "Run Workflow"
 2. Frontend calls /api/workflow/start
