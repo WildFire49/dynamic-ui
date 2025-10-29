@@ -1,54 +1,44 @@
-# Dockerfile for Next.js application
+# Dockerfile for Next.js application - Optimized for faster builds
 
-# 1. Installer Stage: Install dependencies
-FROM node:20-alpine AS deps
-WORKDIR /app
-
-# Install dumb-init for better signal handling
-RUN apk add --no-cache dumb-init
-
-# Copy package.json and lock file
-COPY package.json package-lock.json* ./
-
-# Install dependencies with optimizations
-RUN npm ci --only=production --ignore-scripts && \
-    npm cache clean --force
-
-# 2. Builder Stage: Build the application
+# 1. Builder Stage: Build the application
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install all dependencies (including devDependencies) for build
-COPY package.json package-lock.json* ./
-RUN npm ci --ignore-scripts
+# Install dependencies needed for build
+RUN apk add --no-cache libc6-compat
 
-# Copy source code
+# Copy package files first for better layer caching
+COPY package.json package-lock.json* ./
+
+# Install all dependencies with frozen lockfile for faster, deterministic builds
+# Use BuildKit cache mount to cache npm packages between builds
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline --no-audit --progress=false
+
+# Copy source code (this layer changes most often)
 COPY . .
 
 # Disable Next.js telemetry and optimize build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build the Next.js application with optimizations
-RUN npm run build && \
-    npm prune --production && \
-    npm cache clean --force
+# Build the Next.js application
+# The standalone output already includes only production dependencies
+RUN npm run build
 
-# 3. Runner Stage: Create the final, small image
+# 2. Runner Stage: Create the final, minimal image
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Install dumb-init for better signal handling
-RUN apk add --no-cache dumb-init
+# Install only runtime dependencies
+RUN apk add --no-cache dumb-init libc6-compat && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 # Set environment to production
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
-
-# Create a non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
 
 # Copy the standalone output from the builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

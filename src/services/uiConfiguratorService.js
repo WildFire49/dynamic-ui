@@ -62,7 +62,7 @@ class UIConfiguratorService {
   async getConversationHistory(userId) {
     try {
       const response = await fetch(
-        `${UI_CONFIGURATOR_BASE}/component-library/${userId}`
+        `${UI_CONFIGURATOR_BASE}/component-library/${userId}?non_empty_only=true`
       );
 
       if (!response.ok) {
@@ -132,7 +132,7 @@ class UIConfiguratorService {
   async getComponentLibrary(userId) {
     try {
       const response = await fetch(
-        `${UI_CONFIGURATOR_BASE}/component-library/${userId}`
+        `${UI_CONFIGURATOR_BASE}/component-library/${userId}?non_empty_only=true`
       );
 
       if (!response.ok) {
@@ -141,17 +141,19 @@ class UIConfiguratorService {
 
       const data = await response.json();
       // Return full data structure with conversations, forms, and stats
-      return data.success && data.data ? data.data : {
-        conversations: [],
-        forms_without_conversation: [],
-        library_stats: {
-          total_forms: 0,
-          forms_in_conversations: 0,
-          orphaned_forms: 0
-        }
-      };
+      return data.success && data.data
+        ? data.data
+        : {
+            conversations: [],
+            forms_without_conversation: [],
+            library_stats: {
+              total_forms: 0,
+              forms_in_conversations: 0,
+              orphaned_forms: 0,
+            },
+          };
     } catch (error) {
-      console.error('Error fetching component library:', error);
+      console.error("Error fetching component library:", error);
       throw error;
     }
   }
@@ -163,13 +165,16 @@ class UIConfiguratorService {
    */
   async saveWorkflow(workflowData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/configurator/workflows/canvas`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(workflowData),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/configurator/workflows/canvas`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(workflowData),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -254,7 +259,9 @@ class UIConfiguratorService {
       }
 
       const data = await response.json();
-      return data.success && data.data ? data.data : { workflows: [], total: 0, statistics: {} };
+      return data.success && data.data
+        ? data.data
+        : { workflows: [], total: 0, statistics: {} };
     } catch (error) {
       console.error("Error fetching user workflows:", error);
       throw error;
