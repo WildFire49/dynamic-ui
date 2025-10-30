@@ -28,6 +28,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import authService from "../services/authService";
+import NavigationLoader from "./common/NavigationLoader";
 import GavelIcon from "@mui/icons-material/Gavel";
 import {
   Dashboard as DashboardIcon,
@@ -116,6 +117,8 @@ const Sidebar = ({
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [conversationContainer, setConversationContainer] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navigationMessage, setNavigationMessage] = useState("");
 
   // Analyses state (for dashboard mode)
   const [analyses, setAnalyses] = useState([]);
@@ -263,12 +266,22 @@ const Sidebar = ({
   const handleMenuClick = (item) => {
     // Handle navigation for specific items
     if (item.id === "dashboard") {
-      // Open dashboard in new tab to preserve localStorage state
-      window.open("/dashboard", "_blank");
+      // Show loader and open dashboard in new tab
+      setIsNavigating(true);
+      setNavigationMessage("Opening Dashboard...");
+      setTimeout(() => {
+        window.open("/dashboard", "_blank");
+        setIsNavigating(false);
+      }, 500);
     } else if (item.id === "chat" && mode === "dashboard") {
       // Navigate to chat page from dashboard
+      setIsNavigating(true);
+      setNavigationMessage("Loading Chat...");
       router.push("/");
     } else if (item.id === "configurator") {
+      // Show loader and navigate to configurator
+      setIsNavigating(true);
+      setNavigationMessage("Loading Configurator...");
       router.push("/configurator");
     } else {
       // For other items, use the callback
@@ -902,6 +915,9 @@ const Sidebar = ({
       >
         {drawerContent}
       </Drawer>
+
+      {/* Navigation Loader */}
+      {isNavigating && <NavigationLoader message={navigationMessage} />}
     </Box>
   );
 };

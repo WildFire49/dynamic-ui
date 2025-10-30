@@ -41,13 +41,31 @@ export const AuthProvider = ({ children }) => {
 
       const token = authService.getAccessToken();
       if (!token) {
+        console.log("No access token found, user not authenticated");
         setLoading(false);
         return;
       }
 
-      // Ensure token is valid
+      // Get user info from localStorage first
+      const userInfo = authService.getCurrentUser();
+      if (userInfo) {
+        console.log(
+          "User info loaded from localStorage:",
+          userInfo.username,
+          "Roles:",
+          userInfo.roles?.length
+        );
+        setUser(userInfo);
+        setIsAuthenticated(true);
+        setLoading(false);
+        return;
+      }
+
+      // If no user info in localStorage, verify token
+      console.log("No user info in localStorage, verifying token...");
       const isValid = await authService.ensureValidToken();
       if (!isValid) {
+        console.log("Token validation failed");
         setLoading(false);
         return;
       }
@@ -55,9 +73,14 @@ export const AuthProvider = ({ children }) => {
       // Verify token and get user info
       const verifyResult = await authService.verifyToken();
       if (verifyResult.success) {
+        console.log(
+          "Token verified, user authenticated:",
+          verifyResult.data?.username
+        );
         setUser(verifyResult.data);
         setIsAuthenticated(true);
       } else {
+        console.log("Token verification failed");
         authService.logout();
       }
     } catch (error) {
@@ -73,23 +96,30 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
 
       const loginResult = await authService.login(username, password);
+      console.log("Login result:", loginResult.success ? "Success" : "Failed");
+
       if (loginResult.success) {
         // User data is already stored in localStorage by authService
         // Get user info from localStorage
         const userInfo = authService.getCurrentUser();
+        console.log("User info from localStorage:", userInfo);
+
         if (userInfo) {
           setUser(userInfo);
           setIsAuthenticated(true);
           console.log(
-            "Login successful, user authenticated:",
-            userInfo.username
+            "✅ Login successful, user authenticated:",
+            userInfo.username,
+            "| Roles:",
+            userInfo.roles?.map((r) => r.roleCode).join(", ")
           );
           return { success: true, message: loginResult.message };
         } else {
-          console.error("User info not found after login");
+          console.error("❌ User info not found after login");
           return { success: false, message: "Failed to load user information" };
         }
       } else {
+        console.error("❌ Login failed:", loginResult.message);
         return { success: false, message: loginResult.message };
       }
     } catch (error) {

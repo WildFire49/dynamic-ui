@@ -1,24 +1,17 @@
 "use client";
 
 import { ROLES } from "../config/roleConfig";
+import apiClient from "./apiClient";
 
 // Authentication service with API integration
+// Note: This service handles auth-specific logic like token storage and user management
+// For general API calls with bearer token, use apiClient directly
 class AuthService {
   constructor() {
     this.baseURL = "https://ams-uat.mifix.io/idp/sso";
     this.clientId = "cli-1a1abfd3-05c8-4e28-b2aa-6c597b77163c";
     this.secretKey = "Zn6WlZiewaBMJCydrqm8TdlgKOX/+MoAXP+D/gG8mTo=";
     this.productCode = "MIFIX-AI";
-  }
-
-  // Default headers for API calls
-  getHeaders() {
-    return {
-      "Content-Type": "application/json",
-      clientId: this.clientId,
-      secretKey: this.secretKey,
-      productCode: this.productCode,
-    };
   }
 
   // Login API call
@@ -47,28 +40,28 @@ class AuthService {
           "accessTokenExpiry",
           data.data.access_token_expiry
         );
-        
+
         // Store refresh token in sessionStorage (persists only for session)
         sessionStorage.setItem("refreshToken", data.data.refresh_token);
-        
+
         // Store user info from user_data if available
         if (data.data.user_data) {
           const userData = data.data.user_data;
           localStorage.setItem("userInfo", JSON.stringify(userData));
           localStorage.setItem("userId", userData.userId);
           localStorage.setItem("username", userData.username);
-          
+
           // Store roles array
           if (userData.roles && userData.roles.length > 0) {
             localStorage.setItem("roles", JSON.stringify(userData.roles));
-            
+
             // Store primary roleCode (first role)
             const primaryRole = userData.roles[0];
             localStorage.setItem("roleCode", primaryRole.roleCode);
             localStorage.setItem("roleName", primaryRole.roleName);
             localStorage.setItem("roleId", primaryRole.roleId);
           }
-          
+
           return {
             success: true,
             data: {
@@ -81,7 +74,7 @@ class AuthService {
           // Fallback: user_data not in response, store basic info
           localStorage.setItem("username", username);
           localStorage.setItem("userId", data.data.user_id);
-          
+
           return {
             success: true,
             data: data.data,
@@ -131,11 +124,11 @@ class AuthService {
         localStorage.setItem("userInfo", JSON.stringify(userData));
         localStorage.setItem("userId", userData.userId);
         localStorage.setItem("username", userData.username);
-        
+
         // Store roles array
         if (userData.roles && userData.roles.length > 0) {
           localStorage.setItem("roles", JSON.stringify(userData.roles));
-          
+
           // Store primary roleCode (first role)
           const primaryRole = userData.roles[0];
           localStorage.setItem("roleCode", primaryRole.roleCode);
@@ -194,10 +187,10 @@ class AuthService {
           "accessTokenExpiry",
           data.data.access_token_expiry
         );
-        
+
         // Update refresh token in sessionStorage
         sessionStorage.setItem("refreshToken", data.data.refresh_token);
-        
+
         // Update userId if provided
         if (data.data.user_id) {
           localStorage.setItem("userId", data.data.user_id);
@@ -328,7 +321,7 @@ class AuthService {
     localStorage.removeItem("roleId");
     localStorage.removeItem("username");
     localStorage.removeItem("userId");
-    
+
     // Clear sessionStorage
     sessionStorage.removeItem("refreshToken");
   }

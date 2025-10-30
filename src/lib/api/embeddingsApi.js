@@ -3,9 +3,10 @@
  * Handles document embedding, collections management, and ChromaDB operations
  */
 
-import { API_BASE_URL } from '@/lib/config';
+import { API_BASE_URL, CHROMA_BASE_URL } from '@/lib/config';
 
 const EMBEDDINGS_BASE_URL = `${API_BASE_URL}/api/v1/embeddings`;
+const CHROMA_API_URL = CHROMA_BASE_URL; // Direct connection to Chroma DB
 
 class EmbeddingsApiError extends Error {
   constructor(message, status, response) {
@@ -90,12 +91,44 @@ export const embeddingsApi = {
   },
 
   /**
-   * List all available collections
+   * List all available collections from Chroma DB
    * @returns {Promise<Object>} Collections list
    */
   listCollections: async () => {
-    const response = await fetch(`${EMBEDDINGS_BASE_URL}/collections`);
-    return handleApiResponse(response);
+    try {
+      console.log(`Fetching collections from Chroma DB: ${CHROMA_API_URL}/api/v1/collections`);
+      const response = await fetch(`${CHROMA_API_URL}/api/v1/collections`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        console.warn(`Chroma DB API returned ${response.status}, returning empty list`);
+        return { collections: [], count: 0 };
+      }
+      
+      const data = await response.json();
+      console.log('Chroma DB collections:', data);
+      
+      // Transform Chroma DB response to our format
+      // Chroma returns array of collection objects
+      const collections = Array.isArray(data) ? data : [];
+      
+      return { 
+        collections: collections.map(col => ({
+          name: col.name || col.id,
+          count: col.count || 0,
+          metadata: col.metadata || {}
+        })),
+        count: collections.length 
+      };
+    } catch (error) {
+      console.error('Error fetching collections from Chroma DB:', error);
+      // Return empty collections instead of throwing
+      return { collections: [], count: 0 };
+    }
   },
 
   /**

@@ -62,6 +62,7 @@ import {
 } from "@mui/icons-material";
 import { embeddingsApi } from "@/lib/api/embeddingsApi";
 import RouteGuard from "../../components/auth/RouteGuard";
+import NavigationLoader from "../../components/common/NavigationLoader";
 
 const CONFIGURATOR_OPTIONS = [
   {
@@ -275,8 +276,10 @@ export default function ConfiguratorPage() {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "info",
+    severity: "success",
   });
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navigationMessage, setNavigationMessage] = useState("");
   const [mounted, setMounted] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [hoveredOption, setHoveredOption] = useState(null);
@@ -300,13 +303,29 @@ export default function ConfiguratorPage() {
       setLoading(true);
       const response = await embeddingsApi.listCollections();
       setCollections(response.collections || []);
+
+      // Only show info if collections endpoint is not available
+      if (
+        response.collections &&
+        response.collections.length === 0 &&
+        response.count === 0
+      ) {
+        console.info(
+          "Collections API endpoint not available or returned empty"
+        );
+      }
     } catch (error) {
       console.error("Error loading collections:", error);
-      setSnackbar({
-        open: true,
-        message: `Failed to load collections: ${error.message}`,
-        severity: "error",
-      });
+      // Set empty collections instead of showing error
+      setCollections([]);
+      // Only show error snackbar for unexpected errors, not API endpoint issues
+      if (error.status !== 500 && error.status !== 404) {
+        setSnackbar({
+          open: true,
+          message: `Failed to load collections: ${error.message}`,
+          severity: "warning",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -506,6 +525,7 @@ export default function ConfiguratorPage() {
 
   return (
     <RouteGuard routeId="configurator">
+      {isNavigating && <NavigationLoader message={navigationMessage} />}
       <Box
         sx={{
           minHeight: "100vh",
@@ -892,6 +912,10 @@ export default function ConfiguratorPage() {
                           onMouseLeave={() => setHoveredOption(null)}
                           onClick={() => {
                             if (option.route) {
+                              setIsNavigating(true);
+                              setNavigationMessage(
+                                `Loading ${option.title}...`
+                              );
                               router.push(option.route);
                             } else {
                               // For knowledge upload, show agent selection

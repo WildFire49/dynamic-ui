@@ -5,6 +5,8 @@
  * Handles all API calls for the UI Component Builder
  */
 
+import apiClient from './apiClient';
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const UI_CONFIGURATOR_BASE = `${API_BASE_URL}/api/v1/configurator/ui-configurator`;
@@ -34,20 +36,7 @@ class UIConfiguratorService {
         requestBody.form_id = formId;
       }
 
-      const response = await fetch(`${UI_CONFIGURATOR_BASE}/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
+      return await apiClient.post(`${UI_CONFIGURATOR_BASE}/generate`, requestBody);
     } catch (error) {
       console.error("Error generating form:", error);
       throw error;
@@ -61,15 +50,9 @@ class UIConfiguratorService {
    */
   async getConversationHistory(userId) {
     try {
-      const response = await fetch(
+      const data = await apiClient.get(
         `${UI_CONFIGURATOR_BASE}/component-library/${userId}?non_empty_only=true`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       return data.success && data.data ? data.data.conversations || [] : [];
     } catch (error) {
       console.error("Error fetching conversation history:", error);
@@ -84,15 +67,9 @@ class UIConfiguratorService {
    */
   async loadConversation(conversationId) {
     try {
-      const response = await fetch(
+      const data = await apiClient.get(
         `${UI_CONFIGURATOR_BASE}/conversations/${conversationId}`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       return data.success && data.data ? data.data : null;
     } catch (error) {
       console.error("Error loading conversation:", error);
@@ -107,15 +84,9 @@ class UIConfiguratorService {
    */
   async deleteConversation(conversationId) {
     try {
-      const response = await fetch(
-        `${UI_CONFIGURATOR_BASE}/conversations/${conversationId}`,
-        { method: "DELETE" }
+      await apiClient.delete(
+        `${UI_CONFIGURATOR_BASE}/conversations/${conversationId}`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       return true;
     } catch (error) {
       console.error("Error deleting conversation:", error);
@@ -131,15 +102,9 @@ class UIConfiguratorService {
    */
   async getComponentLibrary(userId) {
     try {
-      const response = await fetch(
+      const data = await apiClient.get(
         `${UI_CONFIGURATOR_BASE}/component-library/${userId}?non_empty_only=true`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       // Return full data structure with conversations, forms, and stats
       return data.success && data.data
         ? data.data
@@ -165,23 +130,10 @@ class UIConfiguratorService {
    */
   async saveWorkflow(workflowData) {
     try {
-      const response = await fetch(
+      return await apiClient.post(
         `${API_BASE_URL}/api/v1/configurator/workflows/canvas`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(workflowData),
-        }
+        workflowData
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
     } catch (error) {
       console.error("Error saving workflow:", error);
       throw error;
@@ -196,23 +148,10 @@ class UIConfiguratorService {
    */
   async updateWorkflow(workflowId, workflowData) {
     try {
-      const response = await fetch(
+      return await apiClient.put(
         `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(workflowData),
-        }
+        workflowData
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
     } catch (error) {
       console.error("Error updating workflow:", error);
       throw error;
@@ -226,16 +165,9 @@ class UIConfiguratorService {
    */
   async getWorkflow(workflowId) {
     try {
-      const response = await fetch(
+      return await apiClient.get(
         `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
     } catch (error) {
       console.error("Error fetching workflow:", error);
       throw error;
@@ -250,15 +182,9 @@ class UIConfiguratorService {
    */
   async getUserWorkflows(userId, productId = "loan_app") {
     try {
-      const response = await fetch(
+      const data = await apiClient.get(
         `${API_BASE_URL}/api/v1/configurator/workflows/canvas?user_id=${userId}&product_id=${productId}`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       return data.success && data.data
         ? data.data
         : { workflows: [], total: 0, statistics: {} };
@@ -275,15 +201,9 @@ class UIConfiguratorService {
    */
   async deleteWorkflow(workflowId) {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}`,
-        { method: "DELETE" }
+      await apiClient.delete(
+        `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}`
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       return true;
     } catch (error) {
       console.error("Error deleting workflow:", error);
