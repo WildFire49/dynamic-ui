@@ -3,15 +3,31 @@
  * Handles document embedding, collections management, and ChromaDB operations
  */
 
-import { API_BASE_URL, CHROMA_BASE_URL } from '@/lib/config';
+import { API_BASE_URL, CHROMA_BASE_URL } from "@/lib/config";
 
 const EMBEDDINGS_BASE_URL = `${API_BASE_URL}/api/v1/embeddings`;
 const CHROMA_API_URL = CHROMA_BASE_URL; // Direct connection to Chroma DB
 
+/**
+ * Get authentication headers with bearer token
+ * @returns {Object} Headers object with authorization
+ */
+const getAuthHeaders = () => {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  const headers = {};
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
 class EmbeddingsApiError extends Error {
   constructor(message, status, response) {
     super(message);
-    this.name = 'EmbeddingsApiError';
+    this.name = "EmbeddingsApiError";
     this.status = status;
     this.response = response;
   }
@@ -19,7 +35,9 @@ class EmbeddingsApiError extends Error {
 
 const handleApiResponse = async (response) => {
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }));
     throw new EmbeddingsApiError(
       errorData.message || `HTTP ${response.status}`,
       response.status,
@@ -40,11 +58,19 @@ export const embeddingsApi = {
    * @param {Object} metadata - Additional metadata
    * @returns {Promise<Object>} Embedding response
    */
-  embedDocuments: async (documents, agentType, backend = 'chromadb', chunkSize = 1000, chunkOverlap = 200, metadata = {}) => {
+  embedDocuments: async (
+    documents,
+    agentType,
+    backend = "chromadb",
+    chunkSize = 1000,
+    chunkOverlap = 200,
+    metadata = {}
+  ) => {
     const response = await fetch(`${EMBEDDINGS_BASE_URL}/embed-documents`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
       },
       body: JSON.stringify({
         documents,
@@ -52,8 +78,8 @@ export const embeddingsApi = {
         backend,
         chunk_size: chunkSize,
         chunk_overlap: chunkOverlap,
-        metadata
-      })
+        metadata,
+      }),
     });
 
     return handleApiResponse(response);
@@ -68,23 +94,30 @@ export const embeddingsApi = {
    * @param {number} chunkOverlap - Chunk overlap (default: 200)
    * @returns {Promise<Object>} Embedding response
    */
-  embedFiles: async (files, agentType, backend = 'chromadb', chunkSize = 1000, chunkOverlap = 200) => {
+  embedFiles: async (
+    files,
+    agentType,
+    backend = "chromadb",
+    chunkSize = 1000,
+    chunkOverlap = 200
+  ) => {
     const formData = new FormData();
-    
+
     // Add files
-    Array.from(files).forEach(file => {
-      formData.append('files', file);
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
     });
-    
+
     // Add parameters
-    formData.append('agent_type', agentType);
-    formData.append('backend', backend);
-    formData.append('chunk_size', chunkSize.toString());
-    formData.append('chunk_overlap', chunkOverlap.toString());
+    formData.append("agent_type", agentType);
+    formData.append("backend", backend);
+    formData.append("chunk_size", chunkSize.toString());
+    formData.append("chunk_overlap", chunkOverlap.toString());
 
     const response = await fetch(`${EMBEDDINGS_BASE_URL}/embed-files`, {
-      method: 'POST',
-      body: formData
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: formData,
     });
 
     return handleApiResponse(response);
@@ -96,36 +129,41 @@ export const embeddingsApi = {
    */
   listCollections: async () => {
     try {
-      console.log(`Fetching collections from Chroma DB: ${CHROMA_API_URL}/api/v1/collections`);
+      console.log(
+        `Fetching collections from Chroma DB: ${CHROMA_API_URL}/api/v1/collections`
+      );
       const response = await fetch(`${CHROMA_API_URL}/api/v1/collections`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
         },
       });
-      
+
       if (!response.ok) {
-        console.warn(`Chroma DB API returned ${response.status}, returning empty list`);
+        console.warn(
+          `Chroma DB API returned ${response.status}, returning empty list`
+        );
         return { collections: [], count: 0 };
       }
-      
+
       const data = await response.json();
-      console.log('Chroma DB collections:', data);
-      
+      console.log("Chroma DB collections:", data);
+
       // Transform Chroma DB response to our format
       // Chroma returns array of collection objects
       const collections = Array.isArray(data) ? data : [];
-      
-      return { 
-        collections: collections.map(col => ({
+
+      return {
+        collections: collections.map((col) => ({
           name: col.name || col.id,
           count: col.count || 0,
-          metadata: col.metadata || {}
+          metadata: col.metadata || {},
         })),
-        count: collections.length 
+        count: collections.length,
       };
     } catch (error) {
-      console.error('Error fetching collections from Chroma DB:', error);
+      console.error("Error fetching collections from Chroma DB:", error);
       // Return empty collections instead of throwing
       return { collections: [], count: 0 };
     }
@@ -137,7 +175,12 @@ export const embeddingsApi = {
    * @returns {Promise<Object>} Collection details
    */
   getCollectionDetails: async (collectionName) => {
-    const response = await fetch(`${EMBEDDINGS_BASE_URL}/collections/${collectionName}`);
+    const response = await fetch(
+      `${EMBEDDINGS_BASE_URL}/collections/${collectionName}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
     return handleApiResponse(response);
   },
 
@@ -147,9 +190,13 @@ export const embeddingsApi = {
    * @returns {Promise<Object>} Delete confirmation
    */
   deleteCollection: async (collectionName) => {
-    const response = await fetch(`${EMBEDDINGS_BASE_URL}/collections/${collectionName}`, {
-      method: 'DELETE'
-    });
+    const response = await fetch(
+      `${EMBEDDINGS_BASE_URL}/collections/${collectionName}`,
+      {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      }
+    );
     return handleApiResponse(response);
   },
 
@@ -160,11 +207,14 @@ export const embeddingsApi = {
    * @returns {Promise<Object>} Response data
    */
   testConnection: async (endpoint, options = {}) => {
-    const url = endpoint.startsWith('http') ? endpoint : `${EMBEDDINGS_BASE_URL}${endpoint}`;
+    const url = endpoint.startsWith("http")
+      ? endpoint
+      : `${EMBEDDINGS_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
-      method: options.method || 'GET',
+      method: options.method || "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
         ...options.headers,
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
@@ -176,7 +226,7 @@ export const embeddingsApi = {
       headers: Object.fromEntries(response.headers.entries()),
       data: await response.json().catch(() => null),
     };
-  }
+  },
 };
 
 export default embeddingsApi;

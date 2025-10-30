@@ -69,6 +69,24 @@ const floatAnimation = keyframes`
   }
 `;
 
+/**
+ * Get authentication headers with bearer token
+ * @returns {Object} Headers object with authorization
+ */
+const getAuthHeaders = () => {
+  const token =
+    typeof window !== "undefined" ? authService.getAccessToken() : null;
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
 export default function HomePage() {
   const { user } = useAuth();
   const [chatHistory, setChatHistory] = useState([]);
@@ -608,9 +626,7 @@ export default function HomePage() {
 
         const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify(requestBody),
         });
 
@@ -745,7 +761,10 @@ export default function HomePage() {
     setLoadingDocuments(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}`
+        `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}`,
+        {
+          headers: getAuthHeaders(),
+        }
       );
 
       if (!response.ok) {
@@ -901,9 +920,7 @@ export default function HomePage() {
 
         const response = await fetch(`${API_BASE_URL}/chat`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify(requestPayload),
         });
 

@@ -57,7 +57,7 @@ const styles = {
   messageContainer: {
     display: "flex",
     mb: { xs: 1.5, sm: 2 },
-    px: { xs: 0.5, sm: 1, md: 2 },
+    px: { xs: 1, sm: 1, md: 2 },
     maxWidth: "100%",
     width: "100%",
   },
@@ -68,90 +68,64 @@ const styles = {
     justifyContent: "flex-start",
   },
   userMessage: {
-    maxWidth: { xs: "80%", sm: "70%", md: "50%", lg: "25%" }, // Responsive width: wider on mobile
-    minWidth: { xs: "100px", sm: "120px" },
-    p: { xs: 1.5, sm: 2 },
-    borderRadius: { xs: 2.5, sm: 3 },
+    maxWidth: { xs: "85%", sm: "70%", md: "50%", lg: "25%" },
+    minWidth: { xs: "60px", sm: "120px" },
+    p: { xs: 1.25, sm: 2 },
+    borderRadius: { xs: "18px 18px 4px 18px", sm: "20px 20px 4px 20px" },
     background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
     color: "#ffffff",
     position: "relative",
     wordWrap: "break-word",
     wordBreak: "break-word",
+    overflowWrap: "break-word",
     whiteSpace: "pre-wrap",
     boxShadow: {
-      xs: "0 2px 12px rgba(25, 118, 210, 0.2)",
-      sm: "0 4px 20px rgba(25, 118, 210, 0.3)",
+      xs: "0 1px 2px rgba(0, 0, 0, 0.1)",
+      sm: "0 2px 4px rgba(0, 0, 0, 0.1)",
     },
-    textShadow: "0 1px 2px rgba(0,0,0,0.2)",
     animation: `${slideInRight} 0.3s ease-out`,
-    transition: "all 0.3s ease",
-    fontSize: { xs: "0.875rem", sm: "0.95rem" },
-    "&:hover": {
-      boxShadow: {
-        xs: "0 3px 16px rgba(25, 118, 210, 0.3)",
-        sm: "0 6px 25px rgba(25, 118, 210, 0.4)",
-      },
-      transform: "translateY(-1px)",
-    },
+    transition: "all 0.2s ease",
+    fontSize: { xs: "0.9375rem", sm: "0.95rem" },
     "&::before": {
-      content: '""',
-      position: "absolute",
-      top: { xs: "8px", sm: "10px" },
-      right: { xs: "-6px", sm: "-8px" },
-      width: 0,
-      height: 0,
-      borderLeft: { xs: "6px solid #1565c0", sm: "8px solid #1565c0" },
-      borderTop: { xs: "6px solid transparent", sm: "8px solid transparent" },
-      borderBottom: {
-        xs: "6px solid transparent",
-        sm: "8px solid transparent",
-      },
+      display: "none",
     },
   },
   botMessage: {
-    maxWidth: { xs: "99%", sm: "93.5%", md: "77%", lg: "66%" },
-    minWidth: { xs: "100px", sm: "130px" },
-    p: { xs: 1.5, sm: 2 },
-    borderRadius: { xs: 1.5, sm: 2 },
-    backgroundColor: "#f5f5f5",
+    maxWidth: { xs: "85%", sm: "75%", md: "70%", lg: "66%" },
+    minWidth: { xs: "60px", sm: "130px" },
+    p: { xs: 1.25, sm: 2 },
+    borderRadius: { xs: "18px 18px 18px 4px", sm: "20px 20px 20px 4px" },
+    backgroundColor: "#f0f0f0",
     color: "inherit",
     position: "relative",
     wordWrap: "break-word",
     wordBreak: "break-word",
+    overflowWrap: "break-word",
     whiteSpace: "pre-wrap",
     boxShadow: {
-      xs: "0 1px 6px rgba(0,0,0,0.08)",
-      sm: "0 2px 8px rgba(0,0,0,0.1)",
+      xs: "0 1px 2px rgba(0, 0, 0, 0.1)",
+      sm: "0 2px 4px rgba(0, 0, 0, 0.1)",
     },
-    animation: `${popIn} 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)`,
-    transition: "all 0.3s ease",
-    fontSize: { xs: "0.875rem", sm: "0.95rem" },
+    animation: `${popIn} 0.3s ease-out`,
+    transition: "all 0.2s ease",
+    fontSize: { xs: "0.9375rem", sm: "0.95rem" },
     "&::before": {
-      content: '""',
-      position: "absolute",
-      top: { xs: "8px", sm: "10px" },
-      left: { xs: "-6px", sm: "-8px" },
-      width: 0,
-      height: 0,
-      borderRight: { xs: "6px solid #f5f5f5", sm: "8px solid #f5f5f5" },
-      borderTop: { xs: "6px solid transparent", sm: "8px solid transparent" },
-      borderBottom: {
-        xs: "6px solid transparent",
-        sm: "8px solid transparent",
-      },
+      display: "none",
     },
   },
   errorMessage: {
     backgroundColor: "#ffebee",
-    border: { xs: "1px solid #f44336", sm: "1px solid #f44336" },
+    border: "1px solid #f44336",
     "&::before": {
-      borderRight: { xs: "6px solid #ffebee", sm: "8px solid #ffebee" },
+      display: "none",
     },
   },
   typography: {
-    fontWeight: 500,
-    fontSize: { xs: "0.875rem", sm: "0.95rem" },
-    lineHeight: { xs: 1.4, sm: 1.5 },
+    fontWeight: 400,
+    fontSize: { xs: "0.9375rem", sm: "0.95rem" },
+    lineHeight: { xs: 1.5, sm: 1.5 },
+    wordBreak: "break-word",
+    overflowWrap: "break-word",
   },
   uploadSuccessCard: {
     background: "linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%)",
@@ -867,10 +841,15 @@ const ChatMessage = ({ message, index, onAction }) => {
       );
     }
 
-    const textContent =
-      typeof message.content === "string"
-        ? message.content
-        : message.content.text || JSON.stringify(message.content, null, 2);
+    let textContent;
+    if (typeof message.content === "string") {
+      textContent = message.content;
+    } else if (message.content.text) {
+      textContent = message.content.text;
+    } else {
+      // Format JSON with proper wrapping
+      textContent = JSON.stringify(message.content, null, 2);
+    }
 
     // Check if message contains trigger keywords for phone widget
     const triggerKeywords = [
@@ -891,8 +870,21 @@ const ChatMessage = ({ message, index, onAction }) => {
       );
 
     return (
-      <Box>
-        <Typography sx={styles.typography}>
+      <Box sx={{ width: "100%", overflow: "hidden" }}>
+        <Typography
+          component="div"
+          sx={{
+            ...styles.typography,
+            "& pre": {
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+              margin: 0,
+              fontFamily: "monospace",
+              fontSize: { xs: "0.75rem", sm: "0.85rem" },
+            },
+          }}
+        >
           <PhoneNumberDetector text={textContent} />
         </Typography>
 

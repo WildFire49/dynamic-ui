@@ -5,6 +5,22 @@
 
 const BASE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis`;
 
+/**
+ * Get authentication headers with bearer token
+ * @returns {Object} Headers object with authorization
+ */
+const getAuthHeaders = () => {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  const headers = {};
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
 class DataAnalysisApiError extends Error {
   constructor(message, status, response) {
     super(message);
@@ -45,6 +61,7 @@ export const dataAnalysisApi = {
 
     const response = await fetch(`${BASE_URL}/upload/${connectionId}`, {
       method: "POST",
+      headers: getAuthHeaders(),
       body: formData,
     });
 
@@ -57,7 +74,9 @@ export const dataAnalysisApi = {
    * @returns {Promise<Object>} List of documents
    */
   listDocuments: async (connectionId) => {
-    const response = await fetch(`${BASE_URL}/documents/${connectionId}`);
+    const response = await fetch(`${BASE_URL}/documents/${connectionId}`, {
+      headers: getAuthHeaders(),
+    });
     return handleApiResponse(response);
   },
 
@@ -74,6 +93,7 @@ export const dataAnalysisApi = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...getAuthHeaders(),
       },
       body: JSON.stringify({
         document_key: documentKey,
@@ -96,6 +116,7 @@ export const dataAnalysisApi = {
       `${BASE_URL}/api/v1/data-analysis/documents/${connectionId}/${documentKey}`,
       {
         method: "DELETE",
+        headers: getAuthHeaders(),
       }
     );
 
@@ -107,7 +128,9 @@ export const dataAnalysisApi = {
    * @returns {Promise<Object>} Health status
    */
   healthCheck: async () => {
-    const response = await fetch(`${BASE_URL}/health`);
+    const response = await fetch(`${BASE_URL}/health`, {
+      headers: getAuthHeaders(),
+    });
     return handleApiResponse(response);
   },
 
@@ -125,6 +148,7 @@ export const dataAnalysisApi = {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
+        ...getAuthHeaders(),
         ...options.headers,
       },
       body: options.body ? JSON.stringify(options.body) : undefined,

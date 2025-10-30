@@ -3,6 +3,23 @@
 import { API_BASE_URL, CHAT_ENDPOINT } from "@/lib/config";
 
 /**
+ * Get authentication headers with bearer token
+ * @returns {Object} Headers object with authorization
+ */
+const getAuthHeaders = () => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
+/**
  * Chat API Service for Dynamic UI Workflow
  * Manages conversation_id, session_id, and API communication
  */
@@ -32,9 +49,7 @@ class ChatApiService {
 
       const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(requestBody),
       });
 
@@ -95,9 +110,7 @@ class ChatApiService {
 
       const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(requestBody),
       });
 
