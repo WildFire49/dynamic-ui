@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import authService from '../services/authService';
-import { ROLES } from '../config/roleConfig';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import authService from "../services/authService";
+import { ROLES } from "../config/roleConfig";
 
 const AuthContext = createContext({});
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
   const initializeAuth = async () => {
     try {
       setLoading(true);
-      
+
       const token = authService.getAccessToken();
       if (!token) {
         setLoading(false);
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
         authService.logout();
       }
     } catch (error) {
-      console.error('Auth initialization error:', error);
+      console.error("Auth initialization error:", error);
       authService.logout();
     } finally {
       setLoading(false);
@@ -71,24 +71,30 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       setLoading(true);
-      
+
       const loginResult = await authService.login(username, password);
       if (loginResult.success) {
-        // Verify token to get user info
-        const verifyResult = await authService.verifyToken();
-        if (verifyResult.success) {
-          setUser(verifyResult.data);
+        // User data is already stored in localStorage by authService
+        // Get user info from localStorage
+        const userInfo = authService.getCurrentUser();
+        if (userInfo) {
+          setUser(userInfo);
           setIsAuthenticated(true);
+          console.log(
+            "Login successful, user authenticated:",
+            userInfo.username
+          );
           return { success: true, message: loginResult.message };
         } else {
-          return { success: false, message: 'Failed to verify user information' };
+          console.error("User info not found after login");
+          return { success: false, message: "Failed to load user information" };
         }
       } else {
         return { success: false, message: loginResult.message };
       }
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, message: 'An error occurred during login' };
+      console.error("Login error:", error);
+      return { success: false, message: "An error occurred during login" };
     } finally {
       setLoading(false);
     }
@@ -111,7 +117,7 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
     } catch (error) {
-      console.error('Refresh user info error:', error);
+      console.error("Refresh user info error:", error);
       logout();
       return false;
     }
@@ -119,7 +125,7 @@ export const AuthProvider = ({ children }) => {
 
   // Helper functions for role checking
   const hasRole = (roleCode) => {
-    return user?.roles?.some(role => role.roleCode === roleCode) || false;
+    return user?.roles?.some((role) => role.roleCode === roleCode) || false;
   };
 
   const isSuperAdmin = () => {
@@ -131,7 +137,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const getUserRoles = () => {
-    return user?.roles?.map(role => role.roleCode) || [];
+    return user?.roles?.map((role) => role.roleCode) || [];
   };
 
   const getAccessibleMenuItems = () => {
@@ -139,17 +145,21 @@ export const AuthProvider = ({ children }) => {
 
     // Base items for all authenticated users
     const baseItems = [
-      { id: 'chat', label: 'Chat', icon: 'ChatIcon' },
-      { id: 'dashboard', label: 'Dashboard', icon: 'DashboardIcon' },
+      { id: "chat", label: "Chat", icon: "ChatIcon" },
+      { id: "dashboard", label: "Dashboard", icon: "DashboardIcon" },
     ];
 
     // Super Admin gets access to all items
     if (isSuperAdmin()) {
       return [
         ...baseItems,
-        { id: 'configurator', label: 'Configurator', icon: 'ConfiguratorIcon' },
-        { id: 'accessControl', label: 'Access Control', icon: 'AccessControlIcon' },
-        { id: 'settings', label: 'Settings', icon: 'SettingsIcon' },
+        { id: "configurator", label: "Configurator", icon: "ConfiguratorIcon" },
+        {
+          id: "accessControl",
+          label: "Access Control",
+          icon: "AccessControlIcon",
+        },
+        { id: "settings", label: "Settings", icon: "SettingsIcon" },
       ];
     }
 
@@ -171,11 +181,7 @@ export const AuthProvider = ({ children }) => {
     getAccessibleMenuItems,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export default AuthContext;
