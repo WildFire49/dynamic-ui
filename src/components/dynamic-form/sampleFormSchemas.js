@@ -190,8 +190,8 @@ export const apiEnabledCustomerSchema = {
   },
 };
 
-export const KVBCustomerOnboardingSchema = {
-  title: "KVB Agriculture Instant KCC",
+export const HDFCCustomerOnboardingSchema = {
+  title: "HDFC Agriculture Instant KCC",
   description: "Please fill in your details to complete the onboarding process",
   sections: [
     {
@@ -222,7 +222,7 @@ export const KVBCustomerOnboardingSchema = {
           id: "kyc_consent",
           type: "checkbox",
           label:
-            "I hereby state that I have no objection for KVB Bank validating and fetching my e-KYC details from UIDAI through the KVB Bank e-KYC system and consent to provide my Aadhar number, biometric for Aadhar based KYC. Also I give consent to store my eKYC details for the purpose of KYC verification process with KVB Bank.",
+            "I hereby state that I have no objection for HDFC Bank validating and fetching my e-KYC details from UIDAI through the HDFC Bank e-KYC system and consent to provide my Aadhar number, biometric for Aadhar based KYC. Also I give consent to store my eKYC details for the purpose of KYC verification process with HDFC Bank.",
           required: true,
           validation: {
             message: "You must accept the terms to continue",
@@ -577,13 +577,13 @@ export const getFormSchemaById = (formId) => {
 export const getFormSchemaByKeyword = (message) => {
   const lowerMessage = message.toLowerCase();
 
-  // KVB Bank Customer Onboarding - Start with L1 (PRIORITY)
+  // HDFC Bank Customer Onboarding - Start with L1 (PRIORITY)
   if (
     (lowerMessage.includes("onboard") || lowerMessage.includes("onboarding")) &&
     lowerMessage.includes("customer") &&
-    (lowerMessage.includes("kvb") || lowerMessage.includes("bank"))
+    (lowerMessage.includes("HDFC") || lowerMessage.includes("bank"))
   ) {
-    console.log("🎯 Detected KVB onboarding request - returning L1 schema");
+    console.log("🎯 Detected HDFC onboarding request - returning L1 schema");
     return l1CustomerOnboardingSchema;
   }
 
@@ -640,9 +640,9 @@ export const getFormSchemaByKeyword = (message) => {
     return simpleRegistrationSchema;
   }
 
-  // KVB Customer Onboarding (fallback - broader match)
-  if (lowerMessage.includes("KVB") && lowerMessage.includes("customer")) {
-    console.log("🎯 Detected KVB customer request - returning L1 schema");
+  // HDFC Customer Onboarding (fallback - broader match)
+  if (lowerMessage.includes("HDFC") && lowerMessage.includes("customer")) {
+    console.log("🎯 Detected HDFC customer request - returning L1 schema");
     return l1CustomerOnboardingSchema;
   }
 
@@ -746,7 +746,7 @@ export const getFormSchemaByKeyword = (message) => {
 export const l1CustomerOnboardingSchema = {
   id: "l1_customer_info",
   title: "L1 - Customer Information",
-  description: "Complete customer details for KVB onboarding",
+  description: "Complete customer details for HDFC onboarding",
   nextFormId: "instant_kcc",
   nextFormTitle: "Instant KCC - Land & Crop Details",
   mockData: {
@@ -782,7 +782,7 @@ export const l1CustomerOnboardingSchema = {
     country: "india",
     bank_state: "karnataka",
     bank_city: "bangalore",
-    sol_id: "KVB0001234",
+    sol_id: "HDFC0001234",
     annual_net_income: "500000",
     profession: "salaried",
     belongs_to: "general",
@@ -2196,10 +2196,10 @@ export const bankAccountDetailsSchema = {
     account_holder_name: "Rajesh Kumar",
     account_number: "1234567890",
     re_enter_account_number: "1234567890",
-    ifsc_code: "KVB0001234",
+    ifsc_code: "HDFC0001234",
     bank_branch_name: "Koramangala Branch",
     bank_branch_address: "123 Main Road, Koramangala, Bangalore - 560034",
-    bank_name: "KVB Bank",
+    bank_name: "HDFC Bank",
   },
   sections: [
     {
@@ -2267,7 +2267,7 @@ export const bankAccountDetailsSchema = {
           id: "ifsc_code",
           type: "text",
           label: "IFSC Code",
-          placeholder: "Enter IFSC code (e.g., KVB0001234)",
+          placeholder: "Enter IFSC code (e.g., HDFC0001234)",
           required: true,
           showIf: {
             field: "disbursement_preference",
@@ -2357,7 +2357,7 @@ export const bankAccountDetailsSchema = {
           id: "bank_consent",
           type: "checkbox",
           label:
-            "Kindly confirm with the customer if there is a KVB Bank branch within the radius of 10 kilometers of the customer's house",
+            "Kindly confirm with the customer if there is a HDFC Bank branch within the radius of 10 kilometers of the customer's house",
           required: false,
           showIf: {
             field: "disbursement_preference",

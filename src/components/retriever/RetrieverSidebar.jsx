@@ -12,6 +12,7 @@ import {
   ArrowForward as ArrowIcon,
   School as TrainingIcon,
   History as HistoryIcon,
+  Rocket as RocketIcon,
 } from "@mui/icons-material";
 
 const RetrieverSidebar = ({
@@ -51,6 +52,15 @@ const RetrieverSidebar = ({
     },
     {
       id: 3,
+      title: "Template Workflow",
+      description: "Commit & embed examples, create templates",
+      icon: RocketIcon,
+      color: "#667eea",
+      completed: false,
+      disabled: !kgExists,
+    },
+    {
+      id: 4,
       title: "Self Learning",
       description: "Manage templates and training data",
       icon: TrainingIcon,

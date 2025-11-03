@@ -35,7 +35,7 @@ yarn add reactflow
         {
           "id": "l1_customer_info",
           "name": "L1 - Customer Information",
-          "description": "Complete customer details for KVB onboarding",
+          "description": "Complete customer details for HDFC onboarding",
           "category": "onboarding",
           "icon": "person",
           "color": "#1976d2",
@@ -93,7 +93,7 @@ yarn add reactflow
     "full_schema": {
       "id": "l1_customer_info",
       "title": "L1 - Customer Information",
-      "description": "Complete customer details for KVB onboarding",
+      "description": "Complete customer details for HDFC onboarding",
       "nextFormId": "instant_kcc",
       "nextFormTitle": "Instant KCC - Land & Crop Details",
       "sections": [
@@ -139,7 +139,7 @@ yarn add reactflow
 ```json
 {
   "workflow": {
-    "name": "KVB Agriculture KCC Onboarding",
+    "name": "HDFC Agriculture KCC Onboarding",
     "description": "Complete customer onboarding flow for Kisan Credit Card",
     "version": "1.0.0",
     "metadata": {
@@ -241,7 +241,7 @@ yarn add reactflow
   "success": true,
   "data": {
     "workflow_id": "workflow_12345",
-    "name": "KVB Agriculture KCC Onboarding",
+    "name": "HDFC Agriculture KCC Onboarding",
     "status": "draft",
     "created_at": "2025-10-09T12:57:59+05:30",
     "version": "1.0.0"
@@ -270,12 +270,12 @@ yarn add reactflow
     "workflows": [
       {
         "id": "workflow_123",
-        "name": "KVB Agriculture KCC",
+        "name": "HDFC Agriculture KCC",
         "status": "active",
         "version": "2.0.0",
         "created_at": "2025-10-08T10:00:00+05:30",
         "updated_at": "2025-10-09T11:00:00+05:30",
-        "created_by": "admin@KVB.com",
+        "created_by": "admin@HDFC.com",
         "node_count": 5,
         "execution_count": 1234
       }
@@ -304,13 +304,13 @@ yarn add reactflow
   "data": {
     "workflow": {
       "id": "workflow_123",
-      "name": "KVB Agriculture KCC Onboarding",
+      "name": "HDFC Agriculture KCC Onboarding",
       "description": "Complete customer onboarding flow for Kisan Credit Card",
       "version": "2.0.0",
       "status": "active",
       "created_at": "2025-10-08T10:00:00+05:30",
       "updated_at": "2025-10-09T11:00:00+05:30",
-      "created_by": "admin@KVB.com",
+      "created_by": "admin@HDFC.com",
       "nodes": [...],
       "global_config": {...}
     }

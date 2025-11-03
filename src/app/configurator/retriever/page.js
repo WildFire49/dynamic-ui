@@ -39,6 +39,10 @@ const SelfLearningPage = dynamic(
   () => import("./self-learning/page"),
   { ssr: false }
 );
+const TemplateWorkflowPage = dynamic(
+  () => import("./template-workflow/page"),
+  { ssr: false }
+);
 import fastKgService from "@/services/fastKgService";
 import useRetrieverStore from "@/store/retrieverStore";
 
@@ -142,10 +146,17 @@ const RetrieverConfiguratorPage = () => {
       return;
     }
 
-    // Step 3: Self Learning - Only if KG exists
+    // Step 3: Template Workflow - Only if KG exists
     if (step === 3) {
       if (!kgExists) return;
       setActiveStep(3);
+      return;
+    }
+
+    // Step 4: Self Learning - Only if KG exists
+    if (step === 4) {
+      if (!kgExists) return;
+      setActiveStep(4);
       return;
     }
   };
@@ -544,8 +555,50 @@ const RetrieverConfiguratorPage = () => {
                   </Fade>
                 )}
 
-                {/* Step 3: Self Learning */}
+                {/* Step 3: Template Workflow */}
                 {activeStep === 3 && (
+                  <Fade in timeout={300}>
+                    <Box sx={{ height: "100%", overflow: "hidden" }}>
+                      {kgExists ? (
+                        <TemplateWorkflowPage />
+                      ) : (
+                        <Box sx={{ textAlign: "center", py: 8, px: 4 }}>
+                          <Box
+                            sx={{
+                              width: 80,
+                              height: 80,
+                              borderRadius: "50%",
+                              bgcolor: "#667eea15",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              mx: "auto",
+                              mb: 3,
+                            }}
+                          >
+                            <UncheckedIcon sx={{ fontSize: 40, color: "#667eea" }} />
+                          </Box>
+                          <Typography
+                            variant="h5"
+                            sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
+                          >
+                            Knowledge Graph Required
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: "#64748b", maxWidth: 400, mx: "auto" }}
+                          >
+                            Please build the knowledge graph first before you
+                            can access the template workflow.
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Fade>
+                )}
+
+                {/* Step 4: Self Learning */}
+                {activeStep === 4 && (
                   <Fade in timeout={300}>
                     <Box sx={{ height: "100%", overflow: "hidden" }}>
                       {kgExists ? (

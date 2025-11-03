@@ -1,6 +1,7 @@
-import apiClient from './apiClient';
+import apiClient from "./apiClient";
 
 const BASE_URL = "/api/v1/query-learning";
+const FAST_KG_BASE_URL = "/api/v1/fast-kg";
 
 /**
  * Query Learning Service - Self-Learning System
@@ -86,7 +87,8 @@ const queryLearningService = {
         connection_id: connectionId,
         limit: limit.toString(),
       });
-      if (businessCategory) params.append("business_category", businessCategory);
+      if (businessCategory)
+        params.append("business_category", businessCategory);
       if (complexityLevel) params.append("complexity_level", complexityLevel);
 
       return await apiClient.get(`${BASE_URL}/examples?${params}`);
@@ -156,7 +158,9 @@ const queryLearningService = {
    */
   getTrainingStatus: async (operationId) => {
     try {
-      return await apiClient.get(`${BASE_URL}/training-data/status/${operationId}`);
+      return await apiClient.get(
+        `${BASE_URL}/training-data/status/${operationId}`
+      );
     } catch (error) {
       throw new Error(error.message || "Failed to get training status");
     }
@@ -211,12 +215,7 @@ const queryLearningService = {
    * 12. Create Version
    * POST /versions
    */
-  createVersion: async (
-    connectionId,
-    versionName,
-    description,
-    createdBy
-  ) => {
+  createVersion: async (connectionId, versionName, description, createdBy) => {
     try {
       return await apiClient.post(`${BASE_URL}/versions`, {
         connection_id: connectionId,
@@ -338,6 +337,315 @@ const queryLearningService = {
       return await apiClient.get(`${BASE_URL}/metrics/daily?${params}`);
     } catch (error) {
       throw new Error(error.message || "Failed to get daily metrics");
+    }
+  },
+
+  // ========== TEMPLATE MANAGEMENT (NEW FAST-KG APIs) ==========
+
+  /**
+   * Get examples summary with template associations
+   * GET /fast-kg/templates/examples-summary/{connection_id}
+   */
+  getExamplesSummary: async (connectionId) => {
+    try {
+      return await apiClient.get(
+        `${FAST_KG_BASE_URL}/templates/examples-summary/${connectionId}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to get examples summary");
+    }
+  },
+
+  /**
+   * Get pending examples (not yet embedded)
+   * GET /fast-kg/templates/pending-examples/{connection_id}
+   */
+  getPendingExamples: async (connectionId) => {
+    try {
+      return await apiClient.get(
+        `${FAST_KG_BASE_URL}/templates/pending-examples/${connectionId}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to get pending examples");
+    }
+  },
+
+  /**
+   * Preview Commit - Preview what will be embedded before committing
+   * POST /fast-kg/templates/preview-commit
+   */
+  previewCommit: async (connectionId, businessDomain) => {
+    try {
+      const params = new URLSearchParams({
+        connection_id: connectionId,
+        business_domain: businessDomain,
+      });
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/templates/preview-commit?${params}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to preview commit");
+    }
+  },
+
+  /**
+   * Commit & Embed - One-click workflow
+   * POST /fast-kg/templates/commit-and-embed
+   */
+  commitAndEmbed: async (
+    connectionId,
+    templateName,
+    businessDomain,
+    createdBy,
+    confirmed = false
+  ) => {
+    try {
+      const params = new URLSearchParams({
+        connection_id: connectionId,
+        template_name: templateName,
+        business_domain: businessDomain,
+        created_by: createdBy,
+        confirmed: confirmed.toString(),
+      });
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/templates/commit-and-embed-custom?${params}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to commit and embed");
+    }
+  },
+
+  /**
+   * Get template versions
+   * GET /fast-kg/templates/versions/{connection_id}
+   */
+  getTemplateVersions: async (connectionId, businessDomain = null) => {
+    try {
+      const params = new URLSearchParams({ connection_id: connectionId });
+      if (businessDomain) {
+        params.append("business_domain", businessDomain);
+      }
+      return await apiClient.get(
+        `${FAST_KG_BASE_URL}/templates/versions/${connectionId}?${params}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to get template versions");
+    }
+  },
+
+  /**
+   * Activate template version
+   * POST /fast-kg/templates/activate/{template_id}
+   */
+  activateTemplate: async (templateId, connectionId, createdBy) => {
+    try {
+      const params = new URLSearchParams({
+        connection_id: connectionId,
+        created_by: createdBy,
+      });
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/templates/activate/${templateId}?${params}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to activate template");
+    }
+  },
+
+  /**
+   * Get template changelog
+   * GET /fast-kg/templates/changelog
+   */
+  getTemplateChangelog: async (connectionId, templateId = null) => {
+    try {
+      const params = new URLSearchParams({ connection_id: connectionId });
+      if (templateId) {
+        params.append("template_id", templateId);
+      }
+      return await apiClient.get(
+        `${FAST_KG_BASE_URL}/templates/changelog?${params}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to get changelog");
+    }
+  },
+
+  // ========== QUERY EXECUTION & LEARNING ==========
+
+  /**
+   * Ask Query - Generate and execute SQL with validation
+   * POST /fast-kg/ask
+   */
+  askQuery: async (connectionId, query, userId) => {
+    try {
+      return await apiClient.post(`${FAST_KG_BASE_URL}/ask`, {
+        connection_id: connectionId,
+        query: query,
+        user_id: userId,
+      });
+    } catch (error) {
+      // Return error details for handling in component
+      throw error;
+    }
+  },
+
+  /**
+   * Provide Correct SQL and Embed for Learning
+   * POST /fast-kg/provide-correct-sql-and-embed
+   */
+  provideCorrectSql: async (
+    queryId,
+    connectionId,
+    correctedSql,
+    naturalLanguageQuery,
+    businessDomain,
+    explanation,
+    correctedBy
+  ) => {
+    try {
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/provide-correct-sql-and-embed`,
+        {
+          connection_id: connectionId,
+          query_id: queryId,
+          corrected_sql: correctedSql,
+          natural_language_query: naturalLanguageQuery,
+          business_domain: businessDomain,
+          explanation: explanation,
+          corrected_by: correctedBy,
+        }
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to provide correct SQL");
+    }
+  },
+
+  // ========== EMBEDDING VERSION MANAGEMENT ==========
+
+  /**
+   * Create new embedding version
+   * POST /fast-kg/embeddings/create-version
+   */
+  createEmbeddingVersion: async (connectionId, description, createdBy) => {
+    try {
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/embeddings/create-version`,
+        {
+          connection_id: connectionId,
+          description: description,
+          created_by: createdBy,
+        }
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to create embedding version");
+    }
+  },
+
+  /**
+   * List embedding versions
+   * GET /fast-kg/embeddings/versions/{connection_id}
+   */
+  listEmbeddingVersions: async (connectionId) => {
+    try {
+      return await apiClient.get(
+        `${FAST_KG_BASE_URL}/embeddings/versions/${connectionId}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to list embedding versions");
+    }
+  },
+
+  /**
+   * Switch embedding version
+   * POST /fast-kg/embeddings/switch-version
+   */
+  switchEmbeddingVersion: async (connectionId, versionNumber) => {
+    try {
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/embeddings/switch-version`,
+        {
+          connection_id: connectionId,
+          version_number: versionNumber,
+        }
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to switch embedding version");
+    }
+  },
+
+  /**
+   * Export template
+   * POST /fast-kg/embeddings/export-template
+   */
+  exportTemplate: async (
+    connectionId,
+    versionNumber,
+    templateName,
+    description,
+    tags
+  ) => {
+    try {
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/embeddings/export-template`,
+        {
+          connection_id: connectionId,
+          version_number: versionNumber,
+          template_name: templateName,
+          description: description,
+          tags: tags,
+        }
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to export template");
+    }
+  },
+
+  /**
+   * Import template
+   * POST /fast-kg/embeddings/import-template
+   */
+  importTemplate: async (
+    connectionId,
+    templateFile,
+    createNewVersion,
+    description
+  ) => {
+    try {
+      const formData = new FormData();
+      formData.append("connection_id", connectionId);
+      formData.append("template_file", templateFile);
+      formData.append("create_new_version", createNewVersion.toString());
+      formData.append("description", description);
+
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/embeddings/import-template`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to import template");
+    }
+  },
+
+  /**
+   * Compare versions
+   * POST /fast-kg/embeddings/compare-versions
+   */
+  compareVersions: async (connectionId, version1, version2) => {
+    try {
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/embeddings/compare-versions`,
+        {
+          connection_id: connectionId,
+          version_1: version1,
+          version_2: version2,
+        }
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to compare versions");
     }
   },
 };

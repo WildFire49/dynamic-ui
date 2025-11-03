@@ -56,7 +56,7 @@ const WorkflowForm = ({ onSubmit }) => {
         >
           <MenuItem value="federal">Federal Bank</MenuItem>
           <MenuItem value="sbi">State Bank of India</MenuItem>
-          <MenuItem value="KVB">KVB Bank</MenuItem>
+          <MenuItem value="HDFC">HDFC Bank</MenuItem>
           <MenuItem value="icici">ICICI Bank</MenuItem>
         </Select>
       </FormControl>

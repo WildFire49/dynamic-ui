@@ -57,6 +57,7 @@ import {
 } from "@mui/icons-material";
 import fastKgService from "../../services/fastKgService";
 import connectionService from "../../services/connectionService";
+import queryLearningService from "../../services/queryLearningService";
 import useRetrieverStore from "../../store/retrieverStore";
 import DynamicDataVisualization from "../mui/DynamicDataVisualization";
 import { useAuth } from "../../contexts/AuthContext";
@@ -80,9 +81,12 @@ const SQLQueryGenerator = React.memo(() => {
   const [showCorrectionDialog, setShowCorrectionDialog] = useState(false);
   const [correctedSql, setCorrectedSql] = useState("");
   const [correctionNotes, setCorrectionNotes] = useState("");
+  const [businessDomain, setBusinessDomain] = useState("");
   const [testingCorrection, setTestingCorrection] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [markingFeedback, setMarkingFeedback] = useState(false);
+  const [validationError, setValidationError] = useState(null);
+  const [failedQueryId, setFailedQueryId] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -329,6 +333,7 @@ const SQLQueryGenerator = React.memo(() => {
       setLoading(true);
       setError(null);
       setResult(null);
+      setValidationError(null);
       setPage(0);
 
       const connection =
@@ -337,19 +342,34 @@ const SQLQueryGenerator = React.memo(() => {
         throw new Error("Connection not found");
       }
 
-      // Use generateAndExecute to get SQL and results in one call
-      const response = await fastKgService.generateAndExecute(
+      // Use new askQuery API with validation
+      const response = await queryLearningService.askQuery(
         connection.id,
         query,
-        connection.schema_name || connection.schema || "public",
-        true,
-        user?.username || user?.userId || null
+        user?.username || user?.userId || "system"
       );
 
-      setResult(response.data);
+      setResult(response);
+      setSnackbar({
+        open: true,
+        message: "Query executed successfully!",
+        severity: "success",
+      });
     } catch (err) {
       console.error("Failed to generate and execute SQL:", err);
-      setError(err.message || "Failed to generate and execute SQL");
+
+      // Check if it's a validation error (400)
+      if (err.response?.status === 400 && err.response?.data) {
+        const errorData = err.response.data.detail || err.response.data;
+        console.log("Validation error detected. Query ID:", errorData.query_id);
+        setValidationError(errorData);
+        setFailedQueryId(errorData.query_id);
+        setCorrectedSql(errorData.generated_sql || "");
+        setError(null); // Clear generic error
+        setShowCorrectionDialog(true); // Open correction dialog
+      } else {
+        setError(err.response?.data?.message || err.response?.data?.detail?.message || err.message || "Failed to generate and execute SQL");
+      }
     } finally {
       setLoading(false);
     }
@@ -360,6 +380,58 @@ const SQLQueryGenerator = React.memo(() => {
       navigator.clipboard.writeText(result.query?.generated_sql || result.sql);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleSubmitCorrection = async () => {
+    if (!correctedSql.trim() || !businessDomain.trim()) {
+      setSnackbar({
+        open: true,
+        message: "Please provide corrected SQL and business domain",
+        severity: "error",
+      });
+      return;
+    }
+
+    try {
+      setTestingCorrection(true);
+      const connId = selectedConnection || currentConnection?.id;
+
+      console.log("Submitting correction with query_id:", failedQueryId);
+
+      const response = await queryLearningService.provideCorrectSql(
+        failedQueryId,
+        connId,
+        correctedSql,
+        query,
+        businessDomain,
+        correctionNotes,
+        user?.username || user?.userId || "system"
+      );
+
+      setSnackbar({
+        open: true,
+        message: "Correction submitted and embedded successfully!",
+        severity: "success",
+      });
+
+      setShowCorrectionDialog(false);
+      setCorrectedSql("");
+      setCorrectionNotes("");
+      setBusinessDomain("");
+      setValidationError(null);
+
+      // Re-run the query with the corrected context
+      setTimeout(() => handleGenerateSQL(), 1000);
+    } catch (err) {
+      console.error("Failed to submit correction:", err);
+      setSnackbar({
+        open: true,
+        message: err.message || "Failed to submit correction",
+        severity: "error",
+      });
+    } finally {
+      setTestingCorrection(false);
     }
   };
 
@@ -1056,7 +1128,7 @@ const SQLQueryGenerator = React.memo(() => {
           sx={{ p: 4, mb: 4, borderRadius: 3, border: "2px solid #f56565" }}
         >
           <Box
-            sx={{ display: "flex", alignItems: "flex-start", gap: 2, mb: 3 }}
+            sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}
           >
             <Box
               sx={{
@@ -1081,46 +1153,19 @@ const SQLQueryGenerator = React.memo(() => {
               <Typography variant="body1" sx={{ color: "#64748b", mb: 2 }}>
                 {error}
               </Typography>
-              <Typography variant="body2" sx={{ color: "#64748b" }}>
-                You can provide the correct SQL query below to help improve our
-                system:
+              <Typography variant="body2" sx={{ color: "#64748b", mb: 2 }}>
+                Click "Provide Correction" below to help improve the system with the correct SQL.
               </Typography>
-            </Box>
-          </Box>
-
-          <Box>
-            <Typography
-              variant="subtitle1"
-              sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
-            >
-              Provide Correct SQL (Optional)
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              placeholder="Enter the correct SQL query for this question..."
-              sx={{
-                mb: 2,
-                "& .MuiOutlinedInput-root": {
-                  fontFamily: "monospace",
-                  fontSize: "0.9rem",
-                  bgcolor: "#f8fafc",
-                },
-              }}
-            />
-            <Box sx={{ display: "flex", gap: 2 }}>
               <Button
                 variant="contained"
-                sx={{
-                  bgcolor: "#48bb78",
-                  "&:hover": { bgcolor: "#38a169" },
+                color="primary"
+                startIcon={<EditIcon />}
+                onClick={() => {
+                  setCorrectedSql("");
+                  setShowCorrectionDialog(true);
                 }}
               >
-                Save Correction
-              </Button>
-              <Button variant="outlined" onClick={() => setError(null)}>
-                Dismiss
+                Provide Correction
               </Button>
             </Box>
           </Box>
@@ -1244,8 +1289,8 @@ const SQLQueryGenerator = React.memo(() => {
         </Card>
       )}
 
-      {/* Floating Feedback Buttons */}
-      {result && !error && (
+      {/* Floating Feedback Buttons - Always show when there's a result or error */}
+      {(result || error || validationError) && !loading && (
         <Box
           sx={{
             position: "fixed",
@@ -1257,27 +1302,33 @@ const SQLQueryGenerator = React.memo(() => {
             zIndex: 1000,
           }}
         >
-          <Tooltip title="Mark as Correct" placement="left">
-            <Fab
-              color="success"
-              onClick={handleMarkCorrect}
-              disabled={markingFeedback}
-              sx={{
-                boxShadow: "0 8px 16px rgba(72, 187, 120, 0.3)",
-                "&:hover": {
-                  transform: "scale(1.1)",
-                  boxShadow: "0 12px 24px rgba(72, 187, 120, 0.4)",
-                },
-                transition: "all 0.2s ease-in-out",
-              }}
-            >
-              <ThumbUpIcon />
-            </Fab>
-          </Tooltip>
+          {result && (
+            <Tooltip title="Mark as Correct" placement="left">
+              <Fab
+                color="success"
+                onClick={handleMarkCorrect}
+                disabled={markingFeedback}
+                sx={{
+                  boxShadow: "0 8px 16px rgba(72, 187, 120, 0.3)",
+                  "&:hover": {
+                    transform: "scale(1.1)",
+                    boxShadow: "0 12px 24px rgba(72, 187, 120, 0.4)",
+                  },
+                  transition: "all 0.2s ease-in-out",
+                }}
+              >
+                <ThumbUpIcon />
+              </Fab>
+            </Tooltip>
+          )}
           <Tooltip title="Provide Correction" placement="left">
             <Fab
               color="error"
-              onClick={handleMarkWrong}
+              onClick={() => {
+                setCorrectedSql(result?.query?.generated_sql || validationError?.generated_sql || "");
+                setFailedQueryId(result?.query?.query_id || validationError?.query_id || null);
+                setShowCorrectionDialog(true);
+              }}
               disabled={markingFeedback}
               sx={{
                 boxShadow: "0 8px 16px rgba(244, 67, 54, 0.3)",
@@ -1288,7 +1339,7 @@ const SQLQueryGenerator = React.memo(() => {
                 transition: "all 0.2s ease-in-out",
               }}
             >
-              <ThumbDownIcon />
+              <EditIcon />
             </Fab>
           </Tooltip>
         </Box>
@@ -1322,10 +1373,36 @@ const SQLQueryGenerator = React.memo(() => {
           </Box>
         </DialogTitle>
         <DialogContent dividers>
+          {/* Validation Error Display */}
+          {validationError && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              <Typography variant="body2" fontWeight={600} gutterBottom>
+                {validationError.error}: {validationError.message}
+              </Typography>
+              {validationError.validation_errors && (
+                <Box sx={{ mt: 1 }}>
+                  {validationError.validation_errors.map((err, idx) => (
+                    <Typography key={idx} variant="caption" display="block">
+                      • {err}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
+              {validationError.suggestion && (
+                <Typography
+                  variant="caption"
+                  sx={{ mt: 1, display: "block", fontStyle: "italic" }}
+                >
+                  💡 {validationError.suggestion}
+                </Typography>
+              )}
+            </Alert>
+          )}
+
           <Box sx={{ mb: 3 }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Edit the SQL query below to provide the correct version. You can
-              test it before saving.
+              Provide the corrected SQL query below. The system will validate
+              and embed it for future learning.
             </Typography>
             <TextField
               fullWidth
@@ -1347,12 +1424,24 @@ const SQLQueryGenerator = React.memo(() => {
           <Box sx={{ mb: 3 }}>
             <TextField
               fullWidth
+              value={businessDomain}
+              onChange={(e) => setBusinessDomain(e.target.value)}
+              label="Business Domain *"
+              placeholder="e.g., collections, disbursement, customer_onboarding"
+              required
+            />
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
               multiline
               rows={2}
               value={correctionNotes}
               onChange={(e) => setCorrectionNotes(e.target.value)}
-              label="Correction Notes (Optional)"
-              placeholder="Explain what was wrong and how you fixed it..."
+              label="Explanation *"
+              placeholder="Explain what was wrong and how you fixed it (e.g., 'loan_emi_mapping uses source_id not cust_id')"
+              required
             />
           </Box>
 
@@ -1498,20 +1587,27 @@ const SQLQueryGenerator = React.memo(() => {
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button
-            onClick={() => setShowCorrectionDialog(false)}
-            disabled={markingFeedback}
+            onClick={() => {
+              setShowCorrectionDialog(false);
+              setValidationError(null);
+            }}
+            disabled={testingCorrection}
           >
             Cancel
           </Button>
           <Button
             variant="contained"
-            onClick={handleSaveCorrection}
-            disabled={!correctedSql.trim() || markingFeedback}
+            onClick={handleSubmitCorrection}
+            disabled={
+              !correctedSql.trim() ||
+              !businessDomain.trim() ||
+              testingCorrection
+            }
             startIcon={
-              markingFeedback ? <CircularProgress size={16} /> : <CheckIcon />
+              testingCorrection ? <CircularProgress size={16} /> : <CheckIcon />
             }
           >
-            {markingFeedback ? "Saving..." : "Save Correction"}
+            {testingCorrection ? "Submitting..." : "Submit & Learn"}
           </Button>
         </DialogActions>
       </Dialog>

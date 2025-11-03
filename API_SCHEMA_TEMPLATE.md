@@ -215,7 +215,7 @@ This template extends the form schema to support API integration for dynamic dat
     method: "GET",
     params: {
       query: "${searchText}",  // User input
-      bankName: "KVB Bank",
+      bankName: "HDFC Bank",
       limit: 10
     },
     responseMapping: {

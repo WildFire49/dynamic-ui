@@ -1,15 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Box,
-  Tabs,
-  Tab,
-  Paper,
-  Typography,
-  Alert,
-  Chip,
-} from "@mui/material";
+import { Box, Tabs, Tab, Paper, Typography, Alert, Chip } from "@mui/material";
 import {
   Dashboard,
   Description,
@@ -25,6 +17,7 @@ import TrainingDataGenerator from "@/components/retriever/TrainingDataGenerator"
 import LearnedExamples from "@/components/retriever/LearnedExamples";
 import VersionManagement from "@/components/retriever/VersionManagement";
 import AuditLog from "@/components/retriever/AuditLog";
+import TemplateWorkflow from "@/components/retriever/TemplateWorkflow";
 
 const SelfLearningPage = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -32,6 +25,11 @@ const SelfLearningPage = () => {
   const userId = "admin@company.com";
 
   const tabs = [
+    {
+      label: "Workflow",
+      icon: <AccountTree />,
+      component: TemplateWorkflow,
+    },
     {
       label: "Dashboard",
       icon: <Dashboard />,
@@ -67,20 +65,21 @@ const SelfLearningPage = () => {
   const ActiveComponent = tabs[activeTab].component;
 
   return (
-    <Box sx={{ width: "100%", minHeight: "100vh", background: "#f8fafc" }}>
+    <Box sx={{ width: "100%", minHeight: "100vh", bgcolor: "background.default" }}>
       {/* Header */}
       <Box
         sx={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          color: "white",
-          py: 4,
+          bgcolor: "background.paper",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          py: 3,
           px: 3,
         }}
       >
-        <Typography variant="h4" fontWeight="700" gutterBottom>
+        <Typography variant="h4" fontWeight="600" gutterBottom color="text.primary">
           Self-Learning Query System
         </Typography>
-        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+        <Typography variant="body1" color="text.secondary">
           Manage templates, training data, and AI model versions
         </Typography>
 
@@ -88,18 +87,14 @@ const SelfLearningPage = () => {
           <Box sx={{ mt: 2, display: "flex", gap: 1, alignItems: "center" }}>
             <Chip
               label={`Connected: ${currentConnection.database}`}
-              sx={{
-                background: "rgba(255, 255, 255, 0.2)",
-                color: "white",
-                fontWeight: 600,
-              }}
+              color="primary"
+              variant="outlined"
+              size="small"
             />
             <Chip
               label={`${currentConnection.host}:${currentConnection.port}`}
-              sx={{
-                background: "rgba(255, 255, 255, 0.15)",
-                color: "white",
-              }}
+              variant="outlined"
+              size="small"
             />
           </Box>
         )}
@@ -120,7 +115,9 @@ const SelfLearningPage = () => {
         <Paper
           sx={{
             borderRadius: 0,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            boxShadow: 0,
+            borderBottom: "1px solid",
+            borderColor: "divider",
           }}
         >
           <Tabs
@@ -128,23 +125,23 @@ const SelfLearningPage = () => {
             onChange={(e, newValue) => setActiveTab(newValue)}
             variant="fullWidth"
             sx={{
-              borderBottom: "1px solid #e2e8f0",
               "& .MuiTab-root": {
                 textTransform: "none",
                 fontSize: 15,
-                fontWeight: 600,
+                fontWeight: 500,
                 minHeight: 64,
-                color: "#64748b",
+                color: "text.secondary",
                 "&:hover": {
-                  background: "rgba(102, 126, 234, 0.05)",
+                  bgcolor: "action.hover",
                 },
                 "&.Mui-selected": {
-                  color: "#667eea",
+                  color: "primary.main",
+                  fontWeight: 600,
                 },
               },
               "& .MuiTabs-indicator": {
-                height: 3,
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                height: 2,
+                bgcolor: "primary.main",
               },
             }}
           >
