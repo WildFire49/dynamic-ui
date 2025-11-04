@@ -94,10 +94,10 @@
             "icon": "person"
           },
           {
-            "id": "mobile",
+            "id": "mobileNumber",
             "label": "Mobile Number",
             "dataKey": "mobileNumber",
-            "type": "tel",
+            "type": "text",
             "placeholder": "Enter mobile number",
             "xs": 12,
             "md": 6,
@@ -280,7 +280,7 @@
       "requirement": "Home Loan",
       "amount": "$250,000",
       "sourcedBy": "Sarah Johnson",
-      "mobileNumber": "+1 (555) 123-4567",
+      "mobileNumber": "7373000632",
       "email": "john.doe@email.com",
       "loanType": "Home Loan",
       "income": "$85,000",

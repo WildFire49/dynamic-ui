@@ -17,7 +17,7 @@ import DynamicFormRenderer from "./dynamic-form/DynamicFormRenderer";
 
 /**
  * DynamicDialogRenderer - A reusable dialog component for displaying forms
- * 
+ *
  * @param {boolean} open - Controls dialog visibility
  * @param {function} onClose - Callback when dialog is closed
  * @param {object} dialogConfig - Dialog configuration (maxWidth, showAvatar, etc.)
@@ -112,11 +112,7 @@ const DynamicDialogRenderer = ({
             <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
               {selectedItem && selectedItem[dialogConfig.titleKey]}
             </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 0.5 }}
-            >
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {dialogConfig.subtitle || "Details"}
             </Typography>
           </Box>
@@ -131,10 +127,7 @@ const DynamicDialogRenderer = ({
       {/* Dialog Content */}
       <DialogContent sx={{ p: 3, mt: 3 }}>
         {selectedItem && formSchema && (
-          <DynamicFormRenderer
-            formSchema={formSchema}
-            onSubmit={onSubmit}
-          />
+          <DynamicFormRenderer formSchema={formSchema} onSubmit={onSubmit} />
         )}
       </DialogContent>
 
