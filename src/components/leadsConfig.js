@@ -9,6 +9,15 @@ export const LeadsManagementSchema = {
   // Sections can be either "form" or "component" type
   sections: [
     {
+      id: "header_section",
+      type: "component", // Component-based section
+      componentType: "header",
+      title: "Leads Management",
+      subtitle: "Manage and track customer leads",
+      icon: "list",
+      config: {},
+    },
+    {
       id: "search_section",
       type: "component", // Component-based section
       componentType: "search",

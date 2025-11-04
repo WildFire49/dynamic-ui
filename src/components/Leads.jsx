@@ -2,7 +2,7 @@
 
 import React from "react";
 import DynamicLeadsRenderer from "./DynamicLeadsRenderer";
-import leadsConfig from "./leadsConfig.json";
+import { LeadsManagementSchema } from "./leadsConfig";
 
 const Leads = () => {
   // Handle card click
@@ -18,7 +18,7 @@ const Leads = () => {
 
   return (
     <DynamicLeadsRenderer
-      config={leadsConfig}
+      config={LeadsManagementSchema}
       onCardClick={handleCardClick}
       onSave={handleSave}
     />

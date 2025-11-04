@@ -49,29 +49,35 @@ const iconMap = {
 };
 
 /**
- * DynamicLeadsRenderer - Renders a leads/cards page from JSON configuration
+ * DynamicLeadsRenderer - Renders a leads/cards page from unified schema configuration
  *
- * @param {Object} config - Page configuration
- * @param {Array} data - Data array for cards
+ * @param {Object} config - Unified schema configuration with sections
  * @param {Function} onCardClick - Callback when card is clicked
  * @param {Function} onSave - Callback when form is saved
  */
 const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
-  const data = config.data;
   const [selectedItem, setSelectedItem] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Extract configuration
-  const {
-    title = "Lead Management",
-    search = {},
-    cardLayout = {},
-    dialog = {},
-    dialogActions = {},
-  } = config;
+  // Extract configuration from unified schema sections
+  const { title = "Lead Management", sections = [], data = [] } = config;
+
+  // Helper function to get section by componentType
+  const getSection = (id) => {
+    return sections.find((s) => s.id === id);
+  };
+
+  // Get section configurations
+  const headerSection = getSection("header_section");
+  const searchSection = getSection("search_section");
+  const cardListSection = getSection("leads_list_section");
+  const dialogSection = getSection("lead_details_dialog");
+
+  // Extract search config
+  const search = searchSection?.config || {};
 
   // Filter data based on search query
   const filteredData = useMemo(() => {
@@ -112,9 +118,12 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
   const convertToFormSchema = (sections, itemData) => {
     if (!sections || !Array.isArray(sections)) return null;
 
+    // Filter only form-type sections (in new unified schema format)
+    const formSections = sections.filter((s) => s.type === "form" || s.fields);
+
     // Build mockData from itemData using dataKey mappings
     const mockData = {};
-    sections.forEach((section) => {
+    formSections.forEach((section) => {
       section.fields?.forEach((field) => {
         const fieldId = field.dataKey || field.id;
         if (itemData && itemData[fieldId] !== undefined) {
@@ -127,8 +136,7 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
       id: "dialog-form",
       description: "",
       mockData: mockData, // Include the item's data as mockData
-      expandAll: true, // Expand all sections in dialog view
-      sections: sections.map((section) => ({
+      sections: formSections.map((section) => ({
         id: section.id,
         title: section.title,
         subtitle: section.subtitle || "",
@@ -154,30 +162,60 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
     };
   };
 
-  return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5", p: 3 }}>
-      {/* Search Section */}
+  // Render header section
+  const renderHeaderSection = () => {
+    if (!headerSection) return null;
+
+    return (
       <Box
+        key={headerSection.id}
+        sx={{
+          textAlign: "center",
+          mb: 3,
+          pt: 4,
+        }}
+      >
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 700,
+            color: theme.palette.primary.main,
+            mb: 1,
+          }}
+        >
+          {headerSection.title || title}
+        </Typography>
+        {headerSection.subtitle && (
+          <Typography
+            variant="body1"
+            sx={{
+              color: theme.palette.text.secondary,
+            }}
+          >
+            {headerSection.subtitle}
+          </Typography>
+        )}
+      </Box>
+    );
+  };
+
+  // Render search section
+  const renderSearchSection = () => {
+    if (!searchSection) return null;
+
+    const search = searchSection.config || {};
+
+    return (
+      <Box
+        key={searchSection.id}
         sx={{
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
           mb: 4,
-          pt: 4,
         }}
       >
         <Box sx={{ width: "100%", maxWidth: search.maxWidth || 600 }}>
-          <Typography
-            variant="h4"
-            sx={{
-              textAlign: "center",
-              mb: 3,
-              fontWeight: 700,
-              color: theme.palette.primary.main,
-            }}
-          >
-            {title}
-          </Typography>
           <TextField
             fullWidth
             variant="outlined"
@@ -216,14 +254,24 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
               color="text.secondary"
               sx={{ mt: 2, textAlign: "center" }}
             >
-              {filteredData.length} {search.countLabel || "item"}
-              {filteredData.length !== 1 ? "s" : ""} found
+              {filteredData.length} {search.countLabel || "item"}(s) found
             </Typography>
           )}
         </Box>
       </Box>
+    );
+  };
 
+  // Render card list section
+  const renderCardListSection = () => {
+    if (!cardListSection) return null;
+
+    const cardLayout = cardListSection.config || {};
+    const search = searchSection?.config || {};
+
+    return (
       <Box
+        key={cardListSection.id}
         sx={{
           maxWidth: 1600,
           mx: "auto",
@@ -281,12 +329,22 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
           </Grid>
         )}
       </Box>
+    );
+  };
 
+  // Render dialog section
+  const renderDialogSection = () => {
+    if (!dialogSection) return null;
+
+    const dialog = dialogSection.config || {};
+
+    return (
       <DynamicDialogRenderer
+        key={dialogSection.id}
         open={isDialogOpen}
         onClose={handleCloseDialog}
         dialogConfig={dialog}
-        dialogActions={dialogActions}
+        dialogActions={dialog.actions ? { actions: dialog.actions } : {}}
         selectedItem={selectedItem}
         formSchema={
           selectedItem && dialog.sections
@@ -299,8 +357,30 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
           }
           setIsEditing(false);
         }}
-        // onActionClick={handleDialogAction}
       />
+    );
+  };
+
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5", p: 3 }}>
+      {/* Render sections dynamically based on config */}
+      {sections.map((section) => {
+        switch (section.componentType) {
+          case "header":
+            return renderHeaderSection();
+          case "search":
+            return renderSearchSection();
+          case "cardList":
+            return renderCardListSection();
+          case "dialog":
+            return null; // Dialog is rendered separately
+          default:
+            return null;
+        }
+      })}
+
+      {/* Render dialog separately (always present, controlled by state) */}
+      {renderDialogSection()}
     </Box>
   );
 };
