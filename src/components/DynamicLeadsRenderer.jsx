@@ -132,6 +132,9 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
       });
     });
 
+    // Get disabled state from customer data
+    const isCustomerDisabled = itemData?.disabled === true;
+
     return {
       id: "dialog-form",
       description: "",
@@ -147,9 +150,9 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
           label: field.label,
           placeholder: field.placeholder || "",
           required: field.required || false,
-          // If field has disabled: true in config, keep it always disabled
-          // Otherwise, enable/disable based on isEditing state
-          disabled: field.disabled === true ? true : !isEditing,
+          // Disable all fields if customer has disabled: true
+          // Otherwise enable/disable based on isEditing state
+          disabled: isCustomerDisabled ? true : !isEditing,
           multiline: field.multiline || false,
           rows: field.rows || 1,
           options: field.options || [],
@@ -337,6 +340,37 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
     if (!dialogSection) return null;
 
     const dialog = dialogSection.config || {};
+    
+    // Get disabled state from customer data
+    const isCustomerDisabled = selectedItem?.disabled === true;
+    
+    // Filter and show only enabled actions based on customer data
+    const modifiedActions = dialog.actions
+      ? {
+          actions: dialog.actions
+            .map((action) => {
+              // Determine if action should be disabled
+              let shouldDisable = false;
+              
+              if (action.action === "close") {
+                // Close is always enabled
+                shouldDisable = false;
+              } else if (action.action === "assign_to_rm") {
+                // assign_to_rm enabled only if customer has assign_to_rm: true
+                shouldDisable = !selectedItem?.assign_to_rm;
+              } else {
+                // Other actions follow customer's general disabled state
+                shouldDisable = isCustomerDisabled;
+              }
+              
+              return {
+                ...action,
+                shouldHide: shouldDisable, // Mark for hiding
+              };
+            })
+            .filter((action) => !action.shouldHide), // Hide disabled actions
+        }
+      : {};
 
     return (
       <DynamicDialogRenderer
@@ -344,7 +378,7 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave }) => {
         open={isDialogOpen}
         onClose={handleCloseDialog}
         dialogConfig={dialog}
-        dialogActions={dialog.actions ? { actions: dialog.actions } : {}}
+        dialogActions={modifiedActions}
         selectedItem={selectedItem}
         formSchema={
           selectedItem && dialog.sections
