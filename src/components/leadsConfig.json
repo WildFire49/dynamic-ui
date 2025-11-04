@@ -1,0 +1,442 @@
+{
+  "title": "Lead Management",
+  "search": {
+    "placeholder": "Search by name, address, requirement, or phone...",
+    "maxWidth": 600,
+    "startIcon": "Search",
+    "searchableFields": [
+      "name",
+      "address",
+      "requirement",
+      "sourcedBy",
+      "mobileNumber"
+    ],
+    "showCount": true,
+    "countLabel": "prospect",
+    "emptyMessage": "No prospects found",
+    "emptyHint": "Try adjusting your search criteria"
+  },
+  "cardLayout": {
+    "idKey": "id",
+    "header": {
+      "showAvatar": true,
+      "avatarKey": "name",
+      "avatarSize": 56,
+      "titleKey": "name",
+      "chipKey": "requirement",
+      "minHeight": "72px"
+    },
+    "fields": [
+      {
+        "id": "address",
+        "dataKey": "address",
+        "icon": "LocationOn",
+        "iconSize": 18,
+        "fontSize": "0.85rem",
+        "alignItems": "flex-start",
+        "minHeight": "38px",
+        "clamp": 2
+      },
+      {
+        "id": "phone",
+        "dataKey": "mobileNumber",
+        "icon": "Phone",
+        "iconSize": 18,
+        "fontSize": "0.85rem",
+        "minHeight": "24px"
+      },
+      {
+        "id": "amount",
+        "dataKey": "amount",
+        "icon": "AttachMoney",
+        "iconSize": 18,
+        "fontSize": "0.85rem",
+        "fontWeight": 600,
+        "textColor": "success.main",
+        "minHeight": "24px"
+      },
+      {
+        "id": "sourcedBy",
+        "dataKey": "sourcedBy",
+        "icon": "Person",
+        "iconSize": 18,
+        "fontSize": "0.85rem",
+        "prefix": "Sourced by:",
+        "bold": true,
+        "minHeight": "24px"
+      }
+    ]
+  },
+  "dialog": {
+    "maxWidth": "md",
+    "showAvatar": true,
+    "avatarKey": "name",
+    "titleKey": "name",
+    "subtitle": "Customer Details",
+    "showEditButton": true,
+    "sections": [
+      {
+        "id": "lead_details",
+        "title": "Lead Information",
+        "subtitle": "Complete lead details",
+        "icon": "person",
+        "fields": [
+          {
+            "id": "name",
+            "label": "Full Name",
+            "dataKey": "name",
+            "type": "text",
+            "placeholder": "Enter full name",
+            "xs": 12,
+            "md": 6,
+            "required": true,
+            "disabled": true,
+            "icon": "person"
+          },
+          {
+            "id": "mobile",
+            "label": "Mobile Number",
+            "dataKey": "mobileNumber",
+            "type": "tel",
+            "placeholder": "Enter mobile number",
+            "xs": 12,
+            "md": 6,
+            "required": true,
+            "disabled": true,
+            "icon": "phone"
+          },
+          {
+            "id": "email",
+            "label": "Email",
+            "dataKey": "email",
+            "type": "email",
+            "placeholder": "Enter email address",
+            "xs": 12,
+            "md": 6,
+            "required": true,
+            "disabled": true,
+            "icon": "email"
+          },
+          {
+            "id": "address",
+            "label": "Address",
+            "dataKey": "address",
+            "type": "text",
+            "placeholder": "Enter address",
+            "xs": 12,
+            "md": 6,
+            "disabled": true,
+            "icon": "home"
+          },
+          {
+            "id": "requirement",
+            "label": "Requirement",
+            "dataKey": "requirement",
+            "type": "select",
+            "placeholder": "Select requirement",
+            "xs": 12,
+            "md": 6,
+            "disabled": true,
+            "options": [
+              { "value": "Home Loan", "label": "Home Loan" },
+              { "value": "Personal Loan", "label": "Personal Loan" },
+              { "value": "Business Loan", "label": "Business Loan" },
+              { "value": "Auto Loan", "label": "Auto Loan" }
+            ]
+          },
+          {
+            "id": "amount",
+            "label": "Amount",
+            "dataKey": "amount",
+            "type": "text",
+            "placeholder": "Enter amount",
+            "xs": 12,
+            "md": 6,
+            "disabled": true
+          },
+          {
+            "id": "loanType",
+            "label": "Loan Type",
+            "dataKey": "loanType",
+            "type": "select",
+            "placeholder": "Select loan type",
+            "xs": 12,
+            "md": 6,
+            "disabled": true,
+            "options": [
+              { "value": "Home Loan", "label": "Home Loan" },
+              { "value": "Personal Loan", "label": "Personal Loan" },
+              { "value": "Business Loan", "label": "Business Loan" },
+              { "value": "Auto Loan", "label": "Auto Loan" }
+            ]
+          },
+          {
+            "id": "sourcedBy",
+            "label": "Sourced By",
+            "dataKey": "sourcedBy",
+            "type": "text",
+            "placeholder": "Enter source name",
+            "xs": 12,
+            "md": 6,
+            "disabled": true,
+            "icon": "person"
+          },
+          {
+            "id": "income",
+            "label": "Annual Income",
+            "dataKey": "income",
+            "type": "text",
+            "placeholder": "Enter annual income",
+            "xs": 12,
+            "md": 4,
+            "disabled": true
+          },
+          {
+            "id": "creditScore",
+            "label": "Credit Score",
+            "dataKey": "creditScore",
+            "type": "number",
+            "placeholder": "Enter credit score",
+            "xs": 12,
+            "md": 4,
+            "disabled": true
+          },
+          {
+            "id": "employmentStatus",
+            "label": "Employment Status",
+            "dataKey": "employmentStatus",
+            "type": "select",
+            "placeholder": "Select employment status",
+            "xs": 12,
+            "md": 4,
+            "disabled": true,
+            "options": [
+              { "value": "Full-time", "label": "Full-time" },
+              { "value": "Part-time", "label": "Part-time" },
+              { "value": "Self-employed", "label": "Self-employed" },
+              { "value": "Unemployed", "label": "Unemployed" }
+            ]
+          },
+          {
+            "id": "notes",
+            "label": "Notes",
+            "dataKey": "notes",
+            "type": "text",
+            "placeholder": "Enter any additional notes",
+            "xs": 12,
+            "multiline": true,
+            "rows": 3,
+            "disabled": true
+          }
+        ]
+      }
+    ]
+  },
+  "dialogActions": {
+    "actions": [
+      {
+        "id": "Accept",
+        "label": "Accept",
+        "action": "accept",
+        "variant": "contained",
+        "color": "success",
+        "showIf": "viewing",
+        "disabled": true
+      },
+      {
+        "id": "reject",
+        "label": "Reject",
+        "action": "reject",
+        "variant": "contained",
+        "color": "error",
+        "showIf": "viewing",
+        "disabled": true
+      },
+      {
+        "id": "review",
+        "label": "Review",
+        "action": "review",
+        "variant": "contained",
+        "color": "warning",
+        "showIf": "viewing",
+        "disabled": true
+      },
+      {
+        "id": "close",
+        "label": "Close",
+        "action": "close",
+        "variant": "contained",
+        "color": "primary",
+        "showIf": "viewing",
+        "disabled": false
+      }
+    ]
+  },
+  "data": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "address": "123 Main St, New York, NY 10001",
+      "requirement": "Home Loan",
+      "amount": "$250,000",
+      "sourcedBy": "Sarah Johnson",
+      "mobileNumber": "+1 (555) 123-4567",
+      "email": "john.doe@email.com",
+      "loanType": "Home Loan",
+      "income": "$85,000",
+      "creditScore": 720,
+      "employmentStatus": "Full-time",
+      "notes": "Looking for a 30-year fixed-rate mortgage"
+    },
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "address": "456 Oak Ave, Los Angeles, CA 90001",
+      "requirement": "Personal Loan",
+      "amount": "$15,000",
+      "sourcedBy": "Mike Williams",
+      "mobileNumber": "+1 (555) 234-5678",
+      "email": "jane.smith@email.com",
+      "loanType": "Personal Loan",
+      "income": "$65,000",
+      "creditScore": 680,
+      "employmentStatus": "Full-time",
+      "notes": "Debt consolidation purpose"
+    },
+    {
+      "id": 3,
+      "name": "Robert Johnson",
+      "address": "789 Pine Rd, Chicago, IL 60601",
+      "requirement": "Business Loan",
+      "amount": "$500,000",
+      "sourcedBy": "Emily Davis",
+      "mobileNumber": "+1 (555) 345-6789",
+      "email": "robert.johnson@email.com",
+      "loanType": "Business Loan",
+      "income": "$150,000",
+      "creditScore": 750,
+      "employmentStatus": "Self-employed",
+      "notes": "Expanding restaurant business"
+    },
+    {
+      "id": 4,
+      "name": "Maria Garcia",
+      "address": "321 Elm St, Houston, TX 77001",
+      "requirement": "Auto Loan",
+      "amount": "$35,000",
+      "sourcedBy": "David Brown",
+      "mobileNumber": "+1 (555) 456-7890",
+      "email": "maria.garcia@email.com",
+      "loanType": "Auto Loan",
+      "income": "$72,000",
+      "creditScore": 695,
+      "employmentStatus": "Full-time",
+      "notes": "New SUV purchase"
+    },
+    {
+      "id": 5,
+      "name": "Michael Chen",
+      "address": "654 Maple Dr, Phoenix, AZ 85001",
+      "requirement": "Home Loan",
+      "amount": "$400,000",
+      "sourcedBy": "Sarah Johnson",
+      "mobileNumber": "+1 (555) 567-8901",
+      "email": "michael.chen@email.com",
+      "loanType": "Home Loan",
+      "income": "$125,000",
+      "creditScore": 780,
+      "employmentStatus": "Full-time",
+      "notes": "First-time home buyer"
+    },
+    {
+      "id": 6,
+      "name": "Lisa Anderson",
+      "address": "987 Cedar Ln, Philadelphia, PA 19101",
+      "requirement": "Personal Loan",
+      "amount": "$25,000",
+      "sourcedBy": "Mike Williams",
+      "mobileNumber": "+1 (555) 678-9012",
+      "email": "lisa.anderson@email.com",
+      "loanType": "Personal Loan",
+      "income": "$58,000",
+      "creditScore": 670,
+      "employmentStatus": "Part-time",
+      "notes": "Medical expenses"
+    },
+    {
+      "id": 7,
+      "name": "Lisa Anderson",
+      "address": "987 Cedar Ln, Philadelphia, PA 19101",
+      "requirement": "Personal Loan",
+      "amount": "$25,000",
+      "sourcedBy": "Mike Williams",
+      "mobileNumber": "+1 (555) 678-9012",
+      "email": "lisa.anderson@email.com",
+      "loanType": "Personal Loan",
+      "income": "$58,000",
+      "creditScore": 670,
+      "employmentStatus": "Part-time",
+      "notes": "Medical expenses"
+    },
+    {
+      "id": 8,
+      "name": "Lisa Anderson",
+      "address": "987 Cedar Ln, Philadelphia, PA 19101",
+      "requirement": "Personal Loan",
+      "amount": "$25,000",
+      "sourcedBy": "Mike Williams",
+      "mobileNumber": "+1 (555) 678-9012",
+      "email": "lisa.anderson@email.com",
+      "loanType": "Personal Loan",
+      "income": "$58,000",
+      "creditScore": 670,
+      "employmentStatus": "Part-time",
+      "notes": "Medical expenses"
+    },
+    {
+      "id": 9,
+      "name": "Lisa Anderson",
+      "address": "987 Cedar Ln, Philadelphia, PA 19101",
+      "requirement": "Personal Loan",
+      "amount": "$25,000",
+      "sourcedBy": "Mike Williams",
+      "mobileNumber": "+1 (555) 678-9012",
+      "email": "lisa.anderson@email.com",
+      "loanType": "Personal Loan",
+      "income": "$58,000",
+      "creditScore": 670,
+      "employmentStatus": "Part-time",
+      "notes": "Medical expenses"
+    },
+    {
+      "id": 10,
+      "name": "Lisa Anderson",
+      "address": "987 Cedar Ln, Philadelphia, PA 19101",
+      "requirement": "Personal Loan",
+      "amount": "$25,000",
+      "sourcedBy": "Mike Williams",
+      "mobileNumber": "+1 (555) 678-9012",
+      "email": "lisa.anderson@email.com",
+      "loanType": "Personal Loan",
+      "income": "$58,000",
+      "creditScore": 670,
+      "employmentStatus": "Part-time",
+      "notes": "Medical expenses"
+    },
+    {
+      "id": 11,
+      "name": "Lisa Anderson",
+      "address": "987 Cedar Ln, Philadelphia, PA 19101",
+      "requirement": "Personal Loan",
+      "amount": "$25,000",
+      "sourcedBy": "Mike Williams",
+      "mobileNumber": "+1 (555) 678-9012",
+      "email": "lisa.anderson@email.com",
+      "loanType": "Personal Loan",
+      "income": "$58,000",
+      "creditScore": 670,
+      "employmentStatus": "Part-time",
+      "notes": "Medical expenses"
+    }
+  ]
+}

@@ -565,6 +565,10 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
   };
 
   const isFieldEnabled = (field) => {
+    // If field is explicitly disabled in config, always return false
+    if (field.disabled === true) {
+      return false;
+    }
     // If no enabledIf condition, field is always enabled
     if (!field.enabledIf) {
       return true;
