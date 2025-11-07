@@ -45,18 +45,37 @@ class ApiClient {
   /**
    * Handle API response
    * @param {Response} response - Fetch response object
+   * @param {boolean} isRetry - Whether this is a retry after token refresh
    * @returns {Promise<any>} Parsed response data
    */
-  async handleResponse(response) {
+  async handleResponse(response, isRetry = false) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({
         message: `HTTP ${response.status}: ${response.statusText}`,
       }));
       
-      // If unauthorized, could trigger logout here
-      if (response.status === 401) {
-        console.error("Unauthorized request - token may be expired");
-        // Optional: dispatch logout event or redirect
+      // If unauthorized and not a retry, attempt token refresh
+      if (response.status === 401 && !isRetry) {
+        console.log("401 Unauthorized - attempting token refresh...");
+        
+        // Dynamically import authService to avoid circular dependency
+        const authService = (await import('./authService')).default;
+        
+        if (authService.hasRefreshToken()) {
+          const refreshResult = await authService.refreshToken();
+          if (refreshResult.success) {
+            console.log("Token refreshed, will retry request");
+            // Return a special marker to indicate retry is needed
+            return { __shouldRetry: true };
+          }
+        }
+        
+        console.error("Token refresh failed or no refresh token available");
+        // Logout user if refresh fails
+        authService.logout();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
       }
       
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
@@ -80,7 +99,15 @@ class ApiClient {
         ...options,
       });
       
-      return this.handleResponse(response);
+      const result = await this.handleResponse(response, options.__isRetry);
+      
+      // If token was refreshed, retry the request
+      if (result && result.__shouldRetry) {
+        console.log("Retrying GET request with new token...");
+        return this.get(endpoint, { ...options, __isRetry: true });
+      }
+      
+      return result;
     } catch (error) {
       console.error(`GET ${endpoint} failed:`, error);
       throw error;
@@ -104,7 +131,15 @@ class ApiClient {
         ...options,
       });
       
-      return this.handleResponse(response);
+      const result = await this.handleResponse(response, options.__isRetry);
+      
+      // If token was refreshed, retry the request
+      if (result && result.__shouldRetry) {
+        console.log("Retrying POST request with new token...");
+        return this.post(endpoint, data, { ...options, __isRetry: true });
+      }
+      
+      return result;
     } catch (error) {
       console.error(`POST ${endpoint} failed:`, error);
       throw error;

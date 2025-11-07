@@ -129,10 +129,9 @@ export const embeddingsApi = {
    */
   listCollections: async () => {
     try {
-      console.log(
-        `Fetching collections from Chroma DB: ${CHROMA_API_URL}/api/v1/collections`
-      );
-      const response = await fetch(`${CHROMA_API_URL}/api/v1/collections`, {
+      // Use Next.js API proxy to avoid CORS issues with HTTP ChromaDB
+      console.log('Fetching collections from ChromaDB via proxy');
+      const response = await fetch('/api/chroma/collections', {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -163,7 +162,8 @@ export const embeddingsApi = {
         count: collections.length,
       };
     } catch (error) {
-      console.error("Error fetching collections from Chroma DB:", error);
+      // Silently handle CORS and network errors - ChromaDB may not be accessible from browser
+      console.warn("ChromaDB not accessible from browser (CORS/network issue), returning empty list");
       // Return empty collections instead of throwing
       return { collections: [], count: 0 };
     }

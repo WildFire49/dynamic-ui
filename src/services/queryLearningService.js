@@ -429,7 +429,9 @@ const queryLearningService = {
         `${FAST_KG_BASE_URL}/templates/versions/${connectionId}?${params}`
       );
     } catch (error) {
-      throw new Error(error.message || "Failed to get template versions");
+      console.warn("Template versions API error:", error.message);
+      // Return empty array instead of throwing to prevent UI errors
+      return { versions: [], count: 0 };
     }
   },
 
@@ -475,13 +477,20 @@ const queryLearningService = {
    * Ask Query - Generate and execute SQL with validation
    * POST /fast-kg/ask
    */
-  askQuery: async (connectionId, query, userId) => {
+  askQuery: async (connectionId, query, userId, version = null) => {
     try {
-      return await apiClient.post(`${FAST_KG_BASE_URL}/ask`, {
+      const payload = {
         connection_id: connectionId,
         query: query,
         user_id: userId,
-      });
+      };
+      
+      // Add version if specified
+      if (version) {
+        payload.version = version;
+      }
+      
+      return await apiClient.post(`${FAST_KG_BASE_URL}/ask`, payload);
     } catch (error) {
       // Return error details for handling in component
       throw error;

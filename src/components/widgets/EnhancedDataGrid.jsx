@@ -89,6 +89,17 @@ const EnhancedDataGrid = ({
   
   // Check if this is a reviewable table
   const isReviewable = type === 'mismatched_records' && onReviewClick;
+  
+  // Detect large dataset (>1000 records)
+  const isLargeDataset = data.length > 1000;
+  
+  // Adjust page size for large datasets
+  const effectivePageSize = useMemo(() => {
+    if (isLargeDataset) {
+      return isMobile ? 25 : 50; // Smaller page size for large datasets
+    }
+    return pageSize;
+  }, [isLargeDataset, isMobile, pageSize]);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), index * 200);
@@ -98,6 +109,11 @@ const EnhancedDataGrid = ({
   useEffect(() => {
     setFilteredData(data);
   }, [data]);
+
+  // Memoize rows to prevent re-computation
+  const rows = useMemo(() => {
+    return filteredData.map((row, index) => ({ id: index, ...row }));
+  }, [filteredData]);
 
   // Dynamic column generation
   const columns = useMemo(() => {
@@ -544,12 +560,29 @@ const EnhancedDataGrid = ({
                     label={`${filteredData.length} records`}
                     size="small" 
                     sx={{
-                      background: alpha(theme.palette.success.main, 0.1),
-                      color: theme.palette.success.main,
+                      background: isLargeDataset 
+                        ? alpha(theme.palette.warning.main, 0.1)
+                        : alpha(theme.palette.success.main, 0.1),
+                      color: isLargeDataset 
+                        ? theme.palette.warning.main
+                        : theme.palette.success.main,
                       fontWeight: 600,
                       fontSize: isMobile ? '0.7rem' : '0.75rem'
                     }}
                   />
+                  
+                  {isLargeDataset && (
+                    <Chip 
+                      label="Large Dataset - Optimized View"
+                      size="small" 
+                      sx={{
+                        background: alpha(theme.palette.info.main, 0.1),
+                        color: theme.palette.info.main,
+                        fontWeight: 600,
+                        fontSize: isMobile ? '0.7rem' : '0.75rem'
+                      }}
+                    />
+                  )}
                   
                   {selectedRows.length > 0 && (
                     <Chip 
@@ -614,14 +647,14 @@ const EnhancedDataGrid = ({
             overflow: 'hidden'
           }}>
             <DataGrid
-              rows={filteredData.map((row, index) => ({ id: index, ...row }))}
+              rows={rows}
               columns={columns}
               initialState={{
                 pagination: {
-                  paginationModel: { page: 0, pageSize: pageSize }
+                  paginationModel: { page: 0, pageSize: effectivePageSize }
                 }
               }}
-              pageSizeOptions={[10, 25, 50, 100]}
+              pageSizeOptions={isLargeDataset ? [25, 50, 100] : [10, 25, 50, 100]}
               checkboxSelection
               disableRowSelectionOnClick
               onRowSelectionModelChange={(newSelection) => {
@@ -630,6 +663,14 @@ const EnhancedDataGrid = ({
               slots={{
                 toolbar: CustomToolbar
               }}
+              // Performance optimizations for large datasets
+              rowHeight={isLargeDataset ? 52 : undefined}
+              columnHeaderHeight={isLargeDataset ? 56 : undefined}
+              disableVirtualization={false}
+              rowBuffer={isLargeDataset ? 5 : 3}
+              columnBuffer={2}
+              hideFooterSelectedRowCount={isLargeDataset}
+              density={isLargeDataset ? "compact" : "standard"}
               sx={{
                 border: 'none',
                 width: '100%',

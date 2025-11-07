@@ -41,8 +41,8 @@ class AuthService {
           data.data.access_token_expiry
         );
 
-        // Store refresh token in sessionStorage (persists only for session)
-        sessionStorage.setItem("refreshToken", data.data.refresh_token);
+        // Store refresh token in localStorage (persists across sessions)
+        localStorage.setItem("refreshToken", data.data.refresh_token);
 
         // Store user info from user_data if available
         if (data.data.user_data) {
@@ -159,11 +159,11 @@ class AuthService {
   // Refresh token
   async refreshToken() {
     try {
-      // Get refresh token from sessionStorage
-      const refreshToken = sessionStorage.getItem("refreshToken");
+      // Get refresh token from localStorage
+      const refreshToken = localStorage.getItem("refreshToken");
 
       if (!refreshToken) {
-        console.error("No refresh token found in sessionStorage");
+        console.error("No refresh token found in localStorage");
         return { success: false, message: "No refresh token found" };
       }
 
@@ -178,6 +178,19 @@ class AuthService {
         }
       );
 
+      // Check if response is ok
+      if (!response.ok) {
+        console.error("Token refresh failed with status:", response.status);
+        // If 401, refresh token is invalid, clear it
+        if (response.status === 401) {
+          localStorage.removeItem("refreshToken");
+        }
+        return {
+          success: false,
+          message: `Token refresh failed with status ${response.status}`,
+        };
+      }
+
       const data = await response.json();
 
       if (data.success) {
@@ -188,15 +201,15 @@ class AuthService {
           data.data.access_token_expiry
         );
 
-        // Update refresh token in sessionStorage
-        sessionStorage.setItem("refreshToken", data.data.refresh_token);
+        // Update refresh token in localStorage
+        localStorage.setItem("refreshToken", data.data.refresh_token);
 
         // Update userId if provided
         if (data.data.user_id) {
           localStorage.setItem("userId", data.data.user_id);
         }
 
-        console.log("Token refreshed successfully");
+        console.log("✅ Token refreshed successfully");
         return {
           success: true,
           data: data.data,
@@ -204,6 +217,8 @@ class AuthService {
         };
       } else {
         console.error("Token refresh failed:", data.message);
+        // Clear invalid refresh token
+        localStorage.removeItem("refreshToken");
         return {
           success: false,
           message: data.message || "Token refresh failed",
@@ -220,6 +235,7 @@ class AuthService {
 
   // Check if token is expired
   isTokenExpired() {
+    if (!this.isClient()) return true;
     const expiry = localStorage.getItem("accessTokenExpiry");
     if (!expiry) return true;
 
@@ -228,12 +244,14 @@ class AuthService {
 
   // Get current user info
   getCurrentUser() {
+    if (!this.isClient()) return null;
     const userInfo = localStorage.getItem("userInfo");
     return userInfo ? JSON.parse(userInfo) : null;
   }
 
   // Get user roles from localStorage
   getUserRoles() {
+    if (!this.isClient()) return [];
     const rolesJson = localStorage.getItem("roles");
     return rolesJson ? JSON.parse(rolesJson) : [];
   }
@@ -276,41 +294,54 @@ class AuthService {
 
   // Get access token
   getAccessToken() {
+    if (!this.isClient()) return null;
     return localStorage.getItem("accessToken");
   }
 
   // Get primary roleCode from localStorage
   getRoleCode() {
+    if (!this.isClient()) return null;
     return localStorage.getItem("roleCode");
   }
 
   // Get primary roleName from localStorage
   getRoleName() {
+    if (!this.isClient()) return null;
     return localStorage.getItem("roleName");
   }
 
   // Get primary roleId from localStorage
   getRoleId() {
+    if (!this.isClient()) return null;
     return localStorage.getItem("roleId");
   }
 
   // Get username from localStorage
   getUsername() {
+    if (!this.isClient()) return null;
     return localStorage.getItem("username");
+  }
+
+  // Helper function to check if we're on the client side
+  isClient() {
+    return typeof window !== "undefined" && typeof localStorage !== "undefined";
   }
 
   // Get user ID
   getUserId() {
+    if (!this.isClient()) return null;
     return localStorage.getItem("userId");
   }
 
   // Get refresh token from sessionStorage
   getRefreshToken() {
+    if (!this.isClient()) return null;
     return sessionStorage.getItem("refreshToken");
   }
 
   // Logout
   logout() {
+    if (!this.isClient()) return;
     // Clear localStorage
     localStorage.removeItem("accessToken");
     localStorage.removeItem("accessTokenExpiry");
@@ -322,8 +353,8 @@ class AuthService {
     localStorage.removeItem("username");
     localStorage.removeItem("userId");
 
-    // Clear sessionStorage
-    sessionStorage.removeItem("refreshToken");
+    // Clear refresh token from localStorage
+    localStorage.removeItem("refreshToken");
   }
 
   // Check if user is authenticated
@@ -334,6 +365,12 @@ class AuthService {
 
   // Auto refresh token if needed
   async ensureValidToken() {
+    // Check if we have a refresh token first
+    if (!this.hasRefreshToken()) {
+      console.log("No refresh token available, cannot refresh");
+      return false;
+    }
+
     if (this.isTokenExpired()) {
       console.log("Token expired, attempting to refresh...");
       const refreshResult = await this.refreshToken();
@@ -342,14 +379,15 @@ class AuthService {
         this.logout();
         return false;
       }
-      console.log("Token refreshed successfully");
+      console.log("✅ Token refreshed successfully");
     }
     return true;
   }
 
   // Check if refresh token exists
   hasRefreshToken() {
-    return !!sessionStorage.getItem("refreshToken");
+    if (!this.isClient()) return false;
+    return !!localStorage.getItem("refreshToken");
   }
 }
 

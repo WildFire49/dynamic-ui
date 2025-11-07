@@ -324,6 +324,18 @@ const fastKgService = {
       throw new Error(error.message || "Failed to get corrected queries");
     }
   },
+
+  /**
+   * Get template versions for a connection
+   */
+  getTemplateVersions: async (connectionId) => {
+    try {
+      const data = await apiClient.get(`${BASE_URL}/templates/versions/${connectionId}`);
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to get template versions");
+    }
+  },
 };
 
 export default fastKgService;

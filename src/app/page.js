@@ -89,6 +89,29 @@ const getAuthHeaders = () => {
 
 export default function HomePage() {
   const { user } = useAuth();
+  
+  // Use ref to store stable getUserId function
+  const getUserIdRef = useRef(() => {
+    // Try multiple sources in priority order
+    const sources = [
+      user?.userId,
+      user?.username,
+      authService.getUserId(),
+      authService.getUsername(),
+      "default_user" // Final fallback
+    ];
+    
+    // Return first non-empty value
+    const validId = sources.find(id => id && id.trim() !== "");
+    console.log("🔍 getUserId sources:", sources, "→ selected:", validId);
+    return validId || "default_user";
+  });
+  
+  // Memoize getUserId function to prevent unnecessary re-renders
+  const getUserId = useCallback(() => {
+    return getUserIdRef.current();
+  }, []); // Empty dependency array since the ref handles the updates
+  
   const [chatHistory, setChatHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -103,7 +126,7 @@ export default function HomePage() {
   const [pendingMessage, setPendingMessage] = useState("");
   const [eventPollingInterval, setEventPollingInterval] = useState(null);
   const [conversationId, setConversationId] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState("");
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [inputValue, setInputValue] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({ title: "", message: "" });
@@ -611,11 +634,35 @@ export default function HomePage() {
           requestBody.conversation_id = conversationId;
         }
 
+        // Ensure user_id is always present
+        if (!requestBody.user_id) {
+          const userId = currentUserId || authService.getUserId() || authService.getUsername() || "default_user";
+          if (!userId || userId.trim() === "") {
+            console.error("❌ callChatApi user_id validation failed:", {
+              currentUserId,
+              authUserId: authService.getUserId(),
+              authUsername: authService.getUsername(),
+              userObject: !!user,
+              originalBody: body
+            });
+            throw new Error("user_id is required but could not be determined");
+          }
+          requestBody.user_id = userId;
+          console.log("🔧 Added missing user_id to callChatApi:", userId);
+        }
+
         // Add roleCode to the request
         const roleCode = authService.getRoleCode();
         if (roleCode) {
           requestBody.roleCode = roleCode;
         }
+
+        console.log("📤 Final request body:", {
+          user_id: requestBody.user_id,
+          has_message: !!requestBody.message,
+          has_conversation_id: !!requestBody.conversation_id,
+          has_roleCode: !!requestBody.roleCode
+        });
 
         // Check if this is a configurator API call
         const isConfiguratorCall =
@@ -680,7 +727,7 @@ export default function HomePage() {
         setIsTyping(false);
       }
     },
-    [conversationId, handleApiResponse, isAccessDenied]
+    [conversationId, handleApiResponse, isAccessDenied, currentUserId]
   );
 
   const handleAction = useCallback(
@@ -906,10 +953,36 @@ export default function HomePage() {
         setIsAnalyzing(true);
         setIsTyping(true);
 
+        // Ensure user_id is never empty - use multiple fallbacks
+        const userId = currentUserId || getUserId() || authService.getUserId() || authService.getUsername() || "default_user";
+        
+        // Validate userId is not empty string
+        if (!userId || userId.trim() === "") {
+          console.error("❌ user_id validation failed:", {
+            currentUserId,
+            getUserIdResult: getUserId(),
+            authUserId: authService.getUserId(),
+            authUsername: authService.getUsername(),
+            userObject: !!user
+          });
+          throw new Error("user_id cannot be empty. Please ensure you are logged in.");
+        }
+        
+        console.log("📊 Data Analysis Request:", {
+          user_id: userId,
+          currentUserId,
+          authUserId: authService.getUserId(),
+          authUsername: authService.getUsername(),
+          userObject: !!user,
+          question: question.substring(0, 50) + "...",
+          conversationId,
+          hasDocument: !!selectedDocument
+        });
+
         // Always use chat endpoint for consistency
         const roleCode = authService.getRoleCode();
         const requestPayload = {
-          user_id: currentUserId,
+          user_id: userId,
           message: question,
           ...(conversationId && { conversation_id: conversationId }),
           ...(selectedDocument && {
@@ -918,6 +991,8 @@ export default function HomePage() {
           ...(roleCode && { roleCode }),
         };
 
+        console.log("📤 Sending payload:", requestPayload);
+
         const response = await fetch(`${API_BASE_URL}/chat`, {
           method: "POST",
           headers: getAuthHeaders(),
@@ -925,7 +1000,9 @@ export default function HomePage() {
         });
 
         if (!response.ok) {
-          throw new Error(`Chat API error: ${response.status}`);
+          const errorText = await response.text();
+          console.error("❌ API Error Response:", errorText);
+          throw new Error(`Chat API error: ${response.status} - ${errorText}`);
         }
 
         const analysisResult = await response.json();
@@ -959,7 +1036,7 @@ export default function HomePage() {
         setIsTyping(false);
       }
     },
-    [selectedDocument, conversationId, currentUserId]
+    [selectedDocument, conversationId, currentUserId, user]
   );
 
   const handleSendMessage = useCallback(
@@ -999,20 +1076,18 @@ export default function HomePage() {
         }
       }
 
+      // Clear input and call chat API
       setInputValue("");
-
+      
       const roleCode = authService.getRoleCode();
       const requestBody = {
-        user_id: currentUserId,
+        user_id: currentUserId || getUserId() || authService.getUserId() || authService.getUsername() || "default_user",
         message: finalMessageText,
         ...(conversationId && { conversation_id: conversationId }),
-        ...(selectedDocument && {
-          document_key: selectedDocument.document_key,
-        }),
+        ...(selectedDocument && { document_key: selectedDocument.document_key }),
         ...(roleCode && { roleCode }),
       };
 
-      // Add audio key if provided (instead of audio file)
       if (audioKey) {
         requestBody.key = audioKey;
       }
@@ -1359,12 +1434,33 @@ export default function HomePage() {
   }, [eventPollingInterval]);
 
   // Load username from localStorage on component mount
+  // Sync currentUserId with auth user changes
   useEffect(() => {
-    const storedUsername = authService.getUsername();
-    if (storedUsername) {
-      setCurrentUserId(storedUsername);
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
+    // Use getUserId function to get the best available ID
+    const newUserId = getUserId();
+    
+    console.log("🔄 User sync effect triggered:", {
+      currentUserId,
+      newUserId,
+      userObject: !!user,
+      storedUserId: authService.getUserId(),
+      storedUsername: authService.getUsername()
+    });
+    
+    // Always update on initial mount if currentUserId is null
+    if (!currentUserId && newUserId) {
+      console.log("✅ Initial mount - setting currentUserId:", newUserId);
+      setCurrentUserId(newUserId);
     }
-  }, []);
+    // Only update if the ID has actually changed
+    else if (newUserId && newUserId !== currentUserId) {
+      console.log("✅ Updating currentUserId:", currentUserId, "→", newUserId);
+      setCurrentUserId(newUserId);
+    }
+  }, [user]); // Only depend on user, getUserId is now stable
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

@@ -92,6 +92,9 @@ const SQLQueryGenerator = React.memo(() => {
     message: "",
     severity: "success",
   });
+  const [templateVersions, setTemplateVersions] = useState(null);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState(""); // Selected template version
 
   // SQL Keywords for syntax highlighting
   const SQL_KEYWORDS = [
@@ -221,6 +224,26 @@ const SQLQueryGenerator = React.memo(() => {
     }
   }, [currentConnection]);
 
+  // Load template versions when connection changes
+  useEffect(() => {
+    if (selectedConnection) {
+      loadTemplateVersions(selectedConnection);
+    }
+  }, [selectedConnection]);
+
+  const loadTemplateVersions = async (connectionId) => {
+    try {
+      setLoadingVersions(true);
+      const response = await fastKgService.getTemplateVersions(connectionId);
+      setTemplateVersions(response.data);
+    } catch (err) {
+      console.error("Failed to load template versions:", err);
+      setTemplateVersions(null);
+    } finally {
+      setLoadingVersions(false);
+    }
+  };
+
   const handleMarkCorrect = async () => {
     if (!result?.query?.query_id || !currentConnection?.id) return;
 
@@ -303,13 +326,18 @@ const SQLQueryGenerator = React.memo(() => {
 
       setSnackbar({
         open: true,
-        message: "✅ Corrected SQL saved successfully!",
+        message: "✅ Corrected SQL saved successfully! Template version updated.",
         severity: "success",
       });
       setShowCorrectionDialog(false);
       setCorrectedSql("");
       setCorrectionNotes("");
       setTestResult(null);
+      
+      // Reload template versions to show the updated version
+      if (selectedConnection) {
+        loadTemplateVersions(selectedConnection);
+      }
     } catch (err) {
       console.error("Error saving correction:", err);
       setSnackbar({
@@ -342,11 +370,12 @@ const SQLQueryGenerator = React.memo(() => {
         throw new Error("Connection not found");
       }
 
-      // Use new askQuery API with validation
+      // Use new askQuery API with validation (optionally with specific version)
       const response = await queryLearningService.askQuery(
         connection.id,
         query,
-        user?.username || user?.userId || "system"
+        user?.username || user?.userId || "system",
+        selectedVersion || undefined // Pass selected version if specified
       );
 
       setResult(response);
@@ -984,62 +1013,158 @@ const SQLQueryGenerator = React.memo(() => {
           >
             Database Connection
           </Typography>
-          <FormControl fullWidth sx={{ maxWidth: 400 }}>
-            <InputLabel>Select Connection</InputLabel>
-            <Select
-              value={selectedConnection}
-              onChange={(e) => setSelectedConnection(e.target.value)}
-              label="Select Connection"
-              disabled={loadingConnections}
-              startAdornment={
-                <DatabaseIcon sx={{ mr: 1, color: "action.active" }} />
-              }
-            >
-              {savedConnections.map((conn) => (
-                <MenuItem key={conn.id} value={conn.id}>
-                  <Box>
-                    <Typography variant="body2" fontWeight="medium">
-                      {conn.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {conn.host}:{conn.port} / {conn.database_name}
-                    </Typography>
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="medium">
+                <InputLabel>Select Connection</InputLabel>
+                <Select
+                  value={selectedConnection}
+                  onChange={(e) => setSelectedConnection(e.target.value)}
+                  label="Select Connection"
+                  disabled={loadingConnections}
+                  startAdornment={
+                    <DatabaseIcon sx={{ mr: 1, color: "action.active" }} />
+                  }
+                  sx={{ minHeight: 56 }}
+                >
+                  {savedConnections.map((conn) => (
+                    <MenuItem key={conn.id} value={conn.id}>
+                      <Box>
+                        <Typography variant="body2" fontWeight="medium">
+                          {conn.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {conn.host}:{conn.port} / {conn.database_name}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="medium" disabled={!selectedConnection || loadingVersions}>
+                <InputLabel>Template Version (Optional)</InputLabel>
+                <Select
+                  value={selectedVersion}
+                  onChange={(e) => setSelectedVersion(e.target.value)}
+                  label="Template Version (Optional)"
+                  startAdornment={
+                    <TimelineIcon sx={{ mr: 1, color: "action.active" }} />
+                  }
+                  sx={{ minHeight: 56 }}
+                >
+                  <MenuItem value="">
+                    <Box>
+                      <Typography variant="body2" fontWeight="medium">
+                        Use Active Version
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {templateVersions?.active_version || "Default"}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                  {templateVersions?.versions?.map((version) => (
+                    <MenuItem key={version.version} value={version.version}>
+                      <Box>
+                        <Typography variant="body2" fontWeight="medium">
+                          {version.version}
+                          {version.active && (
+                            <Chip
+                              label="Active"
+                              size="small"
+                              color="success"
+                              sx={{ ml: 1, height: 20 }}
+                            />
+                          )}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {version.examples} examples • {version.collection}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
 
           {selectedConnection && (
-            <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
-              <Chip
-                icon={<DatabaseIcon />}
-                label={`${
-                  selectedConnectionDetails?.connection_name ||
-                  selectedConnectionDetails?.name
-                }`}
-                sx={{
-                  bgcolor: "#0078d715",
-                  color: "#0078d7",
-                  fontWeight: 600,
-                  "& .MuiChip-icon": { color: "#0078d7" },
-                }}
-                size="small"
-              />
-              <Chip
-                icon={<CheckIcon />}
-                label={`Schema: ${
-                  selectedConnectionDetails?.schema_name || "public"
-                }`}
-                sx={{
-                  bgcolor: "#48bb7815",
-                  color: "#48bb78",
-                  fontWeight: 600,
+            <>
+              <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
+                <Chip
+                  icon={<DatabaseIcon />}
+                  label={`${
+                    selectedConnectionDetails?.connection_name ||
+                    selectedConnectionDetails?.name
+                  }`}
+                  sx={{
+                    bgcolor: "#0078d715",
+                    color: "#0078d7",
+                    fontWeight: 600,
+                    "& .MuiChip-icon": { color: "#0078d7" },
+                  }}
+                  size="small"
+                />
+                <Chip
+                  icon={<CheckIcon />}
+                  label={`Schema: ${
+                    selectedConnectionDetails?.schema_name || "public"
+                  }`}
+                  sx={{
+                    bgcolor: "#48bb7815",
+                    color: "#48bb78",
+                    fontWeight: 600,
                   "& .MuiChip-icon": { color: "#48bb78" },
                 }}
                 size="small"
               />
             </Box>
+
+              {/* Template Versions Display */}
+              {loadingVersions ? (
+                <Box sx={{ mt: 3 }}>
+                  <Skeleton variant="rectangular" height={80} />
+                </Box>
+              ) : templateVersions && templateVersions.versions && templateVersions.versions.length > 0 ? (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#1a202c", mb: 1.5 }}>
+                    📚 Template Versions ({templateVersions.total_versions})
+                  </Typography>
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    {templateVersions.versions.map((version) => (
+                      <Chip
+                        key={version.version}
+                        label={
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                              {version.version}
+                            </Typography>
+                            <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                              ({version.examples} examples)
+                            </Typography>
+                          </Box>
+                        }
+                        size="small"
+                        sx={{
+                          bgcolor: version.active ? "#9c27b015" : "#e2e8f0",
+                          color: version.active ? "#9c27b0" : "#64748b",
+                          fontWeight: version.active ? 600 : 500,
+                          border: version.active ? "1px solid #9c27b0" : "1px solid #e2e8f0",
+                        }}
+                        icon={version.active ? <CheckIcon sx={{ fontSize: 16 }} /> : null}
+                      />
+                    ))}
+                  </Box>
+                  {templateVersions.connection_name && (
+                    <Typography variant="caption" sx={{ color: "#64748b", mt: 1, display: "block" }}>
+                      Template: {templateVersions.connection_name} • Active: {templateVersions.active_version}
+                    </Typography>
+                  )}
+                </Box>
+              ) : null}
+            </>
           )}
         </Box>
 

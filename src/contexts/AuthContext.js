@@ -26,9 +26,14 @@ export const AuthProvider = ({ children }) => {
 
   // Auto token refresh timer
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && authService.hasRefreshToken()) {
       const interval = setInterval(async () => {
-        await authService.ensureValidToken();
+        const isValid = await authService.ensureValidToken();
+        if (!isValid) {
+          // Token refresh failed, update auth state
+          setIsAuthenticated(false);
+          setUser(null);
+        }
       }, 5 * 60 * 1000); // Check every 5 minutes
 
       return () => clearInterval(interval);

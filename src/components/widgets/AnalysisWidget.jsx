@@ -2469,6 +2469,9 @@ const AnalysisWidget = ({
     ) {
       // Remove question marks and clean up the title
       const cleanTitle = question.replace(/\?+$/, "").trim();
+      
+      console.log(`✅ Supporting data found: ${supportingData.length} records`);
+      console.log("📊 Creating tables array with data");
 
       return {
         type: "supporting_data",
@@ -3145,8 +3148,9 @@ const AnalysisWidget = ({
 
       {/* Enhanced Tabular Results Section with Collapsible Tabs */}
       {finalAnalysis.tables && finalAnalysis.tables.length > 0 && (
-        <Fade in={currentSection >= 2} timeout={800}>
+        <Fade in={currentSection >= 2 || (finalAnalysis.tables[0]?.data?.length > 1000)} timeout={800}>
           <Box sx={{ mb: 5 }}>
+            {console.log("🔍 Rendering Tabular Results:", finalAnalysis.tables.length, "tables", finalAnalysis.tables[0]?.data?.length, "records")}
             {/* Collapsible Section Header */}
             <Paper
               elevation={2}
