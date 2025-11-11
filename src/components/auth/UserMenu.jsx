@@ -24,6 +24,7 @@ import {
   Badge as BadgeIcon,
   KeyboardArrowRight as ArrowIcon,
 } from '@mui/icons-material';
+import LockIcon from '@mui/icons-material/Lock';
 import { useAuth } from '../../contexts/AuthContext';
 
 const UserMenu = () => {
@@ -214,6 +215,37 @@ const UserMenu = () => {
                 color: theme.palette.text.primary,
               }}
               secondaryTypographyProps={{
+                fontSize: '0.75rem',
+                color: theme.palette.text.secondary,
+              }}
+            />
+            <ArrowIcon sx={{ color: theme.palette.text.secondary, ml: 1 }} />
+          </MenuItem>
+          <MenuItem 
+            onClick={handleClose} 
+            sx={{ 
+              py: 2,
+              px: 3,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+              },
+              transition: 'all 0.2s ease-in-out',
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <LockIcon 
+                fontSize="small" 
+                sx={{ color: theme.palette.primary.main }}
+              />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Change Password" 
+              secondary="Change your password"
+              primaryTypographyProps={{
+                fontWeight: 600,
+                color: theme.palette.text.primary,
+              }}
+              secondaryTypographyProps  ={{
                 fontSize: '0.75rem',
                 color: theme.palette.text.secondary,
               }}

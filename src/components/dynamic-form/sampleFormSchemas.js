@@ -748,7 +748,7 @@ export const l1CustomerOnboardingSchema = {
   title: "L1 - Customer Information",
   description: "Complete customer details for HDFC onboarding",
   nextFormId: "instant_kcc",
-  nextFormTitle: "Instant KCC - Land & Crop Details",
+  nextFormTitle: "HDFC RBGFF - Land & Crop Details",
   mockData: {
     full_name: "Rajesh Kumar",
     date_of_birth: "1985-06-15",
@@ -1498,7 +1498,7 @@ export const l1CustomerOnboardingSchema = {
 // L2 Info - Instant KCC Section
 export const instantKCCSchema = {
   id: "instant_kcc",
-  title: "Instant KCC - Land & Crop Details",
+  title: "HDFC RBGFF  - Land & Crop Details",
   description: "Agriculture loan and land information",
   nextFormId: "bank_account_details",
   nextFormTitle: "Bank Account Details",

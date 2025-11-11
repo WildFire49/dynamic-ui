@@ -34,6 +34,7 @@ const DynamicDialogRenderer = ({
   dialogActions = {},
   selectedItem,
   formSchema,
+  formSchemas = [],
   onSubmit,
   onActionClick,
 }) => {
@@ -126,9 +127,30 @@ const DynamicDialogRenderer = ({
 
       {/* Dialog Content */}
       <DialogContent sx={{ p: 3, mt: 3 }}>
-        {selectedItem && formSchema && (
-          <DynamicFormRenderer formSchema={formSchema} onSubmit={onSubmit} />
-        )}
+        {selectedItem && formSchemas.length > 0 ? (
+          // Render multiple forms
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {formSchemas.map((schema, index) => (
+              <Box key={index}>
+                <DynamicFormRenderer 
+                  formSchema={schema} 
+                  onSubmit={onSubmit}
+                  viewOnly={dialogConfig.viewOnly || false}
+                />
+                {index < formSchemas.length - 1 && (
+                  <Box sx={{ my: 3, borderBottom: `2px solid ${theme.palette.divider}` }} />
+                )}
+              </Box>
+            ))}
+          </Box>
+        ) : selectedItem && formSchema ? (
+          // Render single form (for leads only)
+          <DynamicFormRenderer 
+            formSchema={formSchema} 
+            onSubmit={onSubmit}
+            viewOnly={dialogConfig.viewOnly || false}
+          />
+        ) : null}
       </DialogContent>
 
       {/* Dialog Actions/Footer */}

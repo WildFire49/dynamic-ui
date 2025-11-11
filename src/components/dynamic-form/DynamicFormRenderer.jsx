@@ -358,7 +358,7 @@ const getStyles = (theme) => ({
   },
 });
 
-const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
+const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = false }) => {
   const theme = useTheme();
   const styles = getStyles(theme);
   const [formData, setFormData] = useState({});
@@ -565,6 +565,11 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
   };
 
   const isFieldEnabled = (field) => {
+    // If viewOnly mode is active, all fields are disabled
+    if (viewOnly) {
+      return false;
+    }
+    
     // If field is explicitly disabled in config, always return false
     if (field.disabled === true) {
       return false;
@@ -1155,8 +1160,8 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue }) => {
       {/* Form Sections */}
       {formSchema.sections?.map((section, index) => renderSection(section, index))}
 
-      {/* Submit Button */}
-      {formSchema.submitButton && (
+      {/* Submit Button - Hidden in view-only mode */}
+      {!viewOnly && formSchema.submitButton && (
         <Button
           fullWidth
           variant="contained"
