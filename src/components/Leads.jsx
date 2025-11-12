@@ -2,7 +2,7 @@
 
 import React from "react";
 import DynamicLeadsRenderer from "./DynamicLeadsRenderer";
-import { LeadsManagementSchema } from "./leadsConfig";
+import { HDFCLeadManagementConfig } from "./leadsConfig";
 
 const Leads = ({ selectedFilter, onFilterChange }) => {
   // Handle card click
@@ -18,7 +18,7 @@ const Leads = ({ selectedFilter, onFilterChange }) => {
 
   return (
     <DynamicLeadsRenderer
-      config={LeadsManagementSchema}
+      config={HDFCLeadManagementConfig}
       onCardClick={handleCardClick}
       onSave={handleSave}
       selectedFilter={selectedFilter}

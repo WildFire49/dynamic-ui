@@ -56,6 +56,7 @@ const DynamicCardRenderer = ({
   item, 
   cardConfig = {}, 
   onClick,
+  isSelected = false,
   sx = {}
 }) => {
   const theme = useTheme();
@@ -177,116 +178,83 @@ const DynamicCardRenderer = ({
   return (
     <Card
       elevation={elevation}
-      onClick={() => !actions.showButton && onClick && onClick(item)}
+      onClick={() => onClick && onClick(item)}
       sx={{
-        cursor: !actions.showButton && onClick ? "pointer" : "default",
+        cursor: onClick ? "pointer" : "default",
         borderRadius,
         transition: "all 0.3s ease-in-out",
         position: "relative",
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        border: isUrgent 
-          ? `2px solid ${alpha(urgentColor, 0.6)}`
-          : isRejected
-          ? `1px solid ${alpha(theme.palette.error.main, 0.3)}`
+        border: isSelected
+          ? `3px solid ${theme.palette.primary.main}`
           : `1px solid ${alpha(theme.palette.divider, 0.12)}`,
-        ...(isUrgent && {
-          bgcolor: alpha(urgentColor, 0.02),
-          boxShadow: `0 4px 16px ${alpha(urgentColor, 0.15)}`,
-          animation: "urgentAttention 4s ease-in-out infinite",
-          "@keyframes urgentAttention": {
-            "0%": {
-              boxShadow: `0 4px 16px ${alpha(urgentColor, 0.15)}`,
-              transform: "translateY(0) scale(1)",
-            },
-            "10%": {
-              transform: "translateY(-2px) scale(1.01)",
-              boxShadow: `0 8px 24px ${alpha(urgentColor, 0.3)}`,
-            },
-            "20%": {
-              transform: "translateY(0) scale(1)",
-              boxShadow: `0 4px 16px ${alpha(urgentColor, 0.15)}`,
-            },
-            "30%": {
-              transform: "translateY(-2px) scale(1.01)",
-              boxShadow: `0 8px 24px ${alpha(urgentColor, 0.3)}`,
-            },
-            "40%, 100%": {
-              transform: "translateY(0) scale(1)",
-              boxShadow: `0 6px 20px ${alpha(urgentColor, 0.2)}`,
-            },
-          },
+        ...(isSelected && {
+          bgcolor: alpha(theme.palette.primary.main, 0.06),
+          boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.25)}`,
         }),
         ...(isRejected && {
           opacity: 0.7,
           bgcolor: alpha(theme.palette.error.main, 0.02),
         }),
-        ...(hoverEffect && {
-          "&:hover": {
-            transform: "translateY(-4px)",
-            boxShadow: isUrgent
-              ? `0 8px 32px ${alpha(urgentColor, 0.3)}`
-              : `0 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`,
-            borderColor: isUrgent 
-              ? urgentColor
-              : theme.palette.primary.main,
-          },
-        }),
+        "&:hover": {
+          transform: "translateY(-6px)",
+          boxShadow: isSelected 
+            ? `0 16px 40px ${alpha(theme.palette.primary.main, 0.3)}`
+            : `0 12px 32px ${alpha(theme.palette.common.black, 0.2)}`,
+        },
       }}
     >
-      {/* Urgent Badge */}
-      {isUrgent && (
+      {/* Status Badge - Show Current Status with Blinking Dot */}
+      {isUrgent && item.status && (
         <Box
           sx={{
             position: "absolute",
-            top: 8,
-            right: 8,
-            bgcolor: urgentColor,
-            color: "#ffffff",
-            px: 1.5,
-            py: 0.5,
-            borderRadius: 1.5,
-            fontSize: "0.65rem",
-            fontWeight: 700,
-            zIndex: 1,
-            boxShadow: `0 2px 8px ${alpha(urgentColor, 0.4)}`,
+            top: 10,
+            right: 10,
             display: "flex",
             alignItems: "center",
             gap: 0.5,
-            animation: "badgePulse 2s ease-in-out infinite",
-            "@keyframes badgePulse": {
-              "0%, 100%": {
-                boxShadow: `0 2px 8px ${alpha(urgentColor, 0.4)}`,
-                transform: "scale(1)",
-              },
-              "50%": {
-                boxShadow: `0 4px 16px ${alpha(urgentColor, 0.7)}`,
-                transform: "scale(1.05)",
-              },
-            },
+            bgcolor: alpha(urgentColor, 0.1),
+            border: `1px solid ${alpha(urgentColor, 0.3)}`,
+            borderRadius: 1,
+            px: 1,
+            py: 0.5,
+            zIndex: 1,
           }}
         >
           <Box
             sx={{
-              width: 6,
-              height: 6,
+              width: 8,
+              height: 8,
               borderRadius: "50%",
-              bgcolor: "#ffffff",
-              animation: "dotBlink 1s ease-in-out infinite",
-              "@keyframes dotBlink": {
+              bgcolor: urgentColor,
+              animation: "pulseDot 2s ease-in-out infinite",
+              "@keyframes pulseDot": {
                 "0%, 100%": { 
+                  transform: "scale(1)",
                   opacity: 1,
-                  boxShadow: `0 0 4px ${alpha("#ffffff", 0.8)}`,
                 },
                 "50%": { 
-                  opacity: 0.2,
-                  boxShadow: "none",
+                  transform: "scale(1.2)",
+                  opacity: 0.8,
                 },
               },
             }}
           />
-          ACTION NEEDED
+          <Typography
+            sx={{
+              fontSize: "0.7rem",
+              fontWeight: 600,
+              color: urgentColor,
+              lineHeight: 1,
+              textTransform: "uppercase",
+              letterSpacing: 0.3,
+            }}
+          >
+            {item.status}
+          </Typography>
         </Box>
       )}
       {isRejected && (
@@ -359,40 +327,10 @@ const DynamicCardRenderer = ({
           </Box>
         </Box>
 
-        {/* Dynamic Fields Section */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, flex: 1, mb: actions.showButton ? 2 : 0 }}>
-          {fields.map((field) => renderField(field))}
+        {/* Dynamic Fields Section - Show only first 3 fields */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, flex: 1 }}>
+          {fields.slice(0, 3).map((field) => renderField(field))}
         </Box>
-
-        {/* Action Button */}
-        {actions.showButton && (
-          <Box sx={{ mt: "auto", pt: 2, borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}` }}>
-            <Button
-              variant={actions.buttonVariant || "outlined"}
-              size={actions.buttonSize || "small"}
-              fullWidth
-              endIcon={actions.buttonIcon ? iconMap[actions.buttonIcon] && React.createElement(iconMap[actions.buttonIcon]) : null}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClick && onClick(item);
-              }}
-              sx={{
-                borderRadius: 1.5,
-                textTransform: "none",
-                fontWeight: 500,
-                py: 1,
-                borderColor: alpha(theme.palette.primary.main, 0.3),
-                color: theme.palette.primary.main,
-                "&:hover": {
-                  borderColor: theme.palette.primary.main,
-                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                },
-              }}
-            >
-              {actions.buttonText || "View Details"}
-            </Button>
-          </Box>
-        )}
       </CardContent>
     </Card>
   );

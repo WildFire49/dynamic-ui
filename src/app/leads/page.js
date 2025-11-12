@@ -116,9 +116,13 @@ export default function LeadsPage() {
         >
           {/* Top Navigation Bar */}
           <AppBar
-            position="sticky"
+            position="fixed"
             elevation={0}
             sx={{
+              zIndex: 1100, // Below left sidebar (1200), above control panel (100)
+              left: { xs: 0, md: drawerWidth }, // Start after left sidebar
+              width: { xs: "100%", md: `calc(100% - ${drawerWidth}px)` }, // Account for sidebar
+              borderRadius: 0, // Remove border radius for flush edges
               background: `linear-gradient(135deg, ${alpha(
                 theme.palette.primary.main,
                 0.05
@@ -203,7 +207,7 @@ export default function LeadsPage() {
               minHeight: "calc(100vh - 64px)",
             }}
           >
-            <Leads 
+            <Leads
               selectedFilter={selectedFilter}
               onFilterChange={handleFilterChange}
             />

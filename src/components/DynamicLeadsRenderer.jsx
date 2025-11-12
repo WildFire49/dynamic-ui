@@ -4,7 +4,13 @@ import React, { useState, useMemo } from "react";
 import DynamicFormRenderer from "./dynamic-form/DynamicFormRenderer";
 import DynamicDialogRenderer from "./DynamicDialogRenderer";
 import DynamicCardRenderer from "./DynamicCardRenderer";
+import RightSidebar from "./RightSidebar";
 import { getFormSchemaById } from "./dynamic-form/sampleFormSchemas";
+import CustomerVerificationView from "./CustomerVerificationView";
+import verificationConfig from "./verificationConfig";
+import l1VerificationConfig from "./l1VerificationConfig";
+import l2VerificationConfig from "./l2VerificationConfig";
+import combinedVerificationConfig from "./combinedVerificationConfig";
 import {
   Box,
   TextField,
@@ -18,6 +24,9 @@ import {
   Select,
   MenuItem,
   Divider,
+  Fab,
+  Backdrop,
+  Chip,
 } from "@mui/material";
 import {
   Search,
@@ -37,7 +46,9 @@ import {
   CheckCircle,
   ArrowForward,
   ChevronLeft,
+  FilterList,
   ChevronRight,
+  ArrowBack,
 } from "@mui/icons-material";
 
 // Icon mapping
@@ -72,12 +83,14 @@ const iconMap = {
 const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "all", onFilterChange }) => {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [sidebarActiveTab, setSidebarActiveTab] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
 
   // Debug: Log filter changes
   React.useEffect(() => {
@@ -183,9 +196,20 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const handleCardClick = (item) => {
+    console.log("Card clicked:", item);
     setSelectedItem(item);
-    setIsDialogOpen(true);
-    setIsEditing(false);
+    setSidebarOpen(true); // Ensure sidebar is open
+    
+    // If customer has verification data and is pending, enable review mode
+    if (item.approvalStatus === "pending" && (
+      combinedVerificationConfig.customers[item.mifixId] ||
+      l2VerificationConfig.customers[item.mifixId] ||
+      l1VerificationConfig.customers[item.mifixId] || 
+      verificationConfig.customers[item.mifixId]
+    )) {
+      setReviewMode(true);
+    }
+    
     if (onCardClick) {
       onCardClick(item);
     }
@@ -686,19 +710,21 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
             sx={{
               display: "grid",
               gridTemplateColumns: {
-                xs: "repeat(1, 1fr)",
-                sm: "repeat(2, 1fr)",
-                md: "repeat(3, 1fr)",
-                lg: "repeat(4, 1fr)",
+                xs: `repeat(${config.layout?.cardGrid?.columns?.xs || 1}, 1fr)`,
+                sm: `repeat(${config.layout?.cardGrid?.columns?.sm || 2}, 1fr)`,
+                md: `repeat(${config.layout?.cardGrid?.columns?.md || 2}, 1fr)`,
+                lg: `repeat(${config.layout?.cardGrid?.columns?.lg || 3}, 1fr)`,
+                xl: `repeat(${config.layout?.cardGrid?.columns?.xl || 3}, 1fr)`,
               },
-              gap: 3,
-              gridAutoRows: "1fr", // Equal height rows
+              gap: config.layout?.cardGrid?.gap || 2,
+              gridAutoRows: config.layout?.cardGrid?.autoRows || "1fr",
             }}
           >
             {paginatedData.map((item) => (
               <Box key={item[cardLayout.idKey || "id"]} sx={{ display: "flex", flexDirection: "column" }}>
                 <DynamicCardRenderer
                   item={item}
+                  selectedItem={selectedItem}
                   cardConfig={{
                     avatarKey: cardLayout.header?.avatarKey || "name",
                     nameKey: cardLayout.header?.titleKey || "name",
@@ -707,6 +733,7 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
                     actions: cardLayout.actions || {},
                   }}
                   onClick={handleCardClick}
+                  isSelected={selectedItem?.id === item.id}
                 />
               </Box>
             ))}
@@ -937,28 +964,394 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
     );
   };
 
+  const sidebarWidth = config.sidebar?.width || { xs: "100%", sm: 440, md: 485, lg: 550, xl: 645 };
+  
+  // Calculate responsive margin for content area
+  const contentMargin = typeof sidebarWidth === 'object' 
+    ? {
+        xs: 0,
+        sm: 0, 
+        md: 0,
+        lg: `${sidebarWidth.lg}px`,
+        xl: `${sidebarWidth.xl}px`,
+      }
+    : { xs: 0, lg: sidebarWidth };
+  
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5", p: 3 }}>
-      {/* Render sections dynamically based on config */}
-      {sections.map((section) => {
-        switch (section.componentType) {
-          case "header":
-            return renderHeaderSection();
-          case "search":
-            return null; // Search is now integrated into filter section
-          case "filter":
-            return renderFilterSection();
-          case "cardList":
-            return renderCardListSection();
-          case "dialog":
-            return null; // Dialog is rendered separately
-          default:
-            return null;
-        }
-      })}
+    <Box sx={{ 
+      position: "fixed",
+      top: 64, // Below navbar
+      left: { xs: 0, md: 240 }, // Account for left sidebar (240px standard drawer width)
+      right: 0,
+      bottom: 0,
+      bgcolor: "#fafafa", // Off-white subtle background
+      display: "flex",
+      overflow: "hidden", // Prevent any scroll
+    }}>
+      {/* Main Content Area - Fixed Container */}
+      <Box sx={{ 
+        flex: 1, 
+        minWidth: 0,
+        marginRight: contentMargin,
+        pl: { xs: 0, md: 3 }, // Left gap from sidebar (24px)
+        pr: { xs: 0, lg: 3 }, // Right gap from Control Panel (24px)
+        height: "100%",
+        display: "flex", 
+        flexDirection: "column",
+        overflow: "hidden", // Container doesn't scroll
+      }}>
+        {/* Search Bar - Centered and Compact (Hidden in review mode) */}
+        {!reviewMode && (
+        <Box
+          sx={{
+            flexShrink: 0,
+            display: "flex",
+            justifyContent: "center",
+            p: { xs: 2, sm: 2, md: 3, lg: 3 },
+            pb: 2,
+          }}
+        >
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: "600px", // Limit width for better UX
+            p: 1,
+            bgcolor: "#fafafa", // Off-white subtle background
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search by name, address, requirement, or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{
+              '& .MuiInputBase-root': {
+                fontSize: "0.875rem",
+                bgcolor: "transparent",
+              },
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  border: "none", // Remove border, parent has border
+                },
+                "&:hover fieldset": {
+                  border: "none",
+                },
+                "&.Mui-focused fieldset": {
+                  border: "none",
+                },
+              },
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  {renderIcon("Search", {
+                    sx: { color: theme.palette.text.secondary },
+                  })}
+                </InputAdornment>
+              ),
+              endAdornment: searchQuery && (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearchQuery("")}>
+                    {renderIcon("Close", { fontSize: "small" })}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+        </Box>
+        )}
 
-      {/* Render dialog separately (always present, controlled by state) */}
-      {renderDialogSection()}
+        {/* Main Content - Scrollable Area */}
+        <Box sx={{ 
+          flex: 1, 
+          overflowY: "auto", 
+          px: selectedItem ? 0 : { xs: 2, sm: 2, md: 3, lg: 3 },
+          py: selectedItem ? 0 : 2,
+        }}>
+          {reviewMode ? (
+            <Box sx={{ display: "flex", height: "100%", gap: { xs: 2, lg: 2.5, xl: 3 }, p: { xs: 2, lg: 2.5, xl: 3 }, overflow: "hidden" }}>
+              {/* Customer List Sidebar */}
+              <Box
+                sx={{
+                  width: { lg: 340, xl: 380 },
+                  minWidth: { lg: 340, xl: 380 },
+                  maxWidth: 380,
+                  bgcolor: "white",
+                  borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  borderRadius: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                  boxShadow: `0 2px 12px ${alpha(theme.palette.grey[500], 0.08)}`,
+                  flexShrink: 0,
+                }}
+              >
+                {/* Header */}
+                <Box sx={{ 
+                  p: 2.5, 
+                  bgcolor: "white", 
+                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  borderTopLeftRadius: 8,
+                  borderTopRightRadius: 8,
+                }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+                    <IconButton 
+                      onClick={() => setReviewMode(false)} 
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                        "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.15) },
+                      }}
+                    >
+                      <ArrowBack fontSize="small" />
+                    </IconButton>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
+                      Verification Queue
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+                    {filteredData.filter(item => item.approvalStatus === "pending").length} customers pending review
+                  </Typography>
+                  
+                  {/* Search inside queue */}
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Search customers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Search fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: alpha(theme.palette.grey[100], 0.5),
+                        borderRadius: 2,
+                        fontSize: "0.875rem",
+                      },
+                    }}
+                  />
+                </Box>
+
+                {/* Customer List */}
+                <Box sx={{ 
+                  flex: 1, 
+                  overflow: "auto", 
+                  px: 1.5, 
+                  py: 1,
+                  bgcolor: alpha(theme.palette.grey[50], 0.3),
+                  borderBottomLeftRadius: 8,
+                  borderBottomRightRadius: 8,
+                }}>
+                  {filteredData
+                    .filter(item => item.approvalStatus === "pending")
+                    .filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.mifixId.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((item) => (
+                      <Box
+                        key={item.id}
+                        onClick={() => setSelectedItem(item)}
+                        sx={{
+                          p: 2,
+                          mb: 1,
+                          borderRadius: 2,
+                          cursor: "pointer",
+                          bgcolor: selectedItem?.id === item.id ? "white" : alpha(theme.palette.grey[50], 0.3),
+                          border: selectedItem?.id === item.id 
+                            ? `2px solid ${theme.palette.primary.main}` 
+                            : `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                          boxShadow: selectedItem?.id === item.id 
+                            ? `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}` 
+                            : "none",
+                          transition: "all 0.2s",
+                          "&:hover": {
+                            bgcolor: "white",
+                            boxShadow: `0 2px 6px ${alpha(theme.palette.grey[500], 0.1)}`,
+                            transform: "translateY(-1px)",
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <Box
+                            sx={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: "50%",
+                              bgcolor: selectedItem?.id === item.id 
+                                ? theme.palette.primary.main 
+                                : alpha(theme.palette.primary.main, 0.12),
+                              color: selectedItem?.id === item.id ? "white" : theme.palette.primary.main,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 700,
+                              fontSize: "1rem",
+                              flexShrink: 0,
+                              transition: "all 0.2s",
+                            }}
+                          >
+                            {item.name.charAt(0)}
+                          </Box>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography 
+                              variant="subtitle2" 
+                              sx={{ 
+                                fontWeight: 600, 
+                                fontSize: "0.95rem",
+                                color: selectedItem?.id === item.id ? theme.palette.primary.main : "inherit",
+                                mb: 0.25,
+                              }}
+                            >
+                              {item.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
+                              {item.mifixId}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label="Review"
+                            size="small"
+                            sx={{
+                              bgcolor: alpha(theme.palette.warning.main, 0.1),
+                              color: theme.palette.warning.main,
+                              fontWeight: 600,
+                              fontSize: "0.7rem",
+                              height: 22,
+                              px: 0.5,
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    ))}
+                </Box>
+              </Box>
+
+              {/* Main Verification View */}
+              <Box sx={{ 
+                flex: 1, 
+                minWidth: 0,
+                bgcolor: "white",
+                borderRadius: 2,
+                boxShadow: `0 2px 12px ${alpha(theme.palette.grey[500], 0.08)}`,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}>
+                {selectedItem ? (
+                  <CustomerVerificationView
+                    verificationData={
+                      combinedVerificationConfig.customers[selectedItem.mifixId] ||
+                      l2VerificationConfig.customers[selectedItem.mifixId] ||
+                      l1VerificationConfig.customers[selectedItem.mifixId] || 
+                      verificationConfig.customers[selectedItem.mifixId]
+                    }
+                    onFieldVerify={(fieldId, status) => {
+                      console.log("Field verified:", fieldId, status);
+                    }}
+                    onBack={(action) => {
+                      if (action?.action === 'openComments') {
+                        setSidebarOpen(true);
+                        setSidebarActiveTab(1); // Switch to Customer View tab (index 1)
+                      }
+                    }}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "100%",
+                      color: "text.secondary",
+                    }}
+                  >
+                    <Typography variant="h6">Select a customer to start verification</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          ) : (
+            renderCardListSection()
+          )}
+        </Box>
+      </Box>
+
+      {/* Right: Control Panel - Fixed Sidebar (Always Visible on Desktop) */}
+      <Box
+        sx={{
+          width: sidebarWidth,
+          flexShrink: 0,
+          height: config.sidebar?.maxHeight || "calc(100vh - 64px)",
+          position: config.sidebar?.position || "fixed",
+          top: config.sidebar?.top || 64,
+          right: config.sidebar?.right || 0,
+          zIndex: { xs: sidebarOpen ? 1200 : -1, lg: 100 },
+          display: { xs: sidebarOpen ? "block" : "none", lg: "block" },
+          boxShadow: "-2px 0 8px rgba(0,0,0,0.08)",
+          overflow: "hidden", // Prevent sidebar from scrolling
+        }}
+      >
+          <RightSidebar
+            config={config.sidebar || {}}
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            selectedFilter={selectedFilter}
+            onFilterChange={onFilterChange}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            selectedItem={selectedItem}
+            setSelectedItem={setSelectedItem}
+            dialogConfig={dialogSection}
+            onSave={onSave}
+            isEditing={isEditing}
+            setIsEditing={setIsEditing}
+            activeTab={sidebarActiveTab}
+            onTabChange={setSidebarActiveTab}
+          />
+      </Box>
+
+      {/* Backdrop for Mobile Sidebar */}
+      <Backdrop
+        open={sidebarOpen}
+        onClick={() => setSidebarOpen(false)}
+        sx={{
+          zIndex: 1199,
+          display: { xs: "block", lg: "none" },
+          bgcolor: alpha("#000", 0.5),
+        }}
+      />
+
+      {/* Floating Action Button - Mobile Control Panel Toggle */}
+      <Fab
+        color="primary"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        sx={{
+          position: "fixed",
+          bottom: { xs: 16, sm: 24 },
+          right: { xs: 16, sm: 24 },
+          display: { xs: "flex", lg: "none" }, // Show only on mobile/tablet
+          zIndex: 1100,
+          boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
+          "&:hover": {
+            transform: "scale(1.1)",
+            boxShadow: `0 6px 28px ${alpha(theme.palette.primary.main, 0.5)}`,
+          },
+          transition: "all 0.3s",
+        }}
+      >
+        <FilterList />
+      </Fab>
+
+      {/* Dialog is now rendered inside Control Panel as Customer View tab */}
     </Box>
   );
 };

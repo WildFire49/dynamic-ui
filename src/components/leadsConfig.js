@@ -1,9 +1,249 @@
 // Unified Generic Schema Format
 // Supports both form-based and component-based sections
 
-export const LeadsManagementSchema = {
-  title: "Lead Management",
-  description: "Manage and track customer leads",
+export const HDFCLeadManagementConfig = {
+  title: "HDFC Agri Funds",
+  description: "Manage leads and track customer onboarding progress",
+
+  // Layout & Responsive Configuration
+  layout: {
+    // Main container alignment
+    containerAlignment: "flex-start", // flex-start, center, flex-end, space-between
+    containerPadding: { xs: 1, sm: 2, md: 3, lg: 4 }, // Responsive padding
+    gap: { xs: 1, sm: 2, md: 3 }, // Gap between main content and sidebar
+
+    // Card grid configuration
+    cardGrid: {
+      columns: { xs: 1, sm: 1, md: 2, lg: 2, xl: 3 }, // Responsive columns (optimized for laptop)
+      gap: 2, // Gap between cards
+      autoRows: "1fr", // Equal height rows
+    },
+
+    // Breakpoints (Material-UI standard)
+    breakpoints: {
+      xs: 0, // Mobile
+      sm: 600, // Tablet
+      md: 960, // Small laptop
+      lg: 1280, // Desktop
+      xl: 1920, // Large desktop
+    },
+  },
+
+  // Right Sidebar Configuration
+  sidebar: {
+    // Responsive widths (increased by ~15%)
+    width: {
+      xs: "100%", // Full width on mobile
+      sm: 440, // Compact on tablet (380 + 15% ≈ 440)
+      md: 485, // Medium on small laptop (420 + 15% ≈ 485)
+      lg: 550, // Comfortable on desktop (480 + 15% ≈ 550)
+      xl: 645, // Spacious on large screens (560 + 15% ≈ 645)
+    },
+    alwaysOpen: true, // Always visible as sidebar
+    position: "fixed", // Fixed position for true sidebar
+    top: 64, // Start below navbar (64px AppBar height)
+    right: 0, // Flush with right
+    maxHeight: "calc(100vh - 64px)", // Full viewport height minus navbar
+
+    // Control Panel Layout
+    controlPanel: {
+      padding: 2,
+      filterLayout: "grid", // grid (side-by-side) or stack (vertical)
+      filterColumns: { xs: 1, sm: 2, md: 2 }, // Responsive filter columns
+      filterGap: 2,
+      compactMode: { xs: true, sm: true, md: false }, // Compact on smaller screens
+    },
+
+    customerView: {
+      enabled: true,
+      title: "Customer Details",
+      showFormSchema: true,
+      readOnlyByDefault: true,
+      actions: [
+        {
+          id: "reject",
+          label: "Reject",
+          variant: "outlined",
+          color: "error",
+          action: "reject",
+          fullWidth: true,
+        },
+        {
+          id: "approve",
+          label: "Approve",
+          variant: "contained",
+          color: "success",
+          action: "approve",
+          fullWidth: true,
+        },
+      ],
+    },
+    tabs: [
+      {
+        id: "control_panel",
+        type: "control_panel",
+        label: "Control",
+        icon: "Dashboard",
+        badge: null,
+        items: [
+          {
+            icon: "Dashboard",
+            label: "Dashboard Overview",
+            description: "View analytics and reports",
+            badge: null,
+          },
+          {
+            icon: "FilterList",
+            label: "Advanced Filters",
+            description: "Customize your view",
+            badge: "8",
+          },
+          {
+            icon: "Notifications",
+            label: "Notifications",
+            description: "Manage alerts",
+            badge: "12",
+          },
+        ],
+      },
+      {
+        id: "messages",
+        type: "messages",
+        label: "Messages",
+        icon: "Message",
+        badge: 3,
+        messages: [
+          {
+            sender: "Priya Nair",
+            time: "2m ago",
+            message:
+              "Can you review Nikhil's application? It's been pending for 2 days.",
+            read: false,
+          },
+          {
+            sender: "Rahul Verma",
+            time: "1h ago",
+            message:
+              "The documents for Ananya Gupta have been uploaded successfully.",
+            read: false,
+          },
+          {
+            sender: "Suresh Kumar",
+            time: "3h ago",
+            message:
+              "Meeting scheduled for tomorrow at 10 AM to discuss Q4 targets.",
+            read: true,
+          },
+          {
+            sender: "Meera Rathore",
+            time: "5h ago",
+            message:
+              "Client called regarding loan approval timeline. Please follow up.",
+            read: false,
+          },
+        ],
+      },
+      {
+        id: "chat",
+        type: "chat",
+        label: "Chat",
+        icon: "Chat",
+        badge: 5,
+        chats: [
+          {
+            name: "Team Support",
+            lastMessage: "Sure, I'll look into it right away!",
+            unread: 2,
+          },
+          {
+            name: "Priya Nair",
+            lastMessage: "Thanks for the update 👍",
+            unread: 0,
+          },
+          {
+            name: "Credit Review Team",
+            lastMessage: "Application #AG_HD_DA_6969 approved",
+            unread: 3,
+          },
+          {
+            name: "Rahul Verma",
+            lastMessage: "Can we schedule a call?",
+            unread: 0,
+          },
+        ],
+      },
+      {
+        id: "alerts",
+        type: "alerts",
+        label: "Alerts",
+        icon: "Notifications",
+        badge: 4,
+        alerts: [
+          {
+            icon: "Warning",
+            severity: "error",
+            title: "Urgent Review Required",
+            message: "3 applications pending for more than 48 hours",
+          },
+          {
+            icon: "Error",
+            severity: "error",
+            title: "Document Expired",
+            message: "KYC documents for 2 customers need renewal",
+          },
+          {
+            icon: "Warning",
+            severity: "warning",
+            title: "Credit Score Alert",
+            message: "1 applicant below minimum threshold (650)",
+          },
+          {
+            icon: "CheckCircle",
+            severity: "success",
+            title: "Target Achieved",
+            message: "Monthly disbursement target of ₹2Cr reached!",
+          },
+        ],
+      },
+      {
+        id: "filters",
+        type: "filters",
+        label: "Filters",
+        icon: "FilterList",
+        badge: null,
+        filterGroups: [
+          {
+            label: "Approval Status",
+            filters: [
+              { label: "Pending", count: 7, active: false },
+              { label: "Approved", count: 4, active: false },
+              { label: "Rejected", count: 5, active: false },
+            ],
+          },
+          {
+            label: "Loan Type",
+            filters: [
+              { label: "Agri Loan", count: 5, active: false },
+              { label: "Individual", count: 6, active: false },
+              { label: "Car Loan", count: 2, active: false },
+              { label: "Joint Liability", count: 3, active: false },
+            ],
+          },
+          {
+            label: "Stage",
+            filters: [
+              { label: "Leads Only", count: 2, active: false },
+              { label: "L1 Submitted", count: 3, active: false },
+              { label: "L2 Submitted", count: 4, active: false },
+              { label: "Bank Details", count: 2, active: false },
+              { label: "eSign Pending", count: 5, active: false },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+
   sections: [
     {
       id: "header_section",
@@ -222,7 +462,6 @@ export const LeadsManagementSchema = {
             minHeight: "24px",
             prefix: "ID:",
           },
-
           {
             id: "product",
             dataKey: "loanType",
@@ -244,24 +483,9 @@ export const LeadsManagementSchema = {
             clamp: 1,
             prefix: "Location:",
           },
-          {
-            id: "status",
-            dataKey: "status",
-            icon: "CheckCircle",
-            iconSize: 18,
-            fontSize: "0.875rem",
-            minHeight: "24px",
-            prefix: "Status:",
-            fontWeight: 500,
-            textColor: "success.main",
-          },
         ],
         actions: {
-          showButton: true,
-          buttonText: "View Details",
-          buttonVariant: "outlined",
-          buttonSize: "small",
-          buttonIcon: "ArrowForward",
+          showButton: false,
         },
       },
     },
