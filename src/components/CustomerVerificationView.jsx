@@ -28,6 +28,7 @@ import {
   Comment,
   ArrowBack,
 } from "@mui/icons-material";
+import { Image as ImageIcon } from "@mui/icons-material";
 
 /**
  * CustomerVerificationView - Main screen component for data validation
@@ -40,23 +41,10 @@ const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack, act
   const [showComparison, setShowComparison] = useState(false);
   const [sectionComments, setSectionComments] = useState({});
 
-  if (!verificationData) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "text.secondary",
-        }}
-      >
-        <Typography variant="h6">Select a customer to view verification details</Typography>
-      </Box>
-    );
-  }
-
-  const { customer, sections } = verificationData;
+  // Safe defaults to ensure hooks are never called conditionally
+  const hasData = Boolean(verificationData);
+  const customer = hasData ? verificationData.customer : { name: "", mifixId: "", product: "", overallStatus: "pending", verificationProgress: { completed: 0, total: 0 } };
+  const sections = hasData && Array.isArray(verificationData.sections) ? verificationData.sections : [];
   const { verificationProgress } = customer;
 
   // Get verification status color
@@ -388,6 +376,28 @@ const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack, act
       observer.disconnect();
     };
   }, [sections]); // This dependency array is correct
+
+  // After hooks, it's safe to return early for empty data
+  if (!hasData) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          color: "text.secondary",
+        }}
+      >
+        <Typography variant="h6">Select a customer to view verification details</Typography>
+      </Box>
+    );
+  }
+
+  if (!sections || sections.length === 0) {
+    return <p>No data</p>; // Or null, or a loading skeleton
+  }
+  
   return (
     <Box
       sx={{
