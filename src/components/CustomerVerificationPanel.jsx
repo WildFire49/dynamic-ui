@@ -45,7 +45,7 @@ import { getCustomerPanelConfig } from "./customerVerificationPanelConfig";
  * CustomerVerificationPanel - Right sidebar for Customer View
  * Shows quick actions, photo thumbnails, verification checklist, and comments
  */
-const CustomerVerificationPanel = ({ verificationData, onAction }) => {
+const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId, setActiveSectionId }) => {
   const theme = useTheme();
   const [comment, setComment] = useState("");
   const [selectedImages, setSelectedImages] = useState([]);
@@ -119,6 +119,23 @@ const CustomerVerificationPanel = ({ verificationData, onAction }) => {
     setCompareDialogOpen(false);
   };
 
+  // Assumes 'activeSectionId' is your state variable
+  // If it's named 'activeId', just use that instead.
+  const sortedImages = React.useMemo(() => {
+    // Create a new array to avoid mutating the original
+    return [...allImages].sort((a, b) => {
+      // Check if each image matches the active section
+      const aIsActive = a.sectionId === activeSectionId;
+      const bIsActive = b.sectionId === activeSectionId;
+      
+      // Sort logic:
+      // This subtracts the boolean-as-a-number (true=1, false=0).
+      // If b is active (1) and a is not (0), it returns 1 (b comes first).
+      // If a is active (1) and b is not (0), it returns -1 (a comes first).
+      // If both are the same (0-0 or 1-1), it returns 0 (original order).
+      return Number(bIsActive) - Number(aIsActive);
+    });
+  }, [allImages, activeSectionId]); // Dependencies
   return (
     <Box
       sx={{
@@ -212,7 +229,7 @@ const CustomerVerificationPanel = ({ verificationData, onAction }) => {
               gap: 1,
             }}
           >
-            {allImages.slice(0, 6).map((img, index) => {
+            {sortedImages?.slice(0, 6).map((img, index) => {
               const isSelected = selectedImages.find(si => si.id === img.id);
               const selectionIndex = selectedImages.findIndex(si => si.id === img.id);
               

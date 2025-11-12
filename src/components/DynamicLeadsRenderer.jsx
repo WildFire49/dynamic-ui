@@ -87,6 +87,7 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
   const [selectedItem, setSelectedItem] = useState(null);
   const [sidebarActiveTab, setSidebarActiveTab] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1254,6 +1255,8 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
                       l1VerificationConfig.customers[selectedItem.mifixId] || 
                       verificationConfig.customers[selectedItem.mifixId]
                     }
+                    activeSectionId={activeSectionId}
+                    setActiveSectionId={setActiveSectionId}
                     onFieldVerify={(fieldId, status) => {
                       console.log("Field verified:", fieldId, status);
                     }}
@@ -1316,6 +1319,8 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
             setIsEditing={setIsEditing}
             activeTab={sidebarActiveTab}
             onTabChange={setSidebarActiveTab}
+            activeSectionId={activeSectionId}
+            setActiveSectionId={setActiveSectionId}
           />
       </Box>
 

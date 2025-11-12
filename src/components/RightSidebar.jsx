@@ -56,6 +56,8 @@ const RightSidebar = ({
   setIsEditing,
   activeTab: externalActiveTab,
   onTabChange,
+  activeSectionId,
+  setActiveSectionId,
 }) => {
   const theme = useTheme();
   // Use external activeTab if provided, otherwise use internal state
@@ -556,7 +558,6 @@ const RightSidebar = ({
 
     // Get verification data for this customer
     const verificationData = verificationConfig.customers[selectedItem.mifixId];
-
     if (!verificationData) {
       return (
         <Box sx={{ p: 3, textAlign: "center" }}>
@@ -570,6 +571,8 @@ const RightSidebar = ({
     return (
       <CustomerVerificationPanel
         verificationData={verificationData}
+        activeSectionId={activeSectionId}
+        setActiveSectionId={setActiveSectionId}
         onAction={(action, data) => {
           console.log("Verification action:", action, data);
           if (onSave) {

@@ -47,6 +47,7 @@ export const l1VerificationConfig = {
           status: "verified",
           confidence: 95,
           type: "customer_photo",
+          sectionId: "applicant_details",
         },
         {
           id: "prospect_recent_photo",
@@ -55,6 +56,7 @@ export const l1VerificationConfig = {
           status: "verified",
           confidence: 92,
           type: "customer_photo",
+          sectionId: "applicant_details",
         },
         {
           id: "aadhaar_front",
@@ -63,6 +65,7 @@ export const l1VerificationConfig = {
           status: "verified",
           confidence: 88,
           type: "kyc_document",
+          sectionId: "applicant_details",
         },
         {
           id: "aadhaar_back",
@@ -71,6 +74,7 @@ export const l1VerificationConfig = {
           status: "verified",
           confidence: 90,
           type: "kyc_document",
+          sectionId: "applicant_details",
         },
         {
           id: "pan_card",
@@ -81,6 +85,7 @@ export const l1VerificationConfig = {
           flagged: true,
           reason: "Image quality below standard",
           type: "kyc_document",
+          sectionId: "applicant_details",
         },
         {
           id: "address_proof_1",
@@ -89,6 +94,7 @@ export const l1VerificationConfig = {
           status: "verified",
           confidence: 85,
           type: "address_proof",
+          sectionId: "applicant_details",
         },
         {
           id: "signature_sample",
@@ -97,6 +103,7 @@ export const l1VerificationConfig = {
           status: "pending",
           confidence: 82,
           type: "signature",
+          sectionId: "applicant_details",
         },
       ],
       sections: [

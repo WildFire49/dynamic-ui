@@ -33,7 +33,7 @@ import {
  * CustomerVerificationView - Main screen component for data validation
  * Shows all data points captured from mobile for web-based verification
  */
-const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack }) => {
+const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack, activeSectionId, setActiveSectionId }) => {
   const theme = useTheme();
   const [selectedImage, setSelectedImage] = useState(null);
   const [compareImages, setCompareImages] = useState([]);
@@ -335,7 +335,59 @@ const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack }) =
     const Icon = iconMap[iconName] || Description;
     return <Icon />;
   };
+  const sectionRefs = React.useRef({});
 
+  sections.filter(s => s.type === "data").forEach(section => {
+    sectionRefs.current[section.id] = sectionRefs.current[section.id] || React.createRef();
+  });
+  React.useEffect(() => {
+
+    if (sections.length > 0) {
+      const firstDataSection = sections.find(s => s.type === "data");
+      
+      if (firstDataSection) {
+        setActiveSectionId(firstDataSection.id);
+      }
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let activeId = null;
+        const intersectingEntries = entries.filter(e => e.isIntersecting);
+
+        if (intersectingEntries.length > 0) {
+          const topEntry = intersectingEntries.reduce((prev, curr) => {
+            return prev.boundingClientRect.top < curr.boundingClientRect.top ? prev : curr;
+          });
+          activeId = topEntry.target.getAttribute('data-section-id');
+        }
+        
+        if (activeId) {
+          setActiveSectionId(activeId);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '0px 0px -50% 0px', // Your "top 20%" active zone
+        threshold: 0,
+      }
+    );
+
+    // Observe all relevant section elements
+    sections.filter(s => s.type === "data").forEach(section => {
+      // Use optional chaining just in case ref isn't ready
+      const element = sectionRefs.current[section.id]?.current; 
+      if (element) {
+        // REMINDER: Make sure your <Paper> element
+        // has data-section-id={section.id}
+        observer.observe(element);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [sections]); // This dependency array is correct
   return (
     <Box
       sx={{
@@ -411,6 +463,8 @@ const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack }) =
           <Paper
             key={section.id}
             elevation={0}
+            ref={sectionRefs.current[section.id]}
+            data-section-id={section.id}
             sx={{
               mb: 3,
               borderRadius: 1.5,
