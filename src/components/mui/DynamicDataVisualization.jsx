@@ -1531,9 +1531,17 @@ const DynamicDataVisualization = ({
     // Helper function to determine field type and create appropriate column config
     const createColumnConfig = (fieldName, fieldValue) => {
       const headerName = formatHeaderName(fieldName);
+      
+      // Check for date strings BEFORE numeric detection
+      const isDateString = 
+        typeof fieldValue === 'string' && 
+        /^\d{4}-\d{2}-\d{2}(T|\s)/.test(fieldValue);
+      
+      // Exclude date strings from numeric detection
       const isNumeric =
-        typeof fieldValue === "number" ||
-        (!isNaN(parseFloat(fieldValue)) && fieldValue !== null);
+        !isDateString &&
+        (typeof fieldValue === "number" ||
+        (!isNaN(parseFloat(fieldValue)) && fieldValue !== null));
       const isPercentage =
         fieldName.toLowerCase().includes("percentage") ||
         fieldName.toLowerCase().includes("percent") ||
@@ -1763,6 +1771,77 @@ const DynamicDataVisualization = ({
                 }}
               />
             );
+          },
+        };
+      }
+
+      // Date/Month fields - detect ISO dates and format properly
+      const isDateField = 
+        fieldName.toLowerCase().includes('month') || 
+        fieldName.toLowerCase().includes('date') ||
+        fieldName.toLowerCase().includes('time');
+      
+      if (isDateField || isDateString) {
+        return {
+          ...baseConfig,
+          flex: 1.2,
+          minWidth: 120,
+          align: "center",
+          headerAlign: "center",
+          renderCell: (params) => {
+            if (params.value === null || params.value === undefined) {
+              return (
+                <span style={{ color: "#999", fontStyle: "italic" }}>
+                  No Data
+                </span>
+              );
+            }
+            
+            try {
+              const value = params.value;
+              
+              // Check for ISO date format (matches T or space separator)
+              const datePattern = /^\d{4}-\d{2}-\d{2}(T|\s)/;
+              
+              if (typeof value === 'string' && datePattern.test(value)) {
+                const date = new Date(value);
+                if (!isNaN(date.getTime())) {
+                  // For month columns, show "Mon YYYY" format
+                  if (fieldName.toLowerCase().includes('month')) {
+                    return (
+                      <Chip
+                        label={date.toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          year: 'numeric' 
+                        })}
+                        size="small"
+                        sx={{
+                          backgroundColor: "#e3f2fd",
+                          color: "#1976d2",
+                          fontWeight: 600,
+                          fontSize: "0.75rem",
+                        }}
+                      />
+                    );
+                  }
+                  // For other dates, show full date
+                  return (
+                    <span style={{ fontWeight: 500 }}>
+                      {date.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric' 
+                      })}
+                    </span>
+                  );
+                }
+              }
+            } catch (e) {
+              console.error('Date parsing error:', e);
+            }
+            
+            // Fallback to original value
+            return <span>{params.value}</span>;
           },
         };
       }

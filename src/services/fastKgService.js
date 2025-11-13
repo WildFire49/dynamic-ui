@@ -336,6 +336,123 @@ const fastKgService = {
       throw new Error(error.message || "Failed to get template versions");
     }
   },
+
+  // ========== KG UPDATE ENDPOINTS ==========
+
+  /**
+   * Get list of tables in KG
+   */
+  getKgTables: async (connectionId) => {
+    try {
+      const data = await apiClient.get(`${BASE_URL}/tables/${connectionId}`);
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to get KG tables");
+    }
+  },
+
+  /**
+   * Detect schema changes
+   */
+  detectChanges: async (connectionId, schemaName) => {
+    try {
+      const data = await apiClient.post(`${BASE_URL}/kg-update/detect-changes`, {
+        connection_id: connectionId,
+        schema_name: schemaName,
+      });
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to detect schema changes");
+    }
+  },
+
+  /**
+   * Auto-sync all schema changes
+   */
+  syncSchema: async (connectionId, schemaName, options = {}) => {
+    try {
+      const data = await apiClient.post(`${BASE_URL}/kg-update/sync-schema`, {
+        connection_id: connectionId,
+        schema_name: schemaName,
+        add_new_tables: options.add_new_tables !== false,
+        add_new_columns: options.add_new_columns !== false,
+        remove_deleted: options.remove_deleted || false,
+        generate_embeddings: options.generate_embeddings !== false,
+      });
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to sync schema");
+    }
+  },
+
+  /**
+   * Add single table to KG
+   */
+  addTable: async (connectionId, tableName, schemaName, generateEmbeddings = true) => {
+    try {
+      const data = await apiClient.post(`${BASE_URL}/kg-update/add-table`, {
+        connection_id: connectionId,
+        table_name: tableName,
+        schema_name: schemaName,
+        generate_embeddings: generateEmbeddings,
+      });
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to add table");
+    }
+  },
+
+  /**
+   * Add single column to table
+   */
+  addColumn: async (connectionId, tableName, columnName, schemaName, generateEmbeddings = true) => {
+    try {
+      const data = await apiClient.post(`${BASE_URL}/kg-update/add-column`, {
+        connection_id: connectionId,
+        table_name: tableName,
+        column_name: columnName,
+        schema_name: schemaName,
+        generate_embeddings: generateEmbeddings,
+      });
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to add column");
+    }
+  },
+
+  /**
+   * Add multiple tables to KG (batch)
+   */
+  addMultipleTables: async (connectionId, tableNames, schemaName, generateEmbeddings = true) => {
+    try {
+      const data = await apiClient.post(`${BASE_URL}/kg-update/add-multiple-tables`, {
+        connection_id: connectionId,
+        table_names: tableNames,
+        schema_name: schemaName,
+        generate_embeddings: generateEmbeddings,
+      });
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to add multiple tables");
+    }
+  },
+
+  /**
+   * Remove table from KG
+   */
+  removeTable: async (connectionId, tableName, schemaName, removeEmbeddings = true) => {
+    try {
+      const data = await apiClient.post(`${BASE_URL}/kg-update/remove-table`, {
+        connection_id: connectionId,
+        table_name: tableName,
+        schema_name: schemaName,
+        remove_embeddings: removeEmbeddings,
+      });
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to remove table");
+    }
+  },
 };
 
 export default fastKgService;
