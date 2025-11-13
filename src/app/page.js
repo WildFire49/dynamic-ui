@@ -8,6 +8,8 @@ import {
   CloudOff as CloudOffIcon,
   Add as AddIcon,
   UploadFile as UploadFileIcon,
+  AccountTree as WorkflowIcon,
+  Chat as ChatIcon,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -42,6 +44,8 @@ import ProtectedRoute from "../components/auth/ProtectedRoute";
 import { useAuth } from "../contexts/AuthContext";
 import UserMenu from "../components/auth/UserMenu";
 import authService from "../services/authService";
+import workflowService from "../services/workflowService";
+import { useWorkflowHandler } from "../hooks/useWorkflowHandler";
 import { keyframes } from "@emotion/react";
 import {
   getFormSchemaByKeyword,
@@ -89,7 +93,7 @@ const getAuthHeaders = () => {
 
 export default function HomePage() {
   const { user } = useAuth();
-  
+
   // Use ref to store stable getUserId function
   const getUserIdRef = useRef(() => {
     // Try multiple sources in priority order
@@ -98,20 +102,20 @@ export default function HomePage() {
       user?.username,
       authService.getUserId(),
       authService.getUsername(),
-      "default_user" // Final fallback
+      "default_user", // Final fallback
     ];
-    
+
     // Return first non-empty value
-    const validId = sources.find(id => id && id.trim() !== "");
+    const validId = sources.find((id) => id && id.trim() !== "");
     console.log("🔍 getUserId sources:", sources, "→ selected:", validId);
     return validId || "default_user";
   });
-  
+
   // Memoize getUserId function to prevent unnecessary re-renders
   const getUserId = useCallback(() => {
     return getUserIdRef.current();
   }, []); // Empty dependency array since the ref handles the updates
-  
+
   const [chatHistory, setChatHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -163,6 +167,25 @@ export default function HomePage() {
   // Sidebar states
   const [selectedTab, setSelectedTab] = useState("chat");
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Workflow mode states
+  const [workflowMode, setWorkflowMode] = useState(false);
+  const [workflowState, setWorkflowState] = useState({
+    category: "",
+    selected_product: "",
+    application_id: "",
+    nextAction: "", // Dynamic - comes from API response or user input
+  });
+
+  const { handleWorkflowFormSubmit, handleWorkflowMessage, resetWorkflow } =
+    useWorkflowHandler({
+      workflowState,
+      setWorkflowState,
+      setChatHistory,
+      setIsTyping,
+      getUserId,
+      currentUserId,
+    });
 
   const handleTabChange = (tabId) => {
     setSelectedTab(tabId);
@@ -636,14 +659,20 @@ export default function HomePage() {
 
         // Ensure user_id is always present
         if (!requestBody.user_id) {
-          const userId = currentUserId || authService.getUserId() || authService.getUsername() || "default_user";
+          const userId =
+            currentUserId ||
+            getUserId() ||
+            authService.getUserId() ||
+            authService.getUsername() ||
+            "default_user";
           if (!userId || userId.trim() === "") {
             console.error("❌ callChatApi user_id validation failed:", {
               currentUserId,
+              getUserIdResult: getUserId(),
               authUserId: authService.getUserId(),
               authUsername: authService.getUsername(),
               userObject: !!user,
-              originalBody: body
+              originalBody: body,
             });
             throw new Error("user_id is required but could not be determined");
           }
@@ -661,7 +690,7 @@ export default function HomePage() {
           user_id: requestBody.user_id,
           has_message: !!requestBody.message,
           has_conversation_id: !!requestBody.conversation_id,
-          has_roleCode: !!requestBody.roleCode
+          has_roleCode: !!requestBody.roleCode,
         });
 
         // Check if this is a configurator API call
@@ -727,7 +756,7 @@ export default function HomePage() {
         setIsTyping(false);
       }
     },
-    [conversationId, handleApiResponse, isAccessDenied, currentUserId]
+    [conversationId, handleApiResponse, isAccessDenied, currentUserId, getUserId, user]
   );
 
   const handleAction = useCallback(
@@ -754,6 +783,16 @@ export default function HomePage() {
       if (action?.type === "form_submit") {
         console.log("Form data submitted:", action.data);
         // You can send this data to backend here if needed
+        return;
+      }
+
+      // Handle workflow_submit action
+      if (action?.type === "workflow_submit") {
+        console.log("Workflow form data submitted:", action.data);
+        // Process workflow form submission using the hook
+        if (handleWorkflowFormSubmit) {
+          await handleWorkflowFormSubmit(action.data, action.formSchema);
+        }
         return;
       }
 
@@ -800,7 +839,7 @@ export default function HomePage() {
 
       await callChatApi(requestBody);
     },
-    [currentResponseData, callChatApi, conversationId, currentUserId, sessionId]
+    [currentResponseData, callChatApi, conversationId, currentUserId, sessionId, handleWorkflowFormSubmit]
   );
 
   // Fetch available documents
@@ -954,8 +993,13 @@ export default function HomePage() {
         setIsTyping(true);
 
         // Ensure user_id is never empty - use multiple fallbacks
-        const userId = currentUserId || getUserId() || authService.getUserId() || authService.getUsername() || "default_user";
-        
+        const userId =
+          currentUserId ||
+          getUserId() ||
+          authService.getUserId() ||
+          authService.getUsername() ||
+          "default_user";
+
         // Validate userId is not empty string
         if (!userId || userId.trim() === "") {
           console.error("❌ user_id validation failed:", {
@@ -963,11 +1007,13 @@ export default function HomePage() {
             getUserIdResult: getUserId(),
             authUserId: authService.getUserId(),
             authUsername: authService.getUsername(),
-            userObject: !!user
+            userObject: !!user,
           });
-          throw new Error("user_id cannot be empty. Please ensure you are logged in.");
+          throw new Error(
+            "user_id cannot be empty. Please ensure you are logged in."
+          );
         }
-        
+
         console.log("📊 Data Analysis Request:", {
           user_id: userId,
           currentUserId,
@@ -976,7 +1022,7 @@ export default function HomePage() {
           userObject: !!user,
           question: question.substring(0, 50) + "...",
           conversationId,
-          hasDocument: !!selectedDocument
+          hasDocument: !!selectedDocument,
         });
 
         // Always use chat endpoint for consistency
@@ -1039,11 +1085,23 @@ export default function HomePage() {
     [selectedDocument, conversationId, currentUserId, user]
   );
 
+  // Toggle workflow mode (only switches API endpoint, doesn't send message)
+  const handleToggleWorkflowMode = useCallback(() => {
+    const newMode = !workflowMode;
+    setWorkflowMode(newMode);
+    
+    if (!newMode) {
+      // Exiting workflow mode - reset state
+      resetWorkflow();
+    }
+    // No auto-send when entering workflow mode - user types "Hi" manually
+  }, [workflowMode, resetWorkflow]);
+
   const handleSendMessage = useCallback(
     async (messageText = null, audioFileUrl = null, audioKey = null) => {
       const finalMessageText = String(messageText || inputValue || "");
       if (finalMessageText.trim() === "" && !audioKey) return;
-
+      
       // Only add chat bubble if there's text message, not for audio-only
       if (finalMessageText.trim() !== "") {
         const userMessage = {
@@ -1076,23 +1134,30 @@ export default function HomePage() {
         }
       }
 
-      // Clear input and call chat API
+      // Clear input
       setInputValue("");
       
-      const roleCode = authService.getRoleCode();
-      const requestBody = {
-        user_id: currentUserId || getUserId() || authService.getUserId() || authService.getUsername() || "default_user",
-        message: finalMessageText,
-        ...(conversationId && { conversation_id: conversationId }),
-        ...(selectedDocument && { document_key: selectedDocument.document_key }),
-        ...(roleCode && { roleCode }),
-      };
+      // Check if workflow mode is active
+      if (workflowMode) {
+        // Send to workflow API
+        await handleWorkflowMessage(finalMessageText);
+      } else {
+        // Send to regular chat API
+        const roleCode = authService.getRoleCode();
+        const requestBody = {
+          user_id: currentUserId || getUserId() || authService.getUserId() || authService.getUsername() || "default_user",
+          message: finalMessageText,
+          ...(conversationId && { conversation_id: conversationId }),
+          ...(selectedDocument && { document_key: selectedDocument.document_key }),
+          ...(roleCode && { roleCode }),
+        };
 
-      if (audioKey) {
-        requestBody.key = audioKey;
+        if (audioKey) {
+          requestBody.key = audioKey;
+        }
+
+        await callChatApi(requestBody);
       }
-
-      await callChatApi(requestBody);
     },
     [
       inputValue,
@@ -1102,6 +1167,9 @@ export default function HomePage() {
       conversationId,
       currentUserId,
       selectedDocument,
+      workflowMode,
+      handleWorkflowMessage,
+      getUserId,
     ]
   );
 
@@ -1437,19 +1505,19 @@ export default function HomePage() {
   // Sync currentUserId with auth user changes
   useEffect(() => {
     // Only run on client side
-    if (typeof window === 'undefined') return;
-    
+    if (typeof window === "undefined") return;
+
     // Use getUserId function to get the best available ID
     const newUserId = getUserId();
-    
+
     console.log("🔄 User sync effect triggered:", {
       currentUserId,
       newUserId,
       userObject: !!user,
       storedUserId: authService.getUserId(),
-      storedUsername: authService.getUsername()
+      storedUsername: authService.getUsername(),
     });
-    
+
     // Always update on initial mount if currentUserId is null
     if (!currentUserId && newUserId) {
       console.log("✅ Initial mount - setting currentUserId:", newUserId);
@@ -2011,10 +2079,41 @@ export default function HomePage() {
                     ? "Access limit exceeded - Contact support to continue"
                     : uploadedDocuments.length > 0
                     ? "Ask about your data..."
+                    : workflowMode
+                    ? "Type 'Hi' to start workflow..."
                     : "Type your message..."
                 }
               />
             </Box>
+
+            {/* Workflow Mode Toggle Button */}
+            <Tooltip 
+              title={workflowMode ? "Switch to Chat Mode" : "Switch to Workflow Mode"}
+              placement="top"
+            >
+              <IconButton
+                onClick={handleToggleWorkflowMode}
+                disabled={isTyping || isAnalyzing}
+                sx={{
+                  color: workflowMode ? "#667eea" : "#6b7280",
+                  bgcolor: workflowMode ? "rgba(102, 126, 234, 0.1)" : "transparent",
+                  border: `2px solid ${workflowMode ? "#667eea" : "#e5e7eb"}`,
+                  width: 44,
+                  height: 44,
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    bgcolor: workflowMode ? "rgba(102, 126, 234, 0.2)" : "rgba(107, 114, 128, 0.1)",
+                    transform: "scale(1.05)",
+                    borderColor: workflowMode ? "#667eea" : "#9ca3af",
+                  },
+                  "&:disabled": {
+                    opacity: 0.5,
+                  },
+                }}
+              >
+                {workflowMode ? <WorkflowIcon /> : <ChatIcon />}
+              </IconButton>
+            </Tooltip>
           </Box>
         </Box>
       </>

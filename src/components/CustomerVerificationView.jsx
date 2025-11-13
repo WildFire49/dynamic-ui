@@ -99,7 +99,7 @@ const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack, act
           px: 0.5,
         }}
       >
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.25 }}>
           <Typography
             variant="caption"
             sx={{
@@ -113,13 +113,13 @@ const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack, act
             {field.label}
           </Typography>
           {field.status === "verified" && (
-            <CheckCircle sx={{ fontSize: 18, color: statusColor }} />
+            <CheckCircle sx={{ fontSize: 18, color: statusColor, ml: 1.5 }} />
           )}
           {field.status === "pending" && (
-            <Warning sx={{ fontSize: 18, color: statusColor }} />
+            <Warning sx={{ fontSize: 18, color: statusColor, ml: 1.5 }} />
           )}
           {field.status === "rejected" && (
-            <Cancel sx={{ fontSize: 18, color: statusColor }} />
+            <Cancel sx={{ fontSize: 18, color: statusColor, ml: 1.5 }} />
           )}
         </Box>
         <Typography 
@@ -556,24 +556,41 @@ const CustomerVerificationView = ({ verificationData, onFieldVerify, onBack, act
             </Box>
 
             {/* Section Content */}
-            <Box sx={{ px: { xs: 2, sm: 3, lg: 3, xl: 4 }, py: { xs: 2, sm: 2.5, lg: 3 }, overflow: "hidden", width: "100%" }}>
-              <Grid container spacing={{ xs: 2, sm: 2.5, lg: 3 }}>
+            <Box sx={{ px: 0, py: 0, overflow: "hidden", width: "100%" }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, 1fr)",
+                    md: "repeat(3, 1fr)",
+                    lg: "repeat(4, 1fr)",
+                  },
+                  gap: 0,
+                  "& > *": {
+                    borderRight: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                    "&:nth-of-type(4n)": {
+                      borderRight: "none",
+                    },
+                  },
+                }}
+              >
                 {section.fields.map((field, index) => (
-                  <Grid 
-                    item 
-                    xs={12} 
-                    sm={field.type === "longtext" ? 12 : 6} 
-                    md={field.type === "longtext" ? 12 : 3} 
+                  <Box
                     key={field.id}
                     sx={{
                       minWidth: 0,
                       overflow: "hidden",
+                      gridColumn: field.type === "longtext" ? "span 4" : "span 1",
+                      px: 3,
+                      py: 2,
                     }}
                   >
                     {renderDataField(field)}
-                  </Grid>
+                  </Box>
                 ))}
-              </Grid>
+              </Box>
             </Box>
           </Paper>
         ))}

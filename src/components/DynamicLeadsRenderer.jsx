@@ -216,6 +216,22 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
     }
   };
 
+  // Move to next customer in the filtered list
+  const handleMoveToNext = () => {
+    if (!selectedItem || !filteredData || filteredData.length === 0) return;
+    
+    const currentIndex = filteredData.findIndex(item => item.id === selectedItem.id);
+    if (currentIndex === -1) return;
+    
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < filteredData.length) {
+      handleCardClick(filteredData[nextIndex]);
+    } else {
+      // If at the end, optionally close or go to first
+      console.log("Reached end of list");
+    }
+  };
+
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setSelectedItem(null);
@@ -727,10 +743,14 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
                   item={item}
                   selectedItem={selectedItem}
                   cardConfig={{
-                    avatarKey: cardLayout.header?.avatarKey || "name",
+                    avatarKey: cardLayout.header?.avatarKey || "avatarUrl",
+                    avatarFallbackKey: cardLayout.header?.avatarFallbackKey || "name",
                     nameKey: cardLayout.header?.titleKey || "name",
+                    subtitleKey: cardLayout.header?.subtitleKey || "mifixId",
                     fields: cardLayout.fields || [],
+                    metrics: cardLayout.metrics || [],
                     showAvatar: cardLayout.header?.showAvatar !== false,
+                    cardStyle: cardLayout.cardStyle || "modern",
                     actions: cardLayout.actions || {},
                   }}
                   onClick={handleCardClick}
@@ -1321,6 +1341,7 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
             onTabChange={setSidebarActiveTab}
             activeSectionId={activeSectionId}
             setActiveSectionId={setActiveSectionId}
+            onMoveToNext={handleMoveToNext}
           />
       </Box>
 
