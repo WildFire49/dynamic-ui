@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Container,
@@ -31,6 +31,7 @@ import Navbar from "@/components/layout/Navbar";
 import DatabaseConnection from "@/components/retriever/DatabaseConnection";
 import TableSelector from "@/components/retriever/TableSelector";
 import KnowledgeGraphBuilder from "@/components/retriever/KnowledgeGraphBuilder";
+import KnowledgeGraphManager from "@/components/retriever/KnowledgeGraphManager";
 import SQLQueryGenerator from "@/components/retriever/SQLQueryGenerator";
 import RetrieverSidebar from "@/components/retriever/RetrieverSidebar";
 import dynamic from "next/dynamic";
@@ -70,14 +71,7 @@ const RetrieverConfiguratorPage = () => {
   const [selectedTables, setSelectedTables] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Check KG status when connection changes
-  useEffect(() => {
-    if (currentConnection?.id) {
-      checkKgStatus();
-    }
-  }, [currentConnection?.id]);
-
-  const checkKgStatus = async () => {
+  const checkKgStatus = useCallback(async () => {
     if (!currentConnection?.id) return;
 
     try {
@@ -102,7 +96,14 @@ const RetrieverConfiguratorPage = () => {
     } finally {
       setCheckingKgStatus(false);
     }
-  };
+  }, [currentConnection?.id]);
+
+  // Check KG status when connection changes
+  useEffect(() => {
+    if (currentConnection?.id) {
+      checkKgStatus();
+    }
+  }, [currentConnection?.id, checkKgStatus]);
 
   const handleConnectionSuccess = (data) => {
     setCurrentConnection(data);
@@ -131,10 +132,9 @@ const RetrieverConfiguratorPage = () => {
       return;
     }
 
-    // Step 1: Build KG - Only if no connection or KG doesn't exist
+    // Step 1: Build/Manage KG - Accessible if connection exists
     if (step === 1) {
       if (!currentConnection) return;
-      if (kgExists) return; // Don't allow if KG already exists
       setActiveStep(1);
       return;
     }
@@ -174,13 +174,13 @@ const RetrieverConfiguratorPage = () => {
     },
     {
       id: 1,
-      title: "Setup Knowledge Base",
-      description: "Select tables and build knowledge base",
+      title: "Manage Knowledge Base",
+      description: kgExists ? "Edit tables and sync schema" : "Select tables and build knowledge base",
       icon: Hub,
       color: "#48bb78",
       completed: kgExists,
       active: activeStep === 1,
-      disabled: !currentConnection || kgExists,
+      disabled: !currentConnection,
     },
     {
       id: 2,
@@ -388,93 +388,15 @@ const RetrieverConfiguratorPage = () => {
                           )}
                         </Box>
                       ) : kgExists ? (
-                        <Box sx={{ textAlign: "center", py: 8 }}>
-                          <Box
-                            sx={{
-                              width: 80,
-                              height: 80,
-                              borderRadius: "50%",
-                              bgcolor: "#48bb7815",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              mx: "auto",
-                              mb: 3,
-                            }}
-                          >
-                            <CheckIcon
-                              sx={{ fontSize: 40, color: "#48bb78" }}
-                            />
-                          </Box>
-                          <Typography
-                            variant="h5"
-                            sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
-                          >
-                            Knowledge Graph Ready
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              color: "#64748b",
-                              mb: 4,
-                              maxWidth: 400,
-                              mx: "auto",
-                            }}
-                          >
-                            Your knowledge graph has been successfully built and
-                            is ready for querying.
-                          </Typography>
-                          {kgStatus && (
-                            <Box
-                              sx={{
-                                display: "flex",
-                                gap: 2,
-                                justifyContent: "center",
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <Chip
-                                label={`${kgStatus.table_count} Tables`}
-                                sx={{
-                                  bgcolor: "#0078d715",
-                                  color: "#0078d7",
-                                  fontWeight: 600,
-                                }}
-                              />
-                              <Chip
-                                label={`${kgStatus.column_count} Columns`}
-                                sx={{
-                                  bgcolor: "#48bb7815",
-                                  color: "#48bb78",
-                                  fontWeight: 600,
-                                }}
-                              />
-                              <Chip
-                                label={`${kgStatus.relationship_count} Relationships`}
-                                sx={{
-                                  bgcolor: "#9c27b015",
-                                  color: "#9c27b0",
-                                  fontWeight: 600,
-                                }}
-                              />
-                            </Box>
-                          )}
-                          <Button
-                            variant="contained"
-                            size="large"
-                            onClick={() => setActiveStep(2)}
-                            startIcon={<PlayIcon />}
-                            sx={{
-                              mt: 4,
-                              bgcolor: "#9c27b0",
-                              "&:hover": { bgcolor: "#7b1fa2" },
-                              borderRadius: 2,
-                              px: 4,
-                            }}
-                          >
-                            Start Querying
-                          </Button>
-                        </Box>
+                        <KnowledgeGraphManager
+                          connectionId={currentConnection.id}
+                          schema={
+                            currentConnection.schema_name ||
+                            currentConnection.schema
+                          }
+                          kgStatus={kgStatus}
+                          onUpdate={checkKgStatus}
+                        />
                       ) : (
                         <Box sx={{ textAlign: "center", py: 8 }}>
                           <Box

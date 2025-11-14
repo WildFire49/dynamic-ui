@@ -333,6 +333,34 @@ const ChatMessage = ({ message, index, onAction }) => {
       );
     }
 
+    // Check for workflow form schema (workflow mode)
+    if (message.type === "workflow_form" && message.formSchema) {
+      return (
+        <Box sx={{ width: "100%", maxWidth: "100%" }}>
+          <DynamicFormRenderer
+            formSchema={message.formSchema}
+            onSubmit={(data) => {
+              console.log("Workflow form submitted:", data);
+              if (onAction) {
+                onAction({ 
+                  type: "workflow_submit", 
+                  data,
+                  formSchema: message.formSchema,
+                  workflowData: message.workflowData 
+                });
+              }
+            }}
+            onContinue={(nextFormId) => {
+              console.log("Continue to next workflow form:", nextFormId);
+              if (onAction) {
+                onAction({ type: "workflow_continue", nextFormId });
+              }
+            }}
+          />
+        </Box>
+      );
+    }
+
     if (message.type === "schema") {
       return <DynamicRenderer schema={message.content} onAction={onAction} />;
     }
@@ -908,9 +936,10 @@ const ChatMessage = ({ message, index, onAction }) => {
       return styles.userMessage;
     }
 
-    // Full width for dynamic forms and form schemas
+    // Full width for dynamic forms, workflow forms, and form schemas
     if (
       message.type === "dynamic_form" ||
+      message.type === "workflow_form" ||
       message.type === "form_schema" ||
       message.response?.type === "form_schema" ||
       message.content?.response?.type === "form_schema"

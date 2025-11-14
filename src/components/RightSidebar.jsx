@@ -32,6 +32,11 @@ import {
   CheckCircle,
   Error,
   Warning,
+  NotificationImportant,
+  ErrorOutline,
+  InfoOutlined,
+  Cancel,
+  ArrowForward,
 } from "@mui/icons-material";
 
 /**
@@ -58,6 +63,7 @@ const RightSidebar = ({
   onTabChange,
   activeSectionId,
   setActiveSectionId,
+  onMoveToNext,
 }) => {
   const theme = useTheme();
   // Use external activeTab if provided, otherwise use internal state
@@ -87,6 +93,11 @@ const RightSidebar = ({
     CheckCircle,
     Error,
     Warning,
+    NotificationImportant,
+    ErrorOutline,
+    InfoOutlined,
+    Cancel,
+    ArrowForward,
   };
 
   const handleTabChange = (event, newValue) => {
@@ -134,10 +145,10 @@ const RightSidebar = ({
         title: "L2 Pending - Urgent", 
         message: "3 applications pending for more than 2 hours", 
         severity: "error", 
-        icon: "Warning",
-        stage: "L2 Submitted",
+        icon: "Error",
+        stage: "L2 Pending",
         count: 3,
-        customerIds: ["JL_HD_CH_810", "IL_HD_AH_305", "JL_HD_JP_507"]
+        customerIds: ["AG_HD_DA_6969", "AG_HD_TV_1215"]
       },
       { 
         title: "eSign Pending", 
@@ -146,7 +157,7 @@ const RightSidebar = ({
         icon: "Warning",
         stage: "eSign Pending",
         count: 5,
-        customerIds: ["AG_HD_DA_6969", "AG_HD_TV_1215"]
+        customerIds: ["IL_HD_AH_305"]
       },
       { 
         title: "Document Expired", 
@@ -401,34 +412,63 @@ const RightSidebar = ({
               : alert.severity === "success" ? theme.palette.success.main
               : theme.palette.info.main;
             
+            // Get icon component
+            const AlertIcon = alert.severity === "error" ? ErrorOutline
+              : alert.severity === "warning" ? NotificationImportant
+              : alert.severity === "success" ? CheckCircle
+              : InfoOutlined;
+            
+            // Handle alert click - filter by stage
+            const handleAlertClick = () => {
+              if (alert.stage && onFilterChange) {
+                // Map alert stage to filter value
+                const stageMapping = {
+                  "L2 Pending": "l2_submitted",
+                  "eSign Pending": "esign_pending",
+                  "Bank Details": "bank_details",
+                };
+                const filterValue = stageMapping[alert.stage];
+                if (filterValue) {
+                  onFilterChange(filterValue);
+                }
+              }
+            };
+            
             return (
               <Box
                 key={index}
+                onClick={handleAlertClick}
                 sx={{
                   display: "flex",
-                  gap: 1,
-                  p: 1,
-                  borderRadius: 1,
+                  gap: 1.25,
+                  p: 1.25,
+                  borderRadius: 1.5,
                   bgcolor: alpha(alertColor, 0.08),
                   border: `1px solid ${alpha(alertColor, 0.15)}`,
-                  cursor: "pointer",
+                  cursor: alert.stage ? "pointer" : "default",
                   transition: "all 0.2s",
-                  "&:hover": {
+                  "&:hover": alert.stage ? {
                     bgcolor: alpha(alertColor, 0.12),
                     transform: "translateX(-2px)",
-                  },
+                    boxShadow: `0 2px 8px ${alpha(alertColor, 0.15)}`,
+                  } : {},
                 }}
               >
-                {/* Alert Icon/Indicator */}
+                {/* Alert Icon */}
                 <Box
                   sx={{
-                    width: 6,
-                    minWidth: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 32,
+                    height: 32,
                     borderRadius: 1,
-                    bgcolor: alertColor,
+                    bgcolor: alpha(alertColor, 0.15),
                     flexShrink: 0,
                   }}
-                />
+                >
+                  <AlertIcon sx={{ fontSize: 18, color: alertColor }} />
+                </Box>
                 
                 {/* Alert Content */}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -483,35 +523,42 @@ const RightSidebar = ({
               : activity.action === "rejected" ? theme.palette.error.main
               : theme.palette.info.main;
             
+            // Get action icon
+            const ActionIcon = activity.action === "approved" ? CheckCircle
+              : activity.action === "rejected" ? Cancel
+              : ArrowForward;
+            
             return (
               <Box
                 key={index}
                 sx={{
                   display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  p: 0.75,
+                  alignItems: "flex-start",
+                  gap: 1.25,
+                  p: 1,
                   borderRadius: 1,
-                  bgcolor: alpha(theme.palette.divider, 0.03),
+                  bgcolor: alpha(theme.palette.background.paper, 0.6),
                   border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                  cursor: "pointer",
                   transition: "all 0.2s",
                   "&:hover": {
-                    bgcolor: alpha(theme.palette.primary.main, 0.05),
-                    borderColor: alpha(theme.palette.primary.main, 0.2),
+                    bgcolor: alpha(theme.palette.action.hover, 0.5),
                   },
                 }}
               >
-                {/* Action Indicator */}
                 <Box
                   sx={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    bgcolor: actionColor,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 28,
+                    height: 28,
+                    borderRadius: 1,
+                    bgcolor: alpha(actionColor, 0.12),
                     flexShrink: 0,
                   }}
-                />
+                >
+                  <ActionIcon sx={{ fontSize: 16, color: actionColor }} />
+                </Box>
                 
                 {/* Activity Content */}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -577,6 +624,10 @@ const RightSidebar = ({
           console.log("Verification action:", action, data);
           if (onSave) {
             onSave({ ...selectedItem, verificationAction: action, ...data });
+          }
+          // Move to next customer after approve
+          if (action === "approve" && onMoveToNext) {
+            onMoveToNext();
           }
         }}
       />
@@ -858,9 +909,9 @@ const RightSidebar = ({
             },
           }}
         >
-          <Tab label="Control Panel" />
+          <Tab label="Summary Panel" />
           <Tab 
-            label="Customer View" 
+            label="Review Panel" 
             disabled={!selectedItem}
             icon={selectedItem && <Badge color="primary" variant="dot" />}
             iconPosition="end"

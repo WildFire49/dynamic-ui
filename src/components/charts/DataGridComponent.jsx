@@ -31,20 +31,62 @@ const DataGridComponent = ({
       const firstItem = data[0];
       const generatedColumns = Object.keys(firstItem).map((key, index) => ({
         field: key,
-        headerName: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        headerName: key
+          .replace(/_/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' '),
         width: 150,
         flex: 1,
         minWidth: 120,
         renderCell: (params) => {
           const value = params.value;
-          // Handle different data types
+          
+          // Handle null/undefined
+          if (value === null || value === undefined) {
+            return '—';
+          }
+          
+          // Handle numbers with proper formatting
           if (typeof value === 'number') {
+            // Check if it's likely a currency or large number
+            if (Math.abs(value) >= 1000) {
+              return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+            }
             return value.toLocaleString();
           }
-          if (typeof value === 'string' && value.includes('/')) {
-            // Likely a date, format it nicely
-            return value;
+          
+          // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
+          if (typeof value === 'string') {
+            // Check for ISO date format or date-like strings
+            const isoDatePattern = /^\d{4}-\d{2}-\d{2}T/;
+            const datePattern = /^\d{4}-\d{2}-\d{2}/;
+            
+            if (isoDatePattern.test(value) || datePattern.test(value)) {
+              try {
+                const date = new Date(value);
+                if (!isNaN(date.getTime())) {
+                  // For month columns, show "Mon YYYY" format
+                  if (key.toLowerCase().includes('month')) {
+                    return date.toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      year: 'numeric' 
+                    });
+                  }
+                  // For other dates, show full date
+                  return date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric' 
+                  });
+                }
+              } catch (e) {
+                // If date parsing fails, return as is
+                return value;
+              }
+            }
           }
+          
           return value;
         }
       }));

@@ -2,28 +2,30 @@ import React from "react";
 import {
   Card,
   CardContent,
-  Avatar,
   Typography,
   Box,
   Button,
-  alpha,
+  Avatar,
+  Chip,
+  Divider,
   useTheme,
+  alpha,
 } from "@mui/material";
 import {
   Phone,
+  Email,
+  AccountBalance,
+  CurrencyRupee,
+  CheckCircle,
   LocationOn,
+  TrendingUp,
+  BusinessCenter,
+  ArrowForward,
   Person,
   AttachMoney,
-  CurrencyRupee,
-  BusinessCenter,
-  Email,
   Home,
   Work,
-  AccountBalance,
   CreditCard,
-  Fingerprint,
-  CheckCircle,
-  ArrowForward,
 } from "@mui/icons-material";
 
 // Icon mapping
@@ -39,9 +41,9 @@ const iconMap = {
   Work,
   AccountBalance,
   CreditCard,
-  Fingerprint,
   CheckCircle,
   ArrowForward,
+  TrendingUp,
 };
 
 /**
@@ -86,26 +88,16 @@ const DynamicCardRenderer = ({
     return colors[index];
   };
 
-  // Render a single field with icon and text
+  // Render a single field with icon and label
   const renderField = (field) => {
     const Icon = iconMap[field.icon];
     let value = item[field.dataKey];
-    let prefix = field.prefix;
-    
-    // Conditional logic for mifixId field
-    if (field.id === "mifixId") {
-      // If customer has no formSchemaId (leads only), don't show mifixId
-      if (!item.formSchemaId) {
-        return null;
-      }
-    }
     
     // Conditional logic for product field
     if (field.id === "product") {
       // If customer has no formSchemaId (leads only), show desiredProduct instead
       if (!item.formSchemaId && item.desiredProduct) {
         value = item.desiredProduct;
-        prefix = "Desired Product:";
       }
     }
 
@@ -117,39 +109,150 @@ const DynamicCardRenderer = ({
         key={field.id}
         sx={{
           display: "flex",
-          alignItems: field.alignItems || "center",
+          alignItems: "flex-start",
           gap: 1,
-          minHeight: field.minHeight || "24px",
+          mb: 1.5,
         }}
       >
         {Icon && (
-          <Icon
+          <Box
             sx={{
-              fontSize: field.iconSize || 18,
-              color: field.iconColor || theme.palette.text.secondary,
+              width: 32,
+              height: 32,
+              borderRadius: 1.5,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
               flexShrink: 0,
+              mt: 0.25,
             }}
-          />
+          >
+            <Icon
+              sx={{
+                fontSize: 18,
+                color: theme.palette.primary.main,
+              }}
+            />
+          </Box>
+        )}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {field.label && (
+            <Typography
+              variant="caption"
+              sx={{
+                fontSize: "0.65rem",
+                color: "text.secondary",
+                display: "block",
+                mb: 0.375,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              {field.label}
+            </Typography>
+          )}
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: "0.9375rem",
+              fontWeight: 600,
+              color: "text.primary",
+              lineHeight: 1.4,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: field.clamp ? "-webkit-box" : "block",
+              WebkitLineClamp: field.clamp,
+              WebkitBoxOrient: field.clamp ? "vertical" : undefined,
+            }}
+          >
+            {value}
+          </Typography>
+        </Box>
+      </Box>
+    );
+  };
+
+  // Render metric/data point - compact version
+  const renderMetric = (metric, totalMetrics) => {
+    const Icon = iconMap[metric.icon];
+    const value = item[metric.dataKey];
+
+    if (!value) return null;
+
+    return (
+      <Box
+        key={metric.id}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 0.5,
+          p: 1.25,
+          minHeight: totalMetrics <= 2 ? 70 : 60,
+          bgcolor: alpha(metric.bgColor || theme.palette.primary.main, 0.06),
+          borderRadius: 1.5,
+          border: `1px solid ${alpha(metric.bgColor || theme.palette.primary.main, 0.12)}`,
+          minWidth: 0,
+          position: "relative",
+          overflow: "hidden",
+          transition: "all 0.2s ease",
+          "&:hover": {
+            bgcolor: alpha(metric.bgColor || theme.palette.primary.main, 0.1),
+            transform: "translateY(-2px)",
+            boxShadow: `0 4px 12px ${alpha(metric.bgColor || theme.palette.primary.main, 0.15)}`,
+          },
+        }}
+      >
+        {Icon && (
+          <Box
+            sx={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: alpha(metric.color || theme.palette.primary.main, 0.15),
+            }}
+          >
+            <Icon
+              sx={{
+                fontSize: 16,
+                color: metric.color || theme.palette.primary.main,
+              }}
+            />
+          </Box>
+        )}
+        {metric.showLabel && (
+          <Typography
+            variant="caption"
+            sx={{
+              fontSize: "0.625rem",
+              color: "text.secondary",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+              textAlign: "center",
+              lineHeight: 1.2,
+              mt: 0.25,
+            }}
+          >
+            {metric.label}
+          </Typography>
         )}
         <Typography
-          variant={field.variant || "body2"}
-          color={field.textColor || "text.secondary"}
           sx={{
-            fontSize: field.fontSize || "0.85rem",
-            fontWeight: field.fontWeight,
-            lineHeight: 1.4,
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            display: field.clamp ? "-webkit-box" : "block",
-            WebkitLineClamp: field.clamp,
-            WebkitBoxOrient: field.clamp ? "vertical" : undefined,
-            ...(field.sx || {}),
+            fontSize: "1rem",
+            fontWeight: 700,
+            color: metric.color || theme.palette.primary.main,
+            lineHeight: 1.2,
+            textAlign: "center",
           }}
         >
-          {field.prefix && <span>{field.prefix} </span>}
-          {field.bold ? <strong>{value}</strong> : value}
-          {field.suffix && <span> {field.suffix}</span>}
+          {value}
         </Typography>
       </Box>
     );
@@ -157,179 +260,276 @@ const DynamicCardRenderer = ({
 
   // Extract config values with defaults
   const {
-    avatarKey = "name",
+    avatarKey = "avatarUrl",
+    avatarFallbackKey = "name",
     nameKey = "name",
+    subtitleKey = "mifixId",
     fields = [],
+    metrics = [],
     showAvatar = true,
-    elevation = 0,
-    borderRadius = 2,
-    hoverEffect = true,
+    cardStyle = "modern",
     actions = {},
   } = cardConfig;
 
   const name = item[nameKey];
-  const avatarName = item[avatarKey];
+  const subtitle = item[subtitleKey];
+  const avatarUrl = item[avatarKey];
+  const avatarFallback = item[avatarFallbackKey];
   
   // Check if item is urgent (needs review)
   const isUrgent = item.approvalStatus === "pending";
   const isRejected = item.approvalStatus === "rejected";
-  const urgentColor = "#d32f2f"; // Red color for pending items
+  const isApproved = item.approvalStatus === "approved";
+
+  // Get status color
+  const getStatusColor = () => {
+    if (isUrgent) return theme.palette.warning.main;
+    if (isRejected) return theme.palette.error.main;
+    if (isApproved) return theme.palette.success.main;
+    return theme.palette.text.disabled;
+  };
+
+  // Handle button click
+  const handleButtonClick = (e) => {
+    e.stopPropagation(); // Prevent card click
+    if (onClick) {
+      onClick(item);
+    }
+  };
 
   return (
     <Card
-      elevation={elevation}
-      onClick={() => onClick && onClick(item)}
+      elevation={0}
       sx={{
-        cursor: onClick ? "pointer" : "default",
-        borderRadius,
-        transition: "all 0.3s ease-in-out",
         position: "relative",
         height: "100%",
         display: "flex",
         flexDirection: "column",
         border: isSelected
-          ? `3px solid ${theme.palette.primary.main}`
+          ? `2px solid ${theme.palette.primary.main}`
           : `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+        borderRadius: 2.5,
+        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+        overflow: "hidden",
         ...(isSelected && {
-          bgcolor: alpha(theme.palette.primary.main, 0.06),
-          boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.25)}`,
+          bgcolor: alpha(theme.palette.primary.main, 0.03),
+          boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`,
         }),
         ...(isRejected && {
-          opacity: 0.7,
-          bgcolor: alpha(theme.palette.error.main, 0.02),
+          opacity: 0.75,
         }),
         "&:hover": {
-          transform: "translateY(-6px)",
-          boxShadow: isSelected 
-            ? `0 16px 40px ${alpha(theme.palette.primary.main, 0.3)}`
-            : `0 12px 32px ${alpha(theme.palette.common.black, 0.2)}`,
+          transform: "translateY(-4px)",
+          boxShadow: `0 12px 32px ${alpha(theme.palette.common.black, 0.12)}`,
+          border: isSelected
+            ? `2px solid ${theme.palette.primary.main}`
+            : `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
         },
       }}
     >
-      {/* Status Badge - Show Current Status with Blinking Dot */}
-      {isUrgent && item.status && (
-        <Box
-          sx={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            bgcolor: alpha(urgentColor, 0.1),
-            border: `1px solid ${alpha(urgentColor, 0.3)}`,
-            borderRadius: 1,
-            px: 1,
-            py: 0.5,
-            zIndex: 1,
-          }}
-        >
-          <Box
-            sx={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              bgcolor: urgentColor,
-              animation: "pulseDot 2s ease-in-out infinite",
-              "@keyframes pulseDot": {
-                "0%, 100%": { 
-                  transform: "scale(1)",
-                  opacity: 1,
-                },
-                "50%": { 
-                  transform: "scale(1.2)",
-                  opacity: 0.8,
-                },
-              },
-            }}
-          />
-          <Typography
-            sx={{
-              fontSize: "0.7rem",
-              fontWeight: 600,
-              color: urgentColor,
-              lineHeight: 1,
-              textTransform: "uppercase",
-              letterSpacing: 0.3,
-            }}
-          >
-            {item.status}
-          </Typography>
-        </Box>
-      )}
-      {isRejected && (
-        <Box
-          sx={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            bgcolor: theme.palette.error.main,
-            color: "#ffffff",
-            px: 1.5,
-            py: 0.5,
-            borderRadius: 1.5,
-            fontSize: "0.65rem",
-            fontWeight: 700,
-            zIndex: 1,
-          }}
-        >
-          REJECTED
-        </Box>
-      )}
+      {/* Status Indicator - Top Color Bar */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          bgcolor: getStatusColor(),
+          opacity: 0.9,
+        }}
+      />
+
       <CardContent 
         sx={{ 
           flex: 1, 
           display: "flex", 
           flexDirection: "column",
-          p: 2.5,
+          p: 0,
+          "&:last-child": { pb: 0 },
         }}
       >
-        {/* Avatar and Name Section */}
+        {/* Top Section - Avatar + Name + Review Button */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 2,
-            mb: 2.5,
-            pb: 2,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+            gap: 1.5,
+            px: 2.5,
+            py: 2,
+            pb: 1.75,
+            bgcolor: alpha(theme.palette.grey[50], 0.4),
           }}
         >
+          {/* Avatar */}
           {showAvatar && (
             <Avatar
+              src={avatarUrl}
+              alt={name}
               sx={{
-                bgcolor: getAvatarColor(avatarName),
-                width: 48,
-                height: 48,
-                fontSize: "1rem",
-                fontWeight: 600,
-                boxShadow: `0 2px 8px ${alpha(getAvatarColor(avatarName), 0.3)}`,
+                width: 52,
+                height: 52,
+                border: `2px solid ${alpha(theme.palette.common.white, 0.8)}`,
+                boxShadow: `0 3px 10px ${alpha(theme.palette.common.black, 0.1)}`,
               }}
             >
-              {getInitials(avatarName)}
+              {getInitials(avatarFallback || name)}
             </Avatar>
           )}
+
+          {/* Name, Subtitle & Status */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              variant="h6"
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "1.05rem",
+                  lineHeight: 1.3,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  color: "text.primary",
+                }}
+              >
+                {name}
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              {isUrgent && (
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    bgcolor: "error.main",
+                    boxShadow: `0 0 8px ${alpha(theme.palette.error.main, 0.6)}`,
+                    animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                    "@keyframes pulse": {
+                      "0%, 100%": {
+                        opacity: 1,
+                        transform: "scale(1)",
+                        boxShadow: `0 0 8px ${alpha(theme.palette.error.main, 0.6)}`,
+                      },
+                      "50%": {
+                        opacity: 0.6,
+                        transform: "scale(1.3)",
+                        boxShadow: `0 0 12px ${alpha(theme.palette.error.main, 0.8)}`,
+                      },
+                    },
+                  }}
+                />
+              )}
+              <Chip
+                label={item.status || "Pending"}
+                size="small"
+                sx={{
+                  height: 19,
+                  fontSize: "0.65rem",
+                  fontWeight: 600,
+                  bgcolor: isUrgent 
+                    ? alpha(theme.palette.error.main, 0.12)
+                    : alpha(theme.palette.info.main, 0.1),
+                  color: isUrgent 
+                    ? theme.palette.error.dark
+                    : theme.palette.info.dark,
+                  border: `1px solid ${alpha(isUrgent ? theme.palette.error.main : theme.palette.info.main, 0.25)}`,
+                  "& .MuiChip-label": {
+                    px: 0.625,
+                  },
+                }}
+              />
+            </Box>
+          </Box>
+
+          {/* Review Button */}
+          {actions.showButton && (
+            <Button
+              variant={actions.buttonVariant || "contained"}
+              size={actions.buttonSize || "small"}
+              endIcon={actions.buttonIcon ? React.createElement(iconMap[actions.buttonIcon]) : null}
+              onClick={handleButtonClick}
               sx={{
+                borderRadius: 1.5,
+                px: 2,
+                py: 0.625,
+                textTransform: "none",
                 fontWeight: 600,
-                fontSize: "1rem",
-                lineHeight: 1.3,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                color: "text.primary",
+                fontSize: "0.8125rem",
+                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.2)}`,
+                bgcolor: theme.palette.primary.main,
+                flexShrink: 0,
+                "&:hover": {
+                  bgcolor: theme.palette.primary.dark,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  transform: "translateY(-1px)",
+                },
               }}
             >
-              {name}
-            </Typography>
-          </Box>
+              {actions.buttonLabel || "Review"}
+            </Button>
+          )}
         </Box>
 
-        {/* Dynamic Fields Section - Show only first 3 fields */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, flex: 1 }}>
-          {fields.slice(0, 3).map((field) => renderField(field))}
+        {/* Content Section - Info Fields + Metrics in Responsive Grid */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 0,
+            px: 2.5,
+            py: 2,
+            pt: 1.75,
+            minHeight: 145,
+          }}
+        >
+          {/* Left: Info Fields */}
+          <Box 
+            sx={{ 
+              flex: 1, 
+              minWidth: 0, 
+              pr: 2.5,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
+            {fields.map((field) => renderField(field))}
+          </Box>
+
+          {/* Vertical Divider */}
+          {metrics && metrics.length > 0 && (
+            <Divider 
+              orientation="vertical" 
+              flexItem 
+              sx={{ 
+                borderColor: alpha(theme.palette.divider, 0.15),
+                mx: 0,
+              }} 
+            />
+          )}
+
+          {/* Right: Metrics in Responsive Grid */}
+          {metrics && metrics.length > 0 && (() => {
+            const visibleMetrics = metrics.filter(m => item[m.dataKey]);
+            const metricCount = visibleMetrics.length;
+            
+            return (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: metricCount <= 2 ? "1fr" : "repeat(2, 1fr)",
+                  gap: 1.25,
+                  pl: 2.5,
+                  minWidth: 220,
+                  maxWidth: 220,
+                  alignContent: "center",
+                  justifyItems: "stretch",
+                }}
+              >
+                {metrics.map((metric) => renderMetric(metric, metricCount))}
+              </Box>
+            );
+          })()}
         </Box>
       </CardContent>
     </Card>
