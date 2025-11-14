@@ -45,11 +45,18 @@ import { getCustomerPanelConfig } from "./customerVerificationPanelConfig";
  * CustomerVerificationPanel - Right sidebar for Customer View
  * Shows quick actions, photo thumbnails, verification checklist, and comments
  */
-const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId, setActiveSectionId }) => {
+const CustomerVerificationPanel = ({
+  verificationData,
+  onAction,
+  activeSectionId,
+  setActiveSectionId,
+}) => {
   const theme = useTheme();
   const [comment, setComment] = useState("");
   const [selectedImages, setSelectedImages] = useState([]);
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImage, setViewerImage] = useState(null);
 
   // Automatically open compare dialog when 2 images are selected
   React.useEffect(() => {
@@ -99,12 +106,20 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
     }
   };
 
+  // Clicking on the image opens a viewer
   const handleImageClick = (image) => {
-    if (selectedImages.find(img => img.id === image.id)) {
-      // Deselect
-      setSelectedImages(selectedImages.filter(img => img.id !== image.id));
-    } else if (selectedImages.length < 2) {
-      // Select (max 2)
+    setViewerImage(image);
+    setViewerOpen(true);
+  };
+
+  // Checkbox toggles selection for comparison
+  const handleToggleSelect = (image) => {
+    const already = selectedImages.find((img) => img.id === image.id);
+    if (already) {
+      setSelectedImages(selectedImages.filter((img) => img.id !== image.id));
+      return;
+    }
+    if (selectedImages.length < 2) {
       setSelectedImages([...selectedImages, image]);
     }
   };
@@ -127,7 +142,7 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
       // Check if each image matches the active section
       const aIsActive = a.sectionId === activeSectionId;
       const bIsActive = b.sectionId === activeSectionId;
-      
+
       // Sort logic:
       // This subtracts the boolean-as-a-number (true=1, false=0).
       // If b is active (1) and a is not (0), it returns 1 (b comes first).
@@ -153,7 +168,10 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
           borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem", mb: 1 }}>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: 700, fontSize: "1rem", mb: 1 }}
+        >
           Verification Actions
         </Typography>
         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
@@ -184,7 +202,14 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
         {/* Quick Photo Preview */}
         <Box sx={{ mb: 3 }}>
           <Box sx={{ mb: 1.5 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 0.5,
+              }}
+            >
               <Typography
                 variant="caption"
                 sx={{
@@ -219,7 +244,11 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
                 display: "block",
               }}
             >
-              {selectedImages.length === 0 ? "Select 2 images to compare" : selectedImages.length === 1 ? "Select 1 more to compare" : "Comparing..."}
+              {selectedImages.length === 0
+                ? "Select 2 images to compare"
+                : selectedImages.length === 1
+                ? "Select 1 more to compare"
+                : "Comparing..."}
             </Typography>
           </Box>
           <Box
@@ -230,9 +259,11 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
             }}
           >
             {sortedImages?.slice(0, 6).map((img, index) => {
-              const isSelected = selectedImages.find(si => si.id === img.id);
-              const selectionIndex = selectedImages.findIndex(si => si.id === img.id);
-              
+              const isSelected = selectedImages.find((si) => si.id === img.id);
+              const selectionIndex = selectedImages.findIndex(
+                (si) => si.id === img.id
+              );
+
               return (
                 <Tooltip key={img.id} title={img.label} arrow placement="top">
                   <Paper
@@ -244,13 +275,37 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
                       overflow: "hidden",
                       cursor: "pointer",
                       transition: "all 0.2s",
-                      border: isSelected ? `3px solid ${theme.palette.primary.main}` : "3px solid transparent",
+                      border: isSelected
+                        ? `3px solid ${theme.palette.primary.main}`
+                        : "3px solid transparent",
                       "&:hover": {
                         transform: "scale(1.05)",
                         boxShadow: 2,
                       },
                     }}
                   >
+                    {/* Selection Checkbox */}
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 4,
+                        right: 4,
+                        zIndex: 2,
+                        bgcolor: "transparent",
+                        borderRadius: 1,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        size="small"
+                        checked={Boolean(isSelected)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelect(img);
+                        }}
+                        sx={{ p: 0.25 }}
+                      />
+                    </Box>
                     {img.url ? (
                       <img
                         src={img.url}
@@ -285,7 +340,7 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
                       <Box
                         sx={{
                           position: "absolute",
-                          top: 4,
+                          top: 30,
                           right: 4,
                           width: 24,
                           height: 24,
@@ -364,43 +419,55 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
           >
             Section Comments
           </Typography>
-          {sections.filter(s => s.allowComments).map((section) => (
-            <Box key={section.id} sx={{ mb: 2 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          {sections
+            .filter((s) => s.allowComments)
+            .map((section) => (
+              <Box key={section.id} sx={{ mb: 2 }}>
                 <Box
-                  sx={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 1,
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
+                  sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
                 >
-                  <Comment sx={{ fontSize: "0.875rem", color: theme.palette.primary.main }} />
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 1,
+                      bgcolor: alpha(theme.palette.primary.main, 0.1),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Comment
+                      sx={{
+                        fontSize: "0.875rem",
+                        color: theme.palette.primary.main,
+                      }}
+                    />
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, fontSize: "0.875rem" }}
+                  >
+                    {section.title}
+                  </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
-                  {section.title}
-                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={2}
+                  placeholder={`Add comments for ${section.title}...`}
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      fontSize: "0.813rem",
+                      bgcolor: alpha(theme.palette.grey[50], 0.5),
+                    },
+                  }}
+                />
               </Box>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                placeholder={`Add comments for ${section.title}...`}
-                variant="outlined"
-                size="small"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    fontSize: "0.813rem",
-                    bgcolor: alpha(theme.palette.grey[50], 0.5),
-                  },
-                }}
-              />
-            </Box>
-          ))}
+            ))}
         </Box>
 
         <Divider sx={{ my: 2 }} />
@@ -438,7 +505,6 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
           />
         </Box>
 
-
         {/* Internal Review Comments - From JSON Config */}
         {internalComments.length > 0 && (
           <Box>
@@ -462,26 +528,39 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
                 sx={{
                   p: 1.5,
                   borderRadius: 1.5,
-                  bgcolor: comment.status === "approved" 
-                    ? alpha(theme.palette.success.main, 0.05)
-                    : alpha(theme.palette.error.main, 0.05),
-                  border: comment.status === "approved"
-                    ? `1px solid ${alpha(theme.palette.success.main, 0.2)}`
-                    : `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                  bgcolor:
+                    comment.status === "approved"
+                      ? alpha(theme.palette.success.main, 0.05)
+                      : alpha(theme.palette.error.main, 0.05),
+                  border:
+                    comment.status === "approved"
+                      ? `1px solid ${alpha(theme.palette.success.main, 0.2)}`
+                      : `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
                   mb: 1.5,
                 }}
               >
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, mb: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 1,
+                    mb: 1,
+                  }}
+                >
                   <CheckCircle
-                    sx={{ 
-                      fontSize: 18, 
-                      color: comment.status === "approved" 
-                        ? theme.palette.success.main 
-                        : theme.palette.error.main, 
-                      mt: 0.25 
+                    sx={{
+                      fontSize: 18,
+                      color:
+                        comment.status === "approved"
+                          ? theme.palette.success.main
+                          : theme.palette.error.main,
+                      mt: 0.25,
                     }}
                   />
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem" }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, fontSize: "0.813rem" }}
+                  >
                     {comment.category}:
                   </Typography>
                 </Box>
@@ -518,15 +597,18 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
                 fontWeight: 600,
                 textTransform: "none",
                 py: 1.25,
-                color: "white"
+                color: "white",
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.813rem", color: "white" }}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, fontSize: "0.813rem", color: "white" }}
+              >
                 {actions.approve.label}
               </Typography>
             </Button>
           )}
-          
+
           {actions.reject?.enabled && (
             <Button
               fullWidth
@@ -543,7 +625,7 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
               {actions.reject.label}
             </Button>
           )}
-          
+
           {actions.sendBack?.enabled && (
             <Button
               fullWidth
@@ -555,7 +637,7 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
                 textTransform: "none",
                 py: 1.25,
                 backgroundColor: theme.palette.primary.main,
-                color: "white"
+                color: "white",
               }}
             >
               {actions.sendBack.label}
@@ -583,13 +665,15 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
           },
         }}
       >
-        <DialogTitle sx={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center",
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          pb: 2,
-        }}>
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            pb: 2,
+          }}
+        >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <CompareArrows sx={{ color: theme.palette.primary.main }} />
             <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>
@@ -601,12 +685,19 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: 3 }}>
-          <Box sx={{ display: "flex", gap: 3, justifyContent: "center", alignItems: "stretch" }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 3,
+              justifyContent: "center",
+              alignItems: "stretch",
+            }}
+          >
             {selectedImages.map((img, index) => (
-              <Box 
-                key={img.id} 
-                sx={{ 
-                  flex: 1, 
+              <Box
+                key={img.id}
+                sx={{
+                  flex: 1,
                   maxWidth: "45%",
                   display: "flex",
                   flexDirection: "column",
@@ -672,12 +763,92 @@ const CustomerVerificationPanel = ({ verificationData, onAction, activeSectionId
                         bgcolor: alpha(theme.palette.divider, 0.1),
                       }}
                     >
-                      <ImageIcon sx={{ fontSize: 64, color: "text.disabled" }} />
+                      <ImageIcon
+                        sx={{ fontSize: 64, color: "text.disabled" }}
+                      />
                     </Box>
                   )}
                 </Paper>
               </Box>
             ))}
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Single Image Viewer */}
+      <Dialog
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        maxWidth={false}
+        PaperProps={{
+          sx: {
+            bgcolor: "white",
+            borderRadius: 2,
+            width: 720,
+            height: 720,
+          },
+        }}
+        BackdropProps={{
+          sx: { bgcolor: alpha(theme.palette.common.black, 0.3) },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            pb: 2,
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>
+            {viewerImage?.label || "Image"}
+          </Typography>
+          <IconButton onClick={() => setViewerOpen(false)} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          sx={{ p: 0, height: "calc(720px - 64px)", overflow: "hidden" }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              height: "100%",
+              bgcolor: alpha(theme.palette.divider, 0.03),
+            }}
+          >
+            {viewerImage?.url ? (
+              <img
+                src={viewerImage.url}
+                alt={viewerImage.label}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "80vh",
+                  width: "auto",
+                  height: "auto",
+                  display: "block",
+                  objectFit: "contain",
+                  backgroundColor: "#f5f5f5",
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  bgcolor: alpha(theme.palette.divider, 0.1),
+                }}
+              >
+                <ImageIcon sx={{ fontSize: 64, color: "text.disabled" }} />
+              </Box>
+            )}
           </Box>
         </DialogContent>
       </Dialog>
