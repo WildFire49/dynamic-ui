@@ -1644,14 +1644,16 @@ export default function HomePage() {
       <>
         <Box
           sx={{
-            flexGrow: 1,
+            flex: 1,
             overflowY: "auto",
             overflowX: "hidden",
             py: 2,
             px: 0,
+            pb: 0, // Remove bottom padding to prevent gap
             backgroundColor: "#f8f9fa",
             width: "100%",
             maxWidth: "100%",
+            minHeight: 0, // Allow flex shrinking
             backgroundImage: `
             radial-gradient(circle at 20% 50%, rgba(47, 143, 239, 0.03) 0%, transparent 50%),
             radial-gradient(circle at 80% 20%, rgba(25, 118, 210, 0.05) 0%, transparent 50%),
@@ -1667,6 +1669,7 @@ export default function HomePage() {
               flexDirection: "column",
               width: "100%",
               maxWidth: "100%",
+              pb: 2, // Add bottom padding so content doesn't hide behind input bar
             }}
           >
             {chatHistory.length === 0 ? (
@@ -1854,7 +1857,12 @@ export default function HomePage() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            overflow: "hidden", // Prevent overflow
+            overflow: "hidden",
+            flexShrink: 0, // Prevent shrinking
+            position: "sticky", // Make it sticky
+            bottom: 0,
+            zIndex: 10, // Ensure it's above other content
+            width: "100%",
           }}
         >
           <Box
