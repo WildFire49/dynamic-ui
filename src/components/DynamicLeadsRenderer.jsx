@@ -769,9 +769,9 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
       <Box
         key={cardListSection.id}
         sx={{
-          maxWidth: 1600,
+          width: "100%",
           mx: "auto",
-          px: 2,
+          px: { xs: 1, sm: 2 },
         }}
       >
         {/* Render Header Section with Create Button */}
@@ -803,15 +803,18 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
           <Box
             sx={{
               display: "grid",
+              // Use auto-fit with minmax for responsive columns that adapt to container width
               gridTemplateColumns: {
-                xs: `repeat(${config.layout?.cardGrid?.columns?.xs || 1}, 1fr)`,
-                sm: `repeat(${config.layout?.cardGrid?.columns?.sm || 2}, 1fr)`,
-                md: `repeat(${config.layout?.cardGrid?.columns?.md || 2}, 1fr)`,
-                lg: `repeat(${config.layout?.cardGrid?.columns?.lg || 3}, 1fr)`,
-                xl: `repeat(${config.layout?.cardGrid?.columns?.xl || 3}, 1fr)`,
+                xs: "1fr", // Single column on mobile
+                sm: `repeat(auto-fit, minmax(min(${config.layout?.cardGrid?.minCardWidth || 340}px, 100%), 1fr))`, // Auto-fit on tablet and up with min() for better responsiveness
               },
               gap: config.layout?.cardGrid?.gap || 2,
               gridAutoRows: config.layout?.cardGrid?.autoRows || "1fr",
+              // Ensure proper card sizing
+              "& > *": {
+                width: "100%",
+                maxWidth: "100%",
+              },
             }}
           >
             {paginatedData.map((item, index) => {
@@ -1109,6 +1112,11 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
         display: "flex", 
         flexDirection: "column",
         overflow: "hidden", // Container doesn't scroll
+        // Ensure proper width calculation
+        width: { 
+          xs: "100%", 
+          lg: `calc(100% - ${typeof sidebarWidth === 'object' ? sidebarWidth.lg : sidebarWidth}px)` 
+        },
       }}>
         {/* Search Bar - Centered and Compact (Hidden in review mode) */}
         {!reviewMode && (

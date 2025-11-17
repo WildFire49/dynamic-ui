@@ -17,6 +17,9 @@ export const HDFCLeadManagementConfig = {
       columns: { xs: 1, sm: 1, md: 2, lg: 2, xl: 3 }, // Responsive columns (optimized for laptop)
       gap: 2, // Gap between cards
       autoRows: "1fr", // Equal height rows
+      // Dynamic column calculation based on container width
+      minCardWidth: 340, // Minimum card width in pixels
+      maxCardWidth: 450, // Maximum card width in pixels
     },
 
     // Breakpoints (Material-UI standard)
