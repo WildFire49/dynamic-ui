@@ -269,19 +269,51 @@ const DynamicCardRenderer = ({
     showAvatar = true,
     cardStyle = "modern",
     actions = {},
+    actionButton, // New: actionButton config from JSON
+    badge, // New: badge config from JSON
   } = cardConfig;
+  
+  console.log("🃏 Card config:", { actionButton, badge, actions });
 
   const name = item[nameKey];
   const subtitle = item[subtitleKey];
   const avatarUrl = item[avatarKey];
   const avatarFallback = item[avatarFallbackKey];
   
-  // Check if item is urgent (needs review)
+  // Use actionButton if available, otherwise fall back to actions
+  const buttonConfig = actionButton || actions;
+  const showButton = actionButton ? true : actions.showButton;
+  const buttonLabel = actionButton?.label || actions.buttonLabel || "Review";
+  const buttonVariant = actionButton?.variant || actions.buttonVariant || "contained";
+  const buttonColor = actionButton?.color || actions.buttonColor || "primary";
+  
+  console.log("🔘 Button config:", { showButton, buttonLabel, buttonVariant, buttonConfig });
+  
+  // Get badge value and color from JSON config
+  const badgeValue = badge?.dataKey ? item[badge.dataKey] : item.status || "Pending";
+  const badgeColorKey = badge?.colorMap?.[badgeValue] || "default";
+  
+  // Map MUI color names to theme palette
+  const getBadgeColor = () => {
+    const colorMap = {
+      success: theme.palette.success.main,
+      warning: theme.palette.warning.main,
+      error: theme.palette.error.main,
+      info: theme.palette.info.main,
+      primary: theme.palette.primary.main,
+      default: theme.palette.grey[600],
+    };
+    return colorMap[badgeColorKey] || colorMap.default;
+  };
+  
+  console.log("🏷️ Badge config:", { badgeValue, badgeColorKey, badge });
+  
+  // Check if item is urgent (needs review) - kept for backward compatibility
   const isUrgent = item.approvalStatus === "pending";
   const isRejected = item.approvalStatus === "rejected";
   const isApproved = item.approvalStatus === "approved";
 
-  // Get status color
+  // Get status color (legacy)
   const getStatusColor = () => {
     if (isUrgent) return theme.palette.warning.main;
     if (isRejected) return theme.palette.error.main;
@@ -421,19 +453,22 @@ const DynamicCardRenderer = ({
                 />
               )}
               <Chip
-                label={item.status || "Pending"}
+                label={badgeValue}
                 size="small"
+                color={badgeColorKey !== "default" ? badgeColorKey : undefined}
                 sx={{
                   height: 19,
                   fontSize: "0.65rem",
                   fontWeight: 600,
-                  bgcolor: isUrgent 
-                    ? alpha(theme.palette.error.main, 0.12)
-                    : alpha(theme.palette.info.main, 0.1),
-                  color: isUrgent 
-                    ? theme.palette.error.dark
-                    : theme.palette.info.dark,
-                  border: `1px solid ${alpha(isUrgent ? theme.palette.error.main : theme.palette.info.main, 0.25)}`,
+                  bgcolor: badgeColorKey !== "default" 
+                    ? undefined // Let MUI handle color prop
+                    : alpha(getBadgeColor(), 0.12),
+                  color: badgeColorKey !== "default"
+                    ? undefined // Let MUI handle color prop
+                    : getBadgeColor(),
+                  border: badgeColorKey === "default" 
+                    ? `1px solid ${alpha(getBadgeColor(), 0.25)}`
+                    : undefined,
                   "& .MuiChip-label": {
                     px: 0.625,
                   },
@@ -442,12 +477,13 @@ const DynamicCardRenderer = ({
             </Box>
           </Box>
 
-          {/* Review Button */}
-          {actions.showButton && (
+          {/* Action Button from JSON Config */}
+          {showButton && (
             <Button
-              variant={actions.buttonVariant || "contained"}
-              size={actions.buttonSize || "small"}
-              endIcon={actions.buttonIcon ? React.createElement(iconMap[actions.buttonIcon]) : null}
+              variant={buttonVariant}
+              size="small"
+              color={buttonColor}
+              endIcon={buttonConfig.icon ? React.createElement(iconMap[buttonConfig.icon]) : null}
               onClick={handleButtonClick}
               sx={{
                 borderRadius: 1.5,
@@ -456,17 +492,15 @@ const DynamicCardRenderer = ({
                 textTransform: "none",
                 fontWeight: 600,
                 fontSize: "0.8125rem",
-                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.2)}`,
-                bgcolor: theme.palette.primary.main,
+                boxShadow: `0 2px 8px ${alpha(theme.palette[buttonColor]?.main || theme.palette.primary.main, 0.2)}`,
                 flexShrink: 0,
                 "&:hover": {
-                  bgcolor: theme.palette.primary.dark,
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  boxShadow: `0 4px 12px ${alpha(theme.palette[buttonColor]?.main || theme.palette.primary.main, 0.35)}`,
                   transform: "translateY(-1px)",
                 },
               }}
             >
-              {actions.buttonLabel || "Review"}
+              {buttonLabel}
             </Button>
           )}
         </Box>

@@ -49,6 +49,7 @@ import {
   FilterList,
   ChevronRight,
   ArrowBack,
+  Add,
 } from "@mui/icons-material";
 
 // Icon mapping
@@ -71,6 +72,7 @@ const iconMap = {
   ArrowForward,
   ChevronLeft,
   ChevronRight,
+  Add,
 };
 
 /**
@@ -80,7 +82,7 @@ const iconMap = {
  * @param {Function} onCardClick - Callback when card is clicked
  * @param {Function} onSave - Callback when form is saved
  */
-const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "all", onFilterChange }) => {
+const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "all", onFilterChange, onCreateNew }) => {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -100,10 +102,16 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
 
   // Extract configuration from unified schema sections
   const { title = "Lead Management", sections = [], data = [] } = config;
+  
+  console.log("🚀 DynamicLeadsRenderer initialized");
+  console.log("📊 Config:", { title, sectionsCount: sections.length, dataCount: data.length });
+  console.log("📋 All sections:", sections.map(s => ({ id: s.id, type: s.type, componentType: s.componentType })));
 
   // Helper function to get section by componentType
   const getSection = (id) => {
-    return sections.find((s) => s.id === id);
+    const section = sections.find((s) => s.id === id);
+    console.log(`🔍 getSection("${id}"):`, section ? "Found" : "Not found", section);
+    return section;
   };
 
   // Get section configurations
@@ -112,6 +120,14 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
   const filterSection = getSection("filter_section");
   const cardListSection = getSection("leads_list_section");
   const dialogSection = getSection("lead_details_dialog");
+  
+  console.log("📦 Sections loaded:", {
+    headerSection: !!headerSection,
+    searchSection: !!searchSection,
+    filterSection: !!filterSection,
+    cardListSection: !!cardListSection,
+    dialogSection: !!dialogSection,
+  });
 
   // Extract search config
   const search = searchSection?.config || {};
@@ -296,13 +312,36 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
 
   // Render header section - Simple clean title
   const renderHeaderSection = () => {
-    if (!headerSection) return null;
+    console.log("🔍 renderHeaderSection called");
+    console.log("📋 headerSection:", headerSection);
+    
+    if (!headerSection) {
+      console.warn("⚠️ No headerSection found!");
+      return null;
+    }
+    
+    const headerProps = headerSection.props || {};
+    console.log("📦 headerProps:", headerProps);
+    
+    const showCreateButton = headerProps.showCreateButton;
+    console.log("🔘 showCreateButton:", showCreateButton);
+    
+    const createButtonLabel = headerProps.createButtonLabel || "Create New";
+    const createButtonPosition = headerProps.createButtonPosition || "top-right";
+    
+    console.log("🎯 Button config:", {
+      showCreateButton,
+      createButtonLabel,
+      createButtonPosition
+    });
 
     return (
       <Box
         key={headerSection.id}
         sx={{
-          textAlign: "center",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: createButtonPosition === "top-right" ? "space-between" : "center",
           mb: 3,
           px: 3,
           pt: 2,
@@ -318,6 +357,39 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
         >
           {headerSection.title || title}
         </Typography>
+        
+        {showCreateButton && createButtonPosition === "top-right" && (() => {
+          console.log("✅ Rendering Create button");
+          return (
+            <Button
+              variant="contained"
+              startIcon={renderIcon("Add")}
+              onClick={() => {
+                console.log("🎉 Create button clicked!");
+                if (onCreateNew) {
+                  onCreateNew();
+                } else {
+                  console.warn("⚠️ No onCreateNew callback provided");
+                }
+              }}
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                color: "white",
+                textTransform: "none",
+                px: 3,
+                py: 1,
+                borderRadius: 2,
+                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.25)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, #5568d3 0%, #6a4293 100%)",
+                  boxShadow: "0 6px 16px rgba(102, 126, 234, 0.35)",
+                },
+              }}
+            >
+              {createButtonLabel}
+            </Button>
+          );
+        })()}
       </Box>
     );
   };
@@ -690,6 +762,8 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
 
     const cardLayout = cardListSection.config || {};
     const search = searchSection?.config || {};
+    
+    console.log("🎨 Rendering card list section");
 
     return (
       <Box
@@ -700,6 +774,9 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
           px: 2,
         }}
       >
+        {/* Render Header Section with Create Button */}
+        {renderHeaderSection()}
+        
         {filteredData.length === 0 ? (
           <Box
             sx={{
@@ -737,27 +814,39 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
               gridAutoRows: config.layout?.cardGrid?.autoRows || "1fr",
             }}
           >
-            {paginatedData.map((item) => (
-              <Box key={item[cardLayout.idKey || "id"]} sx={{ display: "flex", flexDirection: "column" }}>
-                <DynamicCardRenderer
-                  item={item}
-                  selectedItem={selectedItem}
-                  cardConfig={{
-                    avatarKey: cardLayout.header?.avatarKey || "avatarUrl",
-                    avatarFallbackKey: cardLayout.header?.avatarFallbackKey || "name",
-                    nameKey: cardLayout.header?.titleKey || "name",
-                    subtitleKey: cardLayout.header?.subtitleKey || "mifixId",
-                    fields: cardLayout.fields || [],
-                    metrics: cardLayout.metrics || [],
-                    showAvatar: cardLayout.header?.showAvatar !== false,
-                    cardStyle: cardLayout.cardStyle || "modern",
-                    actions: cardLayout.actions || {},
-                  }}
-                  onClick={handleCardClick}
-                  isSelected={selectedItem?.id === item.id}
-                />
-              </Box>
-            ))}
+            {paginatedData.map((item, index) => {
+              if (index === 0) {
+                console.log("🃏 First card config:", {
+                  cardLayout,
+                  actionButton: cardLayout.actionButton,
+                  badge: cardLayout.badge,
+                });
+              }
+              
+              return (
+                <Box key={item[cardLayout.idKey || "id"]} sx={{ display: "flex", flexDirection: "column" }}>
+                  <DynamicCardRenderer
+                    item={item}
+                    selectedItem={selectedItem}
+                    cardConfig={{
+                      avatarKey: cardLayout.header?.avatarKey || "avatarUrl",
+                      avatarFallbackKey: cardLayout.header?.avatarFallbackKey || "name",
+                      nameKey: cardLayout.header?.titleKey || "name",
+                      subtitleKey: cardLayout.header?.subtitleKey || "mifixId",
+                      fields: cardLayout.fields || [],
+                      metrics: cardLayout.metrics || [],
+                      showAvatar: cardLayout.header?.showAvatar !== false,
+                      cardStyle: cardLayout.cardStyle || "modern",
+                      actions: cardLayout.actions || {},
+                      actionButton: cardLayout.actionButton, // Pass actionButton config
+                      badge: cardLayout.badge, // Pass badge config
+                    }}
+                    onClick={handleCardClick}
+                    isSelected={selectedItem?.id === item.id}
+                  />
+                </Box>
+              );
+            })}
           </Box>
         )}
 

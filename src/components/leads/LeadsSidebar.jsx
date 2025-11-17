@@ -68,7 +68,10 @@ const LeadsSidebar = ({ selectedTab, onTabChange, selectedFilter = "all" }) => {
       label: "Product Configurator",
       icon: ProductConfigIcon,
       color: "#ff9800",
-      onClick: () => onTabChange("product-configurator"),
+      onClick: () => {
+        onTabChange("product-configurator");
+        router.push("/product-configurator");
+      },
     },
     {
       id: "cre-configurator",

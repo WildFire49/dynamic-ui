@@ -122,8 +122,12 @@ const RightSidebar = ({
   };
 
   const renderControlPanel = (tab) => {
-    // Stage filters with counts
-    const stageFilters = [
+    // Use dynamic filter groups if available, otherwise use defaults
+    const filterGroups = tab.filterGroups || [];
+    const hasCustomFilters = filterGroups.length > 0;
+    
+    // Default stage filters (for backward compatibility)
+    const stageFilters = hasCustomFilters ? filterGroups[0]?.filters || [] : [
       { label: "All Customers", value: "all", count: 16, color: theme.palette.primary.main },
       { label: "Leads Only", value: "leads_only", count: 2, color: theme.palette.info.main },
       { label: "L1 Submitted", value: "l1_submitted", count: 3, color: theme.palette.success.light },
@@ -132,15 +136,19 @@ const RightSidebar = ({
       { label: "eSign Pending", value: "esign_pending", count: 5, color: theme.palette.error.light },
     ];
 
-    const approvalFilters = [
+    const approvalFilters = hasCustomFilters ? filterGroups[1]?.filters || [] : [
       { label: "All", value: "all", count: 16, color: theme.palette.grey[600] },
       { label: "Pending", value: "pending", count: 7, color: "#ed6c02" },
       { label: "Approved", value: "approved", count: 4, color: "#2e7d32" },
       { label: "Rejected", value: "rejected", count: 5, color: "#d32f2f" },
     ];
+    
+    const stageFilterLabel = hasCustomFilters ? filterGroups[0]?.label || "Filter by Stage" : "Filter by Stage";
+    const approvalFilterLabel = hasCustomFilters ? filterGroups[1]?.label || "Approval Status" : "Approval Status";
+    const isSecondGroupStatus = hasCustomFilters && (filterGroups[1]?.id === "product_status" || filterGroups[1]?.id === "approval_status");
 
     // Data-driven alerts with customer references
-    const alerts = [
+    const alerts = tab.alerts || [
       { 
         title: "L2 Pending - Urgent", 
         message: "3 applications pending for more than 2 hours", 
@@ -177,7 +185,7 @@ const RightSidebar = ({
     ];
 
     // Activity History - Recent actions
-    const activityHistory = [
+    const activityHistory = tab.activityHistory || [
       { user: "You", action: "approved", customer: "Rajesh Kumar", time: "5 mins ago", id: "JL_HD_CH_912" },
       { user: "You", action: "rejected", customer: "Priya Deshmukh", time: "15 mins ago", id: "IL_HD_NG_1013" },
       { user: "You", action: "approved", customer: "Devanshi Mehta", time: "1 hour ago", id: "JL_HD_JP_507" },
@@ -228,7 +236,7 @@ const RightSidebar = ({
                 fontSize: "0.7rem",
               }}
             >
-              Filter by Stage
+              {stageFilterLabel}
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
               {stageFilters.map((filter) => {
@@ -316,15 +324,21 @@ const RightSidebar = ({
                 fontSize: "0.7rem",
               }}
             >
-              Approval Status
+              {approvalFilterLabel}
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
               {approvalFilters.map((filter) => {
-                const isActive = statusFilter === filter.value;
+                const isActive = (isSecondGroupStatus ? statusFilter : selectedFilter) === filter.value;
                 return (
                   <Box
                     key={filter.value}
-                    onClick={() => setStatusFilter && setStatusFilter(filter.value)}
+                    onClick={() => {
+                      if (isSecondGroupStatus) {
+                        setStatusFilter && setStatusFilter(filter.value);
+                      } else {
+                        onFilterChange && onFilterChange(filter.value);
+                      }
+                    }}
                     sx={{
                       display: "flex",
                       alignItems: "center",
