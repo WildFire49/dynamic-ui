@@ -522,6 +522,35 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
     // Mark as submitted
     setIsSubmitted(true);
     
+    // Handle submitApi configuration
+    if (formSchema.submitApi) {
+      const { onSuccess } = formSchema.submitApi;
+      
+      // Handle navigation action
+      if (onSuccess?.action === 'navigate' && onSuccess?.path) {
+        console.log("🔀 Will navigate to:", onSuccess.path, "after 2 seconds");
+        
+        // Show success message if provided
+        if (onSuccess.message) {
+          console.log("✅", onSuccess.message);
+        }
+        
+        // Wait 2 seconds before navigating to show completion screen
+        setTimeout(() => {
+          // Navigate based on openInNewTab flag
+          if (onSuccess.openInNewTab) {
+            // Open in new tab
+            console.log("🔀 Opening in new tab:", onSuccess.path);
+            window.open(onSuccess.path, '_blank', 'noopener,noreferrer');
+          } else {
+            // Navigate in same tab
+            console.log("🔀 Navigating to:", onSuccess.path);
+            window.location.href = onSuccess.path;
+          }
+        }, 2000); // 2 second delay
+      }
+    }
+    
     if (onSubmit) {
       onSubmit(formData);
     }

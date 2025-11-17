@@ -756,7 +756,14 @@ export default function HomePage() {
         setIsTyping(false);
       }
     },
-    [conversationId, handleApiResponse, isAccessDenied, currentUserId, getUserId, user]
+    [
+      conversationId,
+      handleApiResponse,
+      isAccessDenied,
+      currentUserId,
+      getUserId,
+      user,
+    ]
   );
 
   const handleAction = useCallback(
@@ -839,7 +846,14 @@ export default function HomePage() {
 
       await callChatApi(requestBody);
     },
-    [currentResponseData, callChatApi, conversationId, currentUserId, sessionId, handleWorkflowFormSubmit]
+    [
+      currentResponseData,
+      callChatApi,
+      conversationId,
+      currentUserId,
+      sessionId,
+      handleWorkflowFormSubmit,
+    ]
   );
 
   // Fetch available documents
@@ -1089,7 +1103,7 @@ export default function HomePage() {
   const handleToggleWorkflowMode = useCallback(() => {
     const newMode = !workflowMode;
     setWorkflowMode(newMode);
-    
+
     if (!newMode) {
       // Exiting workflow mode - reset state
       resetWorkflow();
@@ -1101,7 +1115,7 @@ export default function HomePage() {
     async (messageText = null, audioFileUrl = null, audioKey = null) => {
       const finalMessageText = String(messageText || inputValue || "");
       if (finalMessageText.trim() === "" && !audioKey) return;
-      
+
       // Only add chat bubble if there's text message, not for audio-only
       if (finalMessageText.trim() !== "") {
         const userMessage = {
@@ -1136,7 +1150,7 @@ export default function HomePage() {
 
       // Clear input
       setInputValue("");
-      
+
       // Check if workflow mode is active
       if (workflowMode) {
         // Send to workflow API
@@ -1145,10 +1159,17 @@ export default function HomePage() {
         // Send to regular chat API
         const roleCode = authService.getRoleCode();
         const requestBody = {
-          user_id: currentUserId || getUserId() || authService.getUserId() || authService.getUsername() || "default_user",
+          user_id:
+            currentUserId ||
+            getUserId() ||
+            authService.getUserId() ||
+            authService.getUsername() ||
+            "default_user",
           message: finalMessageText,
           ...(conversationId && { conversation_id: conversationId }),
-          ...(selectedDocument && { document_key: selectedDocument.document_key }),
+          ...(selectedDocument && {
+            document_key: selectedDocument.document_key,
+          }),
           ...(roleCode && { roleCode }),
         };
 
@@ -1827,22 +1848,24 @@ export default function HomePage() {
         </Box>
         <Box
           sx={{
-            p: 2,
+            p: { xs: 1.5, sm: 2 },
             backgroundColor: "#ffffff",
             borderTop: "1px solid #e9ecef",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            overflow: "hidden", // Prevent overflow
           }}
         >
           <Box
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: 2.5,
+              gap: { xs: 0.75, sm: 2.5 },
               width: "100%",
               maxWidth: "100%",
-              px: { xs: 0.2, sm: 3 },
+              px: { xs: 0, sm: 3 },
+              overflow: "hidden", // Prevent overflow
             }}
           >
             {/* File Upload Button with Popover */}
@@ -2087,8 +2110,10 @@ export default function HomePage() {
             </Box>
 
             {/* Workflow Mode Toggle Button */}
-            <Tooltip 
-              title={workflowMode ? "Switch to Chat Mode" : "Switch to Workflow Mode"}
+            <Tooltip
+              title={
+                workflowMode ? "Switch to Chat Mode" : "Switch to Workflow Mode"
+              }
               placement="top"
             >
               <IconButton
@@ -2096,13 +2121,17 @@ export default function HomePage() {
                 disabled={isTyping || isAnalyzing}
                 sx={{
                   color: workflowMode ? "#667eea" : "#6b7280",
-                  bgcolor: workflowMode ? "rgba(102, 126, 234, 0.1)" : "transparent",
+                  bgcolor: workflowMode
+                    ? "rgba(102, 126, 234, 0.1)"
+                    : "transparent",
                   border: `2px solid ${workflowMode ? "#667eea" : "#e5e7eb"}`,
                   width: 44,
                   height: 44,
                   transition: "all 0.3s ease",
                   "&:hover": {
-                    bgcolor: workflowMode ? "rgba(102, 126, 234, 0.2)" : "rgba(107, 114, 128, 0.1)",
+                    bgcolor: workflowMode
+                      ? "rgba(102, 126, 234, 0.2)"
+                      : "rgba(107, 114, 128, 0.1)",
                     transform: "scale(1.05)",
                     borderColor: workflowMode ? "#667eea" : "#9ca3af",
                   },

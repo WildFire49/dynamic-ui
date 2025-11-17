@@ -1493,6 +1493,21 @@ export const l1CustomerOnboardingSchema = {
     label: "Submit",
     action: "submit",
   },
+  // Submit API configuration - Route to /leads page after submission
+  submitApi: {
+    endpoint: "/api/customers/l1-onboard",
+    method: "POST",
+    onSuccess: {
+      action: "navigate",
+      path: "/leads",
+      openInNewTab: true, // Open in new tab
+      message: "Customer information submitted successfully!",
+    },
+    onError: {
+      action: "showMessage",
+      message: "Failed to submit. Please try again.",
+    },
+  },
 };
 
 // L2 Info - Instant KCC Section

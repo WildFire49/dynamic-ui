@@ -126,15 +126,18 @@ const InputWithRecording = React.memo(({
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: { xs: 1, sm: 1.5 },
+        justifyContent: 'space-between',
+        gap: { xs: 0.5, sm: 1.5 },
         width: '100%',
-        maxWidth: '600px',
+        maxWidth: '100%',
+        minWidth: 0, // Allow shrinking
         mx: 'auto',
-        p: 2,
+        px: { xs: 1, sm: 2 },
+        py: { xs: 1, sm: 1.5 },
         background: `linear-gradient(135deg, ${recordingColor} 0%, ${isPaused ? '#f57c00' : '#d32f2f'} 100%)`,
-        borderRadius: '28px',
+        borderRadius: { xs: '20px', sm: '28px' },
         color: 'white',
-        minHeight: '64px',
+        minHeight: { xs: '48px', sm: '64px' },
         boxShadow: `0 8px 32px rgba(${recordingColorRgb}, 0.4)`,
         animation: isPaused ? 'pausedPulse 3s ease-in-out infinite' : 'recordingPulse 2s ease-in-out infinite',
         '@keyframes recordingPulse': {
@@ -148,12 +151,14 @@ const InputWithRecording = React.memo(({
           '100%': { transform: 'scale(1)', opacity: 1 },
         },
       }}>
-        {/* Animated Microphone */}
-        <Box sx={{ position: 'relative' }}>
+        {/* Left Section: Mic + Status */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, flex: 1, minWidth: 0 }}>
+          {/* Animated Microphone */}
           <Box
             sx={{
-              width: { xs: 44, sm: 48 },
-              height: { xs: 44, sm: 48 },
+              width: { xs: 36, sm: 48 },
+              height: { xs: 36, sm: 48 },
+              flexShrink: 0,
               borderRadius: '50%',
               background: 'rgba(255,255,255,0.15)',
               backdropFilter: 'blur(10px)',
@@ -169,55 +174,59 @@ const InputWithRecording = React.memo(({
               },
             }}
           >
-            <MicIcon sx={{ fontSize: { xs: 22, sm: 24 } }} />
+            <MicIcon sx={{ fontSize: { xs: 18, sm: 24 } }} />
           </Box>
-        </Box>
 
-        {/* Recording Status */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          <Typography 
-            variant="body1" 
-            sx={{ 
-              fontWeight: 700,
-              fontSize: { xs: '1rem', sm: '1.1rem' },
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-            }}
-          >
-            {isPaused ? 'Paused' : 'Recording...'}
-          </Typography>
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              fontFamily: 'monospace', 
-              fontSize: { xs: '0.9rem', sm: '1rem' },
-              opacity: 0.95,
-              fontWeight: 600,
-              letterSpacing: '1px',
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-            }}
-          >
-            {formattedTime}
-          </Typography>
-        </Box>
-
-        {/* Animated Waveform Bars */}
-        {!isPaused && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, mr: 2 }}>
-            {waveformBars}
+          {/* Recording Status */}
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                fontWeight: 700,
+                fontSize: { xs: '0.85rem', sm: '1.1rem' },
+                textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
+            >
+              {isPaused ? 'Paused' : 'Recording...'}
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                fontFamily: 'monospace', 
+                fontSize: { xs: '0.75rem', sm: '1rem' },
+                opacity: 0.95,
+                fontWeight: 600,
+                letterSpacing: { xs: '0.5px', sm: '1px' },
+                textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+              }}
+            >
+              {formattedTime}
+            </Typography>
           </Box>
-        )}
+
+          {/* Animated Waveform Bars - Hide on mobile */}
+          {!isPaused && (
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.3 }}>
+              {waveformBars}
+            </Box>
+          )}
+        </Box>
 
         {/* Control Buttons */}
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {/* Cancel Button */}
+        <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 }, flexShrink: 0 }}>
+          {/* Cancel Button - Hide on mobile */}
           <IconButton
             onClick={onCancelRecording}
             sx={{
+              display: { xs: 'none', sm: 'flex' },
               backgroundColor: 'rgba(255,255,255,0.15)',
               backdropFilter: 'blur(10px)',
               color: 'white',
-              width: { xs: 40, sm: 44 },
-              height: { xs: 40, sm: 44 },
+              width: 44,
+              height: 44,
               border: '1px solid rgba(255,255,255,0.2)',
               '&:hover': {
                 backgroundColor: 'rgba(255,255,255,0.25)',
@@ -226,7 +235,7 @@ const InputWithRecording = React.memo(({
               transition: 'all 0.2s ease',
             }}
           >
-            <CancelIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+            <CancelIcon sx={{ fontSize: 20 }} />
           </IconButton>
 
           {/* Pause/Resume Button */}
@@ -236,8 +245,8 @@ const InputWithRecording = React.memo(({
               backgroundColor: 'rgba(255,255,255,0.15)',
               backdropFilter: 'blur(10px)',
               color: 'white',
-              width: { xs: 40, sm: 44 },
-              height: { xs: 40, sm: 44 },
+              width: { xs: 32, sm: 44 },
+              height: { xs: 32, sm: 44 },
               border: '1px solid rgba(255,255,255,0.2)',
               '&:hover': {
                 backgroundColor: 'rgba(255,255,255,0.25)',
@@ -246,7 +255,7 @@ const InputWithRecording = React.memo(({
               transition: 'all 0.2s ease',
             }}
           >
-            {isPaused ? <PlayIcon sx={{ fontSize: { xs: 18, sm: 20 } }} /> : <PauseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
+            {isPaused ? <PlayIcon sx={{ fontSize: { xs: 16, sm: 20 } }} /> : <PauseIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
           </IconButton>
 
           {/* Stop Button */}
@@ -256,8 +265,8 @@ const InputWithRecording = React.memo(({
               backgroundColor: 'rgba(255,255,255,0.2)',
               backdropFilter: 'blur(10px)',
               color: 'white',
-              width: { xs: 44, sm: 48 },
-              height: { xs: 44, sm: 48 },
+              width: { xs: 36, sm: 48 },
+              height: { xs: 36, sm: 48 },
               border: '2px solid rgba(255,255,255,0.3)',
               '&:hover': {
                 backgroundColor: 'rgba(255,255,255,0.3)',
@@ -266,7 +275,7 @@ const InputWithRecording = React.memo(({
               transition: 'all 0.2s ease',
             }}
           >
-            <StopIcon sx={{ fontSize: { xs: 20, sm: 22 } }} />
+            <StopIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
           </IconButton>
         </Box>
       </Box>
@@ -277,21 +286,24 @@ const InputWithRecording = React.memo(({
     <Box sx={{ 
       display: 'flex', 
       alignItems: 'center',
-      gap: { xs: 1.5, sm: 2 },
+      justifyContent: 'center',
+      gap: { xs: 1, sm: 2 },
       width: '100%',
       maxWidth: '100%',
-      mx: 'auto'
+      mx: 'auto',
+      minWidth: 0, // Allow flex items to shrink below content size
     }}>
       {/* Input Container - Clean centered layout */}
       <Box sx={{ 
         flex: 1, 
+        minWidth: 0, // Allow flex item to shrink
         display: 'flex',
         alignItems: 'center',
-        gap: 1,
+        gap: { xs: 0.5, sm: 1 },
         backgroundColor: '#ffffff',
-        borderRadius: { xs: '28px', sm: '32px' },
+        borderRadius: { xs: '24px', sm: '32px' },
         border: '2px solid #f0f0f0',
-        px: { xs: 2.5, sm: 2.5 },
+        px: { xs: 1.5, sm: 2.5 },
         py: { xs: 0.5, sm: 0.75 },
         boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -359,39 +371,41 @@ const InputWithRecording = React.memo(({
         </IconButton>
       </Box>
       
-      {/* Send Button - Only shows when there's text */}
-      <Zoom in={inputValue.trim().length > 0} timeout={200}>
-        <IconButton
-          onClick={() => onSendMessage(inputValue)}
-          disabled={isTyping || inputValue.trim().length === 0}
-          sx={{
-            backgroundColor: '#1976d2',
-            color: 'white',
-            width: { xs: 48, sm: 56 },
-            height: { xs: 48, sm: 56 },
-            flexShrink: 0,
-            boxShadow: '0 4px 16px rgba(25,118,210,0.3)',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              backgroundColor: '#1565c0',
-              transform: 'scale(1.05) rotate(15deg)',
-              boxShadow: '0 6px 24px rgba(25,118,210,0.4)'
-            },
-            '&.Mui-disabled': {
-              backgroundColor: '#f5f5f5',
-              color: '#bdbdbd',
-            },
-            '&:active': {
-              transform: 'scale(0.95)'
-            }
-          }}
-        >
-          <SendIcon sx={{ 
-            fontSize: { xs: 22, sm: 24 },
-            transition: 'transform 0.2s ease'
-          }} />
-        </IconButton>
-      </Zoom>
+      {/* Send Button - Only renders when there's text (no invisible placeholder) */}
+      {inputValue.trim().length > 0 && (
+        <Zoom in={true} timeout={200}>
+          <IconButton
+            onClick={() => onSendMessage(inputValue)}
+            disabled={isTyping}
+            sx={{
+              backgroundColor: '#1976d2',
+              color: 'white',
+              width: { xs: 48, sm: 56 },
+              height: { xs: 48, sm: 56 },
+              flexShrink: 0,
+              boxShadow: '0 4px 16px rgba(25,118,210,0.3)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              '&:hover': {
+                backgroundColor: '#1565c0',
+                transform: 'scale(1.05) rotate(15deg)',
+                boxShadow: '0 6px 24px rgba(25,118,210,0.4)'
+              },
+              '&.Mui-disabled': {
+                backgroundColor: '#f5f5f5',
+                color: '#bdbdbd',
+              },
+              '&:active': {
+                transform: 'scale(0.95)'
+              }
+            }}
+          >
+            <SendIcon sx={{ 
+              fontSize: { xs: 22, sm: 24 },
+              transition: 'transform 0.2s ease'
+            }} />
+          </IconButton>
+        </Zoom>
+      )}
     </Box>
   );
 });
