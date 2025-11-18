@@ -27,6 +27,7 @@ import {
   Visibility,
 } from "@mui/icons-material";
 import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
+import apiClient from "@/services/apiClient";
 
 /**
  * API Configuration Chat Dialog
@@ -82,10 +83,9 @@ const ApiConfigChatDialog = ({
    */
   const fetchComponentSchema = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/configurator/ui-configurator/schemas/${formId}`
+      const data = await apiClient.get(
+        `/api/v1/configurator/ui-configurator/schemas/${formId}`
       );
-      const data = await response.json();
 
       if (data.success) {
         setComponentSchema(data.data);
@@ -142,23 +142,14 @@ const ApiConfigChatDialog = ({
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/configurator/ui-configurator/generate`,
+      const data = await apiClient.post(
+        `/api/v1/configurator/ui-configurator/generate`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            prompt: input,
-            form_id: formId,
-            user_id: "vaishakhsk", // Get from auth service
-            component_id: component?.id,
-          }),
+          form_id: formId,
+          user_message: input,
+          conversation_history: messages,
         }
       );
-
-      const data = await response.json();
 
       if (data.success) {
         // Check if this is a form schema generation

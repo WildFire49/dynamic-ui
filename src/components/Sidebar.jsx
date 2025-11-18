@@ -28,6 +28,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import authService from "../services/authService";
+import apiClient from "../services/apiClient";
 import NavigationLoader from "./common/NavigationLoader";
 import GavelIcon from "@mui/icons-material/Gavel";
 import {
@@ -187,11 +188,10 @@ const Sidebar = ({
         return;
       }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/users/${username}/conversations?page=${pageNum}&limit=10`
+      const data = await apiClient.get(
+        `/users/${username}/conversations?page=${pageNum}&limit=10`
       );
-      if (response.ok) {
-        const data = await response.json();
+      if (data) {
         const newConversations = data.conversations || [];
 
         if (append) {
@@ -236,11 +236,10 @@ const Sidebar = ({
   // Fetch conversation details and load chat
   const loadConversation = async (conversationId) => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/conversations/${conversationId}/history`
+      const data = await apiClient.get(
+        `/conversations/${conversationId}/history`
       );
-      if (response.ok) {
-        const data = await response.json();
+      if (data) {
         // Call the callback to load the conversation in the main app
         if (onLoadConversation) {
           onLoadConversation(data.history);

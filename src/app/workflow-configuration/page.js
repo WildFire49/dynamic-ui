@@ -24,25 +24,8 @@ import {
 } from "@mui/icons-material";
 import Image from "next/image";
 import WorkflowModifier from "../../components/WorkflowModifier";
-import { API_BASE_URL, CHAT_ENDPOINT } from "@/lib/config";
-import authService from "@/services/authService";
-
-/**
- * Get authentication headers with bearer token
- */
-const getAuthHeaders = () => {
-  const token =
-    typeof window !== "undefined" ? authService.getAccessToken() : null;
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-};
+import { CHAT_ENDPOINT } from "@/lib/config";
+import apiClient from "@/services/apiClient";
 
 const WorkflowConfigurationPage = () => {
   const [formData, setFormData] = useState({
@@ -79,17 +62,8 @@ const WorkflowConfigurationPage = () => {
 
       console.log("Sending workflow modification payload:", payload);
 
-      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
+      const data = await apiClient.post(CHAT_ENDPOINT, payload);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       console.log("Workflow modification response:", data);
 
       // Extract and store the conversation_id from the response
@@ -128,17 +102,8 @@ const WorkflowConfigurationPage = () => {
 
       console.log("Sending confirmation payload:", payload);
 
-      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
+      const data = await apiClient.post(CHAT_ENDPOINT, payload);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       console.log("Confirmation response:", data);
 
       setResponse(data);
@@ -163,15 +128,8 @@ const WorkflowConfigurationPage = () => {
 
         console.log("Sending cancel payload:", payload);
 
-        const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify(payload),
-        });
-
-        if (response.ok) {
-          console.log("Cancel request sent successfully");
-        }
+        const data = await apiClient.post(CHAT_ENDPOINT, payload);
+        console.log("Cancel request sent successfully");
       } catch (err) {
         console.error("Error sending cancel request:", err);
       }

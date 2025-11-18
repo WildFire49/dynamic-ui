@@ -42,6 +42,7 @@ import {
   Settings,
 } from "@mui/icons-material";
 import dynamic from "next/dynamic";
+import templateService from "@/services/templateService";
 
 // Dynamically import Monaco Editor to avoid SSR issues
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -89,10 +90,7 @@ export default function TemplateManager() {
   const fetchTemplates = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/configurator/ui-configurator/templates?active_only=false`
-      );
-      const data = await response.json();
+      const data = await templateService.listTemplates(false);
       if (data.success) {
         setTemplates(data.data.templates || []);
       }
@@ -106,20 +104,10 @@ export default function TemplateManager() {
 
   const handleCreateTemplate = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/configurator/ui-configurator/templates`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...formData,
-            created_by: "admin_user",
-          }),
-        }
-      );
-      const data = await response.json();
+      const data = await templateService.createTemplate({
+        ...formData,
+        created_by: "admin_user",
+      });
       if (data.success) {
         showSnackbar(
           data.message || "Template created successfully",
@@ -138,21 +126,14 @@ export default function TemplateManager() {
 
   const handleUpdateTemplate = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/configurator/ui-configurator/templates/${selectedTemplate.template_id}`,
+      const data = await templateService.updateTemplate(
+        selectedTemplate.template_id,
         {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            content: formData.content,
-            description: formData.description,
-            name: formData.name,
-          }),
+          content: formData.content,
+          description: formData.description,
+          name: formData.name,
         }
       );
-      const data = await response.json();
       if (data.success) {
         showSnackbar(
           data.message || "Template updated successfully",
@@ -173,13 +154,7 @@ export default function TemplateManager() {
     if (!confirm("Are you sure you want to deactivate this template?")) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/configurator/ui-configurator/templates/${templateId}`,
-        {
-          method: "DELETE",
-        }
-      );
-      const data = await response.json();
+      const data = await templateService.deleteTemplate(templateId);
       if (data.success) {
         showSnackbar("Template deactivated successfully", "success");
         fetchTemplates();
@@ -196,10 +171,10 @@ export default function TemplateManager() {
     if (template) {
       // Fetch full template details including content
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/configurator/ui-configurator/templates/${template.template_id}?active_only=false`
+        const data = await templateService.getTemplate(
+          template.template_id,
+          false
         );
-        const data = await response.json();
         if (data.success) {
           const fullTemplate = data.data;
           setSelectedTemplate(fullTemplate);
