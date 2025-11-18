@@ -71,10 +71,12 @@ const RightSidebar = ({
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
   const setActiveTab = onTabChange || setInternalActiveTab;
 
-  // Switch to Customer View when item is selected
+  // Switch to Customer View when item is selected, reset to Summary when deselected
   React.useEffect(() => {
     if (selectedItem) {
-      setActiveTab(1); // Switch to Customer View tab
+      setActiveTab(1); // Switch to Review Panel tab when customer is selected
+    } else {
+      setActiveTab(0); // Reset to Summary Panel when no customer is selected
     }
   }, [selectedItem]);
 

@@ -1236,7 +1236,10 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
                 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
                     <IconButton 
-                      onClick={() => setReviewMode(false)} 
+                      onClick={() => {
+                        setReviewMode(false);
+                        setSelectedItem(null); // Clear selected item to reset to Summary Panel
+                      }} 
                       size="small"
                       sx={{
                         bgcolor: alpha(theme.palette.primary.main, 0.08),
