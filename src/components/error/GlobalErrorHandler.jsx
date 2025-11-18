@@ -17,6 +17,10 @@ const GlobalErrorHandler = ({ children }) => {
 
     // Handle general JavaScript errors
     const handleError = (event) => {
+      // Ignore null errors or non-critical errors
+      if (!event.error || event.error === null) {
+        return;
+      }
       console.error('Global error:', event.error);
       setError({
         message: event.error?.message || 'An unexpected error occurred',

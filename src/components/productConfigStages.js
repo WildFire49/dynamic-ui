@@ -517,9 +517,10 @@ export const productConfigStages = {
           id: "loan_type",
           label: "Loan Type",
           columnSpan: "half",
-          type: "dropdown",
+          type: "text",
           required: true,
-          dataType: "Drop-down",
+          placeholder: "Enter Loan Type",
+          dataType: "Free Text",
           options: ["Instant KCC", "Allied"],
         },
         {
@@ -1335,8 +1336,8 @@ export const productConfigStages = {
     },
     {
       id: "income_expenditure",
-      title: "Income & Expenditure",
-      shortTitle: "Income & Expenditure",
+      title: "Income & Expense",
+      shortTitle: "Income & Expense",
       type: "form",
       allowComments: true,
       repeatable: true,
@@ -1433,7 +1434,7 @@ export const productConfigStages = {
     {
       id: "income_expenditure_statement",
       title: "Income Expenditure Statement",
-      shortTitle: "Income Statement",
+      shortTitle: "Income Expenditure Statement",
       type: "form",
       allowComments: true,
       repeatable: true,

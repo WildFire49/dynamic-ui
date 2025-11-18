@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Box,
   Typography,
-  Container,
   Button,
   Paper,
   Grid,
@@ -61,6 +60,12 @@ import {
   FolderOpen,
   ViewModule as ViewModuleIcon,
   Add as AddIcon,
+  ChevronLeft,
+  Code,
+  ExpandMore,
+  ExpandLess,
+  ArrowForward,
+  Preview,
 } from "@mui/icons-material";
 import ReactFlow, {
   MiniMap,
@@ -509,9 +514,9 @@ const UIConfiguratorPage = () => {
     },
 
     navbarWorkflowIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 1.5,
+      width: 32,
+      height: 32,
+      borderRadius: 1,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -519,7 +524,7 @@ const UIConfiguratorPage = () => {
     },
 
     navbarWorkflowIconSvg: {
-      fontSize: 20,
+      fontSize: 18,
       color: "primary.main",
     },
 
@@ -537,9 +542,8 @@ const UIConfiguratorPage = () => {
     },
 
     navbarWorkflowSelector: {
-      flex: 1,
-      maxWidth: 500,
-      mx: 4,
+      maxWidth: 280,
+      minWidth: 200,
     },
 
     navbarWorkflowButton: {
@@ -1711,26 +1715,27 @@ const UIConfiguratorPage = () => {
     <Box sx={styles.navbarContainer}>
       {/* Professional Navbar */}
       <Paper elevation={0} sx={styles.navbarPaper}>
-        <Container maxWidth="xl" disableGutters>
-          <Box sx={styles.navbarContent}>
-            {/* Back Button - Extreme Left */}
-            <Tooltip title="Back to Configurator">
-              <IconButton
-                onClick={() => router.push("/configurator")}
-                size="small"
-                sx={{
-                  color: "primary.main",
-                  borderRadius: 0,
-                  px: 2,
-                  "&:hover": {
-                    bgcolor: "action.hover",
-                  },
-                }}
-              >
-                <ArrowBack fontSize="medium" />
-              </IconButton>
-            </Tooltip>
+        <Box sx={styles.navbarContent}>
+          {/* Back Button - Extreme Left */}
+          <Tooltip title="Back to Configurator">
+            <IconButton
+              onClick={() => router.push("/configurator")}
+              size="small"
+              sx={{
+                color: "primary.main",
+                borderRadius: 0,
+                px: 2,
+                "&:hover": {
+                  bgcolor: "action.hover",
+                },
+              }}
+            >
+              <ArrowBack fontSize="medium" />
+            </IconButton>
+          </Tooltip>
 
+          {/* Left Section - MiFiX Studio + Workflow Builder */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             {/* Logo & Title */}
             <Box sx={styles.navbarLogo}>
               <img
@@ -1743,33 +1748,32 @@ const UIConfiguratorPage = () => {
               </Typography>
             </Box>
 
-            {/* Workflow Info - Centered Right */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "center" }}>
-              <Box sx={styles.navbarWorkflowInfo}>
-                <Box sx={styles.navbarWorkflowIcon}>
-                  <AccountTree sx={styles.navbarWorkflowIconSvg} />
-                </Box>
-                <Box>
-                  <Typography
-                    variant="subtitle1"
-                    sx={styles.navbarWorkflowName}
-                  >
-                    Workflow Builder
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={styles.navbarWorkflowSubtitle}
-                  >
-                    Visual form composer
-                  </Typography>
-                </Box>
+            {/* Workflow Info */}
+            <Box sx={styles.navbarWorkflowInfo}>
+              <Box sx={styles.navbarWorkflowIcon}>
+                <AccountTree sx={styles.navbarWorkflowIconSvg} />
+              </Box>
+              <Box>
+                <Typography variant="subtitle1" sx={styles.navbarWorkflowName}>
+                  Workflow Builder
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={styles.navbarWorkflowSubtitle}
+                >
+                  Visual form composer
+                </Typography>
               </Box>
             </Box>
+          </Box>
 
-            {/* Center Section - Workflow Selector */}
-            <Box sx={styles.navbarWorkflowSelector}>
+          {/* Center Section - Workflow Selector + Actions */}
+          <Box
+            sx={{ flex: 1, display: "flex", justifyContent: "center", mr: 4 }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              {/* Workflow Selector */}
               <Button
-                fullWidth
                 onClick={(e) => setWorkflowMenuAnchor(e.currentTarget)}
                 endIcon={<ArrowDropDown />}
                 startIcon={<FolderOpen />}
@@ -1777,11 +1781,11 @@ const UIConfiguratorPage = () => {
                   bgcolor: alpha("#000", 0.02),
                   color: "text.primary",
                   textTransform: "none",
-                  justifyContent: "space-between",
-                  px: 2,
+                  px: 2.5,
                   py: 1,
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
+                  fontSize: "1.1rem",
+                  fontWeight: 600,
+                  borderRadius: 2,
                   border: `1px solid transparent`,
                   "&:hover": {
                     bgcolor: alpha("#000", 0.04),
@@ -1790,7 +1794,7 @@ const UIConfiguratorPage = () => {
                 }}
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
                     {workflowName}
                   </Typography>
                   {currentWorkflowId && (
@@ -1799,7 +1803,7 @@ const UIConfiguratorPage = () => {
                       size="small"
                       sx={{
                         height: 20,
-                        fontSize: "0.688rem",
+                        fontSize: "0.75rem",
                         bgcolor: alpha(theme.palette.success.main, 0.1),
                         color: "success.main",
                       }}
@@ -1937,10 +1941,8 @@ const UIConfiguratorPage = () => {
                   </Button>
                 </Box>
               </Menu>
-            </Box>
 
-            {/* Right Section - Actions */}
-            <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+              {/* Actions */}
               <Button
                 variant="outlined"
                 size="small"
@@ -1981,7 +1983,29 @@ const UIConfiguratorPage = () => {
               </Button>
             </Box>
           </Box>
-        </Container>
+
+          {/* Right Section - Template Manager */}
+          <Button
+            href="/configurator/ui/template-manager"
+            startIcon={<Description fontSize="small" />}
+            sx={{
+              color: "#1976d2",
+              textTransform: "none",
+              fontWeight: 600,
+              gap: 2,
+              px: 2,
+              py: 1,
+              mr: 2,
+              borderRadius: 2,
+              backgroundColor: "rgba(25, 118, 210, 0.08)",
+              "&:hover": {
+                backgroundColor: "rgba(25, 118, 210, 0.15)",
+              },
+            }}
+          >
+            Template Manager
+          </Button>
+        </Box>
       </Paper>
 
       {/* Main Content */}
@@ -2306,67 +2330,78 @@ const UIConfiguratorPage = () => {
         <Box
           sx={{
             flex: 1,
+            display: "flex",
+            flexDirection: "column",
             position: "relative",
             minWidth: 0,
             overflow: "hidden",
           }}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
         >
-          {isMounted ? (
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={handleConnect}
-              nodeTypes={nodeTypes}
-              defaultViewport={{ x: 0, y: 0, zoom: 0.9 }}
-              minZoom={0.3}
-              maxZoom={1.5}
-              style={{ width: "100%", height: "100%" }}
-            >
-              <Background />
-              <Controls />
-              <MiniMap />
-            </ReactFlow>
-          ) : (
-            <Box
-              sx={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                textAlign: "center",
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          )}
+          <Box
+            sx={{
+              flex: 1,
+              position: "relative",
+              minWidth: 0,
+              overflow: "hidden",
+            }}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            {isMounted ? (
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={handleConnect}
+                nodeTypes={nodeTypes}
+                defaultViewport={{ x: 0, y: 0, zoom: 0.9 }}
+                minZoom={0.3}
+                maxZoom={1.5}
+                style={{ width: "100%", height: "100%" }}
+              >
+                <Background />
+                <Controls />
+                <MiniMap />
+              </ReactFlow>
+            ) : (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  textAlign: "center",
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            )}
 
-          {/* Empty State */}
-          {nodes.length === 0 && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                textAlign: "center",
-                pointerEvents: "none",
-              }}
-            >
-              <AccountTree
-                sx={{ fontSize: 80, color: "text.disabled", mb: 2 }}
-              />
-              <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-                Drag & Drop to Start Building
-              </Typography>
-              <Typography variant="body2" color="text.disabled">
-                Drag components from the library or click Add button
-              </Typography>
-            </Box>
-          )}
+            {/* Empty State */}
+            {nodes.length === 0 && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  textAlign: "center",
+                  pointerEvents: "none",
+                }}
+              >
+                <AccountTree
+                  sx={{ fontSize: 80, color: "text.disabled", mb: 2 }}
+                />
+                <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                  Drag & Drop to Start Building
+                </Typography>
+                <Typography variant="body2" color="text.disabled">
+                  Drag components from the library or click Add button
+                </Typography>
+              </Box>
+            )}
+          </Box>
         </Box>
       </Box>
 

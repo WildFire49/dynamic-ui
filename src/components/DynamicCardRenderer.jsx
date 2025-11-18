@@ -52,12 +52,14 @@ const iconMap = {
  * @param {object} item - The data item to display
  * @param {object} cardConfig - Card configuration (avatarKey, nameKey, fields, etc.)
  * @param {function} onClick - Callback when card is clicked
+ * @param {function} onReviewClick - Callback when Review button is clicked (switches to Review Panel tab)
  * @param {object} sx - Additional styles for the card
  */
 const DynamicCardRenderer = ({ 
   item, 
   cardConfig = {}, 
   onClick,
+  onReviewClick,
   isSelected = false,
   sx = {}
 }) => {
@@ -326,6 +328,10 @@ const DynamicCardRenderer = ({
     e.stopPropagation(); // Prevent card click
     if (onClick) {
       onClick(item);
+    }
+    // If this is a Review button, trigger tab switch via onReviewClick callback
+    if (onReviewClick && (buttonLabel === "Review" || buttonLabel?.toLowerCase().includes("review"))) {
+      onReviewClick(item);
     }
   };
 

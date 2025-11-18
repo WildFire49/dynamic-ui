@@ -248,6 +248,21 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
     }
   };
 
+  // Handle Review button click - switch to Review Panel tab
+  const handleReviewClick = (item) => {
+    console.log("Review button clicked for:", item);
+    // Set selected item if not already selected
+    if (!selectedItem || selectedItem.id !== item.id) {
+      setSelectedItem(item);
+    }
+    // Switch to Review Panel tab (tab index 1)
+    setSidebarActiveTab(1);
+    // Open sidebar if not already open
+    if (!sidebarOpen) {
+      setSidebarOpen(true);
+    }
+  };
+
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setSelectedItem(null);
@@ -845,6 +860,7 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
                       badge: cardLayout.badge, // Pass badge config
                     }}
                     onClick={handleCardClick}
+                    onReviewClick={handleReviewClick}
                     isSelected={selectedItem?.id === item.id}
                   />
                 </Box>

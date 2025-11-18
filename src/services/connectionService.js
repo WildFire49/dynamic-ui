@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import notificationManager from "@/utils/notificationManager";
 
 const BASE_URL = "/api/v1/configurator";
 
@@ -22,8 +23,10 @@ const connectionService = {
           connection_params: connectionData.connection_params || {},
         }
       );
+      notificationManager.success("Connection created successfully");
       return { data };
     } catch (error) {
+      notificationManager.error(error.message || "Failed to create connection");
       throw new Error(error.message || "Failed to create connection");
     }
   },
@@ -64,8 +67,10 @@ const connectionService = {
       const data = await apiClient.delete(
         `${BASE_URL}/connections/${connectionId}`
       );
+      notificationManager.success("Connection deleted successfully");
       return { data };
     } catch (error) {
+      notificationManager.error(error.message || "Failed to delete connection");
       throw new Error(error.message || "Failed to delete connection");
     }
   },

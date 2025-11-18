@@ -3,6 +3,8 @@
  * Handles workflow-based form rendering and navigation
  */
 
+import notificationManager from "@/utils/notificationManager";
+
 const WORKFLOW_API_BASE_URL = process.env.NEXT_PUBLIC_WORKFLOW_API_BASE_URL;
 
 const workflowService = {
@@ -29,6 +31,7 @@ const workflowService = {
       return data;
     } catch (error) {
       console.error("Workflow API call failed:", error);
+      notificationManager.error("Workflow action failed");
       throw error;
     }
   },

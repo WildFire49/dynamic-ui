@@ -2,6 +2,7 @@
 
 import { ROLES } from "../config/roleConfig";
 import apiClient from "./apiClient";
+import notificationManager from "@/utils/notificationManager";
 
 // Authentication service with API integration
 // Note: This service handles auth-specific logic like token storage and user management
@@ -62,6 +63,9 @@ class AuthService {
             localStorage.setItem("roleId", primaryRole.roleId);
           }
 
+          // Show success notification
+          notificationManager.success("Login successful");
+
           return {
             success: true,
             data: {
@@ -75,6 +79,9 @@ class AuthService {
           localStorage.setItem("username", username);
           localStorage.setItem("userId", data.data.user_id);
 
+          // Show success notification
+          notificationManager.success("Login successful");
+
           return {
             success: true,
             data: data.data,
@@ -82,6 +89,8 @@ class AuthService {
           };
         }
       } else {
+        // Show error notification
+        notificationManager.error(data.message || "Login failed");
         return {
           success: false,
           message: data.message || "Login failed",
@@ -89,6 +98,7 @@ class AuthService {
       }
     } catch (error) {
       console.error("Login error:", error);
+      notificationManager.error("Network error. Please try again.");
       return {
         success: false,
         message: "Network error. Please try again.",
