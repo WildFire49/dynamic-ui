@@ -59,6 +59,7 @@ import {
   AccountTree as WorkflowIcon,
   DynamicForm as FormIcon,
   SatelliteAlt as EventIcon,
+  VerifiedUser as VerifiedUserIcon,
 } from "@mui/icons-material";
 import { embeddingsApi } from "@/lib/api/embeddingsApi";
 import RouteGuard from "../../components/auth/RouteGuard";
@@ -154,14 +155,23 @@ const AGENT_TYPES = [
   {
     id: "communication",
     title: "Communication",
-    description:
-      "Communication and Notification through various platforms like WhatsApp, Mails, SMS, etc",
+    description: "Communication and Notification through all Platforms",
     subtitle: "Smart Communication",
     icon: EventIcon,
     color: "#D9DE35",
     gradient:
       "linear-gradient(135deg,rgb(198, 213, 59) 0%,rgb(118, 186, 58) 100%)",
     stats: "Real-time",
+  },
+  {
+    id: "validation",
+    title: "Validation",
+    description: "Data Quality Check",
+    subtitle: "Ensures Data Accuracy",
+    icon: VerifiedUserIcon,
+    color: "#fd971f",
+    gradient: "linear-gradient(135deg, #f57c00 0%, #fd971f 100%)",
+    stats: "Data Quality",
   },
   {
     id: "analysis_agent",
