@@ -35,6 +35,11 @@ import {
   Code as CodeIcon,
   Description as DescriptionIcon,
   History as HistoryIcon,
+  CalendarToday,
+  Person,
+  Verified,
+  Article,
+  Settings,
 } from "@mui/icons-material";
 import dynamic from "next/dynamic";
 
@@ -254,7 +259,7 @@ export default function TemplateManager() {
     <Box
       sx={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+        bgcolor: "#f8fafc",
         p: { xs: 2, sm: 3, md: 4 },
       }}
     >
@@ -274,9 +279,7 @@ export default function TemplateManager() {
             variant="h4"
             sx={{
               fontWeight: 700,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
+              color: "#1a202c",
               mb: 1,
             }}
           >
@@ -291,18 +294,20 @@ export default function TemplateManager() {
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
           sx={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            bgcolor: "#0078d7",
             color: "white",
             px: 3,
             py: 1.5,
             borderRadius: 2,
             textTransform: "none",
             fontWeight: 600,
-            boxShadow: "0 4px 20px rgba(102, 126, 234, 0.4)",
+            boxShadow: "0 4px 12px rgba(0,120,215,0.25)",
             "&:hover": {
-              background: "linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)",
-              boxShadow: "0 6px 25px rgba(102, 126, 234, 0.5)",
+              bgcolor: "#005a9e",
+              boxShadow: "0 6px 16px rgba(0,120,215,0.35)",
+              transform: "translateY(-2px)",
             },
+            transition: "all 0.3s ease",
           }}
         >
           Create New Template
@@ -320,13 +325,17 @@ export default function TemplateManager() {
             p: 6,
             textAlign: "center",
             borderRadius: 3,
-            background: "white",
+            bgcolor: "white",
+            border: "2px dashed #e2e8f0",
           }}
         >
-          <DescriptionIcon
-            sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
-          />
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+          <Article sx={{ fontSize: 64, color: "#9ca3af", mb: 2 }} />
+          <Typography
+            variant="h6"
+            color="text.primary"
+            gutterBottom
+            fontWeight="600"
+          >
             No templates found
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -337,129 +346,216 @@ export default function TemplateManager() {
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
             sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              bgcolor: "#0078d7",
+              "&:hover": { bgcolor: "#005a9e" },
             }}
           >
             Create Template
           </Button>
         </Paper>
       ) : (
-        <Grid container spacing={3}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
+            gap: 3,
+          }}
+        >
           {templates.map((template) => (
-            <Grid item xs={12} sm={6} md={4} key={template.id}>
-              <Card
+            <Paper
+              key={template.id}
+              sx={{
+                p: 3,
+                border: "2px solid",
+                borderColor: template.is_active ? "#0078d7" : "#e2e8f0",
+                borderRadius: 3,
+                transition: "all 0.3s ease",
+                position: "relative",
+                overflow: "hidden",
+                "&:hover": {
+                  transform: "translateY(-4px)",
+                  boxShadow: "0 12px 24px rgba(0,120,215,0.15)",
+                  borderColor: "#0078d7",
+                },
+              }}
+            >
+              {/* Status Badge */}
+              <Box
                 sx={{
-                  height: "100%",
-                  borderRadius: 3,
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    transform: "translateY(-4px)",
-                    boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
-                  },
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bgcolor: template.is_active ? "#0078d7" : "#9ca3af",
+                  color: "white",
+                  px: 2,
+                  py: 0.5,
+                  borderBottomLeftRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
                 }}
               >
-                <CardContent>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mb: 2,
-                    }}
-                  >
-                    <Chip
-                      label={`v${template.version}`}
-                      size="small"
-                      sx={{
-                        background:
-                          "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                        color: "white",
-                        fontWeight: 600,
-                      }}
-                    />
-                    <Chip
-                      label={template.is_active ? "Active" : "Inactive"}
-                      size="small"
-                      color={template.is_active ? "success" : "default"}
-                    />
-                  </Box>
+                {template.is_active ? (
+                  <Verified sx={{ fontSize: 16 }} />
+                ) : (
+                  <Settings sx={{ fontSize: 16 }} />
+                )}
+                <Typography variant="caption" fontWeight="600">
+                  {template.is_active ? "Active" : "Inactive"}
+                </Typography>
+              </Box>
 
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                    {template.name}
-                  </Typography>
+              {/* Header */}
+              <Box sx={{ mb: 2, pr: 8 }}>
+                <Typography
+                  variant="h6"
+                  fontWeight="700"
+                  sx={{ color: "#1a202c", mb: 0.5 }}
+                >
+                  {template.name}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "#0078d7",
+                    bgcolor: "#e6f2ff",
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: 1,
+                    fontWeight: 600,
+                    display: "inline-block",
+                  }}
+                >
+                  v{template.version}
+                </Typography>
+              </Box>
 
+              {/* Description */}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  mb: 2,
+                  lineHeight: 1.6,
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  minHeight: "40px",
+                }}
+              >
+                {template.description || "No description provided"}
+              </Typography>
+
+              {/* Template ID */}
+              <Box sx={{ mb: 2 }}>
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                >
+                  <CodeIcon sx={{ fontSize: 16, color: "#6b7280" }} />
                   <Typography
-                    variant="body2"
+                    variant="caption"
+                    fontWeight="600"
                     color="text.secondary"
-                    sx={{
-                      mb: 2,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
                   >
-                    {template.description || "No description"}
+                    TEMPLATE ID
                   </Typography>
+                </Box>
+                <Chip
+                  label={template.template_id}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    borderColor: "#0078d7",
+                    color: "#0078d7",
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                  }}
+                />
+              </Box>
 
-                  <Divider sx={{ my: 2 }} />
+              {/* Action Buttons */}
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1,
+                  mb: 2,
+                }}
+              >
+                <Button
+                  size="small"
+                  startIcon={<EditIcon />}
+                  onClick={() => handleOpenDialog(template)}
+                  sx={{
+                    flex: 1,
+                    bgcolor: "#f0f9ff",
+                    color: "#0078d7",
+                    fontWeight: 600,
+                    textTransform: "none",
+                    "&:hover": {
+                      bgcolor: "#e6f2ff",
+                    },
+                  }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  size="small"
+                  startIcon={<VisibilityIcon />}
+                  onClick={() => handleOpenDialog(template)}
+                  sx={{
+                    flex: 1,
+                    bgcolor: "#f0f9ff",
+                    color: "#0078d7",
+                    fontWeight: 600,
+                    textTransform: "none",
+                    "&:hover": {
+                      bgcolor: "#e6f2ff",
+                    },
+                  }}
+                >
+                  View
+                </Button>
+                <IconButton
+                  size="small"
+                  onClick={() => handleDeleteTemplate(template.template_id)}
+                  sx={{
+                    color: "#f56565",
+                    "&:hover": {
+                      bgcolor: "#fef2f2",
+                    },
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
 
-                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    <Tooltip title="Edit">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenDialog(template)}
-                        sx={{
-                          color: "primary.main",
-                          "&:hover": { bgcolor: "primary.light" },
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="View">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenDialog(template)}
-                        sx={{
-                          color: "info.main",
-                          "&:hover": { bgcolor: "info.light" },
-                        }}
-                      >
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Deactivate">
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          handleDeleteTemplate(template.template_id)
-                        }
-                        sx={{
-                          color: "error.main",
-                          "&:hover": { bgcolor: "error.light" },
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-
-                  <Box
-                    sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap" }}
-                  >
-                    <Chip
-                      icon={<CodeIcon />}
-                      label={template.template_id}
-                      size="small"
-                      variant="outlined"
-                      sx={{ fontSize: "0.7rem" }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+              {/* Footer */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  pt: 2,
+                  borderTop: "1px solid #e5e7eb",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <CalendarToday sx={{ fontSize: 14, color: "#9ca3af" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(template.created_at).toLocaleDateString()}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Person sx={{ fontSize: 14, color: "#9ca3af" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    {template.created_by || "system"}
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
           ))}
-        </Grid>
+        </Box>
       )}
 
       {/* Create/Edit Dialog */}
@@ -475,7 +571,7 @@ export default function TemplateManager() {
       >
         <DialogTitle
           sx={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            bgcolor: "#0078d7",
             color: "white",
             display: "flex",
             justifyContent: "space-between",
@@ -569,7 +665,7 @@ export default function TemplateManager() {
             >
               <Typography
                 variant="subtitle2"
-                sx={{ fontWeight: 600, color: "#667eea" }}
+                sx={{ fontWeight: 600, color: "#0078d7" }}
               >
                 Template Content
               </Typography>
@@ -577,8 +673,7 @@ export default function TemplateManager() {
                 label="Markdown"
                 size="small"
                 sx={{
-                  background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  bgcolor: "#0078d7",
                   color: "white",
                   fontWeight: 600,
                 }}
@@ -632,11 +727,11 @@ export default function TemplateManager() {
             sx={{
               borderRadius: 2,
               px: 3,
-              color: "#667eea",
-              borderColor: "#667eea",
+              color: "#0078d7",
+              borderColor: "#0078d7",
               "&:hover": {
-                borderColor: "#5568d3",
-                background: "rgba(102, 126, 234, 0.04)",
+                borderColor: "#005a9e",
+                bgcolor: "rgba(0,120,215,0.04)",
               },
             }}
           >
@@ -648,18 +743,18 @@ export default function TemplateManager() {
             startIcon={<SaveIcon />}
             disabled={!formData.name || !formData.content}
             sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              bgcolor: "#0078d7",
               borderRadius: 2,
               px: 4,
               py: 1,
               fontWeight: 600,
-              boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+              boxShadow: "0 4px 12px rgba(0,120,215,0.25)",
               "&:hover": {
-                background: "linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)",
-                boxShadow: "0 6px 16px rgba(102, 126, 234, 0.4)",
+                bgcolor: "#005a9e",
+                boxShadow: "0 6px 16px rgba(0,120,215,0.35)",
               },
               "&:disabled": {
-                background: "#e0e0e0",
+                bgcolor: "#e0e0e0",
               },
             }}
           >

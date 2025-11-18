@@ -30,6 +30,12 @@ import {
   CheckCircle,
   Cancel,
   BarChart,
+  CalendarToday,
+  Person,
+  TrendingUp,
+  Storage,
+  Label,
+  Verified,
 } from "@mui/icons-material";
 import queryLearningService from "@/services/queryLearningService";
 
@@ -187,7 +193,8 @@ const TemplateManagement = ({ connectionId, userId = "admin@company.com" }) => {
             startIcon={<Add />}
             onClick={() => setCreateDialogOpen(true)}
             sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              bgcolor: "#0078d7",
+              "&:hover": { bgcolor: "#005a9e" },
             }}
           >
             Create Template
@@ -211,167 +218,300 @@ const TemplateManagement = ({ connectionId, userId = "admin@company.com" }) => {
         </Alert>
       )}
 
-      {/* Templates Table */}
-      <TableContainer
-        component={Paper}
-        sx={{ border: "1px solid #e2e8f0", boxShadow: "none" }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow sx={{ background: "#f8fafc" }}>
-              <TableCell>
-                <strong>Template ID</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Name</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Keywords</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Primary Tables</strong>
-              </TableCell>
-              <TableCell align="center">
-                <strong>Usage</strong>
-              </TableCell>
-              <TableCell align="center">
-                <strong>Success Rate</strong>
-              </TableCell>
-              <TableCell align="center">
-                <strong>Status</strong>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {templates.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                  <Typography color="text.secondary">
-                    No templates found. Click "Seed Templates" to initialize.
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              templates.map((template) => (
-                <TableRow
-                  key={template.id}
+      {/* Templates Grid */}
+      {templates.length === 0 ? (
+        <Paper sx={{ p: 6, textAlign: "center", border: "1px solid #e2e8f0" }}>
+          <Typography color="text.secondary" variant="h6">
+            No templates found. Click "Seed Templates" to initialize.
+          </Typography>
+        </Paper>
+      ) : (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
+            gap: 3,
+          }}
+        >
+          {templates.map((template) => (
+            <Paper
+              key={template.id}
+              sx={{
+                p: 3,
+                border: "2px solid",
+                borderColor: template.is_active ? "#0078d7" : "#e2e8f0",
+                borderRadius: 3,
+                transition: "all 0.3s ease",
+                position: "relative",
+                overflow: "hidden",
+                "&:hover": {
+                  transform: "translateY(-4px)",
+                  boxShadow: "0 12px 24px rgba(0,120,215,0.15)",
+                  borderColor: "#0078d7",
+                },
+              }}
+            >
+              {/* Status Badge */}
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bgcolor: template.is_active ? "#0078d7" : "#9ca3af",
+                  color: "white",
+                  px: 2,
+                  py: 0.5,
+                  borderBottomLeftRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                }}
+              >
+                {template.is_active ? (
+                  <Verified sx={{ fontSize: 16 }} />
+                ) : (
+                  <Cancel sx={{ fontSize: 16 }} />
+                )}
+                <Typography variant="caption" fontWeight="600">
+                  {template.is_active ? "Active" : "Inactive"}
+                </Typography>
+              </Box>
+
+              {/* Header */}
+              <Box sx={{ mb: 2, pr: 8 }}>
+                <Typography
+                  variant="h6"
+                  fontWeight="700"
+                  sx={{ color: "#1a202c", mb: 0.5 }}
+                >
+                  {template.template_name || template.name}
+                </Typography>
+                <Typography
+                  variant="caption"
                   sx={{
-                    "&:hover": { background: "#f8fafc" },
-                    transition: "background 0.2s",
+                    color: "#0078d7",
+                    bgcolor: "#e6f2ff",
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: 1,
+                    fontWeight: 600,
+                    display: "inline-block",
                   }}
                 >
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="600">
-                      {template.template_id}
+                  {template.template_id}
+                </Typography>
+              </Box>
+
+              {/* Description */}
+              {template.description && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 2, lineHeight: 1.6 }}
+                >
+                  {template.description}
+                </Typography>
+              )}
+
+              {/* Stats Grid */}
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: 2,
+                  mb: 2,
+                }}
+              >
+                {/* Usage Count */}
+                <Box
+                  sx={{
+                    bgcolor: "#f0f9ff",
+                    p: 1.5,
+                    borderRadius: 2,
+                    border: "1px solid #bfdbfe",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                    <BarChart sx={{ fontSize: 18, color: "#0078d7" }} />
+                    <Typography variant="caption" color="text.secondary" fontWeight="600">
+                      USAGE
                     </Typography>
-                  </TableCell>
-                  <TableCell>{template.template_name}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {template.keywords?.slice(0, 3).map((keyword, idx) => (
-                        <Chip
-                          key={idx}
-                          label={keyword}
-                          size="small"
-                          sx={{
-                            background: "#e0e7ff",
-                            color: "#4338ca",
-                            fontWeight: 500,
-                          }}
-                        />
-                      ))}
-                      {template.keywords?.length > 3 && (
-                        <Chip
-                          label={`+${template.keywords.length - 3}`}
-                          size="small"
-                          sx={{
-                            background: "#f3f4f6",
-                            color: "#6b7280",
-                          }}
-                        />
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {template.primary_tables?.slice(0, 2).map((table, idx) => (
-                        <Chip
-                          key={idx}
-                          label={table}
-                          size="small"
-                          variant="outlined"
-                        />
-                      ))}
-                      {template.primary_tables?.length > 2 && (
-                        <Chip
-                          label={`+${template.primary_tables.length - 2}`}
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Tooltip title="Total usage count">
-                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
-                        <BarChart sx={{ fontSize: 18, color: "#6b7280" }} />
-                        <Typography variant="body2">
-                          {template.usage_count || 0}
-                        </Typography>
-                      </Box>
-                    </Tooltip>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Typography
-                      variant="body2"
-                      fontWeight="600"
+                  </Box>
+                  <Typography variant="h6" fontWeight="700" sx={{ color: "#0078d7" }}>
+                    {template.usage_count || 0}
+                  </Typography>
+                </Box>
+
+                {/* Success Rate */}
+                <Box
+                  sx={{
+                    bgcolor:
+                      template.usage_count > 0 &&
+                      template.success_count / template.usage_count >= 0.85
+                        ? "#f0fdf4"
+                        : template.usage_count > 0 &&
+                          template.success_count / template.usage_count >= 0.7
+                        ? "#fffbeb"
+                        : "#fef2f2",
+                    p: 1.5,
+                    borderRadius: 2,
+                    border: "1px solid",
+                    borderColor:
+                      template.usage_count > 0 &&
+                      template.success_count / template.usage_count >= 0.85
+                        ? "#bbf7d0"
+                        : template.usage_count > 0 &&
+                          template.success_count / template.usage_count >= 0.7
+                        ? "#fde68a"
+                        : "#fecaca",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                    <TrendingUp
                       sx={{
+                        fontSize: 18,
                         color:
+                          template.usage_count > 0 &&
                           template.success_count / template.usage_count >= 0.85
                             ? "#48bb78"
-                            : template.success_count / template.usage_count >= 0.7
-                            ? "#f6ad55"
+                            : template.usage_count > 0 &&
+                              template.success_count / template.usage_count >= 0.7
+                            ? "#ed8936"
                             : "#f56565",
                       }}
-                    >
-                      {template.usage_count > 0
-                        ? formatPercentage(
-                            template.success_count / template.usage_count
-                          )
-                        : "N/A"}
+                    />
+                    <Typography variant="caption" color="text.secondary" fontWeight="600">
+                      SUCCESS RATE
                     </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    {template.is_active ? (
-                      <Chip
-                        icon={<CheckCircle sx={{ fontSize: 16 }} />}
-                        label="Active"
-                        size="small"
-                        sx={{
-                          background: "#d1fae5",
-                          color: "#065f46",
-                          fontWeight: 600,
-                        }}
-                      />
-                    ) : (
-                      <Chip
-                        icon={<Cancel sx={{ fontSize: 16 }} />}
-                        label="Inactive"
-                        size="small"
-                        sx={{
-                          background: "#fee2e2",
-                          color: "#991b1b",
-                          fontWeight: 600,
-                        }}
-                      />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                  </Box>
+                  <Typography
+                    variant="h6"
+                    fontWeight="700"
+                    sx={{
+                      color:
+                        template.usage_count > 0 &&
+                        template.success_count / template.usage_count >= 0.85
+                          ? "#48bb78"
+                          : template.usage_count > 0 &&
+                            template.success_count / template.usage_count >= 0.7
+                          ? "#ed8936"
+                          : "#f56565",
+                    }}
+                  >
+                    {template.usage_count > 0
+                      ? formatPercentage(template.success_count / template.usage_count)
+                      : "N/A"}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Keywords */}
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <Label sx={{ fontSize: 16, color: "#6b7280" }} />
+                  <Typography variant="caption" fontWeight="600" color="text.secondary">
+                    KEYWORDS
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                  {template.keywords?.slice(0, 4).map((keyword, idx) => (
+                    <Chip
+                      key={idx}
+                      label={keyword}
+                      size="small"
+                      sx={{
+                        bgcolor: "#e6f2ff",
+                        color: "#0078d7",
+                        fontWeight: 600,
+                        fontSize: "0.75rem",
+                        height: 24,
+                      }}
+                    />
+                  ))}
+                  {template.keywords?.length > 4 && (
+                    <Chip
+                      label={`+${template.keywords.length - 4} more`}
+                      size="small"
+                      sx={{
+                        bgcolor: "#f3f4f6",
+                        color: "#6b7280",
+                        fontWeight: 600,
+                        fontSize: "0.75rem",
+                        height: 24,
+                      }}
+                    />
+                  )}
+                </Box>
+              </Box>
+
+              {/* Primary Tables */}
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <Storage sx={{ fontSize: 16, color: "#6b7280" }} />
+                  <Typography variant="caption" fontWeight="600" color="text.secondary">
+                    PRIMARY TABLES
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                  {template.primary_tables?.slice(0, 3).map((table, idx) => (
+                    <Chip
+                      key={idx}
+                      label={table}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        borderColor: "#0078d7",
+                        color: "#0078d7",
+                        fontWeight: 600,
+                        fontSize: "0.75rem",
+                        height: 24,
+                      }}
+                    />
+                  ))}
+                  {template.primary_tables?.length > 3 && (
+                    <Chip
+                      label={`+${template.primary_tables.length - 3}`}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        borderColor: "#9ca3af",
+                        color: "#6b7280",
+                        fontWeight: 600,
+                        fontSize: "0.75rem",
+                        height: 24,
+                      }}
+                    />
+                  )}
+                </Box>
+              </Box>
+
+              {/* Footer */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  pt: 2,
+                  borderTop: "1px solid #e5e7eb",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <CalendarToday sx={{ fontSize: 14, color: "#9ca3af" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(template.created_at).toLocaleDateString()}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Person sx={{ fontSize: 14, color: "#9ca3af" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    {template.created_by || "system"}
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       {/* Create Template Dialog */}
       <Dialog
@@ -465,7 +605,8 @@ const TemplateManagement = ({ connectionId, userId = "admin@company.com" }) => {
             variant="contained"
             onClick={handleCreateTemplate}
             sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              bgcolor: "#0078d7",
+              "&:hover": { bgcolor: "#005a9e" },
             }}
           >
             Create Template
@@ -501,7 +642,8 @@ const TemplateManagement = ({ connectionId, userId = "admin@company.com" }) => {
               onClick={handleMatchTemplate}
               sx={{
                 mt: 2,
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                bgcolor: "#0078d7",
+                "&:hover": { bgcolor: "#005a9e" },
               }}
               fullWidth
             >
