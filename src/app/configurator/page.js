@@ -37,6 +37,7 @@ import {
   Divider,
   CircularProgress,
 } from "@mui/material";
+import StorageIcon from "@mui/icons-material/Storage";
 import {
   Gavel as RuleIcon,
   CalendarToday as ScheduleIcon,
@@ -816,11 +817,16 @@ export default function ConfiguratorPage() {
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
                   <Grid container spacing={4} sx={{ maxWidth: 800 }}>
                     {[
-                      { label: "AI Agents", value: "4", icon: RocketIcon },
                       {
-                        label: "Collections",
-                        value: collections.length.toString(),
-                        icon: BrainIcon,
+                        label: "AI Agents",
+                        value: Object.keys(AGENT_TYPES).length.toString(),
+                        icon: RocketIcon,
+                      },
+                      {
+                        label: "Data Accuracty",
+                        value: "100%",
+                        suffix: "%",
+                        icon: StorageIcon,
                       },
                       {
                         label: "Uptime",
