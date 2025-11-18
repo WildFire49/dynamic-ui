@@ -283,10 +283,10 @@ export default function TemplateManager() {
               mb: 1,
             }}
           >
-            Template Manager
+            UI Template Manager
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Create and manage form templates with version control
+            Create and manage UI Templates with version control
           </Typography>
         </Box>
         <Button
@@ -543,7 +543,16 @@ export default function TemplateManager() {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <CalendarToday sx={{ fontSize: 14, color: "#9ca3af" }} />
                   <Typography variant="caption" color="text.secondary">
-                    {new Date(template.created_at).toLocaleDateString()}
+                    {new Date(template.created_at)
+                      .toLocaleString("en-GB", {
+                        timeZone: "Asia/Kolkata",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "numeric",
+                      })
+                      .replace(",", "")}
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
