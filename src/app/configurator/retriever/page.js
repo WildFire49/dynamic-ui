@@ -24,6 +24,7 @@ import {
   RadioButtonUnchecked as UncheckedIcon,
   PlayArrow as PlayIcon,
   Build as BuildIcon,
+  Code as CodeIcon,
   Hub,
 } from "@mui/icons-material";
 import HubIcon from "@mui/icons-material/Hub";
@@ -33,17 +34,16 @@ import TableSelector from "@/components/retriever/TableSelector";
 import KnowledgeGraphBuilder from "@/components/retriever/KnowledgeGraphBuilder";
 import KnowledgeGraphManager from "@/components/retriever/KnowledgeGraphManager";
 import SQLQueryGenerator from "@/components/retriever/SQLQueryGenerator";
+import SQLExecutor from "@/components/retriever/SQLExecutor";
 import RetrieverSidebar from "@/components/retriever/RetrieverSidebar";
 import dynamic from "next/dynamic";
 
-const SelfLearningPage = dynamic(
-  () => import("./self-learning/page"),
-  { ssr: false }
-);
-const TemplateWorkflowPage = dynamic(
-  () => import("./template-workflow/page"),
-  { ssr: false }
-);
+const SelfLearningPage = dynamic(() => import("./self-learning/page"), {
+  ssr: false,
+});
+const TemplateWorkflowPage = dynamic(() => import("./template-workflow/page"), {
+  ssr: false,
+});
 import fastKgService from "@/services/fastKgService";
 import useRetrieverStore from "@/store/retrieverStore";
 
@@ -159,6 +159,13 @@ const RetrieverConfiguratorPage = () => {
       setActiveStep(4);
       return;
     }
+
+    // Step 5: SQL Executor - Accessible if connection exists
+    if (step === 5) {
+      if (!currentConnection) return;
+      setActiveStep(5);
+      return;
+    }
   };
 
   const steps = [
@@ -175,7 +182,9 @@ const RetrieverConfiguratorPage = () => {
     {
       id: 1,
       title: "Manage Knowledge Base",
-      description: kgExists ? "Edit tables and sync schema" : "Select tables and build knowledge base",
+      description: kgExists
+        ? "Edit tables and sync schema"
+        : "Select tables and build knowledge base",
       icon: Hub,
       color: "#48bb78",
       completed: kgExists,
@@ -498,7 +507,9 @@ const RetrieverConfiguratorPage = () => {
                               mb: 3,
                             }}
                           >
-                            <UncheckedIcon sx={{ fontSize: 40, color: "#667eea" }} />
+                            <UncheckedIcon
+                              sx={{ fontSize: 40, color: "#667eea" }}
+                            />
                           </Box>
                           <Typography
                             variant="h5"
@@ -540,7 +551,9 @@ const RetrieverConfiguratorPage = () => {
                               mb: 3,
                             }}
                           >
-                            <UncheckedIcon sx={{ fontSize: 40, color: "#f59e0b" }} />
+                            <UncheckedIcon
+                              sx={{ fontSize: 40, color: "#f59e0b" }}
+                            />
                           </Box>
                           <Typography
                             variant="h5"
@@ -554,6 +567,50 @@ const RetrieverConfiguratorPage = () => {
                           >
                             Please build the knowledge graph first before you
                             can access the self-learning portal.
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Fade>
+                )}
+
+                {/* Step 5: SQL Executor */}
+                {activeStep === 5 && (
+                  <Fade in timeout={300}>
+                    <Box sx={{ height: "100%", overflow: "hidden", p: 3 }}>
+                      {currentConnection ? (
+                        <SQLExecutor />
+                      ) : (
+                        <Box sx={{ textAlign: "center", py: 8 }}>
+                          <Box
+                            sx={{
+                              width: 80,
+                              height: 80,
+                              borderRadius: "50%",
+                              bgcolor: "#00bcd415",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              mx: "auto",
+                              mb: 3,
+                            }}
+                          >
+                            <UncheckedIcon
+                              sx={{ fontSize: 40, color: "#00bcd4" }}
+                            />
+                          </Box>
+                          <Typography
+                            variant="h5"
+                            sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
+                          >
+                            Connect to Database First
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: "#64748b", maxWidth: 400, mx: "auto" }}
+                          >
+                            Please establish a database connection before
+                            executing SQL queries.
                           </Typography>
                         </Box>
                       )}

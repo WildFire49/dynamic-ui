@@ -43,7 +43,7 @@ import {
   CalendarToday as ScheduleIcon,
   SupervisorAccount as SupervisoryIcon,
   Analytics as AnalyticsIcon,
-  RecordVoiceOver as VoiceIcon,
+  RecordVoiceOver as VoiceIcon, 
   Rocket as RocketIcon,
   CloudUpload as UploadIcon,
   Storage as BrainIcon,

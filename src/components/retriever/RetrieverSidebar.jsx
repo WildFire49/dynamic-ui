@@ -13,6 +13,7 @@ import {
   School as TrainingIcon,
   History as HistoryIcon,
   Rocket as RocketIcon,
+  Code as CodeIcon,
 } from "@mui/icons-material";
 
 const RetrieverSidebar = ({
@@ -67,6 +68,15 @@ const RetrieverSidebar = ({
       color: "#f59e0b",
       completed: false,
       disabled: !kgExists,
+    },
+    {
+      id: 5,
+      title: "SQL Executor",
+      description: "Execute raw SQL queries directly",
+      icon: CodeIcon,
+      color: "#00bcd4",
+      completed: false,
+      disabled: !connectionExists,
     },
   ];
 
