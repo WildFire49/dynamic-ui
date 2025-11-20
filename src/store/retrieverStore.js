@@ -22,6 +22,16 @@ const useRetrieverStore = create(
       // User ID
       userId: "vaishakhsk",
 
+      // Execution source (postgres or duckdb)
+      executionSource: "duckdb",
+
+      /**
+       * Set execution source
+       */
+      setExecutionSource: (source) => {
+        set({ executionSource: source });
+      },
+
       /**
        * Get connection key for caching
        */
@@ -152,8 +162,9 @@ const useRetrieverStore = create(
     {
       name: "retriever-storage",
       partialize: (state) => ({
-        // Only persist table cache, not other state
+        // Persist table cache and execution source
         tableListCache: state.tableListCache,
+        executionSource: state.executionSource,
       }),
     }
   )

@@ -13,15 +13,20 @@ import {
   alpha,
   Alert,
   Fade,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
   PlayArrow as PlayIcon,
   Clear as ClearIcon,
   ContentCopy as CopyIcon,
   Speed as SpeedIcon,
   Storage as StorageIcon,
-  CheckCircle as SuccessIcon,
   Error as ErrorIcon,
+  KeyboardArrowDown as ArrowDownIcon,
 } from "@mui/icons-material";
 import Editor from "@monaco-editor/react";
 import EnhancedDataGrid from "@/components/widgets/EnhancedDataGrid";
@@ -31,7 +36,7 @@ import { useSnackbar } from "@/contexts/SnackbarContext";
 
 const SQLExecutor = () => {
   const theme = useTheme();
-  const { currentConnection } = useRetrieverStore();
+  const { currentConnection, executionSource, setExecutionSource } = useRetrieverStore();
   const { showSuccess, showError } = useSnackbar();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,9 +44,30 @@ const SQLExecutor = () => {
   const [error, setError] = useState(null);
   const [executionStats, setExecutionStats] = useState(null);
   const [schemaMetadata, setSchemaMetadata] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const fetchedConnectionRef = useRef(null);
+
+  const handleOpenMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
+
+  const handleChangeExecutionSource = (source) => {
+    console.log('🔄 Changing execution source to:', source);
+    setExecutionSource(source);
+    handleCloseMenu();
+    showSuccess(`Execution source changed to ${source === 'duckdb' ? 'DuckDB' : 'PostgreSQL'}`);
+  };
+
+  // Log current execution source on mount
+  React.useEffect(() => {
+    console.log('📊 SQL Executor - Current execution source from store:', executionSource);
+  }, []);
 
   // Fetch schema metadata for autocomplete
   React.useEffect(() => {
@@ -83,10 +109,12 @@ const SQLExecutor = () => {
     setExecutionStats(null);
 
     try {
+      console.log('🚀 SQL Executor - Execution Source:', executionSource);
       const startTime = performance.now();
       const response = await fastKgService.executeSql(
         currentConnection.id,
-        query
+        query,
+        executionSource // Pass execution source (postgres or duckdb)
       );
       const endTime = performance.now();
 
@@ -124,7 +152,7 @@ const SQLExecutor = () => {
     } finally {
       setLoading(false);
     }
-  }, [query, currentConnection?.id, showSuccess, showError]);
+  }, [query, currentConnection?.id, executionSource, showSuccess, showError]);
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -319,19 +347,87 @@ const SQLExecutor = () => {
                 border: "none",
               }}
             />
-            <Typography
-              variant="caption"
-              sx={{ 
-                color: "text.secondary", 
-                fontFamily: "monospace",
-                bgcolor: alpha(theme.palette.action.hover, 0.05),
-                px: 1,
-                py: 0.5,
-                borderRadius: 1
+            <Chip
+              icon={<PlayIcon sx={{ fontSize: 16 }} />}
+              label={`Executing on: ${executionSource === 'duckdb' ? 'DuckDB' : 'PostgreSQL'}`}
+              deleteIcon={<ArrowDownIcon sx={{ fontSize: 18 }} />}
+              onDelete={handleOpenMenu}
+              onClick={handleOpenMenu}
+              size="small"
+              sx={{
+                bgcolor: executionSource === 'duckdb' ? "#f3e5f5" : "#fff3e0",
+                color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00",
+                "& .MuiChip-icon": { color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00" },
+                "& .MuiChip-deleteIcon": { color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00" },
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+                "&:hover": {
+                  bgcolor: executionSource === 'duckdb' ? "#e1bee7" : "#ffe0b2",
+                },
+              }}
+            />
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleCloseMenu}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+              PaperProps={{
+                sx: {
+                  mt: 1,
+                  minWidth: 200,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                }
               }}
             >
-              PostgreSQL / DuckDB Auto-switch
-            </Typography>
+              <MenuItem 
+                onClick={() => handleChangeExecutionSource('duckdb')}
+                selected={executionSource === 'duckdb'}
+                sx={{
+                  bgcolor: executionSource === 'duckdb' ? '#f3e5f5' : 'transparent',
+                  '&:hover': {
+                    bgcolor: '#f3e5f5',
+                  },
+                }}
+              >
+                <ListItemIcon>
+                  <PlayIcon sx={{ color: '#9c27b0' }} />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="DuckDB" 
+                  secondary="Faster for Query Execution (default)"
+                  primaryTypographyProps={{ fontWeight: executionSource === 'duckdb' ? 600 : 400 }}
+                />
+                {executionSource === 'duckdb' && <CheckCircleIcon sx={{ color: '#9c27b0', ml: 1 }} />}
+              </MenuItem>
+              <MenuItem 
+                onClick={() => handleChangeExecutionSource('postgres')}
+                selected={executionSource === 'postgres'}
+                sx={{
+                  bgcolor: executionSource === 'postgres' ? '#fff3e0' : 'transparent',
+                  '&:hover': {
+                    bgcolor: '#fff3e0',
+                  },
+                }}
+              >
+                <ListItemIcon>
+                  <PlayIcon sx={{ color: '#f57c00' }} />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="PostgreSQL" 
+                  secondary="Direct database execution"
+                  primaryTypographyProps={{ fontWeight: executionSource === 'postgres' ? 600 : 400 }}
+                />
+                {executionSource === 'postgres' && <CheckCircleIcon sx={{ color: '#f57c00', ml: 1 }} />}
+              </MenuItem>
+            </Menu>
           </Stack>
 
           <Stack direction="row" spacing={1}>
@@ -446,7 +542,7 @@ const SQLExecutor = () => {
                       display: "flex",
                     }}
                   >
-                    <SuccessIcon fontSize="small" />
+                    <CheckCircleIcon fontSize="small" />
                   </Box>
                   <Box>
                     <Typography variant="caption" color="text.secondary" fontWeight={600}>

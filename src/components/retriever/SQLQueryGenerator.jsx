@@ -64,7 +64,7 @@ import { useAuth } from "../../contexts/AuthContext";
 
 const SQLQueryGenerator = React.memo(() => {
   const { user } = useAuth();
-  const { userId, savedConnections, setSavedConnections, currentConnection } =
+  const { userId, savedConnections, setSavedConnections, currentConnection, executionSource, setExecutionSource } =
     useRetrieverStore();
 
   // State
@@ -291,7 +291,8 @@ const SQLQueryGenerator = React.memo(() => {
         currentConnection.id,
         correctedSql,
         user?.username || user?.userId || "unknown",
-        false // Don't save to history yet
+        false, // Don't save to history yet
+        executionSource // Pass execution source (postgres or duckdb)
       );
 
       setTestResult(response.data);
@@ -370,12 +371,14 @@ const SQLQueryGenerator = React.memo(() => {
         throw new Error("Connection not found");
       }
 
+      console.log('🚀 SQL Query Generator - Execution Source:', executionSource);
       // Use new askQuery API with validation (optionally with specific version)
       const response = await queryLearningService.askQuery(
         connection.id,
         query,
         user?.username || user?.userId || "system",
-        selectedVersion || undefined // Pass selected version if specified
+        selectedVersion || undefined, // Pass selected version if specified
+        executionSource // Pass execution source (postgres or duckdb)
       );
 
       setResult(response);
@@ -435,7 +438,8 @@ const SQLQueryGenerator = React.memo(() => {
         query,
         businessDomain,
         correctionNotes,
-        user?.username || user?.userId || "system"
+        user?.username || user?.userId || "system",
+        executionSource // Pass execution source (postgres or duckdb)
       );
 
       setSnackbar({
@@ -1043,7 +1047,7 @@ const SQLQueryGenerator = React.memo(() => {
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            {/* <Grid item xs={12} md={6}>
               <FormControl fullWidth size="medium" disabled={!selectedConnection || loadingVersions}>
                 <InputLabel>Template Version (Optional)</InputLabel>
                 <Select
@@ -1087,6 +1091,43 @@ const SQLQueryGenerator = React.memo(() => {
                   ))}
                 </Select>
               </FormControl>
+            </Grid> */}
+
+            {/* Execution Source Selector */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="medium">
+                <InputLabel>Execution Source</InputLabel>
+                <Select
+                  value={executionSource}
+                  onChange={(e) => setExecutionSource(e.target.value)}
+                  label="Execution Source"
+                  startAdornment={
+                    <PlayIcon sx={{ mr: 1, color: "action.active" }} />
+                  }
+                  sx={{ minHeight: 56 }}
+                >
+                  <MenuItem value="duckdb">
+                    <Box>
+                      <Typography variant="body2" fontWeight="medium">
+                        DuckDB
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Faster for Query Execution (default)
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="postgres">
+                    <Box>
+                      <Typography variant="body2" fontWeight="medium">
+                        PostgreSQL
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Direct database execution
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
 
@@ -1117,6 +1158,17 @@ const SQLQueryGenerator = React.memo(() => {
                     color: "#48bb78",
                     fontWeight: 600,
                   "& .MuiChip-icon": { color: "#48bb78" },
+                }}
+                size="small"
+              />
+              <Chip
+                icon={<PlayIcon />}
+                label={`Executing on: ${executionSource === 'duckdb' ? 'DuckDB' : 'PostgreSQL'}`}
+                sx={{
+                  bgcolor: executionSource === 'duckdb' ? "#9c27b015" : "#f57c0015",
+                  color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00",
+                  fontWeight: 600,
+                  "& .MuiChip-icon": { color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00" },
                 }}
                 size="small"
               />

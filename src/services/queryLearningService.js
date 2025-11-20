@@ -477,19 +477,26 @@ const queryLearningService = {
    * Ask Query - Generate and execute SQL with validation
    * POST /fast-kg/ask
    */
-  askQuery: async (connectionId, query, userId, version = null) => {
+  askQuery: async (
+    connectionId,
+    query,
+    userId,
+    version = null,
+    executionSource = "duckdb"
+  ) => {
     try {
       const payload = {
         connection_id: connectionId,
         query: query,
         user_id: userId,
+        execution_source: executionSource,
       };
-      
+
       // Add version if specified
       if (version) {
         payload.version = version;
       }
-      
+
       return await apiClient.post(`${FAST_KG_BASE_URL}/ask`, payload);
     } catch (error) {
       // Return error details for handling in component
@@ -508,7 +515,8 @@ const queryLearningService = {
     naturalLanguageQuery,
     businessDomain,
     explanation,
-    correctedBy
+    correctedBy,
+    executionSource = "duckdb"
   ) => {
     try {
       return await apiClient.post(
@@ -521,6 +529,7 @@ const queryLearningService = {
           business_domain: businessDomain,
           explanation: explanation,
           corrected_by: correctedBy,
+          execution_source: executionSource,
         }
       );
     } catch (error) {

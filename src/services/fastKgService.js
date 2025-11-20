@@ -145,11 +145,12 @@ const fastKgService = {
   /**
    * Execute SQL query
    */
-  executeSql: async (connectionId, sql) => {
+  executeSql: async (connectionId, sql, executionSource = "duckdb") => {
     try {
       const data = await apiClient.post(`${BASE_URL}/execute-sql`, {
         connection_id: connectionId,
         sql: sql,
+        execution_source: executionSource,
       });
       return { data };
     } catch (error) {
@@ -289,13 +290,20 @@ const fastKgService = {
   /**
    * Test custom SQL before saving as correction
    */
-  testCustomSql: async (connectionId, sql, userId, saveToHistory = false) => {
+  testCustomSql: async (
+    connectionId,
+    sql,
+    userId,
+    saveToHistory = false,
+    executionSource = "duckdb"
+  ) => {
     try {
       const data = await apiClient.post(`${BASE_URL}/test-custom-sql`, {
         connection_id: connectionId,
         sql: sql,
         user_id: userId,
         save_to_history: saveToHistory,
+        execution_source: executionSource,
       });
       return { data };
     } catch (error) {
