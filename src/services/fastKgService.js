@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient from "./apiClient";
 
 const BASE_URL = "/api/v1/fast-kg";
 
@@ -177,7 +177,10 @@ const fastKgService = {
         requestBody.user_id = userId;
       }
 
-      const data = await apiClient.post(`${BASE_URL}/generate-and-execute`, requestBody);
+      const data = await apiClient.post(
+        `${BASE_URL}/generate-and-execute`,
+        requestBody
+      );
       return { data };
     } catch (error) {
       throw new Error(error.message || "Failed to generate and execute SQL");
@@ -219,7 +222,7 @@ const fastKgService = {
       if (userId) {
         url += `&user_id=${userId}`;
       }
-      
+
       const data = await apiClient.get(url);
       return { data };
     } catch (error) {
@@ -249,7 +252,9 @@ const fastKgService = {
    */
   unmarkQueryCorrect: async (queryId) => {
     try {
-      const data = await apiClient.delete(`${BASE_URL}/mark-query-correct/${queryId}`);
+      const data = await apiClient.delete(
+        `${BASE_URL}/mark-query-correct/${queryId}`
+      );
       return { data };
     } catch (error) {
       throw new Error(error.message || "Failed to unmark query");
@@ -259,7 +264,13 @@ const fastKgService = {
   /**
    * Provide corrected SQL for a wrong query
    */
-  provideCorrectSql: async (queryId, connectionId, correctedSql, correctedBy, notes = "") => {
+  provideCorrectSql: async (
+    queryId,
+    connectionId,
+    correctedSql,
+    correctedBy,
+    notes = ""
+  ) => {
     try {
       const data = await apiClient.post(`${BASE_URL}/provide-correct-sql`, {
         query_id: queryId,
@@ -300,7 +311,7 @@ const fastKgService = {
       if (markedBy) {
         url += `&marked_by=${markedBy}`;
       }
-      
+
       const data = await apiClient.get(url);
       return { data };
     } catch (error) {
@@ -311,13 +322,17 @@ const fastKgService = {
   /**
    * Get corrected queries (learn from mistakes)
    */
-  getCorrectedQueries: async (connectionId, limit = 100, correctedBy = null) => {
+  getCorrectedQueries: async (
+    connectionId,
+    limit = 100,
+    correctedBy = null
+  ) => {
     try {
       let url = `${BASE_URL}/corrected-queries/${connectionId}?limit=${limit}`;
       if (correctedBy) {
         url += `&corrected_by=${correctedBy}`;
       }
-      
+
       const data = await apiClient.get(url);
       return { data };
     } catch (error) {
@@ -330,7 +345,9 @@ const fastKgService = {
    */
   getTemplateVersions: async (connectionId) => {
     try {
-      const data = await apiClient.get(`${BASE_URL}/templates/versions/${connectionId}`);
+      const data = await apiClient.get(
+        `${BASE_URL}/templates/versions/${connectionId}`
+      );
       return { data };
     } catch (error) {
       throw new Error(error.message || "Failed to get template versions");
@@ -356,10 +373,13 @@ const fastKgService = {
    */
   detectChanges: async (connectionId, schemaName) => {
     try {
-      const data = await apiClient.post(`${BASE_URL}/kg-update/detect-changes`, {
-        connection_id: connectionId,
-        schema_name: schemaName,
-      });
+      const data = await apiClient.post(
+        `${BASE_URL}/kg-update/detect-changes`,
+        {
+          connection_id: connectionId,
+          schema_name: schemaName,
+        }
+      );
       return { data };
     } catch (error) {
       throw new Error(error.message || "Failed to detect schema changes");
@@ -388,7 +408,12 @@ const fastKgService = {
   /**
    * Add single table to KG
    */
-  addTable: async (connectionId, tableName, schemaName, generateEmbeddings = true) => {
+  addTable: async (
+    connectionId,
+    tableName,
+    schemaName,
+    generateEmbeddings = true
+  ) => {
     try {
       const data = await apiClient.post(`${BASE_URL}/kg-update/add-table`, {
         connection_id: connectionId,
@@ -405,7 +430,13 @@ const fastKgService = {
   /**
    * Add single column to table
    */
-  addColumn: async (connectionId, tableName, columnName, schemaName, generateEmbeddings = true) => {
+  addColumn: async (
+    connectionId,
+    tableName,
+    columnName,
+    schemaName,
+    generateEmbeddings = true
+  ) => {
     try {
       const data = await apiClient.post(`${BASE_URL}/kg-update/add-column`, {
         connection_id: connectionId,
@@ -423,14 +454,22 @@ const fastKgService = {
   /**
    * Add multiple tables to KG (batch)
    */
-  addMultipleTables: async (connectionId, tableNames, schemaName, generateEmbeddings = true) => {
+  addMultipleTables: async (
+    connectionId,
+    tableNames,
+    schemaName,
+    generateEmbeddings = true
+  ) => {
     try {
-      const data = await apiClient.post(`${BASE_URL}/kg-update/add-multiple-tables`, {
-        connection_id: connectionId,
-        table_names: tableNames,
-        schema_name: schemaName,
-        generate_embeddings: generateEmbeddings,
-      });
+      const data = await apiClient.post(
+        `${BASE_URL}/kg-update/add-multiple-tables`,
+        {
+          connection_id: connectionId,
+          table_names: tableNames,
+          schema_name: schemaName,
+          generate_embeddings: generateEmbeddings,
+        }
+      );
       return { data };
     } catch (error) {
       throw new Error(error.message || "Failed to add multiple tables");
@@ -440,7 +479,12 @@ const fastKgService = {
   /**
    * Remove table from KG
    */
-  removeTable: async (connectionId, tableName, schemaName, removeEmbeddings = true) => {
+  removeTable: async (
+    connectionId,
+    tableName,
+    schemaName,
+    removeEmbeddings = true
+  ) => {
     try {
       const data = await apiClient.post(`${BASE_URL}/kg-update/remove-table`, {
         connection_id: connectionId,
@@ -451,6 +495,20 @@ const fastKgService = {
       return { data };
     } catch (error) {
       throw new Error(error.message || "Failed to remove table");
+    }
+  },
+
+  /**
+   * Get schema metadata for SQL autocomplete
+   */
+  getSchemaMetadata: async (connectionId) => {
+    try {
+      const data = await apiClient.get(
+        `${BASE_URL}/schema-metadata/${connectionId}`
+      );
+      return { data };
+    } catch (error) {
+      throw new Error(error.message || "Failed to get schema metadata");
     }
   },
 };

@@ -27,16 +27,52 @@ import Editor from "@monaco-editor/react";
 import EnhancedDataGrid from "@/components/widgets/EnhancedDataGrid";
 import fastKgService from "@/services/fastKgService";
 import useRetrieverStore from "@/store/retrieverStore";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
 const SQLExecutor = () => {
   const theme = useTheme();
   const { currentConnection } = useRetrieverStore();
+  const { showSuccess, showError } = useSnackbar();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [executionStats, setExecutionStats] = useState(null);
+  const [schemaMetadata, setSchemaMetadata] = useState(null);
   const editorRef = useRef(null);
+  const monacoRef = useRef(null);
+  const fetchedConnectionRef = useRef(null);
+
+  // Fetch schema metadata for autocomplete
+  React.useEffect(() => {
+    const fetchSchemaMetadata = async () => {
+      if (!currentConnection?.id) return;
+      
+      // Prevent duplicate fetches for the same connection
+      if (fetchedConnectionRef.current === currentConnection.id) return;
+      
+      fetchedConnectionRef.current = currentConnection.id;
+      
+      try {
+        const response = await fastKgService.getSchemaMetadata(currentConnection.id);
+        if (response.data.success) {
+          setSchemaMetadata(response.data);
+          showSuccess("Schema metadata loaded successfully");
+        } else {
+          showError(response.data.error || "Failed to load schema metadata");
+          fetchedConnectionRef.current = null;
+        }
+      } catch (err) {
+        console.error("Failed to fetch schema metadata:", err);
+        const errorMsg = err.response?.data?.detail || err.message || "Failed to load schema metadata";
+        showError(errorMsg);
+        // Reset ref on error so it can retry
+        fetchedConnectionRef.current = null;
+      }
+    };
+
+    fetchSchemaMetadata();
+  }, [currentConnection?.id]);
 
   const handleExecute = useCallback(async () => {
     if (!query.trim() || !currentConnection?.id) return;
@@ -61,18 +97,27 @@ const SQLExecutor = () => {
           executionTime: response.data.execution_time_ms,
           totalTime: Math.round(endTime - startTime),
         });
+        showSuccess(
+          `Query executed successfully! ${response.data.row_count} rows returned in ${response.data.execution_time_ms}ms`,
+          5000
+        );
       } else {
-        setError(response.data.error || "Query execution failed");
+        const errorMsg = response.data.error || "Query execution failed";
+        setError(errorMsg);
+        showError(errorMsg, 6000);
       }
     } catch (err) {
-      setError(err.message || "An error occurred while executing the query");
+      const errorMsg = err.response?.data?.detail || err.message || "An error occurred while executing the query";
+      setError(errorMsg);
+      showError(errorMsg, 6000);
     } finally {
       setLoading(false);
     }
-  }, [query, currentConnection?.id]);
+  }, [query, currentConnection?.id, showSuccess, showError]);
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
     
     // Add Command/Ctrl + Enter shortcut
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
@@ -80,6 +125,116 @@ const SQLExecutor = () => {
       document.getElementById('execute-query-btn')?.click();
     });
   };
+
+  // Register autocomplete provider when schema metadata is available
+  React.useEffect(() => {
+    if (!monacoRef.current || !schemaMetadata) return;
+
+    const monaco = monacoRef.current;
+
+    // Register custom autocomplete provider for SQL
+    const disposable = monaco.languages.registerCompletionItemProvider('sql', {
+      provideCompletionItems: (model, position) => {
+        if (!schemaMetadata || !schemaMetadata.tables) {
+          return { suggestions: [] };
+        }
+
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+
+        const suggestions = [];
+
+        // Get text before cursor to determine context
+        const textBeforeCursor = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+
+        // Check if we're after FROM, JOIN, or UPDATE keywords (table context)
+        const tableContext = /\b(FROM|JOIN|UPDATE|INTO)\s+\w*$/i.test(textBeforeCursor);
+        
+        // Check if we're after a table name followed by a dot (column context)
+        const columnContext = /\b(\w+)\.\w*$/.test(textBeforeCursor);
+        const tableMatch = textBeforeCursor.match(/\b(\w+)\.\w*$/);
+        const contextTableName = tableMatch ? tableMatch[1] : null;
+
+        if (tableContext) {
+          // Suggest table names
+          schemaMetadata.tables.forEach((table) => {
+            suggestions.push({
+              label: table.name,
+              kind: monaco.languages.CompletionItemKind.Class,
+              detail: `Table (${table.columns?.length || 0} columns)`,
+              documentation: `Schema: ${schemaMetadata.schema}`,
+              insertText: table.name,
+              range: range,
+            });
+          });
+        } else if (columnContext && contextTableName) {
+          // Suggest columns for specific table
+          const table = schemaMetadata.tables.find(
+            (t) => t.name.toLowerCase() === contextTableName.toLowerCase()
+          );
+          
+          if (table && table.columns) {
+            table.columns.forEach((column) => {
+              suggestions.push({
+                label: column.name,
+                kind: monaco.languages.CompletionItemKind.Field,
+                detail: column.type,
+                documentation: `Column in ${table.name}`,
+                insertText: column.name,
+                range: range,
+              });
+            });
+          }
+        } else {
+          // General context: suggest both tables and common SQL keywords
+          // Add table suggestions
+          schemaMetadata.tables.forEach((table) => {
+            suggestions.push({
+              label: table.name,
+              kind: monaco.languages.CompletionItemKind.Class,
+              detail: `Table (${table.columns?.length || 0} columns)`,
+              documentation: `Schema: ${schemaMetadata.schema}`,
+              insertText: table.name,
+              range: range,
+              sortText: `1_${table.name}`, // Tables appear first
+            });
+          });
+
+          // Add all columns from all tables
+          schemaMetadata.tables.forEach((table) => {
+            if (table.columns) {
+              table.columns.forEach((column) => {
+                suggestions.push({
+                  label: `${table.name}.${column.name}`,
+                  kind: monaco.languages.CompletionItemKind.Field,
+                  detail: `${column.type} (${table.name})`,
+                  documentation: `Column in ${table.name}`,
+                  insertText: `${table.name}.${column.name}`,
+                  range: range,
+                  sortText: `2_${table.name}_${column.name}`, // Columns appear after tables
+                });
+              });
+            }
+          });
+        }
+
+        return { suggestions };
+      },
+    });
+
+    // Cleanup on unmount or when schema changes
+    return () => disposable.dispose();
+  }, [schemaMetadata]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(query);
@@ -93,9 +248,9 @@ const SQLExecutor = () => {
   };
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", gap: 3 }}>
-      {/* Header Section */}
-      <Box>
+    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Header Section - Fixed */}
+      <Box sx={{ flexShrink: 0, p: 3, pb: 2 }}>
         <Typography
           variant="h5"
           sx={{
@@ -111,11 +266,13 @@ const SQLExecutor = () => {
         </Typography>
       </Box>
 
-      {/* Editor Section */}
+      {/* Editor Section - Fixed Height */}
       <Paper
         elevation={0}
         sx={{
-          p: 0,
+          mx: 3,
+          mb: 2,
+          flexShrink: 0,
           borderRadius: 3,
           border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
           overflow: "hidden",
@@ -123,6 +280,7 @@ const SQLExecutor = () => {
           flexDirection: "column",
           boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
           bgcolor: "#ffffff",
+          height: 380, // Fixed height for editor section
         }}
       >
         {/* Editor Toolbar - Light Mode */}
@@ -180,7 +338,7 @@ const SQLExecutor = () => {
         </Box>
 
         {/* Monaco Editor - Light Mode */}
-        <Box sx={{ height: 350, width: "100%", py: 1 }}>
+        <Box sx={{ flex: 1, width: "100%", py: 1, overflow: "hidden" }}>
           <Editor
             height="100%"
             defaultLanguage="sql"
@@ -214,6 +372,7 @@ const SQLExecutor = () => {
         <Box
           sx={{
             p: 2,
+            flexShrink: 0,
             bgcolor: "#f8f9fa",
             borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
             display: "flex",
@@ -226,22 +385,20 @@ const SQLExecutor = () => {
                 Press <Chip label="Cmd + Enter" size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600, bgcolor: '#e0e0e0' }} /> to execute
              </Typography>
           </Box>
-
           <Button
             id="execute-query-btn"
             variant="contained"
-            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <PlayIcon />}
+            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PlayIcon />}
             onClick={handleExecute}
-            disabled={loading || !query.trim()}
+            disabled={!query.trim() || loading}
             sx={{
               bgcolor: "#00bcd4",
               "&:hover": { bgcolor: "#00acc1" },
-              px: 3,
-              py: 1,
-              borderRadius: 2,
               textTransform: "none",
               fontWeight: 600,
-              boxShadow: "0 4px 12px rgba(0, 188, 212, 0.3)",
+              px: 3,
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(0,188,212,0.3)",
               color: "white"
             }}
           >
@@ -250,10 +407,10 @@ const SQLExecutor = () => {
         </Box>
       </Paper>
 
-      {/* Results Section */}
+      {/* Results Section - Scrollable */}
       {(result || error || executionStats) && (
         <Fade in timeout={500}>
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, px: 3, pb: 3, overflow: "auto" }}>
             {/* Stats Cards */}
             {executionStats && !error && (
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -383,7 +540,7 @@ const SQLExecutor = () => {
               <Paper
                 elevation={0}
                 sx={{
-                  flex: 1,
+                  height: 450,
                   borderRadius: 3,
                   overflow: "hidden",
                   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
@@ -393,7 +550,7 @@ const SQLExecutor = () => {
                 <EnhancedDataGrid
                   title="Query Results"
                   data={result}
-                  height="100%"
+                  height={450}
                   hideHeader={false}
                 />
               </Paper>
