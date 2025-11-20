@@ -27,6 +27,7 @@ import {
   Storage as StorageIcon,
   Error as ErrorIcon,
   KeyboardArrowDown as ArrowDownIcon,
+  DragIndicator as DragIcon,
 } from "@mui/icons-material";
 import Editor from "@monaco-editor/react";
 import EnhancedDataGrid from "@/components/widgets/EnhancedDataGrid";
@@ -45,9 +46,13 @@ const SQLExecutor = () => {
   const [executionStats, setExecutionStats] = useState(null);
   const [schemaMetadata, setSchemaMetadata] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [editorHeight, setEditorHeight] = useState(380);
+  const [isDragging, setIsDragging] = useState(false);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const fetchedConnectionRef = useRef(null);
+  const dragStartY = useRef(0);
+  const dragStartHeight = useRef(0);
 
   const handleOpenMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -68,6 +73,42 @@ const SQLExecutor = () => {
   React.useEffect(() => {
     console.log('📊 SQL Executor - Current execution source from store:', executionSource);
   }, []);
+
+  // Handle drag resize
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    dragStartY.current = e.clientY;
+    dragStartHeight.current = editorHeight;
+    e.preventDefault();
+  };
+
+  React.useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      
+      const deltaY = e.clientY - dragStartY.current;
+      const newHeight = Math.min(Math.max(dragStartHeight.current + deltaY, 300), 800);
+      setEditorHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging]);
 
   // Fetch schema metadata for autocomplete
   React.useEffect(() => {
@@ -287,7 +328,7 @@ const SQLExecutor = () => {
   };
 
   return (
-    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Header Section - Fixed */}
       <Box sx={{ flexShrink: 0, p: 3, pb: 2 }}>
         <Typography
@@ -305,8 +346,10 @@ const SQLExecutor = () => {
         </Typography>
       </Box>
 
-      {/* Editor Section - Fixed Height */}
-      <Paper
+      {/* Scrollable Content Area */}
+      <Box sx={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+        {/* Editor Section - Resizable Height */}
+        <Paper
         elevation={0}
         sx={{
           mx: 3,
@@ -319,7 +362,8 @@ const SQLExecutor = () => {
           flexDirection: "column",
           boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
           bgcolor: "#ffffff",
-          height: 380, // Fixed height for editor section
+          height: editorHeight, // Dynamic resizable height
+          transition: isDragging ? 'none' : 'height 0.2s ease-out',
         }}
       >
         {/* Editor Toolbar - Light Mode */}
@@ -512,12 +556,43 @@ const SQLExecutor = () => {
             {loading ? "Executing..." : "Execute Query"}
           </Button>
         </Box>
+
+        {/* Drag Handle for Resizing */}
+        <Box
+          onMouseDown={handleMouseDown}
+          sx={{
+            height: 6,
+            width: "100%",
+            bgcolor: isDragging ? alpha(theme.palette.primary.main, 0.2) : "transparent",
+            cursor: "ns-resize",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background-color 0.2s",
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            "&:hover": {
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+            },
+            "&:active": {
+              bgcolor: alpha(theme.palette.primary.main, 0.2),
+            },
+          }}
+        >
+          <DragIcon 
+            sx={{ 
+              fontSize: 16, 
+              color: isDragging ? "primary.main" : "text.disabled",
+              transform: "rotate(90deg)",
+              transition: "color 0.2s",
+            }} 
+          />
+        </Box>
       </Paper>
 
-      {/* Results Section - Scrollable */}
+      {/* Results Section */}
       {(result || error || executionStats) && (
         <Fade in timeout={500}>
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, px: 3, pb: 3, overflow: "auto" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: 3, pb: 3 }}>
             {/* Stats Cards */}
             {executionStats && !error && (
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -665,6 +740,7 @@ const SQLExecutor = () => {
           </Box>
         </Fade>
       )}
+      </Box>
     </Box>
   );
 };
