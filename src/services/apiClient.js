@@ -81,9 +81,21 @@ class ApiClient {
         }
       }
 
-      throw new Error(
-        errorData.message || `HTTP error! status: ${response.status}`
-      );
+      // Prefer backend detail for error messaging, fall back to message/status
+      const message =
+        errorData.detail ||
+        errorData.message ||
+        `HTTP ${response.status}: ${response.statusText}`;
+
+      const error = new Error(message);
+      // Attach rich context so callers can surface precise errors
+      error.status = response.status;
+      error.data = errorData;
+      if (errorData.detail) {
+        error.detail = errorData.detail;
+      }
+
+      throw error;
     }
 
     return response.json();

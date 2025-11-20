@@ -153,7 +153,8 @@ const fastKgService = {
       });
       return { data };
     } catch (error) {
-      throw new Error(error.message || "Failed to execute SQL");
+      // Preserve rich error context (detail, status, data) from apiClient
+      throw error;
     }
   },
 

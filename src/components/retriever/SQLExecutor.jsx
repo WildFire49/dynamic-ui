@@ -102,12 +102,23 @@ const SQLExecutor = () => {
           5000
         );
       } else {
-        const errorMsg = response.data.error || "Query execution failed";
+        // Prefer backend-provided detail or error message when success=false
+        const errorMsg =
+          response.data.detail ||
+          response.data.error ||
+          "Query execution failed";
         setError(errorMsg);
         showError(errorMsg, 6000);
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.detail || err.message || "An error occurred while executing the query";
+      // Prefer rich error info from apiClient (detail & data) when available
+      const errorMsg =
+        err.detail ||
+        err.data?.detail ||
+        err.data?.message ||
+        err.message ||
+        "An error occurred while executing the query";
+
       setError(errorMsg);
       showError(errorMsg, 6000);
     } finally {
