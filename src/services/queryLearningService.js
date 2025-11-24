@@ -666,6 +666,74 @@ const queryLearningService = {
       throw new Error(error.message || "Failed to compare versions");
     }
   },
+
+  // ========== REGRESSION TESTING ==========
+
+  /**
+   * Run Bulk Test
+   * POST /fast-kg/test-queries/bulk
+   */
+  runBulkTest: async (
+    connectionId,
+    userId,
+    limit = 10,
+    businessDomain = null,
+    onlyLatestEmbedding = true
+  ) => {
+    try {
+      return await apiClient.post(`${FAST_KG_BASE_URL}/test-queries/bulk`, {
+        connection_id: connectionId,
+        user_id: userId,
+        limit: limit,
+        business_domain: businessDomain,
+        only_latest_embedding: onlyLatestEmbedding,
+      });
+    } catch (error) {
+      throw new Error(error.message || "Failed to run bulk test");
+    }
+  },
+
+  /**
+   * Get Test Sessions
+   * GET /fast-kg/test-queries/sessions
+   */
+  getTestSessions: async (connectionId, limit = 10, testSessionId = null) => {
+    try {
+      const params = new URLSearchParams({
+        connection_id: connectionId,
+        limit: limit.toString(),
+      });
+
+      if (testSessionId) {
+        params.append("test_session_id", testSessionId);
+      }
+
+      return await apiClient.get(
+        `${FAST_KG_BASE_URL}/test-queries/sessions?${params}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to get test sessions");
+    }
+  },
+
+  /**
+   * Get Failed Queries
+   * GET /fast-kg/test-queries/failed
+   */
+  getFailedQueries: async (connectionId, limit = 20) => {
+    try {
+      const params = new URLSearchParams({
+        connection_id: connectionId,
+        limit: limit.toString(),
+      });
+
+      return await apiClient.get(
+        `${FAST_KG_BASE_URL}/test-queries/failed?${params}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to get failed queries");
+    }
+  },
 };
 
 export default queryLearningService;

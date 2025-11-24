@@ -4,6 +4,8 @@
  * Used for web-based validation of mobile-captured data
  */
 
+import { rajeshVerificationConfig } from "./rajeshVerificationConfig";
+
 export const verificationConfig = {
   // Mock S3 URLs for images
   mockImages: {
@@ -25,6 +27,7 @@ export const verificationConfig = {
 
   // Sample verification data for different customers
   customers: {
+    ...rajeshVerificationConfig.customers,
     IL_HD_AH_305: {
       customer: {
         name: "Arjun Patel",
@@ -41,9 +44,24 @@ export const verificationConfig = {
           icon: "Person",
           type: "data",
           fields: [
-            { id: "full_name", label: "Full Name", value: "Arjun Patel", status: "verified" },
-            { id: "mobile", label: "Mobile Number", value: "+91 98765 12345", status: "verified" },
-            { id: "email", label: "Email Address", value: "arjun.patel@example.com", status: "verified" },
+            {
+              id: "full_name",
+              label: "Full Name",
+              value: "Arjun Patel",
+              status: "verified",
+            },
+            {
+              id: "mobile",
+              label: "Mobile Number",
+              value: "+91 98765 12345",
+              status: "verified",
+            },
+            {
+              id: "email",
+              label: "Email Address",
+              value: "arjun.patel@example.com",
+              status: "verified",
+            },
           ],
         },
         {
@@ -53,8 +71,18 @@ export const verificationConfig = {
           icon: "Description",
           type: "images",
           fields: [
-            { id: "customer_photo", label: "Customer Photo", url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", status: "verified" },
-            { id: "address_proof", label: "Address Proof", url: "https://images.unsplash.com/photo-1554224311-beee1c7c3c39?w=400", status: "pending" },
+            {
+              id: "customer_photo",
+              label: "Customer Photo",
+              url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+              status: "verified",
+            },
+            {
+              id: "address_proof",
+              label: "Address Proof",
+              url: "https://images.unsplash.com/photo-1554224311-beee1c7c3c39?w=400",
+              status: "pending",
+            },
           ],
         },
       ],

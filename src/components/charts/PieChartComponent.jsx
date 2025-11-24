@@ -23,6 +23,7 @@ import {
 
 const PieChartComponent = ({ 
   data, 
+  data2, // Optional second dataset for comparison (e.g., Collected Amount)
   title, 
   subtitle,
   showLegend = true,
@@ -61,6 +62,13 @@ const PieChartComponent = ({
     originalIndex: index
   })) || [];
 
+  // Enhanced secondary data (if provided)
+  const enhancedData2 = data2?.map((item, index) => ({
+    ...item,
+    fill: getSegmentColor(index), // Use same colors for alignment
+    originalIndex: index
+  })) || [];
+
   const onPieEnter = useCallback((_, index) => {
     setActiveIndex(index);
     setHoveredSegment(index);
@@ -71,34 +79,56 @@ const PieChartComponent = ({
     setHoveredSegment(null);
   }, []);
 
+  // Custom label renderer
+  const RADIAN = Math.PI / 180;
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    if (percent < 0.05) return null; // Don't label small segments
+
+    return (
+      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12} fontWeight="bold" style={{ pointerEvents: 'none' }}>
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
   // Custom tooltip component
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      // Determine if this is from inner or outer ring based on data structure match
+      const isOuter = enhancedData2.some(d => d.name === data.name && d.value === data.value);
+      
       return (
         <Box sx={{
           backgroundColor: theme.palette.background.paper,
           border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
           borderRadius: 2,
-          p: 2,
-          boxShadow: theme.shadows[8],
-          minWidth: 180
+          p: 1.5,
+          boxShadow: theme.shadows[4],
+          minWidth: 150
         }}>
           <Typography variant="subtitle2" sx={{ 
             fontWeight: 600,
             color: theme.palette.text.primary,
-            mb: 1
+            mb: 0.5,
+            fontSize: '0.85rem'
           }}>
             {data.name}
           </Typography>
+          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block', mb: 1 }}>
+            {data2 ? (isOuter ? 'Collected' : 'Target') : 'Value'}
+          </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Value:
-            </Typography>
             <Chip 
-              label={`${data.value}${showPercentages ? '%' : ''}`}
+              label={`${data.value.toLocaleString()}${showPercentages ? '%' : ''}`}
               size="small"
               sx={{ 
+                height: 24,
+                fontSize: '0.75rem',
                 backgroundColor: alpha(data.fill, 0.1),
                 color: data.fill,
                 fontWeight: 600
@@ -111,87 +141,13 @@ const PieChartComponent = ({
     return null;
   };
 
-  // Custom label rendering function for better positioning
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, value }) => {
-    // Only show label if the slice is large enough (>= 3% of total)
-    if (percent < 0.03) return null;
-    
-    const RADIAN = Math.PI / 180;
-    // Position label outside the pie chart
-    const radius = outerRadius + 30;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-    
-    // Determine text anchor based on position
-    const textAnchor = x > cx ? 'start' : 'end';
-    
-    return (
-      <g>
-        {/* Connection line */}
-        <line
-          x1={cx + (outerRadius + 10) * Math.cos(-midAngle * RADIAN)}
-          y1={cy + (outerRadius + 10) * Math.sin(-midAngle * RADIAN)}
-          x2={x - (textAnchor === 'start' ? 5 : -5)}
-          y2={y}
-          stroke={theme.palette.text.secondary}
-          strokeWidth={1}
-          strokeOpacity={0.6}
-        />
-        {/* Label text */}
-        <text
-          x={x}
-          y={y - 4}
-          textAnchor={textAnchor}
-          dominantBaseline="central"
-          style={{
-            fontSize: '12px',
-            fontWeight: 600,
-            fill: theme.palette.text.primary,
-            fontFamily: theme.typography.fontFamily
-          }}
-        >
-          {name.length > 15 ? `${name.substring(0, 12)}...` : name}
-        </text>
-        {/* Value text */}
-        <text
-          x={x}
-          y={y + 12}
-          textAnchor={textAnchor}
-          dominantBaseline="central"
-          style={{
-            fontSize: '11px',
-            fontWeight: 500,
-            fill: theme.palette.text.secondary,
-            fontFamily: theme.typography.fontFamily
-          }}
-        >
-          {`${value}${showPercentages ? '%' : ''}`}
-        </text>
-      </g>
-    );
-  };
-
-  if (!data || data.length === 0) {
-    return (
-      <Card sx={{ 
-        height: '100%', 
-        minHeight: height + 160,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-          No data available for pie chart
-        </Typography>
-      </Card>
-    );
-  }
+  // ... (Rest of the render function)
 
   return (
     <Grow in={true} timeout={600}>
       <Card sx={{ 
         height: '100%', 
-        minHeight: height + 160,
+        minHeight: height + 100, // Reduced extra height
         border: 'none',
         boxShadow: theme.shadows[4],
         borderRadius: 3,
@@ -206,43 +162,45 @@ const PieChartComponent = ({
         <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           {/* Enhanced Header */}
           <Box sx={{ 
-            p: 3, 
-            pb: 2,
+            p: 2.5, 
+            pb: 1.5,
             borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
             flexShrink: 0,
             background: `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, transparent 100%)`
           }}>
-            <Typography variant="h5" sx={{ 
+            <Typography variant="h6" sx={{ 
               fontWeight: 700,
               color: theme.palette.text.primary,
-              fontSize: '1.375rem',
-              letterSpacing: '-0.025em',
+              fontSize: '1.125rem',
+              letterSpacing: '-0.01em',
               mb: 0.5
             }}>
               {title}
             </Typography>
             {subtitle && (
-              <Typography variant="body2" sx={{ 
+              <Typography variant="caption" sx={{ 
                 color: theme.palette.text.secondary,
-                fontSize: '0.875rem',
+                fontSize: '0.75rem',
                 fontWeight: 500
               }}>
-                {subtitle}
+                {subtitle} {data2 ? '(Inner: Target, Outer: Collected)' : ''}
               </Typography>
             )}
           </Box>
 
           {/* Enhanced Pie Chart */}
-          <Box sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ width: '100%', height: height, flex: 1, position: 'relative' }}>
+          <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', width: '100%' }}>
+            {/* Explicit height for chart container to ensure rendering */}
+            <Box sx={{ width: '100%', height: height, position: 'relative', mb: 1 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 60, right: 80, bottom: 60, left: 80 }}>
+                <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                  {/* Inner Ring (Target / Primary Data) */}
                   <Pie
                     data={enhancedData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={innerRadius}
-                    outerRadius={outerRadius}
+                    innerRadius={data2 ? "30%" : innerRadius}
+                    outerRadius={data2 ? "55%" : outerRadius}
                     paddingAngle={2}
                     dataKey="value"
                     animationBegin={0}
@@ -250,115 +208,102 @@ const PieChartComponent = ({
                     onMouseEnter={onPieEnter}
                     onMouseLeave={onPieLeave}
                     labelLine={false}
-                    label={showValues ? renderCustomizedLabel : false}
+                    label={!data2 && showValues ? renderCustomizedLabel : false} // Hide labels for dual chart to avoid clutter
                   >
                     {enhancedData.map((entry, index) => (
                       <Cell 
-                        key={`cell-${index}`} 
+                        key={`cell-inner-${index}`} 
                         fill={getSegmentColor(index, hoveredSegment === index)}
-                        stroke={hoveredSegment === index ? theme.palette.background.paper : 'none'}
-                        strokeWidth={hoveredSegment === index ? 3 : 0}
-                        style={{
-                          filter: hoveredSegment === index ? 'drop-shadow(0px 4px 8px rgba(0,0,0,0.2))' : 'none',
-                          transform: hoveredSegment === index ? 'scale(1.05)' : 'scale(1)',
-                          transformOrigin: 'center',
-                          transition: 'all 0.2s ease-in-out'
-                        }}
+                        stroke={theme.palette.background.paper}
+                        strokeWidth={2}
+                        style={{ filter: hoveredSegment === index ? 'brightness(1.1)' : 'none' }}
                       />
                     ))}
                   </Pie>
+
+                  {/* Outer Ring (Collected / Secondary Data) - Optional */}
+                  {data2 && (
+                    <Pie
+                      data={enhancedData2}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius="60%"
+                      outerRadius="85%"
+                      paddingAngle={2}
+                      dataKey="value"
+                      animationBegin={0}
+                      animationDuration={animationDuration}
+                      onMouseEnter={onPieEnter}
+                      onMouseLeave={onPieLeave}
+                      labelLine={false}
+                    >
+                      {enhancedData2.map((entry, index) => (
+                        <Cell 
+                          key={`cell-outer-${index}`} 
+                          fill={getSegmentColor(index, hoveredSegment === index)} // Same colors
+                          stroke={theme.palette.background.paper}
+                          strokeWidth={2}
+                          style={{ opacity: 0.8 }} // Slightly transparent to distinguish
+                        />
+                      ))}
+                    </Pie>
+                  )}
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
-
-              {/* Center Information Display - only show for donut charts */}
-              {innerRadius !== "0%" && innerRadius !== 0 && (
-                <Box sx={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  textAlign: 'center',
-                  pointerEvents: 'none'
-                }}>
-                  <Typography variant="h4" sx={{
-                    fontWeight: 700,
-                    color: theme.palette.text.primary,
-                    mb: 0.5
-                  }}>
-                    {enhancedData.reduce((sum, item) => sum + item.value, 0)}{showPercentages ? '%' : ''}
-                  </Typography>
-                  <Typography variant="caption" sx={{
-                    color: theme.palette.text.secondary,
-                    fontWeight: 500,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5
-                  }}>
-                    Total
-                  </Typography>
-                </Box>
-              )}
             </Box>
 
-            {/* Enhanced Legend with Stats */}
+            {/* Compact Scrollable Legend */}
             {showLegend && (
               <Fade in={true} timeout={800}>
                 <Box sx={{ 
-                  mt: 3,
-                  pt: 3,
-                  borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                  mt: 1,
+                  pt: 2,
+                  borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  maxHeight: '150px', // Limit height
+                  overflowY: 'auto', // Enable scrolling
+                  '&::-webkit-scrollbar': { width: '4px' },
+                  '&::-webkit-scrollbar-thumb': { backgroundColor: '#e0e0e0', borderRadius: '4px' }
                 }}>
                   <Box sx={{ 
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: 2
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', // Smaller items
+                    gap: 1.5
                   }}>
                     {enhancedData.map((entry, index) => (
                       <Box key={index} sx={{ 
                         display: 'flex', 
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        p: 2,
-                        borderRadius: 2,
+                        p: 1, // Reduced padding
+                        borderRadius: 1.5,
                         backgroundColor: alpha(entry.fill, 0.05),
                         border: `1px solid ${alpha(entry.fill, 0.1)}`,
-                        transition: 'all 0.2s ease-in-out',
                         cursor: 'pointer',
                         '&:hover': {
                           backgroundColor: alpha(entry.fill, 0.1),
-                          transform: 'translateY(-1px)',
-                          boxShadow: theme.shadows[2]
                         }
                       }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Box sx={{ 
-                            width: 12, 
-                            height: 12, 
+                            width: 8, 
+                            height: 8, 
                             borderRadius: '50%', 
                             backgroundColor: entry.fill,
-                            boxShadow: `0 0 0 2px ${alpha(entry.fill, 0.2)}`
                           }} />
-                          <Typography variant="body2" sx={{ 
+                          <Typography variant="body2" noWrap sx={{ 
                             color: theme.palette.text.primary,
                             fontWeight: 600,
-                            fontSize: '0.875rem'
+                            fontSize: '0.75rem', // Smaller font
+                            maxWidth: '80px'
                           }}>
                             {entry.name}
                           </Typography>
                         </Box>
-                        <Chip 
-                          label={`${entry.value}${showPercentages ? '%' : ''}`}
-                          size="small"
-                          sx={{ 
-                            backgroundColor: entry.fill,
-                            color: 'white',
-                            fontWeight: 700,
-                            fontSize: '0.75rem',
-                            '& .MuiChip-label': {
-                              px: 1.5
-                            }
-                          }}
-                        />
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: entry.fill }}>
+                          {/* Show simple value or just percentage if space is tight */}
+                          {entry.value > 1000 ? `${(entry.value/1000).toFixed(0)}k` : entry.value}
+                        </Typography>
                       </Box>
                     ))}
                   </Box>

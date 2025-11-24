@@ -33,7 +33,7 @@ import {
 import Sidebar from "../components/Sidebar";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import ChatMessage from "../components/mui/ChatMessage";
+import ChatMessage, { StellarThinking } from "../components/mui/ChatMessage";
 import ChatSkeleton from "../components/mui/ChatSkeleton";
 import InputWithRecording from "../components/mui/InputWithRecording";
 import PDFNotificationPopup from "../components/mui/PDFNotificationPopup";
@@ -311,6 +311,45 @@ export default function HomePage() {
         botMessage = {
           type: "form_schema",
           response: data.response,
+          conversation_id: data.conversation_id,
+          isBot: true,
+          timestamp: new Date().toISOString(),
+        };
+      }
+      // Handle data_query_result response (SQL query results)
+      else if (data.response?.type === "data_query_result") {
+        console.log(
+          "✅ Detected data_query_result response in handleApiResponse",
+          data.response
+        );
+
+        const rowCount =
+          data.response?.content?.row_count ||
+          data.response?.content?.results?.length ||
+          0;
+        const hasMultipleRecords = rowCount > 1;
+
+        botMessage = {
+          type: "data_analysis",
+          content: {
+            response: data.response,
+            showGraphOptions: hasMultipleRecords, // Only show graph options if more than 1 record
+          },
+          conversation_id: data.conversation_id,
+          isBot: true,
+          timestamp: new Date().toISOString(),
+        };
+      }
+      // Handle error response (from failed queries)
+      else if (data.type === "error" || data.response?.type === "error") {
+        console.log("✅ Detected error response in handleApiResponse", data);
+        botMessage = {
+          type: "query_error",
+          content: {
+            error:
+              data.content || data.response?.content || "An error occurred",
+            query: data.query || data.response?.query,
+          },
           conversation_id: data.conversation_id,
           isBot: true,
           timestamp: new Date().toISOString(),
@@ -1817,33 +1856,11 @@ export default function HomePage() {
                   display: "flex",
                   justifyContent: "flex-start",
                   mb: 2,
-                  px: { xs: 1, sm: 2 },
+                  width: "100%",
+                  px: { xs: 0.5, sm: 1, md: 1 }, // Match new native chat padding
                 }}
               >
-                <Paper
-                  elevation={1}
-                  sx={{
-                    maxWidth: { xs: "85%", sm: "70%", md: "60%" },
-                    minWidth: "120px",
-                    p: 2,
-                    borderRadius: 2,
-                    backgroundColor: "#f5f5f5",
-                    position: "relative",
-                    "&::before": {
-                      content: '""',
-                      position: "absolute",
-                      top: "10px",
-                      left: "-8px",
-                      width: 0,
-                      height: 0,
-                      borderRight: "8px solid #f5f5f5",
-                      borderTop: "8px solid transparent",
-                      borderBottom: "8px solid transparent",
-                    },
-                  }}
-                >
-                  <TypingIndicator />
-                </Paper>
+                <StellarThinking />
               </Box>
             )}
           </Box>

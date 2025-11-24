@@ -22,6 +22,9 @@ import {
   DialogContent,
   DialogTitle,
   Badge,
+  Fade,
+  Grow,
+  TransitionGroup,
 } from "@mui/material";
 import {
   CheckCircle,
@@ -57,6 +60,7 @@ const CustomerVerificationPanel = ({
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerImage, setViewerImage] = useState(null);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
 
   // Automatically open compare dialog when 2 images are selected
   React.useEffect(() => {
@@ -89,9 +93,17 @@ const CustomerVerificationPanel = ({
   const verifiedFields = stats.verifiedFields;
 
   const handleApprove = () => {
+    // Show confirmation dialog
+    setApprovalDialogOpen(true);
+  };
+
+  const handleConfirmApproval = () => {
     if (onAction) {
       onAction("approve", { comment });
     }
+    // Close dialog and reset comment
+    setApprovalDialogOpen(false);
+    setComment("");
   };
 
   const handleReject = () => {
@@ -256,6 +268,7 @@ const CustomerVerificationPanel = ({
               display: "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
               gap: 1,
+              position: "relative",
             }}
           >
             {sortedImages?.slice(0, 6).map((img, index) => {
@@ -265,25 +278,34 @@ const CustomerVerificationPanel = ({
               );
 
               return (
-                <Tooltip key={img.id} title={img.label} arrow placement="top">
-                  <Paper
-                    onClick={() => handleImageClick(img)}
-                    sx={{
-                      position: "relative",
-                      paddingTop: "100%",
-                      borderRadius: 1.5,
-                      overflow: "hidden",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                      border: isSelected
-                        ? `3px solid ${theme.palette.primary.main}`
-                        : "3px solid transparent",
-                      "&:hover": {
-                        transform: "scale(1.05)",
-                        boxShadow: 2,
-                      },
-                    }}
-                  >
+                <Grow
+                  key={img.id}
+                  in={true}
+                  timeout={{
+                    enter: 400 + index * 100,
+                    exit: 200,
+                  }}
+                  style={{ transformOrigin: "center center" }}
+                >
+                  <Tooltip title={img.label} arrow placement="top">
+                    <Paper
+                      onClick={() => handleImageClick(img)}
+                      sx={{
+                        position: "relative",
+                        paddingTop: "100%",
+                        borderRadius: 1.5,
+                        overflow: "hidden",
+                        cursor: "pointer",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        border: isSelected
+                          ? `3px solid ${theme.palette.primary.main}`
+                          : "3px solid transparent",
+                        "&:hover": {
+                          transform: "scale(1.05)",
+                          boxShadow: 2,
+                        },
+                      }}
+                    >
                     {/* Selection Checkbox */}
                     <Box
                       sx={{
@@ -385,6 +407,7 @@ const CustomerVerificationPanel = ({
                     </Box>
                   </Paper>
                 </Tooltip>
+              </Grow>
               );
             })}
           </Box>
@@ -773,6 +796,124 @@ const CustomerVerificationPanel = ({
             ))}
           </Box>
         </DialogContent>
+      </Dialog>
+
+      {/* Approval Confirmation Dialog */}
+      <Dialog
+        open={approvalDialogOpen}
+        onClose={() => setApprovalDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: "white",
+            borderRadius: 3,
+            p: 1,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            pb: 2,
+          }}
+        >
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.success.main, 0.1),
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CheckCircle sx={{ fontSize: 28, color: "success.main" }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
+              Approve Customer?
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {customer?.name || "Customer"} - {customer?.mifixId}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pb: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            You are about to approve this customer's verification. This action will:
+          </Typography>
+          <Box sx={{ pl: 2, mb: 2 }}>
+            <Typography variant="body2" sx={{ mb: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
+              <CheckCircle sx={{ fontSize: 16, color: "success.main" }} />
+              Mark all verification fields as approved
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
+              <CheckCircle sx={{ fontSize: 16, color: "success.main" }} />
+              Move customer to next stage
+            </Typography>
+            <Typography variant="body2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <CheckCircle sx={{ fontSize: 16, color: "success.main" }} />
+              Automatically select next customer in queue
+            </Typography>
+          </Box>
+          {comment && (
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.grey[100], 0.5),
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 600, display: "block", mb: 0.5 }}>
+                Your Comment:
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {comment}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1.5,
+            p: 2,
+            pt: 0,
+          }}
+        >
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => setApprovalDialogOpen(false)}
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              py: 1.25,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            fullWidth
+            variant="contained"
+            color="success"
+            onClick={handleConfirmApproval}
+            startIcon={<ThumbUp />}
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              py: 1.25,
+              color: "white",
+            }}
+          >
+            Approve & Continue
+          </Button>
+        </Box>
       </Dialog>
 
       {/* Single Image Viewer */}

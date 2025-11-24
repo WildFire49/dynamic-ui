@@ -578,11 +578,7 @@ export const getFormSchemaByKeyword = (message) => {
   const lowerMessage = message.toLowerCase();
 
   // HDFC Bank Customer Onboarding - Start with L1 (PRIORITY)
-  if (
-    (lowerMessage.includes("onboard") || lowerMessage.includes("onboarding")) &&
-    lowerMessage.includes("customer") &&
-    (lowerMessage.includes("HDFC") || lowerMessage.includes("bank"))
-  ) {
+  if (lowerMessage.includes("HDFC")) {
     console.log("🎯 Detected HDFC onboarding request - returning L1 schema");
     return l1CustomerOnboardingSchema;
   }
@@ -616,11 +612,7 @@ export const getFormSchemaByKeyword = (message) => {
   }
 
   // L3 Bank Account Details
-  if (
-    lowerMessage.includes("l3") ||
-    lowerMessage.includes("bank account") ||
-    lowerMessage.includes("disbursement")
-  ) {
+  if (lowerMessage.includes("l3") || lowerMessage.includes("disbursement")) {
     console.log("🎯 Detected L3 request");
     return bankAccountDetailsSchema;
   }

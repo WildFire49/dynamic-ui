@@ -70,7 +70,7 @@ export const l1VerificationConfig = {
         {
           id: "aadhaar_back",
           label: "Aadhaar Back",
-          url: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop",
+          url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Sample_PVC_Aadhar_Card_back.jpg/1169px-Sample_PVC_Aadhar_Card_back.jpg",
           status: "verified",
           confidence: 90,
           type: "kyc_document",

@@ -6,6 +6,8 @@ import {
   Assessment,
   TrendingUp,
   Insights,
+  SmartToy,
+  Replay,
 } from "@mui/icons-material";
 import {
   Alert,
@@ -15,6 +17,7 @@ import {
   CardContent,
   Chip,
   Grid,
+  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -23,6 +26,7 @@ import {
   Snackbar,
   Typography,
   alpha,
+  useTheme,
 } from "@mui/material";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
@@ -95,11 +99,28 @@ const DynamicDataVisualization = ({
   savedRMPerformanceData = null,
   savedRMPerformanceOverview = null,
   savedRMPerformanceComparisonChart = null,
+  showGraphOptions = true,
+  onGraphRequest,
+  isWidget = false // New prop to toggle clean widget mode
 }) => {
+  const theme = useTheme();
+  const visualizationRef = useRef(null);
   // State for selected RMs
   const [selectedRMs, setSelectedRMs] = useState([]);
   const [showTopPerformers, setShowTopPerformers] = useState(true);
   const [showLowPerformers, setShowLowPerformers] = useState(false);
+  
+  // State for chart type selection
+  const [chartType, setChartType] = useState(null); // null, 'bar', 'pie'
+  const [showGraphPrompt, setShowGraphPrompt] = useState(false);
+
+  // Force chart type if saved in widget
+  useEffect(() => {
+    if (isWidget && savedCharts) {
+      if (savedCharts.pieChart) setChartType('pie');
+      else if (savedCharts.barChart) setChartType('bar');
+    }
+  }, [isWidget, savedCharts]);
 
   // Restore selectedRMs from saved data when loading from dashboard
   useEffect(() => {
@@ -2239,7 +2260,7 @@ const DynamicDataVisualization = ({
         }`,
         timestamp: new Date().toISOString(),
         type: "table",
-        question: analysisResult?.question || "Unknown Query",
+        question: analysisResult?.question || "Data Table", // Better fallback than Unknown Query
 
         // Store supporting data with multiple property names for compatibility
         supporting_data: supportingData,
@@ -2299,7 +2320,7 @@ const DynamicDataVisualization = ({
             : chartType === "waterfallChart"
             ? "waterfall"
             : "pipeline",
-        question: analysisResult?.question || "Unknown Query",
+        question: analysisResult?.question || "Data Analysis", // Better fallback
 
         // Store supporting data with multiple property names for compatibility
         supporting_data: supportingData,
@@ -2442,25 +2463,104 @@ const DynamicDataVisualization = ({
     return (
       <Box
         sx={{
+          width: "100%",
+          maxWidth: "100%",
+          px: { xs: 1, sm: 2, md: 3 },
+          py: { xs: 1, sm: 2 },
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 300,
-          textAlign: "center",
-          p: 3,
+          gap: 1.5
         }}
       >
-        <TableChart sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-        <Typography variant="h6" color="text.secondary" gutterBottom>
-          No analysis data available
-        </Typography>
+        {/* Error Message Container with Avatar on Left */}
+        <Box sx={{ display: "flex", gap: { xs: 1, sm: 2 }, alignItems: "flex-start" }}>
+          <Box
+            sx={{
+              width: { xs: 32, sm: 40 },
+              height: { xs: 32, sm: 40 },
+              borderRadius: "50%",
+              backgroundColor: theme.palette.primary.main,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+              overflow: "hidden",
+              mt: 0.5
+            }}
+          >
+            <img 
+              src="/ai-chatbot.png" 
+              alt="AI Assistant" 
+              style={{ 
+                width: "100%", 
+                height: "100%", 
+                objectFit: "cover" 
+              }} 
+            />
+          </Box>
+
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, flex: 1, maxWidth: "80%" }}>
+            <Box
+              sx={{
+                p: 2,
+                backgroundColor: theme.palette.background.paper,
+                borderRadius: "0px 20px 20px 20px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                border: `1px solid ${theme.palette.divider}`,
+                position: "relative",
+              }}
+            >
+              <Typography
+                variant="body1"
+                sx={{
+                  color: theme.palette.text.primary,
+                  fontSize: { xs: "0.9375rem", sm: "0.95rem" },
+                  fontWeight: 400,
+                  lineHeight: 1.6,
+                  fontFamily: theme.typography.fontFamily,
+                }}
+              >
+                I couldn't find any relevant data for your request. This might happen if the data is missing or the query was too specific.
+              </Typography>
+            </Box>
+
+            {/* Retry Action */}
+            <Box sx={{ display: "flex" }}>
+              <Chip
+                icon={<Replay sx={{ fontSize: 16 }} />}
+                label="Retry Analysis"
+                onClick={() => window.location.reload()} // Simple retry for now
+                variant="outlined"
+                clickable
+                sx={{
+                  height: 32,
+                  borderRadius: "16px",
+                  fontWeight: 500,
+                  fontSize: "0.8125rem",
+                  border: `1px solid ${theme.palette.divider}`,
+                  color: theme.palette.text.secondary,
+                  backgroundColor: theme.palette.background.paper,
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    backgroundColor: theme.palette.action.hover,
+                    borderColor: theme.palette.text.disabled,
+                    transform: "translateY(-1px)",
+                  },
+                  "& .MuiChip-icon": {
+                    color: theme.palette.text.secondary,
+                  }
+                }}
+              />
+            </Box>
+          </Box>
+        </Box>
       </Box>
     );
   }
 
   // Auto-scroll to visualization section only when new data arrives
-  const visualizationRef = useRef(null);
+  // visualizationRef is declared at the top of the component
   const [hasScrolled, setHasScrolled] = useState(false);
   const previousTimestamp = useRef(null);
 
@@ -2498,8 +2598,8 @@ const DynamicDataVisualization = ({
       ref={visualizationRef}
       sx={{
         width: "100%",
-        maxWidth: "100%",
-        overflow: "visible",
+        maxWidth: "100%", // Use 100% instead of 100vw to respect parent padding
+        overflow: "hidden", // Prevent horizontal scroll on the container
         boxSizing: "border-box",
         px: { xs: 1, sm: 2, md: 3 },
         py: { xs: 1, sm: 2 },
@@ -2507,14 +2607,16 @@ const DynamicDataVisualization = ({
         flexDirection: "column",
       }}
     >
-      {/* Save All to Dashboard Button */}
-      {!isFromDashboard && (
+      {/* Save to Dashboard Button - Right Aligned */}
+      {!isFromDashboard && gridRows.length > 0 && (
         <Box
           sx={{
-            mb: { xs: 2, sm: 3 },
+            mb: 3,
             display: "flex",
-            justifyContent: "center",
-            px: { xs: 1, sm: 0 },
+            justifyContent: "flex-end",
+            alignItems: "center",
+            px: { xs: 0, sm: 2 },
+            width: "100%",
           }}
         >
           <Button
@@ -2525,114 +2627,590 @@ const DynamicDataVisualization = ({
             sx={{
               textTransform: "none",
               backgroundColor: "#059669",
-              px: { xs: 3, sm: 4, md: 6 },
-              py: { xs: 1, sm: 1.2, md: 1.5 },
-              fontSize: { xs: "0.875rem", sm: "0.95rem", md: "1rem" },
+              px: { xs: 2, sm: 4 },
+              py: { xs: 1, sm: 1.2 },
+              fontSize: { xs: "0.875rem", sm: "0.95rem" },
               fontWeight: 600,
-              minWidth: { xs: "200px", sm: "auto" },
+              borderRadius: 2,
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
               "&:hover": {
                 backgroundColor: "#047857",
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
               },
             }}
           >
-            Save All to Dashboard
+            Save All
           </Button>
         </Box>
       )}
 
-      {/* 1. Data Table */}
-      {gridRows.length > 0 && (
-        <Card
-          sx={{
-            border: "1px solid #e0e0e0",
-            mb: { xs: 3, sm: 4 },
-            width: "100%",
-            maxWidth: "100%",
-            borderRadius: 2,
-          }}
-        >
-          <CardContent sx={{ p: 0 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: { xs: "flex-start", sm: "center" },
-                mb: 2,
-                px: { xs: 2, sm: 3 },
-                py: { xs: 1.5, sm: 2 },
-                flexDirection: { xs: "column", sm: "row" },
-                gap: { xs: 2, sm: 0 },
+      {/* 1. Data Visualization - Table or Single Record Card */}
+      {gridRows.length === 1 ? (
+        // Single Record
+        isWidget ? (
+          <Box sx={{ width: "100%" }}>
+            <DataGridComponent
+              rows={gridRows}
+              columns={gridColumns}
+              title={null} // No internal title for widgets
+              showSaveButton={false}
+              onExport={null}
+              height={140} // Compact height for widget
+            />
+          </Box>
+        ) : (
+          // Standard Chat View with Avatar
+          <Box
+            sx={{
+              mb: { xs: 3, sm: 4 },
+              width: "100%",
+              // Removed justifyContent: "center" to align left like standard chat
+            }}
+          >
+            <Box 
+              sx={{ 
+                width: "100%", 
+                maxWidth: "600px", // Constrained width
+                display: "flex", 
+                gap: 2, 
+                alignItems: "flex-start" 
               }}
             >
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 700,
-                  color: "#1f2937",
-                  fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.5rem" },
-                }}
-              >
-                Table Results ({gridRows.length} records)
-              </Typography>
+              {/* Avatar for Single Record */}
               <Box
                 sx={{
+                  width: { xs: 36, sm: 40 },
+                  height: { xs: 36, sm: 40 },
+                  borderRadius: "50%",
+                  backgroundColor: theme.palette.primary.main,
                   display: "flex",
-                  gap: { xs: 1, sm: 1 },
-                  flexDirection: { xs: "column", sm: "row" },
-                  width: { xs: "100%", sm: "auto" },
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                  overflow: "hidden",
+                  mt: 0.5
                 }}
               >
-                {!isFromDashboard && (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<TableChart />}
-                    onClick={handleSaveTable}
-                    sx={{
-                      textTransform: "none",
-                      backgroundColor: "#1976d2",
-                      fontSize: { xs: "0.875rem", sm: "0.8125rem" },
-                      "&:hover": {
-                        backgroundColor: "#1565c0",
-                      },
-                    }}
-                  >
-                    Save Table
-                  </Button>
-                )}
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<FileDownload />}
-                  onClick={handleExportClick}
-                  sx={{
-                    textTransform: "none",
-                    borderColor: "#d1d5db",
-                    color: "#6b7280",
-                    fontSize: { xs: "0.875rem", sm: "0.8125rem" },
-                    "&:hover": {
-                      borderColor: "#9ca3af",
-                      backgroundColor: "#f9fafb",
-                    },
-                  }}
-                >
-                  Export
-                </Button>
+                <img 
+                  src="/ai-chatbot.png" 
+                  alt="AI Assistant" 
+                  style={{ 
+                    width: "100%", 
+                    height: "100%", 
+                    objectFit: "cover" 
+                  }} 
+                />
+              </Box>
+
+              <Box sx={{ flex: 1, width: "100%", minWidth: 0 }}>
+                <DataGridComponent
+                  rows={gridRows}
+                  columns={gridColumns}
+                  title="Insight Found"
+                  showSaveButton={false}
+                  onExport={null}
+                  height={160}
+                />
               </Box>
             </Box>
-            <Box sx={{ mt: { xs: 2, sm: 4 }, width: "100%", overflow: "auto" }}>
-              <DataGridComponent
-                rows={gridRows}
-                columns={gridColumns}
-                title=""
-                showSaveButton={false}
-                onExport={handleExportClick}
-                height={{ xs: 300, sm: 350, md: 400 }}
+          </Box>
+        )
+      ) : gridRows.length > 0 ? (
+        // Multiple Records - Full Data Grid
+        isWidget ? (
+          <Box sx={{ width: "100%", mb: 2 }}>
+            <DataGridComponent
+              rows={gridRows}
+              columns={gridColumns}
+              title={null} // No internal title for widgets
+              showSaveButton={false}
+              onExport={null}
+              height={300} // Fixed height for widget table
+            />
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              mb: { xs: 3, sm: 4 },
+              width: "100%",
+              maxWidth: "100%",
+              overflowX: "auto",
+            }}
+          >
+            <Box sx={{ display: "flex", gap: { xs: 1, sm: 2 }, alignItems: "flex-start", width: "100%" }}>
+              {/* Avatar for Table - Hidden on very small screens */}
+              <Box
+                sx={{
+                  width: { xs: 32, sm: 40 },
+                  height: { xs: 32, sm: 40 },
+                  borderRadius: "50%",
+                  backgroundColor: theme.palette.primary.main,
+                  display: { xs: "none", sm: "flex" },
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  boxShadow: "0 2px 8px rgba(0, 120, 215, 0.15)",
+                  overflow: "hidden",
+                  mt: 0.5
+                }}
+              >
+                <img 
+                  src="/ai-chatbot.png" 
+                  alt="AI Assistant" 
+                  style={{ 
+                    width: "100%", 
+                    height: "100%", 
+                    objectFit: "cover" 
+                  }} 
+                />
+              </Box>
+              
+              <Box sx={{ flex: 1, width: "100%", minWidth: 0 }}>
+                <DataGridComponent
+                  rows={gridRows}
+                  columns={gridColumns}
+                  title="Results"
+                  showSaveButton={!isFromDashboard}
+                  onSave={handleSaveTable}
+                  onExport={handleExportClick}
+                  height={{ xs: 432, sm: 504, md: 576 }}
+                />
+              </Box>
+            </Box>
+          </Box>
+        )
+      ) : null}
+
+      {/* 2. AI Follow-up Message - HIDE IN WIDGET MODE */}
+      {!isWidget && showGraphOptions && gridRows.length > 1 && !chartType && !showGraphPrompt && (
+        <Box
+          sx={{
+            mb: { xs: 3, sm: 4 },
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5
+          }}
+        >
+          {/* Message Container with Avatar on Left */}
+          <Box sx={{ display: "flex", gap: { xs: 1, sm: 2 }, alignItems: "flex-start" }}>
+            {/* Avatar - Outside the bubble, extremely left */}
+            <Box
+              sx={{
+                width: { xs: 32, sm: 40 },
+                height: { xs: 32, sm: 40 },
+                borderRadius: "50%",
+                backgroundColor: theme.palette.primary.main,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
+                overflow: "hidden",
+                mt: 0.5 // Align with top of text
+              }}
+            >
+              <img 
+                src="/ai-chatbot.png" 
+                alt="AI Assistant" 
+                style={{ 
+                  width: "100%", 
+                  height: "100%", 
+                  objectFit: "cover" 
+                }} 
               />
             </Box>
-          </CardContent>
-        </Card>
+
+            {/* Message Bubble - Coming from Avatar */}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, flex: 1, maxWidth: "80%" }}>
+              <Box
+                sx={{
+                  p: 2,
+                  backgroundColor: theme.palette.grey[50], // Softer gray from theme
+                  borderRadius: "20px 20px 20px 4px",
+                  maxWidth: { xs: "100%", md: "75%" },
+                  boxShadow: "none",
+                }}
+              >
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: theme.palette.text.primary,
+                    fontSize: { xs: "0.9375rem", sm: "0.95rem" },
+                    fontWeight: 400,
+                    lineHeight: 1.6,
+                    fontFamily: theme.typography.fontFamily,
+                  }}
+                >
+                  I've analyzed the data. I can generate some visualizations to help you understand the trends better.
+                </Typography>
+              </Box>
+
+              {/* Action Chips - Below Bubble */}
+              <Box sx={{ pl: { xs: 0, sm: "52px" }, display: "flex", flexDirection: "column", gap: 1 }}>
+                <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500, ml: 0.5 }}>
+                  Suggested visualizations:
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 1.5,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Chip
+                    icon={<Assessment sx={{ fontSize: 16 }} />}
+                    label="Bar Chart"
+                    onClick={() => {
+                      setChartType('bar');
+                      setShowGraphPrompt(true);
+                      if (onGraphRequest) onGraphRequest('bar');
+                    }}
+                    variant="outlined"
+                    clickable
+                    sx={{
+                      height: 32,
+                      borderRadius: "16px",
+                      fontWeight: 500,
+                      fontSize: "0.8125rem",
+                      border: `1px solid ${theme.palette.divider}`,
+                      color: theme.palette.text.secondary,
+                      backgroundColor: theme.palette.background.paper,
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: theme.palette.action.hover,
+                        borderColor: theme.palette.text.disabled,
+                        transform: "translateY(-1px)",
+                      },
+                      "& .MuiChip-icon": {
+                        color: theme.palette.text.secondary,
+                      }
+                    }}
+                  />
+                  <Chip
+                    icon={<Insights sx={{ fontSize: 16 }} />}
+                    label="Pie Chart"
+                    onClick={() => {
+                      setChartType('pie');
+                      setShowGraphPrompt(true);
+                      if (onGraphRequest) onGraphRequest('pie');
+                    }}
+                    variant="outlined"
+                    clickable
+                    sx={{
+                      height: 32,
+                      borderRadius: "16px",
+                      fontWeight: 500,
+                      fontSize: "0.8125rem",
+                      border: `1px solid ${theme.palette.divider}`,
+                      color: theme.palette.text.secondary,
+                      backgroundColor: theme.palette.background.paper,
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: theme.palette.action.hover,
+                        borderColor: theme.palette.text.disabled,
+                        transform: "translateY(-1px)",
+                      },
+                      "& .MuiChip-icon": {
+                        color: theme.palette.text.secondary,
+                      }
+                    }}
+                  />
+                  <Chip
+                    label="Dismiss"
+                    onClick={() => setShowGraphPrompt(true)}
+                    variant="outlined"
+                    clickable
+                    sx={{
+                      height: 32,
+                      borderRadius: "16px",
+                      fontWeight: 500,
+                      fontSize: "0.8125rem",
+                      border: "1px solid transparent",
+                      color: theme.palette.text.disabled,
+                      backgroundColor: "transparent",
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: theme.palette.action.hover,
+                        color: theme.palette.text.secondary,
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
       )}
+
+      {/* Chart Type Switcher - Natural Action Chips */}
+      {(chartType || showGraphPrompt) && gridRows.length > 1 && (
+        <Box
+          sx={{
+            mb: 3,
+            width: "100%",
+            maxWidth: { xs: "100%", lg: "95%" },
+            mx: "auto",
+            px: { xs: 1, sm: 0 },
+            display: "flex",
+            flexDirection: "column",
+            gap: 1
+          }}
+        >
+          <Typography variant="caption" sx={{ color: "#6b7280", fontWeight: 500, ml: 0.5 }}>
+            Visualizations:
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1.5,
+              flexWrap: "wrap",
+            }}
+          >
+            <Chip
+              icon={<Assessment sx={{ fontSize: 16 }} />}
+              label="Bar Chart"
+              onClick={() => setChartType(chartType === 'bar' ? null : 'bar')}
+              variant={chartType === 'bar' ? "filled" : "outlined"}
+              clickable
+              color={chartType === 'bar' ? "primary" : "default"}
+              sx={{
+                height: 32,
+                borderRadius: "16px",
+                fontWeight: 500,
+                fontSize: "0.8125rem",
+                border: chartType === 'bar' ? "none" : "1px solid #e5e7eb",
+                backgroundColor: chartType === 'bar' ? "#0078d7" : "#ffffff",
+                color: chartType === 'bar' ? "#fff" : "#4b5563",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  backgroundColor: chartType === 'bar' ? "#0064b7" : "#f9fafb",
+                  borderColor: chartType === 'bar' ? "none" : "#d1d5db",
+                  transform: "translateY(-1px)",
+                },
+                "& .MuiChip-icon": {
+                  color: chartType === 'bar' ? "#fff" : "#6b7280",
+                }
+              }}
+            />
+            <Chip
+              icon={<Insights sx={{ fontSize: 16 }} />}
+              label="Pie Chart"
+              onClick={() => setChartType(chartType === 'pie' ? null : 'pie')}
+              variant={chartType === 'pie' ? "filled" : "outlined"}
+              clickable
+              color={chartType === 'pie' ? "primary" : "default"}
+              sx={{
+                height: 32,
+                borderRadius: "16px",
+                fontWeight: 500,
+                fontSize: "0.8125rem",
+                border: chartType === 'pie' ? "none" : "1px solid #e5e7eb",
+                backgroundColor: chartType === 'pie' ? "#0078d7" : "#ffffff",
+                color: chartType === 'pie' ? "#fff" : "#4b5563",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  backgroundColor: chartType === 'pie' ? "#0064b7" : "#f9fafb",
+                  borderColor: chartType === 'pie' ? "none" : "#d1d5db",
+                  transform: "translateY(-1px)",
+                },
+                "& .MuiChip-icon": {
+                  color: chartType === 'pie' ? "#fff" : "#6b7280",
+                }
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* 3. Graph Visualization - Show selected chart */}
+      {chartType === 'bar' && gridRows.length > 1 && (() => {
+        // For bar chart, use the first column as X-axis (name)
+        const nameField = gridColumns[0]?.field || 'name';
+        const numericColumns = gridColumns.filter((col, idx) => idx > 0 && typeof gridRows[0]?.[col.field] === 'number');
+        
+        // Check if we have target vs collected comparison data
+        const hasTargetAmount = numericColumns.some(col => col.field.toLowerCase().includes('target_amount') || col.field.toLowerCase().includes('target'));
+        const hasCollectedAmount = numericColumns.some(col => col.field.toLowerCase().includes('collected') || col.field.toLowerCase().includes('actual'));
+        const isComparison = hasTargetAmount && hasCollectedAmount;
+        
+        if (isComparison) {
+          // Comparison chart: Target vs Collected
+          const chartData = gridRows.map((row, index) => {
+            let name = row[nameField];
+            if (name && typeof name === 'string' && name.match(/^\d{4}-\d{2}-\d{2}/)) {
+              const date = new Date(name);
+              name = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }
+            
+            return {
+              name: name || `Item ${index + 1}`,
+              Target: Number(row.target_amount) || 0,
+              Collected: Number(row.total_collected_amount) || 0,
+            };
+          });
+          
+          return (
+            <Box sx={{ mb: { xs: 3, sm: 4 }, width: "100%" }}>
+              <Card sx={{ border: "1px solid #e0e0e0", borderRadius: 3, overflow: "hidden" }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, fontSize: { xs: "1rem", sm: "1.125rem" } }}>
+                    Target vs Collected Amount - Month on Month
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={450}>
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="name" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        tick={{ fontSize: 11, fill: '#6b7280' }}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11, fill: '#6b7280' }}
+                        tickFormatter={(value) => {
+                          if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                          if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                          return value;
+                        }}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                        formatter={(value) => value.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                      />
+                      <Bar dataKey="Target" fill="#0078d7" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Collected" fill="#48bb78" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  
+                  {/* Legend */}
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ width: 16, height: 16, backgroundColor: '#0078d7', borderRadius: 1 }} />
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        Target Amount
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ width: 16, height: 16, backgroundColor: '#48bb78', borderRadius: 1 }} />
+                      <Typography variant="body2" sx={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        Collected Amount
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          );
+        } else {
+          // Single metric chart
+          const valueField = numericColumns[0]?.field || gridColumns[1]?.field || 'value';
+          const chartData = gridRows.map((row, index) => {
+            let name = row[nameField];
+            if (name && typeof name === 'string' && name.match(/^\d{4}-\d{2}-\d{2}/)) {
+              const date = new Date(name);
+              name = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }
+            
+            return {
+              name: name || `Item ${index + 1}`,
+              value: Number(row[valueField]) || 0,
+              fill: getStageColor(index, gridRows.length)
+            };
+          });
+          
+          return (
+            <Box sx={{ mb: { xs: 3, sm: 4 }, width: "100%" }}>
+              <BarChartComponent
+                data={chartData}
+                xAxisKey="name"
+                title="Bar Chart Visualization"
+                subtitle={`Showing ${gridColumns.find(c => c.field === valueField)?.headerName || valueField}`}
+                height={400}
+              />
+            </Box>
+          );
+        }
+      })()}
+
+      {chartType === 'pie' && gridRows.length > 1 && (() => {
+        // For pie chart, transform data to {name, value} format
+        const nameField = gridColumns[0]?.field || 'name';
+        const numericColumns = gridColumns.filter((col, idx) => idx > 0 && typeof gridRows[0]?.[col.field] === 'number');
+        
+        // Check for comparison data
+        const hasTargetAmount = numericColumns.some(col => col.field.toLowerCase().includes('target_amount') || col.field.toLowerCase().includes('target'));
+        const hasCollectedAmount = numericColumns.some(col => col.field.toLowerCase().includes('collected') || col.field.toLowerCase().includes('actual'));
+        const isComparison = hasTargetAmount && hasCollectedAmount;
+
+        let pieData, pieData2, valueField;
+
+        if (isComparison) {
+          // Prepare dual data for concentric donut
+          pieData = gridRows.map((row, index) => {
+            let name = row[nameField];
+            if (name && typeof name === 'string' && name.match(/^\d{4}-\d{2}-\d{2}/)) {
+              const date = new Date(name);
+              name = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }
+            return {
+              name: name || `Item ${index + 1}`,
+              value: Number(row.target_amount) || 0
+            };
+          });
+
+          pieData2 = gridRows.map((row, index) => {
+            let name = row[nameField];
+            if (name && typeof name === 'string' && name.match(/^\d{4}-\d{2}-\d{2}/)) {
+              const date = new Date(name);
+              name = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }
+            return {
+              name: name || `Item ${index + 1}`,
+              value: Number(row.total_collected_amount) || 0
+            };
+          });
+        } else {
+          // Single ring
+          valueField = numericColumns[0]?.field || gridColumns[1]?.field || 'value';
+          pieData = gridRows.map((row, index) => {
+            let name = row[nameField];
+            if (name && typeof name === 'string' && name.match(/^\d{4}-\d{2}-\d{2}/)) {
+              const date = new Date(name);
+              name = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }
+            return {
+              name: name || `Item ${index + 1}`,
+              value: Number(row[valueField]) || 0
+            };
+          });
+        }
+        
+        return (
+          <Box sx={{ mb: { xs: 3, sm: 4 }, width: "100%" }}>
+            <PieChartComponent
+              data={pieData}
+              data2={pieData2} // Pass second dataset if available
+              title="Pie Chart Visualization"
+              subtitle={isComparison ? "Comparing Target vs Collected Amount" : `Showing ${gridColumns.find(c => c.field === valueField)?.headerName || valueField}`}
+              height={500}
+              innerRadius="0%"
+              outerRadius="80%"
+              showPercentages={false}
+              showLegend={true}
+              showValues={true}
+              animationDuration={0}
+            />
+          </Box>
+        );
+      })()}
 
       {/* 2. Graph Metrics */}
       <Box

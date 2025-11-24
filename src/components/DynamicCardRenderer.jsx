@@ -22,6 +22,7 @@ import {
   BusinessCenter,
   ArrowForward,
   Person,
+  PersonAdd,
   AttachMoney,
   Home,
   Work,
@@ -33,6 +34,7 @@ const iconMap = {
   Phone,
   LocationOn,
   Person,
+  PersonAdd,
   AttachMoney,
   CurrencyRupee,
   BusinessCenter,
@@ -61,6 +63,7 @@ const DynamicCardRenderer = ({
   onClick,
   onReviewClick,
   isSelected = false,
+  showSuccess,
   sx = {}
 }) => {
   const theme = useTheme();
@@ -282,12 +285,18 @@ const DynamicCardRenderer = ({
   const avatarUrl = item[avatarKey];
   const avatarFallback = item[avatarFallbackKey];
   
-  // Use actionButton if available, otherwise fall back to actions
+  // Check if conditional button should be used (for Leads Only stage)
+  const shouldUseConditionalButton = actions.conditionalButton?.condition?.(item);
+  const conditionalConfig = shouldUseConditionalButton ? actions.conditionalButton : null;
+  
+  // Use actionButton if available, otherwise fall back to actions (with conditional override)
   const buttonConfig = actionButton || actions;
   const showButton = actionButton ? true : actions.showButton;
-  const buttonLabel = actionButton?.label || actions.buttonLabel || "Review";
+  const buttonLabel = conditionalConfig?.buttonLabel || actionButton?.label || actions.buttonLabel || "Review";
   const buttonVariant = actionButton?.variant || actions.buttonVariant || "contained";
   const buttonColor = actionButton?.color || actions.buttonColor || "primary";
+  const buttonIcon = conditionalConfig?.buttonIcon || buttonConfig.buttonIcon || buttonConfig.icon;
+  const successMessage = conditionalConfig?.successMessage;
   
   console.log("🔘 Button config:", { showButton, buttonLabel, buttonVariant, buttonConfig });
   
@@ -326,6 +335,12 @@ const DynamicCardRenderer = ({
   // Handle button click
   const handleButtonClick = (e) => {
     e.stopPropagation(); // Prevent card click
+    
+    // Show success message if configured (for Assign to RM button)
+    if (successMessage && showSuccess) {
+      showSuccess(successMessage);
+    }
+    
     if (onClick) {
       onClick(item);
     }
@@ -489,7 +504,7 @@ const DynamicCardRenderer = ({
               variant={buttonVariant}
               size="small"
               color={buttonColor}
-              endIcon={buttonConfig.icon ? React.createElement(iconMap[buttonConfig.icon]) : null}
+              endIcon={buttonIcon ? React.createElement(iconMap[buttonIcon]) : null}
               onClick={handleButtonClick}
               sx={{
                 borderRadius: 1.5,

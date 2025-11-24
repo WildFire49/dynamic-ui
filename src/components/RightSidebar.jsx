@@ -16,6 +16,10 @@ import {
   alpha,
   useTheme,
   Button,
+  Avatar,
+  Card,
+  CardContent,
+  Stack,
 } from "@mui/material";
 import DynamicFormRenderer from "./dynamic-form/DynamicFormRenderer";
 import { getFormSchemaById } from "./dynamic-form/sampleFormSchemas";
@@ -37,6 +41,10 @@ import {
   InfoOutlined,
   Cancel,
   ArrowForward,
+  Person,
+  Phone,
+  LocationOn,
+  Badge as BadgeIcon,
 } from "@mui/icons-material";
 
 /**
@@ -621,7 +629,190 @@ const RightSidebar = ({
 
     // Get verification data for this customer
     const verificationData = verificationConfig.customers[selectedItem.mifixId];
+    
+    // If no verification data, check if customer has FO assignment (Leads Only)
     if (!verificationData) {
+      // Check if customer is assigned to a Field Officer
+      if (selectedItem.assignedTo) {
+        const fo = selectedItem.assignedTo;
+        return (
+          <Box sx={{ p: 3 }}>
+            {/* Header */}
+            <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 3 }}>
+              Field Officer Assignment
+            </Typography>
+
+            {/* FO Details Card */}
+            <Card
+              elevation={0}
+              sx={{
+                border: `1px solid ${alpha(theme.palette.divider, 0.15)}`,
+                borderRadius: 2.5,
+                overflow: "hidden",
+                mb: 3,
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                {/* FO Avatar and Name */}
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+                  <Avatar
+                    src={fo.foAvatar}
+                    alt={fo.foName}
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      border: `3px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+                    }}
+                  />
+                  <Box>
+                    <Typography variant="h6" fontWeight={600}>
+                      {fo.foName}
+                    </Typography>
+                    <Chip
+                      label="Field Officer"
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        color: "primary.main",
+                        fontWeight: 600,
+                        fontSize: "0.75rem",
+                        height: 24,
+                      }}
+                    />
+                  </Box>
+                </Stack>
+
+                <Divider sx={{ my: 2 }} />
+
+                {/* FO Details */}
+                <Stack spacing={2}>
+                  {/* FO ID */}
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 2,
+                        bgcolor: alpha(theme.palette.info.main, 0.1),
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <BadgeIcon sx={{ fontSize: 20, color: "info.main" }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Field Officer ID
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {fo.foId}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  {/* Phone Number */}
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 2,
+                        bgcolor: alpha(theme.palette.success.main, 0.1),
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Phone sx={{ fontSize: 20, color: "success.main" }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Contact Number
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {fo.foPhone}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  {/* Region */}
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 2,
+                        bgcolor: alpha(theme.palette.warning.main, 0.1),
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <LocationOn sx={{ fontSize: 20, color: "warning.main" }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Region
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {fo.foRegion}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  {/* Assigned Date */}
+                  {fo.assignedDate && (
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Box
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 2,
+                          bgcolor: alpha(theme.palette.secondary.main, 0.1),
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <CheckCircle sx={{ fontSize: 20, color: "secondary.main" }} />
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Assigned Date
+                        </Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          {new Date(fo.assignedDate).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  )}
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {/* Status Message */}
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.info.main, 0.08),
+                border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                <strong>Status:</strong> Lead assigned to {fo.foName}. Awaiting customer onboarding.
+              </Typography>
+            </Box>
+          </Box>
+        );
+      }
+
+      // Default: No data available
       return (
         <Box sx={{ p: 3, textAlign: "center" }}>
           <Typography color="text.secondary">

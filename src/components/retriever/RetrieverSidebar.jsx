@@ -62,8 +62,8 @@ const RetrieverSidebar = ({
     },
     {
       id: 4,
-      title: "Self Learning",
-      description: "Manage templates and training data",
+      title: "Regression Testing",
+      description: "Test queries against training data",
       icon: TrainingIcon,
       color: "#f59e0b",
       completed: false,

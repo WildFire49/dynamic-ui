@@ -11,6 +11,7 @@ import verificationConfig from "./verificationConfig";
 import l1VerificationConfig from "./l1VerificationConfig";
 import l2VerificationConfig from "./l2VerificationConfig";
 import combinedVerificationConfig from "./combinedVerificationConfig";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   Box,
   TextField,
@@ -84,6 +85,7 @@ const iconMap = {
  */
 const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "all", onFilterChange, onCreateNew }) => {
   const theme = useTheme();
+  const { showSuccess } = useSnackbar();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedItem, setSelectedItem] = useState(null);
@@ -862,6 +864,7 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
                     onClick={handleCardClick}
                     onReviewClick={handleReviewClick}
                     isSelected={selectedItem?.id === item.id}
+                    showSuccess={showSuccess}
                   />
                 </Box>
               );
@@ -1021,9 +1024,22 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
     const customerFormSchemas = selectedItem?.formSchemas || [];
     const customerFormSchemaId = selectedItem?.formSchemaId;
     
-    // Get all form schemas to display
+    // Get all form schemas to display with customer-specific data
     const allFormSchemas = customerFormSchemas.length > 0
-      ? customerFormSchemas.map(schemaId => getFormSchemaById(schemaId)).filter(Boolean)
+      ? customerFormSchemas.map(schemaId => {
+          const schema = getFormSchemaById(schemaId);
+          // Merge customer-specific form data as mockData for pre-filling
+          if (schema && selectedItem?.formData && selectedItem.formData[schemaId]) {
+            return {
+              ...schema,
+              mockData: {
+                ...schema.mockData, // Keep default mockData
+                ...selectedItem.formData[schemaId], // Override with customer data
+              }
+            };
+          }
+          return schema;
+        }).filter(Boolean)
       : [];
     
     // Determine which schema to use
@@ -1031,7 +1047,7 @@ const DynamicLeadsRenderer = ({ config, onCardClick, onSave, selectedFilter = "a
     let schemasToRender = [];
     
     if (allFormSchemas.length > 0) {
-      // Use all the form schemas from the array
+      // Use all the form schemas from the array with customer data
       schemasToRender = allFormSchemas;
     } else if (selectedItem && dialog.sections) {
       // No form schema, show lead details

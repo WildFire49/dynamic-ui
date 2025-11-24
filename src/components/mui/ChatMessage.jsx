@@ -9,6 +9,10 @@ import {
   Paper,
   Typography,
 } from "@mui/material";
+import {
+  SmartToy,
+  Lightbulb,
+} from "@mui/icons-material";
 import Image from "next/image";
 import DynamicRenderer from "../../lib/dynamic-ui/DynamicRenderer";
 
@@ -57,7 +61,7 @@ const styles = {
   messageContainer: {
     display: "flex",
     mb: { xs: 1.5, sm: 2 },
-    px: { xs: 1, sm: 1, md: 2 },
+    px: { xs: 0.5, sm: 1, md: 1 }, // Reduced padding for native chat look
     maxWidth: "100%",
     width: "100%",
   },
@@ -93,22 +97,21 @@ const styles = {
   botMessage: {
     maxWidth: { xs: "85%", sm: "75%", md: "70%", lg: "66%" },
     minWidth: { xs: "60px", sm: "130px" },
-    p: { xs: 1.25, sm: 2 },
-    borderRadius: { xs: "18px 18px 18px 4px", sm: "20px 20px 20px 4px" },
-    backgroundColor: "#f0f0f0",
-    color: "inherit",
+    p: { xs: 1.5, sm: 2 },
+    borderRadius: { xs: "0 16px 16px 16px", sm: "0 20px 20px 20px" }, // More distinct AI shape
+    backgroundColor: "#ffffff", // White background as requested
+    color: "#1f2937", // Dark grey text for contrast
     position: "relative",
     wordWrap: "break-word",
     wordBreak: "break-word",
     overflowWrap: "break-word",
     whiteSpace: "pre-wrap",
-    boxShadow: {
-      xs: "0 1px 2px rgba(0, 0, 0, 0.1)",
-      sm: "0 2px 4px rgba(0, 0, 0, 0.1)",
-    },
+    boxShadow: "0 2px 8px rgba(0,0,0,0.08)", // Subtle shadow for depth
+    border: "1px solid rgba(0,0,0,0.03)",
     animation: `${popIn} 0.3s ease-out`,
     transition: "all 0.2s ease",
     fontSize: { xs: "0.9375rem", sm: "0.95rem" },
+    lineHeight: 1.6,
     "&::before": {
       display: "none",
     },
@@ -175,6 +178,88 @@ const styles = {
   },
 };
 
+// Stellar Thinking Animation Component
+export const StellarThinking = () => (
+  <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start", px: 1 }}>
+    {/* Avatar */}
+    <Box
+      sx={{
+        width: { xs: 32, sm: 36 },
+        height: { xs: 32, sm: 36 },
+        borderRadius: "50%",
+        backgroundColor: "#0078d7",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        boxShadow: "0 2px 8px rgba(0, 120, 215, 0.15)",
+        overflow: "hidden",
+        mt: 0.5
+      }}
+    >
+      <img 
+        src="/ai-chatbot.png" 
+        alt="AI Thinking" 
+        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+      />
+    </Box>
+
+    {/* Thinking Bubble */}
+    <Box
+      sx={{
+        p: 2,
+        backgroundColor: "#ffffff", // White background
+        borderRadius: "0 20px 20px 20px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+        border: "1px solid rgba(0,0,0,0.03)",
+        display: "flex",
+        alignItems: "center",
+        gap: 0.8,
+        minWidth: 80
+      }}
+    >
+      <Box
+        sx={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          backgroundColor: "#0078d7",
+          animation: "pulse 1.4s infinite ease-in-out both",
+          "&::before": { content: '""' } // Placeholder to satisfy linter if needed
+        }}
+      />
+      <Box
+        sx={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          backgroundColor: "#0078d7",
+          animation: "pulse 1.4s infinite ease-in-out both",
+          animationDelay: "0.2s"
+        }}
+      />
+      <Box
+        sx={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          backgroundColor: "#0078d7",
+          animation: "pulse 1.4s infinite ease-in-out both",
+          animationDelay: "0.4s"
+        }}
+      />
+      <style>
+        {`
+          @keyframes pulse {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+          }
+        `}
+      </style>
+    </Box>
+  </Box>
+);
+
 const ChatMessage = ({ message, index, onAction }) => {
   // Handle saving analysis to dashboard
   const handleSaveAnalysis = (analysisData) => {
@@ -234,6 +319,201 @@ const ChatMessage = ({ message, index, onAction }) => {
 
   const renderMessageContent = () => {
     console.log("🎨 renderMessageContent called for message:", message);
+
+    // Check for query_error type - Failed queries
+    if (message.type === "query_error") {
+      const errorContent = message.content?.error || "An error occurred";
+      return (
+        <Box sx={styles.dynamicDataContainer}>
+          <Card
+            sx={{
+              border: "1px solid #fee",
+              backgroundColor: "#fef5f5",
+              borderRadius: 3,
+              overflow: "hidden",
+              boxShadow: "0 4px 12px rgba(239, 68, 68, 0.1)",
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              {/* Robot Avatar with Error Icon */}
+              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, mb: 2 }}>
+                <Box
+                  sx={{
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #fee2e2, #fecaca)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)",
+                  }}
+                >
+                  <SmartToy sx={{ fontSize: { xs: 28, sm: 32 }, color: "#dc2626" }} />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 700,
+                      color: "#991b1b",
+                      fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                      mb: 0.5,
+                    }}
+                  >
+                    Oops! My circuits got tangled
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#7f1d1d",
+                      fontSize: { xs: "0.875rem", sm: "0.95rem" },
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Let me explain what happened...
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* AI Message */}
+              <Box
+                sx={{
+                  p: { xs: 2, sm: 2.5 },
+                  backgroundColor: "white",
+                  borderRadius: 2,
+                  border: "1px solid #fecaca",
+                  mb: 2,
+                }}
+              >
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: "#374151",
+                    lineHeight: 1.6,
+                    fontSize: { xs: "0.875rem", sm: "0.95rem" },
+                    mb: 1.5,
+                  }}
+                >
+                  Hi there! 🤖 I encountered a small glitch while processing your query. 
+                  Here's what went wrong:
+                </Typography>
+                <Box
+                  sx={{
+                    p: 2,
+                    backgroundColor: "#fef2f2",
+                    borderRadius: 1.5,
+                    borderLeft: "4px solid #dc2626",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: "monospace",
+                      color: "#991b1b",
+                      fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {errorContent}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Helpful Message */}
+              <Box
+                sx={{
+                  p: { xs: 1.5, sm: 2 },
+                  backgroundColor: "#eff6ff",
+                  borderRadius: 2,
+                  border: "1px solid #dbeafe",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <Lightbulb sx={{ fontSize: 20, color: "#2563eb" }} />
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      fontWeight: 600,
+                      color: "#1e40af",
+                      fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+                    }}
+                  >
+                    What you can do:
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#1e3a8a",
+                    fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+                    lineHeight: 1.5,
+                  }}
+                >
+                  • Try rephrasing your question
+                  <br />
+                  • Check if the data source is available
+                  <br />• Ask me something else, and I'll do my best to help!
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+      );
+    }
+
+    // Check for data_query_result type - SQL query results
+    // Handle multiple possible structures:
+    // 1. message.response.type === "data_query_result"
+    // 2. message.content.response.type === "data_query_result"
+    const isDataQueryResult = 
+      message.response?.type === "data_query_result" || 
+      message.content?.response?.type === "data_query_result";
+    
+    if (isDataQueryResult) {
+      const queryResult = message.response?.content || message.content?.response?.content;
+      const showGraphOptions = message.content?.showGraphOptions !== false; // Default to true unless explicitly false
+      
+      console.log("✅ MATCH: Rendering data_query_result", queryResult);
+      console.log("📊 Message structure:", {
+        hasResponse: !!message.response,
+        responseType: message.response?.type,
+        hasContentResponse: !!message.content?.response,
+        contentResponseType: message.content?.response?.type,
+        queryResult: queryResult,
+        showGraphOptions: showGraphOptions
+      });
+      
+      if (queryResult?.results && Array.isArray(queryResult.results) && queryResult.results.length > 0) {
+        console.log("✅ Rendering DynamicDataVisualization with results:", queryResult.results);
+        return (
+          <Box sx={styles.dynamicDataContainer}>
+            <DynamicDataVisualization
+              analysisResult={{
+                analysis_result: {
+                  supporting_data: queryResult.results,
+                },
+              }}
+              loading={false}
+              isFromDashboard={false}
+              showGraphOptions={showGraphOptions}
+              onGraphRequest={(graphType) => {
+                // User clicked a graph button - just log it, don't send to API
+                console.log(`User selected ${graphType} chart`);
+              }}
+            />
+          </Box>
+        );
+      } else {
+        console.warn("⚠️ data_query_result matched but no valid results found:", {
+          hasResults: !!queryResult?.results,
+          isArray: Array.isArray(queryResult?.results),
+          length: queryResult?.results?.length
+        });
+      }
+    }
 
     // Check for form_schema type message (from page.js handler)
     if (message.type === "form_schema" && message.response?.schema) {
@@ -930,10 +1210,31 @@ const ChatMessage = ({ message, index, onAction }) => {
     );
   };
 
+  // Check if this is a data query result or dynamic data visualization
+  const isDataQueryResult = 
+    message.response?.type === "data_query_result" || 
+    message.content?.response?.type === "data_query_result" ||
+    message.type === "dynamic_data";
+
   // Determine message styling
   const getMessageStyle = () => {
     if (isUser) {
       return styles.userMessage;
+    }
+
+    // For data query results, remove the bubble styling completely
+    // This allows the internal components (Table, AI Prompt) to render as separate elements
+    if (isDataQueryResult) {
+      return {
+        maxWidth: "100%",
+        width: "100%",
+        p: 0,
+        backgroundColor: "transparent",
+        boxShadow: "none",
+        "&::before": {
+          display: "none",
+        },
+      };
     }
 
     // Full width for dynamic forms, workflow forms, and form schemas
@@ -969,9 +1270,44 @@ const ChatMessage = ({ message, index, onAction }) => {
       sx={{
         ...styles.messageContainer,
         ...(isUser ? styles.userMessageContainer : styles.botMessageContainer),
+        alignItems: "flex-start", // Ensure avatar aligns with top of message
+        gap: 1.5, // Gap between avatar and bubble
       }}
     >
-      <Paper elevation={1} sx={getMessageStyle()}>
+      {/* AI Avatar - Outside bubble, left aligned */}
+      {!isUser && !isDataQueryResult && (
+        <Box
+          sx={{
+            width: { xs: 32, sm: 36 },
+            height: { xs: 32, sm: 36 },
+            borderRadius: "50%",
+            backgroundColor: "#0078d7",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            boxShadow: "0 2px 8px rgba(0, 120, 215, 0.15)",
+            overflow: "hidden",
+            mt: 0.5 // Align with top of bubble text
+          }}
+        >
+          <img 
+            src="/ai-chatbot.png" 
+            alt="AI" 
+            style={{ 
+              width: "100%", 
+              height: "100%", 
+              objectFit: "cover" 
+            }} 
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.parentNode.innerHTML = '<svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-vubbuv" focusable="false" aria-hidden="true" viewBox="0 0 24 24" data-testid="SmartToyIcon" style="color: white; font-size: 20px;"><path d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM8 9c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm6 5H8v-2h6v2zm.5-5c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z"></path></svg>';
+            }}
+          />
+        </Box>
+      )}
+
+      <Paper elevation={!isUser && !isDataQueryResult ? 0 : 1} sx={getMessageStyle()}>
         {renderMessageContent()}
       </Paper>
     </Box>

@@ -18,7 +18,8 @@ const DataGridComponent = ({
   onExport,
   height = 400,
   data = null, // New prop for dynamic data
-  autoGenerateColumns = true // New prop to auto-generate columns
+  autoGenerateColumns = true, // New prop to auto-generate columns
+  variant = "card" // 'card' | 'clean'
 }) => {
   // Generate columns and rows dynamically if data is provided
   const { processedRows, processedColumns } = useMemo(() => {
@@ -28,6 +29,7 @@ const DataGridComponent = ({
     // If data is provided and autoGenerateColumns is true, generate everything dynamically
     if (data && autoGenerateColumns && data.length > 0) {
       // Generate columns from the first data item
+      // ... (existing column generation logic) ...
       const firstItem = data[0];
       const generatedColumns = Object.keys(firstItem).map((key, index) => ({
         field: key,
@@ -99,6 +101,15 @@ const DataGridComponent = ({
       
       finalColumns = generatedColumns;
       finalRows = generatedRows;
+    } else if (rows.length > 0 && autoGenerateColumns && columns.length === 0) {
+        // Auto-generate columns from rows if columns prop is empty but rows are provided
+        const firstItem = rows[0];
+        finalColumns = Object.keys(firstItem).filter(key => key !== 'id').map((key) => ({
+            field: key,
+            headerName: key.replace(/_/g, ' ').toUpperCase(),
+            flex: 1,
+            minWidth: 150
+        }));
     }
 
     return {
@@ -152,6 +163,47 @@ const DataGridComponent = ({
     );
   }
 
+  if (variant === 'clean') {
+    return (
+      <Box sx={{ height: '100%', width: '100%' }}>
+        <DataGrid
+          rows={processedRows}
+          columns={processedColumns}
+          initialState={{
+            pagination: {
+              paginationModel: { page: 0, pageSize: 10 },
+            },
+          }}
+          pageSizeOptions={[5, 10, 25]}
+          disableSelectionOnClick
+          density="compact" // Use compact density for widgets
+          sx={{
+            border: 'none',
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid #f0f0f0',
+              fontSize: '0.75rem',
+              padding: '4px 8px'
+            },
+            '& .MuiDataGrid-columnHeaders': {
+              backgroundColor: '#f8fafc',
+              borderBottom: '1px solid #e2e8f0',
+              minHeight: '40px !important'
+            },
+            '& .MuiDataGrid-columnHeaderTitle': {
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              color: '#64748b'
+            },
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: '1px solid #f0f0f0',
+              minHeight: '40px !important'
+            }
+          }}
+        />
+      </Box>
+    );
+  }
+
   return (
     <Card sx={{ 
       height: '100%', 
@@ -164,27 +216,34 @@ const DataGridComponent = ({
       <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <Box sx={{ 
-          p: 3, 
-          pb: 2,
+          p: { xs: 2, sm: 3 }, 
+          pb: { xs: 1.5, sm: 2 },
           borderBottom: '1px solid #f3f4f6',
           flexShrink: 0,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
         }}>
           <Box>
             <Typography variant="h6" sx={{ 
               fontWeight: 600,
               color: '#1a1a1a',
-              fontSize: '1.125rem',
+              fontSize: { xs: '1rem', sm: '1.125rem' },
               letterSpacing: '-0.025em'
             }}>
-              {title} ({processedRows.length} records)
+              {title} ({processedRows.length} {processedRows.length === 1 ? 'record' : 'records'})
             </Typography>
           </Box>
           
           {/* Action Buttons */}
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 1.5 },
+            width: { xs: '100%', sm: 'auto' },
+            flexDirection: { xs: 'column', sm: 'row' }
+          }}>
             {showSaveButton && onSave && (
               <Button
                 variant="contained"
@@ -193,13 +252,16 @@ const DataGridComponent = ({
                 onClick={onSave}
                 sx={{ 
                   textTransform: 'none',
-                  backgroundColor: '#1976d2',
+                  backgroundColor: '#0078d7',
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                  fontWeight: 500,
+                  width: { xs: '100%', sm: 'auto' },
                   '&:hover': {
-                    backgroundColor: '#1565c0'
+                    backgroundColor: '#005a9e'
                   }
                 }}
               >
-                Save to Dashboard
+                Save
               </Button>
             )}
             <Button
@@ -211,19 +273,22 @@ const DataGridComponent = ({
                 textTransform: 'none',
                 borderColor: '#d1d5db',
                 color: '#6b7280',
+                fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                fontWeight: 500,
+                width: { xs: '100%', sm: 'auto' },
                 '&:hover': {
                   borderColor: '#9ca3af',
                   backgroundColor: '#f9fafb'
                 }
               }}
             >
-              Export CSV
+              Download Report
             </Button>
           </Box>
         </Box>
 
         {/* Data Grid */}
-        <Box sx={{ flex: 1, p: 3 }}>
+        <Box sx={{ flex: 1, p: { xs: 1, sm: 2, md: 3 } }}>
           <Box sx={{ height: height, width: '100%' }}>
             <DataGrid
               rows={processedRows}
@@ -233,15 +298,24 @@ const DataGridComponent = ({
                   paginationModel: { page: 0, pageSize: 10 },
                 },
               }}
-              pageSizeOptions={[5, 10, 25, 50]}
+              pageSizeOptions={[10, 25, 50, 100]}
               disableSelectionOnClick
               sx={{
                 '& .MuiDataGrid-cell': {
-                  borderBottom: '1px solid #f0f0f0'
+                  borderBottom: '1px solid #f0f0f0',
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                  padding: { xs: '8px', sm: '12px' }
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: '#f8fafc',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' }
+                },
+                '& .MuiDataGrid-columnHeaderTitle': {
+                  fontWeight: 600,
+                  overflow: 'visible',
+                  lineHeight: '1.2',
+                  whiteSpace: 'normal'
                 },
                 '& .MuiDataGrid-footerContainer': {
                   minHeight: '52px',

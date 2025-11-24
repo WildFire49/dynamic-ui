@@ -1,648 +1,1404 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Paper,
   Typography,
   Button,
   IconButton,
-  TextField,
   Chip,
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   Divider,
-  Alert,
   LinearProgress,
-  Tooltip,
-  Menu,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Grid,
+  useTheme,
+  Collapse,
   MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 import {
-  CloudUpload as UploadIcon,
-  Save as SaveIcon,
-  Delete as DeleteIcon,
-  Description as DocIcon,
-  Download as DownloadIcon,
-  Edit as EditIcon,
-  Clear as ClearIcon,
-  MoreVert as MoreIcon,
-  Cloud as CloudIcon,
-  Folder as FolderIcon,
+  PlayArrow as RunIcon,
+  CheckCircle as PassIcon,
+  Cancel as FailIcon,
+  Error as ErrorIcon,
+  Code as CodeIcon,
+  CompareArrows as DiffIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Search as SearchIcon,
+  Storage as StorageIcon,
+  Timeline as TimelineIcon,
+  Speed as SpeedIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import useRetrieverStore from "../../../../store/retrieverStore";
+import queryLearningService from "../../../../services/queryLearningService";
 
-const SelfLearningPage = () => {
-  const { currentConnection } = useRetrieverStore();
+// --- Components ---
 
-  // State
-  const [documents, setDocuments] = useState([]);
-  const [selectedDoc, setSelectedDoc] = useState(null);
-  const [content, setContent] = useState("");
-  const [filename, setFilename] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [menuDocId, setMenuDocId] = useState(null);
+const StatCard = ({ title, value, icon, color, subtext }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 3,
+      height: "100%",
+      border: "1px solid",
+      borderColor: "divider",
+      borderRadius: 3,
+      display: "flex",
+      flexDirection: "column",
+      position: "relative",
+      overflow: "hidden",
+      transition: "transform 0.2s, box-shadow 0.2s",
+      "&:hover": {
+        transform: "translateY(-4px)",
+        boxShadow: "0 12px 24px -10px rgba(0,0,0,0.1)",
+      },
+    }}
+  >
+    <Box
+      sx={{
+        position: "absolute",
+        top: -20,
+        right: -20,
+        width: 100,
+        height: 100,
+        borderRadius: "50%",
+        bgcolor: `${color}15`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {React.cloneElement(icon, { sx: { fontSize: 60, color: `${color}40` } })}
+    </Box>
+    <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
+      {title}
+    </Typography>
+    <Typography variant="h3" fontWeight={700} sx={{ my: 1, color: color }}>
+      {value}
+    </Typography>
+    <Typography variant="caption" color="text.secondary">
+      {subtext}
+    </Typography>
+  </Paper>
+);
 
-  const fileInputRef = useRef(null);
-  const textareaRef = useRef(null);
-
-  // Load saved documents from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem("selfLearningDocs");
-    if (saved) {
-      try {
-        setDocuments(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to load documents:", e);
-      }
-    }
-  }, []);
-
-  // Save documents to localStorage whenever they change
-  useEffect(() => {
-    if (documents.length > 0) {
-      localStorage.setItem("selfLearningDocs", JSON.stringify(documents));
-    }
-  }, [documents]);
-
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Only allow txt and doc files
-    const allowedTypes = [
-      "text/plain",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-
-    if (
-      !allowedTypes.includes(file.type) &&
-      !file.name.endsWith(".txt") &&
-      !file.name.endsWith(".doc") &&
-      !file.name.endsWith(".docx")
-    ) {
-      setMessage({
-        type: "error",
-        text: "Only .txt, .doc, and .docx files are allowed",
-      });
-      return;
-    }
-
-    setUploading(true);
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      const text = e.target.result;
-      const newDoc = {
-        id: Date.now().toString(),
-        name: file.name,
-        content: text,
-        size: file.size,
-        uploadedAt: new Date().toISOString(),
-        modifiedAt: new Date().toISOString(),
-      };
-
-      setDocuments((prev) => [...prev, newDoc]);
-      setSelectedDoc(newDoc);
-      setContent(text);
-      setFilename(file.name);
-      setUploading(false);
-      setMessage({
-        type: "success",
-        text: `${file.name} uploaded successfully!`,
-      });
-
-      // Clear message after 3s
-      setTimeout(() => setMessage(null), 3000);
-    };
-
-    reader.onerror = () => {
-      setUploading(false);
-      setMessage({ type: "error", text: "Failed to read file" });
-    };
-
-    reader.readAsText(file);
-    event.target.value = null; // Reset input
-  };
-
-  const handleSaveDocument = () => {
-    if (!content.trim()) {
-      setMessage({ type: "error", text: "Cannot save empty document" });
-      return;
-    }
-
-    if (!filename.trim()) {
-      setMessage({ type: "error", text: "Please enter a filename" });
-      return;
-    }
-
-    setSaving(true);
-
-    if (selectedDoc) {
-      // Update existing document
-      setDocuments((prev) =>
-        prev.map((doc) =>
-          doc.id === selectedDoc.id
-            ? {
-                ...doc,
-                content,
-                name: filename,
-                modifiedAt: new Date().toISOString(),
-              }
-            : doc
-        )
-      );
-      setSelectedDoc((prev) => ({ ...prev, content, name: filename }));
-      setMessage({ type: "success", text: "Document updated successfully!" });
-    } else {
-      // Create new document
-      const newDoc = {
-        id: Date.now().toString(),
-        name: filename.endsWith(".txt") ? filename : `${filename}.txt`,
-        content,
-        size: new Blob([content]).size,
-        uploadedAt: new Date().toISOString(),
-        modifiedAt: new Date().toISOString(),
-      };
-      setDocuments((prev) => [...prev, newDoc]);
-      setSelectedDoc(newDoc);
-      setMessage({ type: "success", text: "Document saved successfully!" });
-    }
-
-    setSaving(false);
-    setTimeout(() => setMessage(null), 3000);
-  };
-
-  const handleDownloadDocument = (doc) => {
-    const blob = new Blob([doc.content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = doc.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setMessage({ type: "success", text: `Downloaded ${doc.name}` });
-    setTimeout(() => setMessage(null), 3000);
-  };
-
-  const handleDeleteDocument = (docId) => {
-    setDocuments((prev) => prev.filter((doc) => doc.id !== docId));
-    if (selectedDoc?.id === docId) {
-      setSelectedDoc(null);
-      setContent("");
-      setFilename("");
-    }
-    setMessage({ type: "success", text: "Document deleted" });
-    setTimeout(() => setMessage(null), 3000);
-    handleCloseMenu();
-  };
-
-  const handleSelectDocument = (doc) => {
-    setSelectedDoc(doc);
-    setContent(doc.content);
-    setFilename(doc.name);
-  };
-
-  const handleNewDocument = () => {
-    setSelectedDoc(null);
-    setContent("");
-    setFilename("untitled.txt");
-  };
-
-  const handleClearEditor = () => {
-    setContent("");
-  };
-
-  const handleUploadToVectorDB = async () => {
-    if (!currentConnection) {
-      setMessage({ type: "error", text: "Please connect to a database first" });
-      return;
-    }
-
-    if (!content.trim()) {
-      setMessage({ type: "error", text: "Cannot upload empty document" });
-      return;
-    }
-
-    setUploading(true);
-    try {
-      // Simulate API call to vector DB
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      setMessage({
-        type: "success",
-        text: "Document uploaded to vector database successfully!",
-      });
-      setUploading(false);
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
-      setUploading(false);
-      setMessage({ type: "error", text: "Failed to upload to vector DB" });
-      setTimeout(() => setMessage(null), 3000);
-    }
-  };
-
-  const handleOpenMenu = (event, docId) => {
-    setAnchorEl(event.currentTarget);
-    setMenuDocId(docId);
-  };
-
-  const handleCloseMenu = () => {
-    setAnchorEl(null);
-    setMenuDocId(null);
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
-  };
+const DiffViewer = ({ expected, actual, label }) => {
+  const theme = useTheme();
 
   return (
-    <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
-      {/* Left Panel - Document List */}
-      <Box
-        sx={{
-          width: 320,
-          borderRight: "1px solid #e2e8f0",
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: "#fafafa",
-        }}
+    <Box sx={{ mt: 2 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}
       >
-        {/* Header */}
-        <Box sx={{ p: 2, borderBottom: "1px solid #e2e8f0", bgcolor: "white" }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-            My Documents
-          </Typography>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Button
-              variant="contained"
-              startIcon={<UploadIcon />}
-              onClick={() => fileInputRef.current?.click()}
-              size="small"
-              fullWidth
-              sx={{
-                bgcolor: "#f59e0b",
-                "&:hover": { bgcolor: "#d97706" },
-                textTransform: "none",
-                fontWeight: 600,
-              }}
-            >
-              Upload
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon />}
-              onClick={handleNewDocument}
-              size="small"
-              fullWidth
-              sx={{
-                borderColor: "#f59e0b",
-                color: "#f59e0b",
-                "&:hover": {
-                  borderColor: "#d97706",
-                  bgcolor: "#f59e0b10",
-                },
-                textTransform: "none",
-                fontWeight: 600,
-              }}
-            >
-              New
-            </Button>
-          </Box>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".txt,.doc,.docx"
-            onChange={handleFileUpload}
-            style={{ display: "none" }}
-          />
-        </Box>
-
-        {/* Document List */}
-        <Box sx={{ flexGrow: 1, overflow: "auto" }}>
-          {documents.length === 0 ? (
-            <Box
-              sx={{
-                p: 4,
-                textAlign: "center",
-                color: "text.secondary",
-              }}
-            >
-              <FolderIcon sx={{ fontSize: 64, opacity: 0.3, mb: 2 }} />
-              <Typography variant="body2">No documents yet</Typography>
-              <Typography variant="caption">
-                Upload or create a new document
-              </Typography>
-            </Box>
-          ) : (
-            <List sx={{ p: 1 }}>
-              {documents.map((doc) => (
-                <ListItem
-                  key={doc.id}
-                  selected={selectedDoc?.id === doc.id}
-                  onClick={() => handleSelectDocument(doc)}
-                  sx={{
-                    borderRadius: 2,
-                    mb: 0.5,
-                    border: "1px solid transparent",
-                    cursor: "pointer",
-                    "&.Mui-selected": {
-                      bgcolor: "#f59e0b15",
-                      borderColor: "#f59e0b",
-                    },
-                    "&:hover": {
-                      bgcolor: "#f59e0b08",
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 1.5,
-                      bgcolor: "#f59e0b15",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      mr: 1.5,
-                    }}
-                  >
-                    <DocIcon sx={{ color: "#f59e0b", fontSize: 18 }} />
-                  </Box>
-                  <ListItemText
-                    primary={
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 600, fontSize: "0.875rem" }}
-                        noWrap
-                      >
-                        {doc.name}
-                      </Typography>
-                    }
-                    secondary={
-                      <Typography variant="caption" color="text.secondary">
-                        {formatFileSize(doc.size)} •{" "}
-                        {formatDate(doc.modifiedAt)}
-                      </Typography>
-                    }
-                  />
-                  <ListItemSecondaryAction>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenMenu(e, doc.id);
-                      }}
-                    >
-                      <MoreIcon fontSize="small" />
-                    </IconButton>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Box>
-
-        {/* Stats */}
-        <Box
-          sx={{
-            p: 2,
-            borderTop: "1px solid #e2e8f0",
-            bgcolor: "white",
-            display: "flex",
-            gap: 2,
-          }}
-        >
-          <Chip
-            icon={<DocIcon />}
-            label={`${documents.length} docs`}
-            size="small"
-            sx={{ bgcolor: "#f59e0b15", color: "#f59e0b", fontWeight: 600 }}
-          />
-          <Chip
-            icon={<FolderIcon />}
-            label={formatFileSize(
-              documents.reduce((sum, doc) => sum + doc.size, 0)
-            )}
-            size="small"
-            variant="outlined"
-            sx={{ borderColor: "#e2e8f0" }}
-          />
-        </Box>
-      </Box>
-
-      {/* Right Panel - Editor */}
-      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-        {/* Editor Header */}
-        <Box
-          sx={{
-            p: 2,
-            borderBottom: "1px solid #e2e8f0",
-            bgcolor: "white",
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <TextField
-            value={filename}
-            onChange={(e) => setFilename(e.target.value)}
-            placeholder="Document name..."
-            size="small"
-            sx={{
-              flexGrow: 1,
-              "& .MuiOutlinedInput-root": {
-                bgcolor: "#fafafa",
-                fontWeight: 600,
-              },
-            }}
-          />
-          <Tooltip title="Save Document">
-            <Button
-              variant="contained"
-              startIcon={saving ? null : <SaveIcon />}
-              onClick={handleSaveDocument}
-              disabled={saving}
-              sx={{
-                bgcolor: "#f59e0b",
-                "&:hover": { bgcolor: "#d97706" },
-                textTransform: "none",
-                fontWeight: 600,
-              }}
-            >
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </Tooltip>
-          <Tooltip title="Download">
-            <IconButton
-              onClick={() =>
-                selectedDoc
-                  ? handleDownloadDocument(selectedDoc)
-                  : setMessage({ type: "error", text: "Save document first" })
-              }
-              disabled={!content.trim()}
-            >
-              <DownloadIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Clear Editor">
-            <IconButton onClick={handleClearEditor} disabled={!content.trim()}>
-              <ClearIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-
-        {/* Message Alert */}
-        {message && (
-          <Alert
-            severity={message.type}
-            onClose={() => setMessage(null)}
-            sx={{ m: 2, mb: 0 }}
-          >
-            {message.text}
-          </Alert>
-        )}
-
-        {/* Loading Progress */}
-        {(uploading || saving) && (
-          <LinearProgress sx={{ bgcolor: "#f59e0b15" }} />
-        )}
-
-        {/* Editor Area */}
-        <Box sx={{ flexGrow: 1, p: 3, overflow: "auto", bgcolor: "#fafafa" }}>
+        <DiffIcon fontSize="small" color="action" />
+        {label} Comparison
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
           <Paper
+            elevation={0}
             sx={{
-              height: "100%",
-              p: 3,
-              border: "2px solid #e2e8f0",
+              p: 2,
+              bgcolor: "#f8fafc",
+              border: "1px solid",
+              borderColor: "divider",
               borderRadius: 2,
-              transition: "border-color 0.2s",
-              "&:focus-within": {
-                borderColor: "#f59e0b",
-              },
+              height: "100%",
             }}
           >
-            <TextField
-              ref={textareaRef}
-              multiline
-              fullWidth
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Start typing or upload a document to edit..."
-              variant="standard"
-              InputProps={{
-                disableUnderline: true,
-                sx: {
-                  fontSize: "1rem",
-                  lineHeight: 1.7,
-                  fontFamily: "'Inter', sans-serif",
-                  height: "100%",
-                  alignItems: "flex-start",
-                },
-              }}
+            <Typography
+              variant="caption"
               sx={{
-                height: "100%",
-                "& .MuiInputBase-root": {
-                  height: "100%",
-                },
-                "& textarea": {
-                  height: "100% !important",
-                  overflow: "auto !important",
-                  resize: "none",
-                  "&::-webkit-scrollbar": {
-                    width: 8,
-                  },
-                  "&::-webkit-scrollbar-thumb": {
-                    bgcolor: "#cbd5e0",
-                    borderRadius: 4,
-                  },
-                },
+                color: theme.palette.success.main,
+                fontWeight: 600,
+                mb: 1,
+                display: "block",
               }}
-            />
+            >
+              EXPECTED (Training Data)
+            </Typography>
+            <Box
+              component="pre"
+              sx={{
+                m: 0,
+                p: 0,
+                overflowX: "auto",
+                fontFamily:
+                  "Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace",
+                fontSize: "0.8rem",
+                color: "#334155",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {typeof expected === "object"
+                ? JSON.stringify(expected, null, 2)
+                : expected}
+            </Box>
           </Paper>
-        </Box>
-
-        {/* Footer Actions */}
-        <Box
-          sx={{
-            p: 2,
-            borderTop: "1px solid #e2e8f0",
-            bgcolor: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <Chip
-              label={`${content.length} characters`}
-              size="small"
-              variant="outlined"
-            />
-            <Chip
-              label={`${content.split(/\s+/).filter(Boolean).length} words`}
-              size="small"
-              variant="outlined"
-            />
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={uploading ? null : <CloudIcon />}
-            onClick={handleUploadToVectorDB}
-            disabled={!content.trim() || uploading}
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper
+            elevation={0}
             sx={{
-              bgcolor: "#10b981",
-              "&:hover": { bgcolor: "#059669" },
-              textTransform: "none",
-              fontWeight: 600,
+              p: 2,
+              bgcolor: "#fff5f5",
+              border: "1px solid",
+              borderColor: theme.palette.error.light,
+              borderRadius: 2,
+              height: "100%",
             }}
           >
-            {uploading ? "Uploading..." : "Upload to Vector DB"}
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Context Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleCloseMenu}
-      >
-        <MenuItem
-          onClick={() => {
-            const doc = documents.find((d) => d.id === menuDocId);
-            if (doc) handleDownloadDocument(doc);
-            handleCloseMenu();
-          }}
-        >
-          <DownloadIcon sx={{ mr: 1, fontSize: 18 }} />
-          Download
-        </MenuItem>
-        <MenuItem
-          onClick={() => handleDeleteDocument(menuDocId)}
-          sx={{ color: "error.main" }}
-        >
-          <DeleteIcon sx={{ mr: 1, fontSize: 18 }} />
-          Delete
-        </MenuItem>
-      </Menu>
+            <Typography
+              variant="caption"
+              sx={{
+                color: theme.palette.error.main,
+                fontWeight: 600,
+                mb: 1,
+                display: "block",
+              }}
+            >
+              ACTUAL (Generated)
+            </Typography>
+            <Box
+              component="pre"
+              sx={{
+                m: 0,
+                p: 0,
+                overflowX: "auto",
+                fontFamily:
+                  "Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace",
+                fontSize: "0.8rem",
+                color: "#334155",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {typeof actual === "object"
+                ? JSON.stringify(actual, null, 2)
+                : actual}
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
 };
 
-export default SelfLearningPage;
+const ResultItem = ({ result }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const theme = useTheme();
+
+  const isPassed = result.passed;
+  const hasError = result.error;
+
+  let statusColor = theme.palette.success.main;
+  let StatusIcon = PassIcon;
+
+  if (hasError) {
+    statusColor = theme.palette.error.main;
+    StatusIcon = ErrorIcon;
+  } else if (!isPassed) {
+    statusColor = theme.palette.warning.main;
+    StatusIcon = FailIcon;
+  }
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        mb: 2,
+        border: "1px solid",
+        borderColor: expanded ? statusColor : "divider",
+        borderRadius: 2,
+        overflow: "hidden",
+        transition: "all 0.2s ease-in-out",
+      }}
+    >
+      {/* Header */}
+      <Box
+        onClick={() => setExpanded(!expanded)}
+        sx={{
+          p: 2.5,
+          display: "flex",
+          alignItems: "flex-start",
+          cursor: "pointer",
+          bgcolor: expanded ? `${statusColor}08` : "white",
+          "&:hover": { bgcolor: `${statusColor}05` },
+        }}
+      >
+        <Box sx={{ mt: 0.5, mr: 2 }}>
+          <StatusIcon sx={{ color: statusColor }} />
+        </Box>
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            sx={{ color: "#1e293b", mb: 0.5 }}
+          >
+            {result.natural_language_query}
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <Chip
+              label={isPassed ? "PASSED" : "FAILED"}
+              size="small"
+              sx={{
+                bgcolor: `${statusColor}15`,
+                color: statusColor,
+                fontWeight: 700,
+                fontSize: "0.7rem",
+                borderRadius: 1,
+              }}
+            />
+            <Chip
+              label={result.sql_match ? "✓ SQL Match" : "✗ SQL Mismatch"}
+              size="small"
+              variant="outlined"
+              sx={{
+                borderColor: result.sql_match
+                  ? theme.palette.success.main
+                  : theme.palette.warning.main,
+                color: result.sql_match
+                  ? theme.palette.success.main
+                  : theme.palette.warning.main,
+                fontSize: "0.7rem",
+              }}
+            />
+            <Chip
+              label={
+                result.result_match ? "✓ Result Match" : "✗ Result Mismatch"
+              }
+              size="small"
+              variant="outlined"
+              sx={{
+                borderColor: result.result_match
+                  ? theme.palette.success.main
+                  : theme.palette.error.main,
+                color: result.result_match
+                  ? theme.palette.success.main
+                  : theme.palette.error.main,
+                fontSize: "0.7rem",
+              }}
+            />
+            <Chip
+              label={`Score: ${(result.accuracy_score * 100).toFixed(0)}%`}
+              size="small"
+              sx={{
+                bgcolor: "#f1f5f9",
+                color: "#64748b",
+                fontSize: "0.7rem",
+              }}
+            />
+          </Box>
+        </Box>
+        <IconButton size="small" sx={{ ml: 1 }}>
+          {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
+      </Box>
+
+      {/* Tabbed Content */}
+      <Collapse in={expanded}>
+        <Divider />
+        <Box sx={{ bgcolor: "#f8fafc" }}>
+          <Tabs
+            value={activeTab}
+            onChange={(e, newValue) => setActiveTab(newValue)}
+            sx={{
+              bgcolor: "white",
+              borderBottom: "1px solid #e2e8f0",
+              "& .MuiTab-root": {
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+              },
+            }}
+          >
+            <Tab label="Overview" />
+            <Tab label="SQL Comparison" />
+            <Tab label="Execution Results" />
+            <Tab label="Metadata" />
+          </Tabs>
+
+          {/* Tab Panels */}
+          <Box sx={{ p: 3 }}>
+            {/* Overview Tab */}
+            {activeTab === 0 && (
+              <Box>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  Test Summary
+                </Typography>
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={12} md={6}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        bgcolor: "white",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary">
+                        Accuracy Score
+                      </Typography>
+                      <Typography
+                        variant="h4"
+                        fontWeight={700}
+                        color={statusColor}
+                      >
+                        {(result.accuracy_score * 100).toFixed(1)}%
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        bgcolor: "white",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary">
+                        Execution Time
+                      </Typography>
+                      <Typography variant="h4" fontWeight={700}>
+                        {result.execution_time_ms}ms
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                    Diff Summary
+                  </Typography>
+                  <Paper
+                    elevation={0}
+                    sx={{ p: 2, bgcolor: "white", border: "1px solid #e2e8f0" }}
+                  >
+                    <Typography variant="body2">
+                      {result.diff_summary || "No diff summary available"}
+                    </Typography>
+                  </Paper>
+                </Box>
+
+                {hasError && (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight={700}
+                      color="error"
+                      gutterBottom
+                    >
+                      Error Details
+                    </Typography>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        bgcolor: "#FEF2F2",
+                        border: "1px solid #FCA5A5",
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}
+                      >
+                        {result.error}
+                      </Typography>
+                    </Paper>
+                  </Box>
+                )}
+              </Box>
+            )}
+
+            {/* SQL Comparison Tab */}
+            {activeTab === 1 && (
+              <Box>
+                <DiffViewer
+                  label="SQL Comparison"
+                  expected={result.expected_sql}
+                  actual={result.generated_sql}
+                />
+              </Box>
+            )}
+
+            {/* Execution Results Tab */}
+            {activeTab === 2 && (
+              <Box>
+                {result.result_match ? (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      bgcolor: "#f0fdf4",
+                      border: "1px solid #86efac",
+                      textAlign: "center",
+                    }}
+                  >
+                    <PassIcon
+                      sx={{
+                        fontSize: 48,
+                        color: theme.palette.success.main,
+                        mb: 1,
+                      }}
+                    />
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
+                      color="success.main"
+                    >
+                      Execution Results Match!
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      Both queries returned identical results
+                    </Typography>
+                  </Paper>
+                ) : (
+                  <Box>
+                    <Typography variant="h6" fontWeight={700} gutterBottom>
+                      Result Comparison
+                    </Typography>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        bgcolor: "white",
+                        border: "1px solid #e2e8f0",
+                        mb: 2,
+                      }}
+                    >
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Expected Rows
+                          </Typography>
+                          <Typography variant="h6">
+                            {result.corrected_row_count || "N/A"}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Generated Rows
+                          </Typography>
+                          <Typography variant="h6">
+                            {result.regenerated_row_count || "N/A"}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Row Count Match
+                          </Typography>
+                          <Chip
+                            label={result.row_count_match ? "Yes" : "No"}
+                            size="small"
+                            color={result.row_count_match ? "success" : "error"}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Column Match
+                          </Typography>
+                          <Chip
+                            label={result.column_match ? "Yes" : "No"}
+                            size="small"
+                            color={result.column_match ? "success" : "error"}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Typography variant="caption" color="text.secondary">
+                            Difference Percentage
+                          </Typography>
+                          <Typography variant="h6">
+                            {result.diff_percentage?.toFixed(1) || 0}%
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>
+
+                    {result.sample_diff && result.sample_diff.length > 0 && (
+                      <Box>
+                        <Typography
+                          variant="subtitle2"
+                          fontWeight={700}
+                          gutterBottom
+                        >
+                          Sample Differences
+                        </Typography>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 2,
+                            bgcolor: "#FEF2F2",
+                            border: "1px solid #FCA5A5",
+                          }}
+                        >
+                          <pre
+                            style={{
+                              margin: 0,
+                              fontSize: "0.8rem",
+                              overflow: "auto",
+                            }}
+                          >
+                            {JSON.stringify(result.sample_diff, null, 2)}
+                          </pre>
+                        </Paper>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            )}
+
+            {/* Metadata Tab */}
+            {activeTab === 3 && (
+              <TableContainer
+                component={Paper}
+                elevation={0}
+                sx={{ border: "1px solid #e2e8f0" }}
+              >
+                <Table size="small">
+                  <TableBody>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700, width: "30%" }}>
+                        Query History ID
+                      </TableCell>
+                      <TableCell
+                        sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}
+                      >
+                        {result.query_history_id}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>SQL Match</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={result.sql_match ? "Yes" : "No"}
+                          size="small"
+                          color={result.sql_match ? "success" : "warning"}
+                        />
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>
+                        Result Match
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={result.result_match ? "Yes" : "No"}
+                          size="small"
+                          color={result.result_match ? "success" : "error"}
+                        />
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>
+                        Accuracy Score
+                      </TableCell>
+                      <TableCell>
+                        {(result.accuracy_score * 100).toFixed(2)}%
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>
+                        Execution Time
+                      </TableCell>
+                      <TableCell>{result.execution_time_ms} ms</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>
+                        Test Status
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={isPassed ? "Passed" : "Failed"}
+                          size="small"
+                          color={isPassed ? "success" : "error"}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+        </Box>
+      </Collapse>
+    </Paper>
+  );
+};
+
+// --- Main Page ---
+
+const RegressionTestingPage = () => {
+  const theme = useTheme();
+  const { currentConnection } = useRetrieverStore();
+
+  // State
+  const [sessions, setSessions] = useState([]);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [openRunDialog, setOpenRunDialog] = useState(false);
+  const [runConfig, setRunConfig] = useState({
+    limit: 10,
+    business_domain: "",
+    only_latest_embedding: true,
+  });
+  const [runningTest, setRunningTest] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // all, failed, passed - default to "all"
+
+  const handleSelectSession = useCallback(
+    async (session) => {
+      console.log("🎯 Session clicked:", session.test_session_id);
+      setDetailsLoading(true);
+      try {
+        // Always fetch detailed results with test_session_id
+        console.log(
+          "📞 Fetching detailed results for:",
+          session.test_session_id
+        );
+        const res = await queryLearningService.getTestSessions(
+          currentConnection.id,
+          1,
+          session.test_session_id
+        );
+        console.log("📦 Detailed API response:", res);
+
+        // Handle both full_results (from detailed session API) and results (from bulk test API)
+        // full_results can be an object containing results array or direct results array
+        let resultsArray = null;
+        let sessionData = null;
+
+        console.log("🔍 Checking res:", res);
+        console.log("🔍 res.full_results:", res?.full_results);
+        console.log("� Type of full_results:", typeof res?.full_results);
+        console.log("🔍 full_results.results:", res?.full_results?.results);
+
+        if (res?.full_results) {
+          // Detailed session API returns full_results as an object
+          if (
+            typeof res.full_results === "object" &&
+            res.full_results.results
+          ) {
+            console.log("✅ Using full_results.results");
+            resultsArray = res.full_results.results;
+            sessionData = res.full_results;
+          } else if (Array.isArray(res.full_results)) {
+            console.log("✅ Using full_results as array");
+            resultsArray = res.full_results;
+          }
+        } else if (res?.results) {
+          console.log("✅ Using res.results");
+          resultsArray = res.results;
+        }
+
+        console.log("📊 Final resultsArray:", resultsArray);
+        console.log("� resultsArray length:", resultsArray?.length);
+
+        if (resultsArray && resultsArray.length > 0) {
+          console.log("✅ Found results:", resultsArray.length, "results");
+          // Map API response to our expected format
+          const mappedResults = resultsArray.map((result) => ({
+            query_history_id: result.query_history_id,
+            natural_language_query: result.natural_language_query,
+            expected_sql:
+              result.corrected_sql || result.sql_comparison?.corrected_sql,
+            generated_sql:
+              result.regenerated_sql || result.sql_comparison?.regenerated_sql,
+            expected_result: result.corrected_result,
+            actual_result: result.regenerated_result,
+            sql_match: result.sql_comparison?.sql_match ?? result.sql_match,
+            result_match:
+              result.result_comparison?.results_match ?? result.results_match,
+            passed: result.passed,
+            accuracy_score: result.accuracy_score,
+            error:
+              result.regenerated_error ||
+              result.corrected_error ||
+              result.error,
+            execution_time_ms:
+              result.regeneration_time_ms || result.execution_time_ms,
+            diff_summary:
+              result.sql_comparison?.diff_summary || result.diff_summary,
+            // Add result_comparison fields for Execution Results tab
+            corrected_row_count: result.result_comparison?.corrected_row_count,
+            regenerated_row_count:
+              result.result_comparison?.regenerated_row_count,
+            row_count_match: result.result_comparison?.row_count_match,
+            column_match: result.result_comparison?.column_match,
+            diff_percentage: result.result_comparison?.diff_percentage,
+            sample_diff: result.result_comparison?.sample_diff,
+          }));
+
+          console.log("🔄 Mapped results:", mappedResults);
+          console.log("📊 Session data:", sessionData);
+          // Merge session summary with detailed results
+          // If we have sessionData from full_results object, use those stats
+          const mergedSession = {
+            ...session,
+            ...(sessionData || {}),
+            results: mappedResults,
+          };
+          console.log("📦 Final merged session:", mergedSession);
+          console.log(
+            "📦 Results array length:",
+            mergedSession.results?.length
+          );
+          setSelectedSession(mergedSession);
+        } else if (res?.sessions?.[0]) {
+          console.log("⚠️ Using fallback sessions format");
+          // Fallback if API returns sessions format
+          setSelectedSession(res.sessions[0]);
+        } else {
+          console.warn(
+            "⚠️ No results in response, setting session without detailed results"
+          );
+          setSelectedSession(session);
+        }
+      } catch (err) {
+        console.error("❌ Failed to fetch session details:", err);
+        console.error("Error details:", err.response?.data || err.message);
+        // Still set the session even if details fail
+        setSelectedSession(session);
+      } finally {
+        setDetailsLoading(false);
+      }
+    },
+    [currentConnection?.id]
+  );
+
+  const fetchSessions = useCallback(
+    async (autoSelectFirst = false) => {
+      console.log(
+        "🔍 Fetching sessions for connection:",
+        currentConnection?.id
+      );
+      setLoading(true);
+      try {
+        const res = await queryLearningService.getTestSessions(
+          currentConnection.id,
+          20
+        );
+        console.log("📊 Sessions API response:", res);
+
+        // Check if sessions exist in the response
+        const sessionsData = res.sessions;
+
+        if (sessionsData && sessionsData.length > 0) {
+          console.log("✅ Found sessions:", sessionsData.length);
+          setSessions(sessionsData);
+          // Select first session only if autoSelectFirst is true
+          if (autoSelectFirst) {
+            console.log("🎯 Auto-selecting first session");
+            handleSelectSession(sessionsData[0]);
+          }
+        } else {
+          console.warn("⚠️ No sessions in response:", res);
+          setSessions([]);
+        }
+      } catch (err) {
+        console.error("❌ Failed to fetch sessions:", err);
+        console.error("Error details:", err.response?.data || err.message);
+        setSessions([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentConnection?.id, handleSelectSession]
+  );
+
+  // Fetch sessions on load
+  useEffect(() => {
+    console.log(
+      "🚀 useEffect triggered - Connection ID:",
+      currentConnection?.id
+    );
+    if (currentConnection?.id) {
+      fetchSessions(true); // Auto-select first session on initial load
+    } else {
+      console.warn("⚠️ No connection ID available");
+    }
+  }, [currentConnection?.id, fetchSessions]);
+
+  const handleRunTest = async () => {
+    setRunningTest(true);
+    try {
+      console.log("🚀 Starting bulk test with config:", runConfig);
+      const res = await queryLearningService.runBulkTest(
+        currentConnection.id,
+        "vaishakhsk", // In a real app, get this from auth context
+        runConfig.limit,
+        runConfig.business_domain || null,
+        runConfig.only_latest_embedding
+      );
+
+      console.log("✅ Bulk test completed:", res.data);
+
+      if (res.data) {
+        // Map the bulk test response to session format
+        const newSession = {
+          test_session_id: res.data.test_session_id,
+          connection_id: res.data.connection_id,
+          total_queries: res.data.total_queries_tested,
+          passed: res.data.queries_passed,
+          failed: res.data.queries_failed,
+          average_accuracy: res.data.average_accuracy,
+          tested_at: res.data.tested_at,
+          test_duration_seconds: res.data.test_duration_seconds,
+          sql_match_count: res.data.sql_match_count,
+          result_match_count: res.data.result_match_count,
+          // Include the results array directly from bulk test response
+          results:
+            res.data.results?.map((result) => ({
+              query_history_id: result.query_history_id,
+              natural_language_query: result.natural_language_query,
+              expected_sql: result.corrected_sql,
+              generated_sql: result.regenerated_sql,
+              expected_result: result.corrected_result,
+              actual_result: result.regenerated_result,
+              sql_match: result.sql_comparison?.sql_match,
+              result_match: result.result_comparison?.results_match,
+              passed: result.passed,
+              accuracy_score: result.accuracy_score,
+              error: result.regenerated_error || result.corrected_error,
+              execution_time_ms: result.regeneration_time_ms,
+              diff_summary: result.sql_comparison?.diff_summary,
+            })) || [],
+        };
+
+        console.log("📦 Mapped new session:", newSession);
+
+        // Refresh sessions list to get updated data
+        await fetchSessions(false);
+
+        // Select the newly created session
+        setSelectedSession(newSession);
+        setOpenRunDialog(false);
+      }
+    } catch (err) {
+      console.error("❌ Failed to run test:", err);
+      console.error("Error details:", err.response?.data || err.message);
+    } finally {
+      setRunningTest(false);
+    }
+  };
+
+  // Filter results based on search and status
+  const filteredResults =
+    selectedSession?.results?.filter((r) => {
+      // Search filter
+      const matchesSearch =
+        r.natural_language_query
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        r.expected_sql?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.generated_sql?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Status filter
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "failed" && !r.passed) ||
+        (statusFilter === "passed" && r.passed);
+
+      return matchesSearch && matchesStatus;
+    }) || [];
+
+  console.log("🔍 Filter Debug:", {
+    selectedSession: selectedSession?.test_session_id,
+    resultsCount: selectedSession?.results?.length,
+    filteredCount: filteredResults.length,
+    searchTerm,
+    statusFilter,
+  });
+
+  if (!currentConnection) {
+    return (
+      <Box sx={{ p: 4, textAlign: "center" }}>
+        <Typography variant="h6" color="text.secondary">
+          Please select a database connection first.
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        height: "100vh",
+        display: "flex",
+        overflow: "hidden",
+        bgcolor: "#f8fafc",
+      }}
+    >
+      {/* Left Sidebar - Session History */}
+      <Box
+        sx={{
+          width: 320,
+          bgcolor: "white",
+          borderRight: "1px solid",
+          borderColor: "divider",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Box sx={{ p: 3, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              mb: 2,
+              justifyContent: "space-between",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <TimelineIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
+              <Typography variant="h6" fontWeight={700} color="text.primary">
+                Test Runs
+              </Typography>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={() => fetchSessions(false)}
+              title="Refresh sessions"
+              sx={{ color: theme.palette.primary.main }}
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          <Button
+            variant="contained"
+            fullWidth
+            startIcon={<RunIcon />}
+            onClick={() => setOpenRunDialog(true)}
+            sx={{
+              bgcolor: theme.palette.primary.main,
+              color: "white",
+              fontWeight: 700,
+              boxShadow: "0 4px 12px rgba(0,120,215,0.3)",
+              "&:hover": {
+                bgcolor: theme.palette.primary.dark,
+              },
+            }}
+          >
+            New Test Run
+          </Button>
+        </Box>
+
+        <List sx={{ flexGrow: 1, overflowY: "auto", p: 0 }}>
+          {loading ? (
+            <Box sx={{ p: 2 }}>
+              <LinearProgress />
+            </Box>
+          ) : sessions.length === 0 ? (
+            <Box sx={{ p: 3, textAlign: "center", opacity: 0.6 }}>
+              <TimelineIcon
+                sx={{ fontSize: 48, mb: 1, color: "text.secondary" }}
+              />
+              <Typography variant="body2" color="text.secondary">
+                No test sessions yet
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Click &ldquo;New Test Run&rdquo; to start
+              </Typography>
+            </Box>
+          ) : (
+            sessions.map((session) => (
+              <React.Fragment key={session.test_session_id}>
+                <ListItem
+                  component="div"
+                  selected={
+                    selectedSession?.test_session_id === session.test_session_id
+                  }
+                  onClick={() => handleSelectSession(session)}
+                  sx={{
+                    py: 2,
+                    px: 3,
+                    cursor: "pointer",
+                    borderLeft: "4px solid transparent",
+                    "&.Mui-selected": {
+                      bgcolor: `${theme.palette.primary.main}08`,
+                      borderLeftColor: theme.palette.primary.main,
+                    },
+                    "&:hover": {
+                      bgcolor: `${theme.palette.primary.main}05`,
+                    },
+                  }}
+                >
+                  <ListItemText
+                    primary={
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          mb: 0.5,
+                        }}
+                      >
+                        <Typography variant="subtitle2" fontWeight={600}>
+                          {session.test_session_id.split("_")[1]
+                            ? new Date(
+                                session.test_session_id
+                                  .split("_")[1]
+                                  .replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")
+                              ).toLocaleDateString()
+                            : session.test_session_id}
+                        </Typography>
+                        <Chip
+                          label={`${Math.round(
+                            session.average_accuracy * 100
+                          )}%`}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            bgcolor:
+                              session.average_accuracy >= 0.8
+                                ? `${theme.palette.success.main}20`
+                                : session.average_accuracy >= 0.5
+                                ? `${theme.palette.warning.main}20`
+                                : `${theme.palette.error.main}20`,
+                            color:
+                              session.average_accuracy >= 0.8
+                                ? theme.palette.success.main
+                                : session.average_accuracy >= 0.5
+                                ? theme.palette.warning.main
+                                : theme.palette.error.main,
+                          }}
+                        />
+                      </Box>
+                    }
+                    secondary={
+                      <React.Fragment>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          component="span"
+                        >
+                          {session.total_queries || 0} Queries •{" "}
+                          {session.passed || 0} Passed
+                        </Typography>
+                      </React.Fragment>
+                    }
+                  />
+                </ListItem>
+                <Divider />
+              </React.Fragment>
+            ))
+          )}
+        </List>
+      </Box>
+
+      {/* Main Content */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          overflow: "hidden",
+        }}
+      >
+        {selectedSession ? (
+          <>
+            {/* Header with Stats */}
+            <Box
+              sx={{
+                p: 4,
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                bgcolor: "white",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 4,
+                }}
+              >
+                <Box>
+                  <Typography
+                    variant="h4"
+                    fontWeight={700}
+                    color="text.primary"
+                  >
+                    Test Results
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    Session ID: {selectedSession.test_session_id}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Showing {filteredResults.length} of{" "}
+                    {selectedSession.results?.length || 0} results
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <Select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      displayEmpty
+                      sx={{ bgcolor: "white" }}
+                    >
+                      <MenuItem value="all">All Results</MenuItem>
+                      <MenuItem value="passed">✓ Passed Only</MenuItem>
+                      <MenuItem value="failed">✗ Failed Only</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    placeholder="Search results..."
+                    size="small"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />
+                      ),
+                    }}
+                    sx={{ width: 300 }}
+                  />
+                </Box>
+              </Box>
+
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={3}>
+                  <StatCard
+                    title="Total Queries"
+                    value={
+                      selectedSession.total_queries_tested ||
+                      selectedSession.total_queries ||
+                      0
+                    }
+                    icon={<StorageIcon />}
+                    color={theme.palette.primary.main}
+                    subtext="Executed in batch"
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <StatCard
+                    title="Success Rate"
+                    value={`${Math.round(
+                      (selectedSession.average_accuracy || 0) * 100
+                    )}%`}
+                    icon={<SpeedIcon />}
+                    color={
+                      (selectedSession.average_accuracy || 0) >= 0.8
+                        ? theme.palette.success.main
+                        : theme.palette.warning.main
+                    }
+                    subtext={`${
+                      selectedSession.queries_passed ||
+                      selectedSession.passed ||
+                      0
+                    } Passed / ${
+                      selectedSession.queries_failed ||
+                      selectedSession.failed ||
+                      0
+                    } Failed`}
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <StatCard
+                    title="SQL Matches"
+                    value={
+                      selectedSession.sql_match_count ||
+                      selectedSession.results?.filter((r) => r.sql_match)
+                        .length ||
+                      0
+                    }
+                    icon={<CodeIcon />}
+                    color={theme.palette.info.main}
+                    subtext="Exact SQL syntax match"
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <StatCard
+                    title="Result Matches"
+                    value={
+                      selectedSession.result_match_count ||
+                      selectedSession.results?.filter((r) => r.result_match)
+                        .length ||
+                      0
+                    }
+                    icon={<PassIcon />}
+                    color={theme.palette.success.main}
+                    subtext="Data execution match"
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Results List */}
+            <Box
+              sx={{ flexGrow: 1, overflowY: "auto", p: 4, bgcolor: "#f8fafc" }}
+            >
+              {detailsLoading ? (
+                <LinearProgress />
+              ) : (
+                <>
+                  {filteredResults.map((result, index) => (
+                    <ResultItem key={index} result={result} />
+                  ))}
+                  {filteredResults.length === 0 && (
+                    <Box sx={{ textAlign: "center", py: 8, opacity: 0.6 }}>
+                      <SearchIcon sx={{ fontSize: 64, mb: 2 }} />
+                      <Typography variant="h6">
+                        No results found matching your search
+                      </Typography>
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+          </>
+        ) : (
+          <Box
+            sx={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+            }}
+          >
+            <TimelineIcon sx={{ fontSize: 100, color: "divider", mb: 2 }} />
+            <Typography variant="h5" color="text.secondary">
+              Select a test session to view details
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* Run Test Dialog */}
+      <Dialog
+        open={openRunDialog}
+        onClose={() => !runningTest && setOpenRunDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Start New Regression Test
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              This will execute queries from your training data against the
+              current Knowledge Graph configuration to verify accuracy.
+            </Typography>
+
+            <TextField
+              label="Limit Queries"
+              type="number"
+              value={runConfig.limit}
+              onChange={(e) =>
+                setRunConfig({ ...runConfig, limit: parseInt(e.target.value) })
+              }
+              fullWidth
+              helperText="Number of training examples to test"
+            />
+
+            <TextField
+              label="Business Domain (Optional)"
+              value={runConfig.business_domain}
+              onChange={(e) =>
+                setRunConfig({ ...runConfig, business_domain: e.target.value })
+              }
+              fullWidth
+              placeholder="e.g., collections, onboarding"
+              helperText="Filter specific domain queries only"
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Embedding Version</InputLabel>
+              <Select
+                value={runConfig.only_latest_embedding ? "latest" : "all"}
+                onChange={(e) =>
+                  setRunConfig({
+                    ...runConfig,
+                    only_latest_embedding: e.target.value === "latest",
+                  })
+                }
+                label="Embedding Version"
+              >
+                <MenuItem value="latest">Latest Version Only</MenuItem>
+                <MenuItem value="all">All Versions</MenuItem>
+              </Select>
+            </FormControl>
+
+            {runningTest && (
+              <Box>
+                <LinearProgress />
+                <Typography
+                  variant="caption"
+                  sx={{ mt: 1, display: "block", textAlign: "center" }}
+                >
+                  Running tests... this may take a minute.
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            onClick={() => setOpenRunDialog(false)}
+            disabled={runningTest}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleRunTest}
+            disabled={runningTest}
+            startIcon={<RunIcon />}
+            sx={{ bgcolor: theme.palette.primary.main, fontWeight: 700 }}
+          >
+            Run Test
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default RegressionTestingPage;

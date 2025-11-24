@@ -20,6 +20,15 @@ import {
 } from '@mui/icons-material';
 
 const IncentiveRulesResponse = ({ data, source }) => {
+  // Add null check and default values
+  if (!data) {
+    return (
+      <Alert severity="error">
+        No data available for incentive rules
+      </Alert>
+    );
+  }
+  
   const { action, message, result } = data;
 
   // Parse rules from the result text

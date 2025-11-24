@@ -93,11 +93,11 @@ const BarChartComponent = ({
 
         {/* Bar Chart */}
         <Box sx={{ flex: 1, p: 3 }}>
-          <Box sx={{ width: '100%', height: height, mb: -10 }}>
+          <Box sx={{ width: '100%', height: height }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={data}
-                margin={{ top: 10, right: 10, left: 10, bottom: isStacked ? 120 : 40 }}
+                margin={{ top: 10, right: 10, left: 10, bottom: isStacked ? 120 : 100 }}
               >
                 <CartesianGrid 
                   strokeDasharray="3 3" 
@@ -108,15 +108,26 @@ const BarChartComponent = ({
                   dataKey={xAxisKey}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ 
-                    fontSize: 11, 
-                    fill: '#6b7280',
-                    fontWeight: 500
+                  tick={(props) => {
+                    const { x, y, payload } = props;
+                    return (
+                      <g transform={`translate(${x},${y})`}>
+                        <text 
+                          x={0} 
+                          y={0} 
+                          dy={16} 
+                          textAnchor="end" 
+                          fill="#6b7280" 
+                          transform="rotate(-45)"
+                          style={{ fontSize: '11px', fontWeight: 500 }}
+                        >
+                          {payload.value.length > 15 ? `${payload.value.substring(0, 12)}...` : payload.value}
+                        </text>
+                      </g>
+                    );
                   }}
-                  height={isStacked ? 100 : 40}
+                  height={90} // Increased height for rotated labels
                   interval={0}
-                  angle={isStacked ? -45 : 0}
-                  textAnchor={isStacked ? "end" : "middle"}
                 />
                 <YAxis 
                   axisLine={false}
@@ -142,12 +153,10 @@ const BarChartComponent = ({
                     fontSize: '12px'
                   }}
                   formatter={(value, name) => [
-                    dataType === 'pipeline' ? `${value} cases` : `Score: ${value}`,
-                    dataType === 'pipeline' ? (isStacked ? name : 'Pending Cases') : 'Average Score'
+                    dataType === 'pipeline' ? `${value} cases` : value.toLocaleString(),
+                    dataType === 'pipeline' ? (isStacked ? name : 'Pending Cases') : 'Value'
                   ]}
-                  labelFormatter={(label) => 
-                    dataType === 'pipeline' ? (isStacked ? `Region: ${label}` : `Stage: ${label}`) : `Region: ${label}`
-                  }
+                  labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.25rem' }}
                 />
                 
                 {isStacked && dataType === 'pipeline' ? 
@@ -184,47 +193,64 @@ const BarChartComponent = ({
             </ResponsiveContainer>
           </Box>
           
-          {/* Custom Legend for non-stacked charts */}
+          {/* Aesthetic Scrollable Legend for non-stacked charts */}
           {!isTargetVsAchievement && !isStacked && (
             <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 1,
-              mt: 2,
+              mt: 4,
               pt: 2,
-              borderTop: '1px solid #f3f4f6'
+              borderTop: '1px solid #f3f4f6',
+              maxHeight: '120px',
+              overflowY: 'auto',
+              '&::-webkit-scrollbar': { width: '4px' },
+              '&::-webkit-scrollbar-thumb': { backgroundColor: '#e0e0e0', borderRadius: '4px' }
             }}>
-              <Typography variant="body2" sx={{ 
+              <Typography variant="caption" sx={{ 
                 fontWeight: 600,
-                color: '#374151',
-                mb: 1
+                color: '#9ca3af',
+                mb: 1,
+                display: 'block',
+                textTransform: 'uppercase',
+                fontSize: '0.7rem'
               }}>
-                {dataType === 'pipeline' ? 'Pipeline Stages' : 'Regional Scores'}
+                {dataType === 'pipeline' ? 'Pipeline Stages' : 'Legend'}
               </Typography>
               <Box sx={{ 
-                display: 'flex', 
-                flexWrap: 'wrap',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                 gap: 1
               }}>
                 {data.map((entry, index) => (
                   <Box key={index} sx={{ 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: 0.5,
-                    fontSize: '0.75rem'
+                    gap: 1,
+                    p: 0.75,
+                    borderRadius: 1,
+                    '&:hover': { backgroundColor: '#f9fafb' }
                   }}>
                     <Box sx={{ 
                       width: 8, 
                       height: 8, 
-                      borderRadius: 1, 
-                      backgroundColor: entry.fill || getStageColor(index, data.length)
+                      borderRadius: '50%', 
+                      backgroundColor: entry.fill || getStageColor(index, data.length),
+                      flexShrink: 0
                     }} />
-                    <Typography variant="caption" sx={{ 
-                      color: '#6b7280',
-                      fontSize: '0.75rem'
-                    }}>
-                      {entry.name || entry[xAxisKey]}: {entry.value}
-                    </Typography>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography variant="caption" noWrap sx={{ 
+                        color: '#374151',
+                        fontWeight: 500,
+                        display: 'block',
+                        lineHeight: 1.2
+                      }}>
+                        {entry.name || entry[xAxisKey]}
+                      </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: '#6b7280', 
+                        fontSize: '0.7rem'
+                      }}>
+                        {entry.value?.toLocaleString()}
+                      </Typography>
+                    </Box>
                   </Box>
                 ))}
               </Box>

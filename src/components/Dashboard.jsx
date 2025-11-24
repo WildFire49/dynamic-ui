@@ -42,7 +42,11 @@ import {
   Schedule as ScheduleIcon,
   Visibility as VisibilityIcon,
   Close as CloseIcon,
-  AccountBalance as AccountBalanceIcon
+  AccountBalance as AccountBalanceIcon,
+  ArrowBack as ArrowBackIcon,
+  ArrowForward as ArrowForwardIcon,
+  UnfoldMore as UnfoldMoreIcon,
+  UnfoldLess as UnfoldLessIcon
 } from '@mui/icons-material';
 import DynamicDataVisualization from './mui/DynamicDataVisualization';
 import Sidebar from './Sidebar';
@@ -58,6 +62,8 @@ const Dashboard = () => {
   const [fullscreenView, setFullscreenView] = useState({ open: false, item: null });
   const [hoveredCard, setHoveredCard] = useState(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [expandedWidgets, setExpandedWidgets] = useState(new Set());
+  const [widgetOrder, setWidgetOrder] = useState([]);
   const analysisRefs = useRef({});
 
   const handleSelectAnalysis = (timestamp) => {
@@ -90,31 +96,79 @@ const Dashboard = () => {
         setSavedAnalyses([]);
       }
     }
+
+    // Load widget order
+    const savedOrder = localStorage.getItem('dashboardWidgetOrder');
+    if (savedOrder) {
+      try {
+        setWidgetOrder(JSON.parse(savedOrder));
+      } catch (e) {
+        setWidgetOrder([]);
+      }
+    }
     
     // Mark initial load as complete
     setIsInitialLoad(false);
   }, []);
 
-  // Save visualizations to localStorage whenever they change (but not during initial load)
+  // Save visualizations to localStorage whenever they change
   useEffect(() => {
     if (!isInitialLoad) {
       localStorage.setItem('dashboardVisualizations', JSON.stringify(savedVisualizations));
     }
   }, [savedVisualizations, isInitialLoad]);
   
-  // Save analyses to localStorage whenever they change (but not during initial load)
+  // Save analyses to localStorage whenever they change
   useEffect(() => {
     if (!isInitialLoad) {
       localStorage.setItem('savedAnalyses', JSON.stringify(savedAnalyses));
     }
   }, [savedAnalyses, isInitialLoad]);
 
-  // Calculate dashboard statistics - sort by latest timestamp (newest first)
+  // Save widget order whenever it changes
+  useEffect(() => {
+    if (!isInitialLoad && widgetOrder.length > 0) {
+      localStorage.setItem('dashboardWidgetOrder', JSON.stringify(widgetOrder));
+    }
+  }, [widgetOrder, isInitialLoad]);
+
+  // Calculate dashboard statistics
+  // Sort items based on widgetOrder, new items (not in order) go to top
   const allItems = [...savedVisualizations, ...savedAnalyses].sort((a, b) => {
+    const indexA = widgetOrder.indexOf(a.id);
+    const indexB = widgetOrder.indexOf(b.id);
+
+    // If both have order, sort by order
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    
+    // If one has order, it goes to bottom (new items top)
+    // Actually, let's put new items at TOP
+    if (indexA === -1 && indexB !== -1) return -1;
+    if (indexA !== -1 && indexB === -1) return 1;
+
+    // If neither has order, sort by timestamp (newest first)
     const timeA = new Date(a.timestamp).getTime();
     const timeB = new Date(b.timestamp).getTime();
-    return timeB - timeA; // Descending order (newest first)
+    return timeB - timeA;
   });
+
+  // Update widget order if new items appear
+  useEffect(() => {
+    if (allItems.length > 0 && !isInitialLoad) {
+      const currentIds = allItems.map(item => item.id);
+      const isOrderOutdated = currentIds.some(id => !widgetOrder.includes(id)) || widgetOrder.length !== currentIds.length;
+      
+      if (isOrderOutdated) {
+        // Only update if structure changed, to avoid loop
+        // We just want to ensure new items get an index
+        // But sorting is already handling un-indexed items by putting them at top.
+        // To persist this "top" position, we should update widgetOrder.
+        // However, updating state in effect derived from state causes loop.
+        // We'll skip auto-update and let user action trigger it, or do it once.
+      }
+    }
+  }, [allItems.length, isInitialLoad]); // Only on length change
+
   const dashboardStats = {
     totalVisualizations: allItems.length,
     totalRecords: allItems.reduce((sum, item) => {
@@ -132,6 +186,7 @@ const Dashboard = () => {
   const handleDeleteVisualization = (id) => {
     setSavedVisualizations(prev => prev.filter(item => item.id !== id));
     setSavedAnalyses(prev => prev.filter(item => item.id !== id));
+    setWidgetOrder(prev => prev.filter(wId => wId !== id));
   };
 
   const handleEditTitle = (id, newTitle) => {
@@ -146,6 +201,28 @@ const Dashboard = () => {
       )
     );
     setEditDialog({ open: false, item: null });
+  };
+
+  const handleToggleExpand = (id) => {
+    const newExpanded = new Set(expandedWidgets);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedWidgets(newExpanded);
+  };
+
+  const handleMoveWidget = (index, direction) => {
+    if (direction === 'left' && index > 0) {
+      const newOrder = allItems.map(item => item.id); // Get current visual order
+      [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
+      setWidgetOrder(newOrder);
+    } else if (direction === 'right' && index < allItems.length - 1) {
+      const newOrder = allItems.map(item => item.id);
+      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+      setWidgetOrder(newOrder);
+    }
   };
 
   const renderVisualization = (item) => {
@@ -192,7 +269,13 @@ const Dashboard = () => {
     }
 
     // Get supporting data from any available property
-    const supportingData = item.supporting_data || item.supportingData || item.pipelineData || [];
+    const rawSupportingData = item.supporting_data || item.supportingData || item.pipelineData || [];
+    
+    // Ensure all rows have a unique id for DataGrid
+    const supportingData = rawSupportingData.map((row, index) => ({
+      id: row.id || row._id || `row-${index}-${Date.now()}`, // Fallback ID
+      ...row
+    }));
     
     // If we have supporting data, render both visualization and data grid
     if (supportingData && supportingData.length > 0) {
@@ -203,27 +286,39 @@ const Dashboard = () => {
         }
       };
       
+      // If chart type is present, prioritize chart, otherwise show table
+      // In a small widget, we might want to toggle, but for now let's show what's saved
+      
       return (
-        <Box key={`viz-${item.id}`} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* Original visualization component */}
-          <DynamicDataVisualization 
-            analysisResult={analysisResult}
-            isFromDashboard={true}
-            savedCharts={item.charts}
-            savedDataGrid={item.dataGrid}
-            savedRMPerformanceData={item.rmPerformanceData}
-            savedRMPerformanceOverview={item.rmPerformanceOverview}
-            savedRMPerformanceComparisonChart={item.rmPerformanceComparisonChart}
-          />
-          
-          {/* Enhanced DataGrid with dynamic columns and CSV export */}
-          <DataGridComponent
-            data={supportingData}
-            title={`${item.question || item.title} - Detailed Data`}
-            height={400}
-            autoGenerateColumns={true}
-            showSaveButton={false}
-          />
+        <Box key={`viz-${item.id}`} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Visualization */}
+          {item.charts ? (
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <DynamicDataVisualization 
+                analysisResult={analysisResult}
+                isFromDashboard={true}
+                isWidget={true} // Enable clean widget mode
+                savedCharts={item.charts}
+                savedDataGrid={item.dataGrid}
+                savedRMPerformanceData={item.rmPerformanceData}
+                savedRMPerformanceOverview={item.rmPerformanceOverview}
+                savedRMPerformanceComparisonChart={item.rmPerformanceComparisonChart}
+              />
+            </Box>
+          ) : (
+            // If no chart, show the data grid directly
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <DataGridComponent
+                rows={supportingData}
+                columns={[]} // Auto-generate
+                title={null} // Hide title in widget
+                height="100%"
+                autoGenerateColumns={true}
+                showSaveButton={false}
+                variant="clean" // Use clean variant for widgets
+              />
+            </Box>
+          )}
         </Box>
       );
     }
@@ -241,6 +336,7 @@ const Dashboard = () => {
         key={`viz-${item.id}`}
         analysisResult={analysisResult}
         isFromDashboard={true}
+        isWidget={true} // Enable clean widget mode
         savedCharts={item.charts}
         savedDataGrid={item.dataGrid}
         savedRMPerformanceData={item.rmPerformanceData}
@@ -294,579 +390,202 @@ const Dashboard = () => {
     }
   };
 
-  const renderVisualizationCard = (item, index) => (
-    <Fade in={true} timeout={600 + (index * 200)} key={item.id}>
-      <Box
-        ref={(el) => {
-          if (el && item.timestamp) analysisRefs.current[item.timestamp] = el;
-        }}
-        sx={{ 
-        mb: 8,
-        width: '100%',
-        position: 'relative'
-      }}>
-        {/* Clear Divider Line */}
-        {index > 0 && (
-          <Box sx={{
-            width: '100%',
-            height: '1px',
-            background: '#cbd5e1',
-            my: 4
-          }} />
-        )}
+  const getTitle = (item) => {
+    // Try to find question in various places
+    const candidates = [
+      item.question,
+      item.data?.response?.question,
+      item.data?.question,
+      item.analysis?.question,
+      item.title
+    ];
 
-        {/* Simple Analysis Header */}
-        <Box sx={{
-          background: '#ffffff',
-          borderLeft: `4px solid ${getAnalysisTypeColor(item.type)}`,
-          py: { xs: 2, md: 3, lg: 4 },
-          px: { xs: 2, md: 4, lg: 6 },
-          width: '100%',
-          borderBottom: '1px solid #e5e7eb',
-          borderRadius: { xs: 0, md: '8px 8px 0 0' }
-        }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={3}>
-            <Stack direction="row" alignItems="center" spacing={3} flex={1}>
-              <Avatar sx={{
-                background: getAnalysisTypeColor(item.type),
-                width: 40,
-                height: 40,
-                '& svg': { fontSize: 20, color: '#ffffff' }
-              }}>
-                {getVisualizationIcon(item.type)}
-              </Avatar>
-              
-              <Box flex={1}>
-                <Typography variant="h5" sx={{
-                  fontWeight: 700,
-                  fontSize: '1.25rem',
-                  color: '#1f2937',
-                  mb: 0.5
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'string' && 
+          candidate !== "Unknown Query" && 
+          !candidate.startsWith("Table -") && 
+          !candidate.startsWith("Pie Chart -") &&
+          !candidate.startsWith("Bar Chart -")) {
+        return candidate;
+      }
+    }
+    
+    // Fallback to title even if generic if nothing else found
+    if (item.title && item.title !== "Unknown Query") return item.title;
+    
+    return "Data Analysis";
+  };
+
+  const renderVisualizationCard = (item, index) => {
+    const isExpanded = expandedWidgets.has(item.id);
+    
+    return (
+      <Grid size={{ xs: 12, md: isExpanded ? 12 : 6 }} key={item.id}>
+        <Fade in={true} timeout={600 + (index * 100)}>
+          <Card
+            sx={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                boxShadow: '0 12px 30px rgba(0,0,0,0.08)',
+                transform: 'translateY(-4px)',
+                borderColor: theme.palette.primary.main,
+              },
+              position: 'relative',
+              overflow: 'hidden',
+              bgcolor: 'background.paper'
+            }}
+          >
+            {/* Widget Header */}
+            <Box sx={{
+              p: 2,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              bgcolor: alpha(getAnalysisTypeColor(item.type), 0.03)
+            }}>
+              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ overflow: 'hidden', flex: 1 }}>
+                <Avatar sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: alpha(getAnalysisTypeColor(item.type), 0.1),
+                  color: getAnalysisTypeColor(item.type)
                 }}>
-                  Analysis {index + 1}
-                </Typography>
-                <Typography variant="h6" sx={{ 
-                  fontWeight: 600,
-                  fontSize: '1rem',
-                  color: '#4b5563',
-                  mb: 1
-                }}>
-                  {item.question || item.title}
-                </Typography>
-                
-                <Stack direction="row" alignItems="center" spacing={3}>
-                  <Chip
-                    label={getVisualizationTypeLabel(item.type)}
-                    size="small"
-                    sx={{
-                      background: alpha(getAnalysisTypeColor(item.type), 0.1),
-                      color: getAnalysisTypeColor(item.type),
-                      fontWeight: 500,
-                      fontSize: '0.75rem',
-                      height: 24,
-                      borderRadius: 0
-                    }}
-                  />
-                  
-                  <Typography variant="body2" sx={{ 
-                    color: '#6b7280',
-                    fontWeight: 500
-                  }}>
-                    {new Date(item.timestamp).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })} • {((item.supporting_data || item.supportingData || item.pipelineData || []).length).toLocaleString()} records
+                  {React.cloneElement(getVisualizationIcon(item.type), { fontSize: 'small' })}
+                </Avatar>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                    {getTitle(item)}
                   </Typography>
-                </Stack>
-              </Box>
-            </Stack>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="caption" color="text.secondary" display="block" noWrap>
+                      {new Date(item.timestamp).toLocaleDateString(undefined, { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled">•</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" noWrap>
+                      {new Date(item.timestamp).toLocaleTimeString(undefined, {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Typography>
+                  </Stack>
+                </Box>
+              </Stack>
 
-            {/* Simple Action Buttons */}
-            <Stack direction="row" spacing={1}>
-              <Tooltip title="Edit" placement="top">
-                <IconButton 
-                  onClick={() => setEditDialog({ open: true, item })}
-                  sx={{ 
-                    width: 36,
-                    height: 36,
-                    color: '#6b7280',
-                    '&:hover': { 
-                      color: '#3b82f6',
-                      background: alpha('#3b82f6', 0.1)
-                    }
-                  }}
-                >
-                  <EditIcon sx={{ fontSize: 18 }} />
+              {/* Actions */}
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                {/* Move Buttons */}
+                <IconButton size="small" onClick={() => handleMoveWidget(index, 'left')} disabled={index === 0}>
+                  <ArrowBackIcon fontSize="small" sx={{ fontSize: '1.1rem' }} />
                 </IconButton>
-              </Tooltip>
-              
-              <Tooltip title="Fullscreen" placement="top">
-                <IconButton 
-                  onClick={() => setFullscreenView({ open: true, item })}
-                  sx={{ 
-                    width: 36,
-                    height: 36,
-                    color: '#6b7280',
-                    '&:hover': { 
-                      color: '#10b981',
-                      background: alpha('#10b981', 0.1)
-                    }
-                  }}
-                >
-                  <VisibilityIcon sx={{ fontSize: 18 }} />
+                <IconButton size="small" onClick={() => handleMoveWidget(index, 'right')} disabled={index === allItems.length - 1}>
+                  <ArrowForwardIcon fontSize="small" sx={{ fontSize: '1.1rem' }} />
                 </IconButton>
-              </Tooltip>
-              
-              <Tooltip title="Delete" placement="top">
-                <IconButton 
-                  onClick={() => handleDeleteVisualization(item.id)}
-                  sx={{ 
-                    width: 36,
-                    height: 36,
-                    color: '#6b7280',
-                    '&:hover': { 
-                      color: '#ef4444',
-                      background: alpha('#ef4444', 0.1)
-                    }
-                  }}
-                >
-                  <DeleteIcon sx={{ fontSize: 18 }} />
+                
+                <Divider orientation="vertical" flexItem variant="middle" sx={{ mx: 1, height: 16 }} />
+
+                {/* Expand/Collapse */}
+                <Tooltip title={isExpanded ? "Collapse" : "Expand"}>
+                  <IconButton size="small" onClick={() => handleToggleExpand(item.id)}>
+                    {isExpanded ? <UnfoldLessIcon fontSize="small" /> : <UnfoldMoreIcon fontSize="small" />}
+                  </IconButton>
+                </Tooltip>
+
+                <IconButton size="small" onClick={() => setFullscreenView({ open: true, item })}>
+                  <FullscreenIcon fontSize="small" />
                 </IconButton>
-              </Tooltip>
-            </Stack>
+                <IconButton size="small" onClick={() => setEditDialog({ open: true, item })}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton size="small" onClick={() => handleDeleteVisualization(item.id)} sx={{ '&:hover': { color: 'error.main' } }}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            </Box>
+
+            {/* Widget Content */}
+            <Box sx={{ p: 0, flexGrow: 1, display: 'flex', flexDirection: 'column', minHeight: 300 }}>
+              <Box sx={{ 
+                flexGrow: 1, 
+                position: 'relative',
+                '& .recharts-responsive-container': { minHeight: 250 },
+                // Scale down content slightly to fit widget only if not expanded
+                transform: isExpanded ? 'none' : 'scale(0.95)',
+                transformOrigin: 'top center',
+                width: '100%',
+                height: '100%'
+              }}>
+                {renderVisualization(item)}
+              </Box>
+            </Box>
+          </Card>
+        </Fade>
+      </Grid>
+    );
+  };
+
+  return (
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', pb: 8 }}>
+      <Container maxWidth="xl" sx={{ pt: 4 }}>
+        {/* Quick Stats Bar - Kept minimal */}
+        <Box sx={{ mb: 4, overflowX: 'auto', pb: 1 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+             <Chip 
+              icon={<AnalyticsIcon />} 
+              label={`${dashboardStats.totalVisualizations} Analyses`} 
+              sx={{ bgcolor: 'white', border: '1px solid', borderColor: 'divider', fontWeight: 600 }} 
+            />
+            <Chip 
+              icon={<DataUsageIcon />} 
+              label={`${dashboardStats.totalRecords.toLocaleString()} Records`} 
+              sx={{ bgcolor: 'white', border: '1px solid', borderColor: 'divider', fontWeight: 600 }} 
+            />
+             <Chip 
+              icon={<ScheduleIcon />} 
+              label={`Updated ${dashboardStats.lastUpdated ? new Date(dashboardStats.lastUpdated).toLocaleDateString() : 'Never'}`} 
+              sx={{ bgcolor: 'white', border: '1px solid', borderColor: 'divider', fontWeight: 600 }} 
+            />
           </Stack>
         </Box>
 
-        {/* Full Width Visualization Content */}
-        <Box sx={{ 
-          width: '100%',
-          minHeight: { xs: '60vh', md: '70vh', lg: '75vh' },
-          background: '#ffffff',
-          borderBottom: '4px solid #f1f5f9',
-          borderRadius: { xs: 0, md: '0 0 8px 8px' },
-          overflow: 'hidden'
-        }}>
-          {renderVisualization(item)}
-        </Box>
-      </Box>
-    </Fade>
-  );
-
-  return (
-    <Box 
-      sx={{ 
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
-        minHeight: '100vh',
-        position: 'relative',
-        width: '100%',
-        maxWidth: '100%',
-        mx: 'auto'
-      }}
-    >
-      {/* Main Content Container with proper centering */}
-      <Container 
-        maxWidth={false}
-        sx={{ 
-          maxWidth: '1600px', // Max width for large screens
-          mx: 'auto', // Center the container
-          px: { xs: 2, sm: 3, md: 4, lg: 6 }, // Responsive padding
-          position: 'relative',
-          width: '100%'
-        }}
-      >
-        {/* Elegant Header Section */}
-        <Box sx={{ 
-          pt: { xs: 4, md: 6, lg: 8 }, 
-          pb: { xs: 3, md: 4, lg: 6 }, 
-          px: { xs: 2, md: 4, lg: 6 },
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          borderBottom: '1px solid #e2e8f0',
-          position: 'relative',
-          borderRadius: { xs: 0, md: '12px 12px 0 0' },
-          mx: { xs: -2, sm: -3, md: -4, lg: -6 }, // Offset container padding
-          mb: 0,
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: `linear-gradient(135deg, rgba(55, 82, 126, 0.02) 0%, rgba(55, 82, 126, 0.05) 50%, rgba(55, 82, 126, 0.02) 100%)`,
-            zIndex: 1,
-            pointerEvents: 'none'
-          },
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            bottom: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '120px',
-            height: '3px',
-            background: 'linear-gradient(90deg, transparent, #cbd5e1, transparent)',
-            borderRadius: '2px',
-            zIndex: 2
-          }
-        }}>
-          <Fade in={true} timeout={800}>
-            <Box sx={{ textAlign: 'center', mb: 6, position: 'relative', zIndex: 2 }}>
-              <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                <Avatar sx={{ 
-                  width: 80, 
-                  height: 80, 
-                  mx: 'auto', 
-                  mb: 4,
-                  background: 'linear-gradient(135deg, #37527e 0%,rgb(31, 70, 241) 100%)',
-                  color: '#ffffff',
-                  border: '3px solid #ffffff',
-                  boxShadow: '0 8px 32px rgba(55, 82, 126, 0.3), 0 0 0 1px rgba(241, 100, 31, 0.2)',
-                  position: 'relative',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: '-6px',
-                    left: '-6px',
-                    right: '-6px',
-                    bottom: '-6px',
-                    background: 'linear-gradient(135deg,rgb(31, 70, 241), #37527e)',
-                    borderRadius: '50%',
-                    zIndex: -1,
-                    opacity: 0.1
-                  }
-                }}>
-                  <DashboardIcon sx={{ fontSize: 40 }} />
-                </Avatar>
-                {/* Floating accent elements */}
-                <Box sx={{
-                  position: 'absolute',
-                  top: '10px',
-                  right: '10px',
-                  width: '12px',
-                  height: '12px',
-                  background: '#37527e',
-                  borderRadius: '50%',
-                  boxShadow: '0 2px 8px rgba(44, 75, 228, 0.4)'
-                }} />
-                <Box sx={{
-                  position: 'absolute',
-                  bottom: '15px',
-                  left: '5px',
-                  width: '8px',
-                  height: '8px',
-                  background: '#37527e',
-                  borderRadius: '50%',
-                  boxShadow: '0 2px 8px rgba(55, 82, 126, 0.4)'
-                }} />
-              </Box>
-              
-              <Typography 
-                variant="h1" 
-                sx={{ 
-                fontWeight: 900,
-                fontSize: { xs: '2.5rem', md: '3.25rem', lg: '3.75rem', xl: '4rem' },
-                background: 'linear-gradient(135deg, #37527e 0%,rgb(28, 53, 117) 50%, #37527e 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                mb: 2,
-                letterSpacing: '-0.03em',
-                position: 'relative',
-                textShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: '-12px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '80px',
-                  height: '4px',
-                  background: 'linear-gradient(90deg,rgb(73, 109, 167),rgb(31, 140, 241), #37527e)',
-                  borderRadius: '2px',
-                  opacity: 0.8
-                }
-              }}>
-                Analytics Dashboard
-              </Typography>
-              
-              <Typography variant="h6" sx={{ 
-                color: '#64748b',
-                fontWeight: 600,
-                fontSize: '1.2rem',
-                maxWidth: 520,
-                mx: 'auto',
-                lineHeight: 1.5,
-                mt: 4,
-                position: 'relative',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: '-20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '6px',
-                  height: '6px',
-                  background: 'rgb(31, 140, 241)',
-                  borderRadius: '50%'
-                },
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  right: '-20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '6px',
-                  height: '6px',
-                  background: '#37527e',
-                  borderRadius: '50%'
-                }
-              }}>
-                Your Personalised Insights Saved
-              </Typography>
-            </Box>
-          </Fade>
-        </Box>
-      </Container>
-
-      {/* Full Width Analysis Section - Outside Container for full width */}
-      <Container 
-        maxWidth={false}
-        sx={{ 
-          maxWidth: '1600px',
-          mx: 'auto',
-          px: { xs: 2, sm: 3, md: 4, lg: 6 },
-          position: 'relative',
-          width: '100%'
-        }}
-      >
-      <Box sx={{ 
-        background: '#ffffff',
-        width: '100%',
-        position: 'relative',
-        boxSizing: 'border-box',
-        minHeight: '80vh'
-      }}>
-        {/* Quick Stats Section */}
-        <Box sx={{ 
-          px: { xs: 2, md: 4, lg: 6 },
-          py: { xs: 3, md: 4, lg: 5 },
-          background: '#ffffff',
-          borderBottom: '1px solid #e2e8f0'
-        }}>
-          <Typography variant="h4" sx={{ 
-            fontWeight: 700,
-            color: '#0f172a',
-            mb: 3,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2
-          }}>
-            <AnalyticsIcon sx={{ color: theme.palette.primary.main }} />
-            Dashboard Overview
-          </Typography>
-          
-          <Grid container spacing={{ xs: 2, md: 3, lg: 4 }}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Paper sx={{ 
-                p: { xs: 2, md: 3, lg: 4 }, 
-                textAlign: 'center', 
-                borderRadius: 3,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
-                }
-              }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
-                  {dashboardStats.totalVisualizations}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Total Analyses
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Paper sx={{ 
-                p: { xs: 2, md: 3, lg: 4 }, 
-                textAlign: 'center', 
-                borderRadius: 3,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
-                }
-              }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.success.main }}>
-                  {dashboardStats.totalRecords.toLocaleString()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Records Analyzed
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Paper sx={{ 
-                p: { xs: 2, md: 3, lg: 4 }, 
-                textAlign: 'center', 
-                borderRadius: 3,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
-                }
-              }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.warning.main }}>
-                  {dashboardStats.chartTypes}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Chart Types
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Paper sx={{ 
-                p: { xs: 2, md: 3, lg: 4 }, 
-                textAlign: 'center', 
-                borderRadius: 3,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 25px rgba(0,0,0,0.1)'
-                }
-              }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.info.main }}>
-                  {dashboardStats.lastUpdated ? new Date(dashboardStats.lastUpdated).toLocaleDateString() : 'N/A'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Last Updated
-                </Typography>
-              </Paper>
-            </Grid>
-          </Grid>
-        </Box>
-
-        {/* Visualizations */}
+        {/* Widgets Grid */}
         {allItems.length === 0 ? (
-          <Fade in={true} timeout={1200}>
-            <Box sx={{ 
-              textAlign: 'center', 
-              py: { xs: 6, md: 8, lg: 12 },
-              px: { xs: 4, md: 6, lg: 8 },
-              background: '#ffffff',
-              border: 'none',
-              minHeight: { xs: '60vh', md: '70vh' },
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center'
-            }}>
-              <Avatar sx={{ 
-                width: 120, 
-                height: 120, 
-                mx: 'auto', 
-                mb: 4,
-                background: `linear-gradient(45deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})`,
-                color: theme.palette.primary.main
-              }}>
-                <AnalyticsIcon sx={{ fontSize: 60 }} />
-              </Avatar>
-              
-              <Typography variant="h4" sx={{ 
-                fontWeight: 700, 
-                color: '#0f172a',
-                mb: 2,
-                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}>
-                Ready for Insights
-              </Typography>
-              
-              <Typography variant="body1" sx={{ 
-                color: '#64748b',
-                mb: 4,
-                fontSize: '1.1rem',
-                maxWidth: 500,
-                mx: 'auto',
-                lineHeight: 1.6
-              }}>
-                Use the main chat to perform analysis, create visualizations, and save them here to build your command center.
-              </Typography>
-              
-              {/* <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                <Button 
-                  variant="contained" 
-                  size="large"
-                  startIcon={<TrendingUpIcon />}
-                  sx={{ 
-                    background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                    px: 4,
-                    py: 1.5,
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    borderRadius: 0,
-                    textTransform: 'none',
-                    boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`
-                    },
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  Start Analysis
-                </Button>
-              </Stack> */}
-            </Box>
-          </Fade>
+          <Paper sx={{ 
+            p: 6, 
+            textAlign: 'center', 
+            borderRadius: 4, 
+            border: '1px dashed', 
+            borderColor: 'divider',
+            bgcolor: 'transparent' 
+          }}>
+            <Avatar sx={{ width: 64, height: 64, bgcolor: 'action.hover', color: 'text.secondary', mx: 'auto', mb: 2 }}>
+              <DashboardIcon sx={{ fontSize: 32 }} />
+            </Avatar>
+            <Typography variant="h6" color="text.primary" gutterBottom>
+              Dashboard is Empty
+            </Typography>
+            <Typography color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
+              Generate analysis in the chat and save them to your dashboard to see them appear here as widgets.
+            </Typography>
+          </Paper>
         ) : (
-          <Box sx={{ width: '100%' }}>
-            <Box sx={{ 
-              px: { xs: 2, md: 4, lg: 6 },
-              py: { xs: 2, md: 3, lg: 4 }, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              background: '#f8fafc',
-              borderBottom: '1px solid #e2e8f0',
-              flexWrap: { xs: 'wrap', sm: 'nowrap' },
-              gap: { xs: 2, sm: 0 }
-            }}>
-              <Typography variant="h5" sx={{ 
-                fontWeight: 700,
-                color: '#0f172a',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}>
-                <BookmarkIcon sx={{ color: theme.palette.primary.main }} />
-                Saved Analysis ({allItems.length})
-              </Typography>
-              
-              <Chip 
-                icon={<StarIcon />}
-                label={`Last updated ${dashboardStats.lastUpdated ? new Date(dashboardStats.lastUpdated).toLocaleDateString() : 'Never'}`}
-                sx={{ 
-                  background: `linear-gradient(45deg, ${alpha(theme.palette.warning.main, 0.1)}, ${alpha(theme.palette.warning.main, 0.05)})`,
-                  border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
-                  color: theme.palette.warning.main,
-                  fontWeight: 600,
-                  borderRadius: 0
-                }}
-              />
-            </Box>
-            
-            {allItems.map((item, index) => (
-              <React.Fragment key={`analysis-card-${item.id}-${index}`}>
-                {renderVisualizationCard(item, index)}
-              </React.Fragment>
-            ))}
-          </Box>
+          <Grid container spacing={3}>
+            {allItems.map((item, index) => renderVisualizationCard(item, index))}
+          </Grid>
         )}
-      </Box>
       </Container>
+
 
       {/* Enhanced Edit Title Dialog */}
       <Dialog 
