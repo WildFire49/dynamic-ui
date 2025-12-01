@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Paper,
@@ -33,6 +33,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Checkbox,
+  Tooltip,
+  TablePagination,
+  Alert,
 } from "@mui/material";
 import {
   PlayArrow as RunIcon,
@@ -48,6 +52,13 @@ import {
   Timeline as TimelineIcon,
   Speed as SpeedIcon,
   Refresh as RefreshIcon,
+  CheckBox as CheckBoxIcon,
+  CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
+  SelectAll as SelectAllIcon,
+  Clear as ClearIcon,
+  Quiz as QuizIcon,
+  School as SchoolIcon,
+  Person as PersonIcon,
 } from "@mui/icons-material";
 import useRetrieverStore from "../../../../store/retrieverStore";
 import queryLearningService from "../../../../services/queryLearningService";
@@ -455,129 +466,266 @@ const ResultItem = ({ result }) => {
             {/* Execution Results Tab */}
             {activeTab === 2 && (
               <Box>
-                {result.result_match ? (
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 3,
-                      bgcolor: "#f0fdf4",
-                      border: "1px solid #86efac",
-                      textAlign: "center",
-                    }}
-                  >
+                {/* Status Banner */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    mb: 3,
+                    bgcolor: result.result_match ? "#f0fdf4" : "#FEF2F2",
+                    border: `1px solid ${
+                      result.result_match ? "#86efac" : "#FCA5A5"
+                    }`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                  }}
+                >
+                  {result.result_match ? (
                     <PassIcon
-                      sx={{
-                        fontSize: 48,
-                        color: theme.palette.success.main,
-                        mb: 1,
-                      }}
+                      sx={{ fontSize: 32, color: theme.palette.success.main }}
                     />
-                    <Typography
-                      variant="h6"
-                      fontWeight={700}
-                      color="success.main"
-                    >
-                      Execution Results Match!
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 1 }}
-                    >
-                      Both queries returned identical results
-                    </Typography>
-                  </Paper>
-                ) : (
+                  ) : (
+                    <FailIcon
+                      sx={{ fontSize: 32, color: theme.palette.error.main }}
+                    />
+                  )}
                   <Box>
-                    <Typography variant="h6" fontWeight={700} gutterBottom>
-                      Result Comparison
+                    <Typography
+                      variant="subtitle1"
+                      fontWeight={700}
+                      color={
+                        result.result_match ? "success.main" : "error.main"
+                      }
+                    >
+                      {result.result_match
+                        ? "Results Match!"
+                        : "Results Differ"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Expected: {result.corrected_row_count || 0} rows |
+                      Generated: {result.regenerated_row_count || 0} rows
+                    </Typography>
+                  </Box>
+                </Paper>
+
+                {/* SQL Output Data */}
+                <Grid container spacing={3}>
+                  {/* Expected Results */}
+                  <Grid item xs={12} md={6}>
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight={700}
+                      gutterBottom
+                      sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    >
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          bgcolor: "success.main",
+                        }}
+                      />
+                      Expected Output
+                      {result.corrected_results && (
+                        <Chip
+                          label={`${result.corrected_results.length} rows`}
+                          size="small"
+                          sx={{ ml: 1, height: 20, fontSize: "0.7rem" }}
+                        />
+                      )}
+                    </Typography>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        border: "1px solid #e2e8f0",
+                        maxHeight: 300,
+                        overflow: "auto",
+                      }}
+                    >
+                      {result.corrected_results &&
+                      result.corrected_results.length > 0 ? (
+                        <Table size="small" stickyHeader>
+                          <TableHead>
+                            <TableRow>
+                              {Object.keys(result.corrected_results[0]).map(
+                                (key) => (
+                                  <TableCell
+                                    key={key}
+                                    sx={{
+                                      fontWeight: 700,
+                                      bgcolor: "#f8fafc",
+                                      fontSize: "0.75rem",
+                                    }}
+                                  >
+                                    {key}
+                                  </TableCell>
+                                )
+                              )}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {result.corrected_results
+                              .slice(0, 50)
+                              .map((row, idx) => (
+                                <TableRow key={idx} hover>
+                                  {Object.values(row).map((val, i) => (
+                                    <TableCell
+                                      key={i}
+                                      sx={{
+                                        fontSize: "0.75rem",
+                                        fontFamily: "monospace",
+                                      }}
+                                    >
+                                      {val === null ? (
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                        >
+                                          NULL
+                                        </Typography>
+                                      ) : (
+                                        String(val)
+                                      )}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <Box sx={{ p: 3, textAlign: "center" }}>
+                          <Typography variant="body2" color="text.secondary">
+                            No data available
+                          </Typography>
+                        </Box>
+                      )}
+                    </Paper>
+                  </Grid>
+
+                  {/* Regenerated Results */}
+                  <Grid item xs={12} md={6}>
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight={700}
+                      gutterBottom
+                      sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    >
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          bgcolor: "info.main",
+                        }}
+                      />
+                      Generated Output
+                      {result.regenerated_results && (
+                        <Chip
+                          label={`${result.regenerated_results.length} rows`}
+                          size="small"
+                          sx={{ ml: 1, height: 20, fontSize: "0.7rem" }}
+                        />
+                      )}
+                    </Typography>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        border: "1px solid #e2e8f0",
+                        maxHeight: 300,
+                        overflow: "auto",
+                      }}
+                    >
+                      {result.regenerated_results &&
+                      result.regenerated_results.length > 0 ? (
+                        <Table size="small" stickyHeader>
+                          <TableHead>
+                            <TableRow>
+                              {Object.keys(result.regenerated_results[0]).map(
+                                (key) => (
+                                  <TableCell
+                                    key={key}
+                                    sx={{
+                                      fontWeight: 700,
+                                      bgcolor: "#f8fafc",
+                                      fontSize: "0.75rem",
+                                    }}
+                                  >
+                                    {key}
+                                  </TableCell>
+                                )
+                              )}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {result.regenerated_results
+                              .slice(0, 50)
+                              .map((row, idx) => (
+                                <TableRow key={idx} hover>
+                                  {Object.values(row).map((val, i) => (
+                                    <TableCell
+                                      key={i}
+                                      sx={{
+                                        fontSize: "0.75rem",
+                                        fontFamily: "monospace",
+                                      }}
+                                    >
+                                      {val === null ? (
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                        >
+                                          NULL
+                                        </Typography>
+                                      ) : (
+                                        String(val)
+                                      )}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <Box sx={{ p: 3, textAlign: "center" }}>
+                          <Typography variant="body2" color="text.secondary">
+                            No data available
+                          </Typography>
+                        </Box>
+                      )}
+                    </Paper>
+                  </Grid>
+                </Grid>
+
+                {/* Sample Differences (if any) */}
+                {result.sample_diff && result.sample_diff.length > 0 && (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight={700}
+                      gutterBottom
+                    >
+                      Sample Differences
                     </Typography>
                     <Paper
                       elevation={0}
                       sx={{
                         p: 2,
-                        bgcolor: "white",
-                        border: "1px solid #e2e8f0",
-                        mb: 2,
+                        bgcolor: "#FEF2F2",
+                        border: "1px solid #FCA5A5",
                       }}
                     >
-                      <Grid container spacing={2}>
-                        <Grid item xs={6}>
-                          <Typography variant="caption" color="text.secondary">
-                            Expected Rows
-                          </Typography>
-                          <Typography variant="h6">
-                            {result.corrected_row_count || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="caption" color="text.secondary">
-                            Generated Rows
-                          </Typography>
-                          <Typography variant="h6">
-                            {result.regenerated_row_count || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="caption" color="text.secondary">
-                            Row Count Match
-                          </Typography>
-                          <Chip
-                            label={result.row_count_match ? "Yes" : "No"}
-                            size="small"
-                            color={result.row_count_match ? "success" : "error"}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <Typography variant="caption" color="text.secondary">
-                            Column Match
-                          </Typography>
-                          <Chip
-                            label={result.column_match ? "Yes" : "No"}
-                            size="small"
-                            color={result.column_match ? "success" : "error"}
-                          />
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Typography variant="caption" color="text.secondary">
-                            Difference Percentage
-                          </Typography>
-                          <Typography variant="h6">
-                            {result.diff_percentage?.toFixed(1) || 0}%
-                          </Typography>
-                        </Grid>
-                      </Grid>
+                      <pre
+                        style={{
+                          margin: 0,
+                          fontSize: "0.8rem",
+                          overflow: "auto",
+                        }}
+                      >
+                        {JSON.stringify(result.sample_diff, null, 2)}
+                      </pre>
                     </Paper>
-
-                    {result.sample_diff && result.sample_diff.length > 0 && (
-                      <Box>
-                        <Typography
-                          variant="subtitle2"
-                          fontWeight={700}
-                          gutterBottom
-                        >
-                          Sample Differences
-                        </Typography>
-                        <Paper
-                          elevation={0}
-                          sx={{
-                            p: 2,
-                            bgcolor: "#FEF2F2",
-                            border: "1px solid #FCA5A5",
-                          }}
-                        >
-                          <pre
-                            style={{
-                              margin: 0,
-                              fontSize: "0.8rem",
-                              overflow: "auto",
-                            }}
-                          >
-                            {JSON.stringify(result.sample_diff, null, 2)}
-                          </pre>
-                        </Paper>
-                      </Box>
-                    )}
                   </Box>
                 )}
               </Box>
@@ -677,10 +825,32 @@ const RegressionTestingPage = () => {
     limit: 10,
     business_domain: "",
     only_latest_embedding: true,
+    include_marked_correct: true,
   });
   const [runningTest, setRunningTest] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all"); // all, failed, passed - default to "all"
+
+  // Testable Queries State
+  const [testableQueries, setTestableQueries] = useState([]);
+  const [testableQueriesLoading, setTestableQueriesLoading] = useState(false);
+  const [selectedQueryIds, setSelectedQueryIds] = useState([]);
+  const [querySearchTerm, setQuerySearchTerm] = useState("");
+  const [queryPage, setQueryPage] = useState(0);
+  const [queryRowsPerPage, setQueryRowsPerPage] = useState(10);
+  const [testableQueryStats, setTestableQueryStats] = useState({
+    total: 0,
+    distinct: 0,
+    withExamples: 0,
+    markedCorrect: 0,
+  });
+  const [showQuerySelector, setShowQuerySelector] = useState(false);
+  const [queryFilter, setQueryFilter] = useState("all"); // all, distinct, duplicates
+
+  // Ref to track fetched connection ID to prevent duplicate API calls
+  const fetchedConnectionRef = useRef(null);
+  // Ref for AbortController to cancel running test
+  const abortControllerRef = useRef(null);
 
   const handleSelectSession = useCallback(
     async (session) => {
@@ -742,6 +912,9 @@ const RegressionTestingPage = () => {
               result.regenerated_sql || result.sql_comparison?.regenerated_sql,
             expected_result: result.corrected_result,
             actual_result: result.regenerated_result,
+            // SQL output data
+            corrected_results: result.corrected_results,
+            regenerated_results: result.regenerated_results,
             sql_match: result.sql_comparison?.sql_match ?? result.sql_match,
             result_match:
               result.result_comparison?.results_match ?? result.results_match,
@@ -842,57 +1015,218 @@ const RegressionTestingPage = () => {
     [currentConnection?.id, handleSelectSession]
   );
 
-  // Fetch sessions on load
-  useEffect(() => {
-    console.log(
-      "🚀 useEffect triggered - Connection ID:",
-      currentConnection?.id
+  // Fetch testable queries
+  const fetchTestableQueries = useCallback(async () => {
+    if (!currentConnection?.id) return;
+
+    setTestableQueriesLoading(true);
+    try {
+      const res = await queryLearningService.listTestableQueries(
+        currentConnection.id,
+        runConfig.include_marked_correct,
+        runConfig.business_domain || null
+      );
+      console.log("📋 Testable queries response:", res);
+
+      if (res?.queries) {
+        setTestableQueries(res.queries);
+        setTestableQueryStats({
+          total: res.total_queries || 0,
+          distinct: res.distinct_questions || 0,
+          withExamples: res.with_learned_examples || 0,
+          markedCorrect: res.marked_correct_only || 0,
+        });
+      } else {
+        setTestableQueries([]);
+      }
+    } catch (err) {
+      console.error("❌ Failed to fetch testable queries:", err);
+      setTestableQueries([]);
+    } finally {
+      setTestableQueriesLoading(false);
+    }
+  }, [
+    currentConnection?.id,
+    runConfig.include_marked_correct,
+    runConfig.business_domain,
+  ]);
+
+  // Handle query selection
+  const handleToggleQuery = (queryId) => {
+    setSelectedQueryIds((prev) =>
+      prev.includes(queryId)
+        ? prev.filter((id) => id !== queryId)
+        : [...prev, queryId]
     );
+  };
+
+  const handleSelectAllQueries = () => {
+    const filteredIds = filteredTestableQueries.map((q) => q.query_id);
+    setSelectedQueryIds(filteredIds);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedQueryIds([]);
+  };
+
+  // Build duplicate map - group queries by natural_language_query
+  const queryDuplicateMap = React.useMemo(() => {
+    const map = {};
+    testableQueries.forEach((q) => {
+      const key = q.natural_language_query?.toLowerCase().trim();
+      if (!map[key]) {
+        map[key] = [];
+      }
+      map[key].push(q.query_id);
+    });
+    return map;
+  }, [testableQueries]);
+
+  // Check if a query is a duplicate (has same question as another query)
+  const isDuplicate = (query) => {
+    const key = query.natural_language_query?.toLowerCase().trim();
+    return queryDuplicateMap[key]?.length > 1;
+  };
+
+  // Get duplicate count for a query
+  const getDuplicateCount = (query) => {
+    const key = query.natural_language_query?.toLowerCase().trim();
+    return queryDuplicateMap[key]?.length || 1;
+  };
+
+  // Filter testable queries based on search and duplicate filter
+  const filteredTestableQueries = testableQueries.filter((q) => {
+    // Search filter
+    const matchesSearch =
+      q.natural_language_query
+        ?.toLowerCase()
+        .includes(querySearchTerm.toLowerCase()) ||
+      q.corrected_sql?.toLowerCase().includes(querySearchTerm.toLowerCase());
+
+    // Duplicate filter
+    let matchesDuplicateFilter = true;
+    if (queryFilter === "distinct") {
+      // Show only first occurrence of each unique question
+      const key = q.natural_language_query?.toLowerCase().trim();
+      const firstId = queryDuplicateMap[key]?.[0];
+      matchesDuplicateFilter = q.query_id === firstId;
+    } else if (queryFilter === "duplicates") {
+      // Show only queries that have duplicates
+      matchesDuplicateFilter = isDuplicate(q);
+    }
+
+    return matchesSearch && matchesDuplicateFilter;
+  });
+
+  // Paginated queries
+  const paginatedQueries = filteredTestableQueries.slice(
+    queryPage * queryRowsPerPage,
+    queryPage * queryRowsPerPage + queryRowsPerPage
+  );
+
+  // Fetch sessions on load - only once per connection
+  useEffect(() => {
     if (currentConnection?.id) {
-      fetchSessions(true); // Auto-select first session on initial load
+      // Only fetch if connection ID has changed
+      if (fetchedConnectionRef.current !== currentConnection.id) {
+        console.log(
+          "🚀 Fetching sessions for new connection:",
+          currentConnection.id
+        );
+        fetchedConnectionRef.current = currentConnection.id;
+        fetchSessions(true); // Auto-select first session on initial load
+      }
     } else {
       console.warn("⚠️ No connection ID available");
+      fetchedConnectionRef.current = null;
     }
   }, [currentConnection?.id, fetchSessions]);
 
+  // Fetch testable queries when dialog opens
+  useEffect(() => {
+    if (showQuerySelector && currentConnection?.id) {
+      fetchTestableQueries();
+    }
+  }, [showQuerySelector, currentConnection?.id, fetchTestableQueries]);
+
+  // Cancel running test
+  const handleCancelTest = () => {
+    if (abortControllerRef.current) {
+      console.log("🛑 Cancelling test...");
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  };
+
   const handleRunTest = async () => {
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     setRunningTest(true);
     try {
-      console.log("🚀 Starting bulk test with config:", runConfig);
-      const res = await queryLearningService.runBulkTest(
-        currentConnection.id,
-        "vaishakhsk", // In a real app, get this from auth context
-        runConfig.limit,
-        runConfig.business_domain || null,
-        runConfig.only_latest_embedding
-      );
+      let res;
 
-      console.log("✅ Bulk test completed:", res.data);
+      // If specific queries are selected, use runBulkTestByIds
+      if (selectedQueryIds.length > 0) {
+        console.log(
+          "🚀 Starting bulk test with selected queries:",
+          selectedQueryIds
+        );
+        res = await queryLearningService.runBulkTestByIds(
+          currentConnection.id,
+          "vaishakhsk",
+          selectedQueryIds,
+          runConfig.include_marked_correct,
+          signal
+        );
+      } else {
+        console.log("🚀 Starting bulk test with config:", runConfig);
+        res = await queryLearningService.runBulkTest(
+          currentConnection.id,
+          "vaishakhsk",
+          runConfig.limit,
+          runConfig.business_domain || null,
+          runConfig.only_latest_embedding,
+          runConfig.include_marked_correct,
+          signal
+        );
+      }
 
-      if (res.data) {
+      // Handle both res.data and res directly (apiClient returns data directly)
+      const data = res.data || res;
+      console.log("✅ Bulk test completed:", data);
+
+      if (data && data.success !== false) {
         // Map the bulk test response to session format
         const newSession = {
-          test_session_id: res.data.test_session_id,
-          connection_id: res.data.connection_id,
-          total_queries: res.data.total_queries_tested,
-          passed: res.data.queries_passed,
-          failed: res.data.queries_failed,
-          average_accuracy: res.data.average_accuracy,
-          tested_at: res.data.tested_at,
-          test_duration_seconds: res.data.test_duration_seconds,
-          sql_match_count: res.data.sql_match_count,
-          result_match_count: res.data.result_match_count,
+          test_session_id: data.test_session_id,
+          connection_id: data.connection_id,
+          total_queries: data.total_queries_tested,
+          passed: data.queries_passed,
+          failed: data.queries_failed,
+          average_accuracy: data.average_accuracy,
+          tested_at: data.tested_at,
+          test_duration_seconds: data.test_duration_seconds,
+          sql_match_count: data.sql_match_count,
+          result_match_count: data.result_match_count,
           // Include the results array directly from bulk test response
           results:
-            res.data.results?.map((result) => ({
+            data.results?.map((result) => ({
               query_history_id: result.query_history_id,
               natural_language_query: result.natural_language_query,
               expected_sql: result.corrected_sql,
               generated_sql: result.regenerated_sql,
               expected_result: result.corrected_result,
               actual_result: result.regenerated_result,
+              corrected_results: result.corrected_results,
+              regenerated_results: result.regenerated_results,
               sql_match: result.sql_comparison?.sql_match,
               result_match: result.result_comparison?.results_match,
+              corrected_row_count:
+                result.result_comparison?.corrected_row_count,
+              regenerated_row_count:
+                result.result_comparison?.regenerated_row_count,
               passed: result.passed,
               accuracy_score: result.accuracy_score,
               error: result.regenerated_error || result.corrected_error,
@@ -906,15 +1240,27 @@ const RegressionTestingPage = () => {
         // Refresh sessions list to get updated data
         await fetchSessions(false);
 
-        // Select the newly created session
+        // Select the newly created session and close dialog
         setSelectedSession(newSession);
         setOpenRunDialog(false);
+        setShowQuerySelector(false);
+        setSelectedQueryIds([]);
+        setQueryFilter("all");
       }
     } catch (err) {
-      console.error("❌ Failed to run test:", err);
-      console.error("Error details:", err.response?.data || err.message);
+      // Check if it was cancelled
+      if (
+        err.message === "Test cancelled by user" ||
+        err.name === "AbortError"
+      ) {
+        console.log("🛑 Test was cancelled by user");
+      } else {
+        console.error("❌ Failed to run test:", err);
+        console.error("Error details:", err.response?.data || err.message);
+      }
     } finally {
       setRunningTest(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -1314,57 +1660,574 @@ const RegressionTestingPage = () => {
       <Dialog
         open={openRunDialog}
         onClose={() => !runningTest && setOpenRunDialog(false)}
-        maxWidth="sm"
+        maxWidth={showQuerySelector ? "lg" : "sm"}
         fullWidth
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          Start New Regression Test
+        <DialogTitle
+          sx={{
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <RunIcon color="primary" />
+            Start New Regression Test
+          </Box>
+          {selectedQueryIds.length > 0 && (
+            <Chip
+              label={`${selectedQueryIds.length} queries selected`}
+              color="primary"
+              size="small"
+              onDelete={handleClearSelection}
+            />
+          )}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              This will execute queries from your training data against the
-              current Knowledge Graph configuration to verify accuracy.
+              Execute queries from your training data against the current
+              Knowledge Graph to verify accuracy.
             </Typography>
 
-            <TextField
-              label="Limit Queries"
-              type="number"
-              value={runConfig.limit}
-              onChange={(e) =>
-                setRunConfig({ ...runConfig, limit: parseInt(e.target.value) })
-              }
-              fullWidth
-              helperText="Number of training examples to test"
-            />
-
-            <TextField
-              label="Business Domain (Optional)"
-              value={runConfig.business_domain}
-              onChange={(e) =>
-                setRunConfig({ ...runConfig, business_domain: e.target.value })
-              }
-              fullWidth
-              placeholder="e.g., collections, onboarding"
-              helperText="Filter specific domain queries only"
-            />
-
-            <FormControl fullWidth>
-              <InputLabel>Embedding Version</InputLabel>
-              <Select
-                value={runConfig.only_latest_embedding ? "latest" : "all"}
-                onChange={(e) =>
-                  setRunConfig({
-                    ...runConfig,
-                    only_latest_embedding: e.target.value === "latest",
-                  })
-                }
-                label="Embedding Version"
+            {/* Toggle between Quick Config and Query Selector */}
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <Button
+                variant={!showQuerySelector ? "contained" : "outlined"}
+                onClick={() => {
+                  setShowQuerySelector(false);
+                  setSelectedQueryIds([]);
+                }}
+                size="small"
+                startIcon={<SpeedIcon />}
               >
-                <MenuItem value="latest">Latest Version Only</MenuItem>
-                <MenuItem value="all">All Versions</MenuItem>
-              </Select>
-            </FormControl>
+                Quick Test
+              </Button>
+              <Button
+                variant={showQuerySelector ? "contained" : "outlined"}
+                onClick={() => setShowQuerySelector(true)}
+                size="small"
+                startIcon={<QuizIcon />}
+              >
+                Select Queries
+              </Button>
+            </Box>
+
+            {!showQuerySelector ? (
+              // Quick Config Mode
+              <>
+                <TextField
+                  label="Limit Queries"
+                  type="number"
+                  value={runConfig.limit}
+                  onChange={(e) =>
+                    setRunConfig({
+                      ...runConfig,
+                      limit: parseInt(e.target.value) || 10,
+                    })
+                  }
+                  fullWidth
+                  helperText="Number of training examples to test"
+                />
+
+                <TextField
+                  label="Business Domain (Optional)"
+                  value={runConfig.business_domain}
+                  onChange={(e) =>
+                    setRunConfig({
+                      ...runConfig,
+                      business_domain: e.target.value,
+                    })
+                  }
+                  fullWidth
+                  placeholder="e.g., collections, onboarding"
+                  helperText="Filter specific domain queries only"
+                />
+
+                <FormControl fullWidth>
+                  <InputLabel>Embedding Version</InputLabel>
+                  <Select
+                    value={runConfig.only_latest_embedding ? "latest" : "all"}
+                    onChange={(e) =>
+                      setRunConfig({
+                        ...runConfig,
+                        only_latest_embedding: e.target.value === "latest",
+                      })
+                    }
+                    label="Embedding Version"
+                  >
+                    <MenuItem value="latest">Latest Version Only</MenuItem>
+                    <MenuItem value="all">All Versions</MenuItem>
+                  </Select>
+                </FormControl>
+              </>
+            ) : (
+              // Query Selector Mode
+              <Box>
+                {/* Stats Cards */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={6} sm={3}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="h5"
+                        fontWeight={700}
+                        color="primary.main"
+                      >
+                        {testableQueryStats.total}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Total Queries
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="h5"
+                        fontWeight={700}
+                        color="info.main"
+                      >
+                        {testableQueryStats.distinct}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Distinct Questions
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="h5"
+                        fontWeight={700}
+                        color="success.main"
+                      >
+                        {testableQueryStats.withExamples}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        With Examples
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        textAlign: "center",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="h5"
+                        fontWeight={700}
+                        color="warning.main"
+                      >
+                        {testableQueryStats.markedCorrect}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Marked Correct
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+
+                {/* Filter Tabs */}
+                <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                  <Button
+                    size="small"
+                    variant={queryFilter === "all" ? "contained" : "outlined"}
+                    onClick={() => {
+                      setQueryFilter("all");
+                      setQueryPage(0);
+                    }}
+                    sx={{ minWidth: 80 }}
+                  >
+                    All ({testableQueries.length})
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={
+                      queryFilter === "distinct" ? "contained" : "outlined"
+                    }
+                    onClick={() => {
+                      setQueryFilter("distinct");
+                      setQueryPage(0);
+                    }}
+                    color="info"
+                    sx={{ minWidth: 100 }}
+                  >
+                    Distinct ({testableQueryStats.distinct})
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={
+                      queryFilter === "duplicates" ? "contained" : "outlined"
+                    }
+                    onClick={() => {
+                      setQueryFilter("duplicates");
+                      setQueryPage(0);
+                    }}
+                    color="warning"
+                    sx={{ minWidth: 120 }}
+                  >
+                    Duplicates (
+                    {testableQueries.length - testableQueryStats.distinct})
+                  </Button>
+                </Box>
+
+                {/* Search and Actions */}
+                <Box
+                  sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}
+                >
+                  <TextField
+                    placeholder="Search queries..."
+                    size="small"
+                    value={querySearchTerm}
+                    onChange={(e) => {
+                      setQuerySearchTerm(e.target.value);
+                      setQueryPage(0);
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />
+                      ),
+                    }}
+                    sx={{ flexGrow: 1 }}
+                  />
+                  <Tooltip title="Select all visible queries">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={handleSelectAllQueries}
+                      startIcon={<SelectAllIcon />}
+                    >
+                      Select All
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Clear selection">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      onClick={handleClearSelection}
+                      startIcon={<ClearIcon />}
+                      disabled={selectedQueryIds.length === 0}
+                    >
+                      Clear
+                    </Button>
+                  </Tooltip>
+                  <IconButton
+                    size="small"
+                    onClick={fetchTestableQueries}
+                    title="Refresh queries"
+                  >
+                    <RefreshIcon />
+                  </IconButton>
+                </Box>
+
+                {/* Query Table */}
+                {testableQueriesLoading ? (
+                  <Box sx={{ py: 4 }}>
+                    <LinearProgress />
+                    <Typography
+                      variant="caption"
+                      sx={{ mt: 1, display: "block", textAlign: "center" }}
+                    >
+                      Loading testable queries...
+                    </Typography>
+                  </Box>
+                ) : testableQueries.length === 0 ? (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    No testable queries found. Make sure you have marked some
+                    queries as correct or have learned examples.
+                  </Alert>
+                ) : (
+                  <>
+                    <TableContainer
+                      component={Paper}
+                      elevation={0}
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "divider",
+                        maxHeight: 400,
+                        overflow: "auto",
+                      }}
+                    >
+                      <Table size="small" stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell
+                              padding="checkbox"
+                              sx={{ bgcolor: "#f8fafc" }}
+                            >
+                              <Checkbox
+                                indeterminate={
+                                  selectedQueryIds.length > 0 &&
+                                  selectedQueryIds.length <
+                                    filteredTestableQueries.length
+                                }
+                                checked={
+                                  filteredTestableQueries.length > 0 &&
+                                  selectedQueryIds.length ===
+                                    filteredTestableQueries.length
+                                }
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    handleSelectAllQueries();
+                                  } else {
+                                    handleClearSelection();
+                                  }
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell
+                              sx={{ fontWeight: 700, bgcolor: "#f8fafc" }}
+                            >
+                              Query
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontWeight: 700,
+                                bgcolor: "#f8fafc",
+                                width: 120,
+                              }}
+                            >
+                              Status
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontWeight: 700,
+                                bgcolor: "#f8fafc",
+                                width: 100,
+                              }}
+                            >
+                              Version
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontWeight: 700,
+                                bgcolor: "#f8fafc",
+                                width: 100,
+                              }}
+                            >
+                              By
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {paginatedQueries.map((query) => (
+                            <TableRow
+                              key={query.query_id}
+                              hover
+                              selected={selectedQueryIds.includes(
+                                query.query_id
+                              )}
+                              onClick={() => handleToggleQuery(query.query_id)}
+                              sx={{ cursor: "pointer" }}
+                            >
+                              <TableCell padding="checkbox">
+                                <Checkbox
+                                  checked={selectedQueryIds.includes(
+                                    query.query_id
+                                  )}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={() =>
+                                    handleToggleQuery(query.query_id)
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
+                                >
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontWeight: 500,
+                                      maxWidth: 350,
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {query.natural_language_query}
+                                  </Typography>
+                                  {isDuplicate(query) && (
+                                    <Tooltip
+                                      title={`This question has ${getDuplicateCount(
+                                        query
+                                      )} versions with different SQL`}
+                                    >
+                                      <Chip
+                                        label={`${getDuplicateCount(query)}x`}
+                                        size="small"
+                                        sx={{
+                                          height: 18,
+                                          fontSize: "0.6rem",
+                                          fontWeight: 700,
+                                          bgcolor: `${theme.palette.warning.main}20`,
+                                          color: theme.palette.warning.dark,
+                                          border: `1px solid ${theme.palette.warning.main}`,
+                                        }}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{
+                                    display: "block",
+                                    fontFamily: "monospace",
+                                    fontSize: "0.7rem",
+                                    maxWidth: 400,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {query.corrected_sql?.substring(0, 80)}...
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    gap: 0.5,
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  {query.has_learned_example && (
+                                    <Tooltip title="Has learned example">
+                                      <Chip
+                                        icon={
+                                          <SchoolIcon sx={{ fontSize: 14 }} />
+                                        }
+                                        label="Learned"
+                                        size="small"
+                                        sx={{
+                                          height: 20,
+                                          fontSize: "0.65rem",
+                                          bgcolor: `${theme.palette.success.main}15`,
+                                          color: theme.palette.success.main,
+                                        }}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                  {query.is_marked_correct && (
+                                    <Tooltip title="Marked as correct">
+                                      <Chip
+                                        icon={
+                                          <PassIcon sx={{ fontSize: 14 }} />
+                                        }
+                                        label="Correct"
+                                        size="small"
+                                        sx={{
+                                          height: 20,
+                                          fontSize: "0.65rem",
+                                          bgcolor: `${theme.palette.info.main}15`,
+                                          color: theme.palette.info.main,
+                                        }}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                {query.embedding_version ? (
+                                  <Chip
+                                    label={`v${query.embedding_version}`}
+                                    size="small"
+                                    sx={{ height: 20, fontSize: "0.7rem" }}
+                                  />
+                                ) : (
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    -
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Tooltip title={query.marked_by || "Unknown"}>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 0.5,
+                                    }}
+                                  >
+                                    <PersonIcon
+                                      sx={{
+                                        fontSize: 14,
+                                        color: "text.secondary",
+                                      }}
+                                    />
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      {query.marked_by?.substring(0, 8) || "-"}
+                                    </Typography>
+                                  </Box>
+                                </Tooltip>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                    <TablePagination
+                      component="div"
+                      count={filteredTestableQueries.length}
+                      page={queryPage}
+                      onPageChange={(e, newPage) => setQueryPage(newPage)}
+                      rowsPerPage={queryRowsPerPage}
+                      onRowsPerPageChange={(e) => {
+                        setQueryRowsPerPage(parseInt(e.target.value, 10));
+                        setQueryPage(0);
+                      }}
+                      rowsPerPageOptions={[5, 10, 25, 50]}
+                    />
+                  </>
+                )}
+              </Box>
+            )}
 
             {runningTest && (
               <Box>
@@ -1373,27 +2236,52 @@ const RegressionTestingPage = () => {
                   variant="caption"
                   sx={{ mt: 1, display: "block", textAlign: "center" }}
                 >
-                  Running tests... this may take a minute.
+                  Running tests
+                  {selectedQueryIds.length > 0
+                    ? ` on ${selectedQueryIds.length} queries`
+                    : ""}
+                  ... this may take a minute.
                 </Typography>
               </Box>
             )}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={() => setOpenRunDialog(false)}
-            disabled={runningTest}
-          >
-            Cancel
-          </Button>
+        <DialogActions
+          sx={{ p: 3, borderTop: "1px solid", borderColor: "divider" }}
+        >
+          {runningTest ? (
+            <Button
+              onClick={handleCancelTest}
+              color="error"
+              variant="outlined"
+              startIcon={<ClearIcon />}
+            >
+              Cancel Test
+            </Button>
+          ) : (
+            <Button
+              onClick={() => {
+                setOpenRunDialog(false);
+                setShowQuerySelector(false);
+                setSelectedQueryIds([]);
+              }}
+            >
+              Close
+            </Button>
+          )}
           <Button
             variant="contained"
             onClick={handleRunTest}
-            disabled={runningTest}
+            disabled={
+              runningTest ||
+              (showQuerySelector && selectedQueryIds.length === 0)
+            }
             startIcon={<RunIcon />}
             sx={{ bgcolor: theme.palette.primary.main, fontWeight: 700 }}
           >
-            Run Test
+            {showQuerySelector
+              ? `Run Test (${selectedQueryIds.length} queries)`
+              : `Run Test (${runConfig.limit} queries)`}
           </Button>
         </DialogActions>
       </Dialog>

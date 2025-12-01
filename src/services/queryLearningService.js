@@ -670,6 +670,31 @@ const queryLearningService = {
   // ========== REGRESSION TESTING ==========
 
   /**
+   * List Testable Queries
+   * GET /fast-kg/test-queries/list
+   */
+  listTestableQueries: async (
+    connectionId,
+    includeMarkedCorrect = true,
+    businessDomain = null
+  ) => {
+    try {
+      const params = new URLSearchParams({
+        connection_id: connectionId,
+        include_marked_correct: includeMarkedCorrect.toString(),
+      });
+      if (businessDomain) {
+        params.append("business_domain", businessDomain);
+      }
+      return await apiClient.get(
+        `${FAST_KG_BASE_URL}/test-queries/list?${params}`
+      );
+    } catch (error) {
+      throw new Error(error.message || "Failed to list testable queries");
+    }
+  },
+
+  /**
    * Run Bulk Test
    * POST /fast-kg/test-queries/bulk
    */
@@ -678,18 +703,58 @@ const queryLearningService = {
     userId,
     limit = 10,
     businessDomain = null,
-    onlyLatestEmbedding = true
+    onlyLatestEmbedding = true,
+    includeMarkedCorrect = true,
+    signal = null
   ) => {
     try {
-      return await apiClient.post(`${FAST_KG_BASE_URL}/test-queries/bulk`, {
-        connection_id: connectionId,
-        user_id: userId,
-        limit: limit,
-        business_domain: businessDomain,
-        only_latest_embedding: onlyLatestEmbedding,
-      });
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/test-queries/bulk`,
+        {
+          connection_id: connectionId,
+          user_id: userId,
+          limit: limit,
+          business_domain: businessDomain,
+          only_latest_embedding: onlyLatestEmbedding,
+          include_marked_correct: includeMarkedCorrect,
+        },
+        { signal }
+      );
     } catch (error) {
+      if (error.name === "CanceledError" || error.name === "AbortError") {
+        throw new Error("Test cancelled by user");
+      }
       throw new Error(error.message || "Failed to run bulk test");
+    }
+  },
+
+  /**
+   * Run Bulk Test with specific query IDs
+   * POST /fast-kg/test-queries/bulk
+   */
+  runBulkTestByIds: async (
+    connectionId,
+    userId,
+    queryIds,
+    includeMarkedCorrect = true,
+    signal = null
+  ) => {
+    try {
+      return await apiClient.post(
+        `${FAST_KG_BASE_URL}/test-queries/bulk`,
+        {
+          connection_id: connectionId,
+          user_id: userId,
+          query_ids: queryIds,
+          include_marked_correct: includeMarkedCorrect,
+        },
+        { signal }
+      );
+    } catch (error) {
+      if (error.name === "CanceledError" || error.name === "AbortError") {
+        throw new Error("Test cancelled by user");
+      }
+      throw new Error(error.message || "Failed to run bulk test by IDs");
     }
   },
 

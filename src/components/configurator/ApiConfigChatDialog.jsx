@@ -25,9 +25,11 @@ import {
   ErrorOutline,
   Code,
   Visibility,
+  Refresh,
 } from "@mui/icons-material";
 import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
 import apiClient from "@/services/apiClient";
+import authService from "@/services/authService";
 
 /**
  * API Configuration Chat Dialog
@@ -39,6 +41,7 @@ const ApiConfigChatDialog = ({
   component,
   formId,
   onConfigUpdate,
+  onWorkflowRefresh,
 }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -142,12 +145,15 @@ const ApiConfigChatDialog = ({
     setLoading(true);
 
     try {
+      // Get user_id from authService
+      const userId = authService.getUserId();
+      
       const data = await apiClient.post(
         `/api/v1/configurator/ui-configurator/generate`,
         {
+          prompt: input,
+          user_id: userId,
           form_id: formId,
-          user_message: input,
-          conversation_history: messages,
         }
       );
 
@@ -155,6 +161,11 @@ const ApiConfigChatDialog = ({
         // Check if this is a form schema generation
         const isFormSchema =
           data.data?.type === "form_schema" && data.data?.schema;
+
+        // Refresh workflow list after successful generation
+        if (isFormSchema && onWorkflowRefresh) {
+          onWorkflowRefresh();
+        }
 
         // Add success message with configuration
         const assistantMessage = {
@@ -392,9 +403,26 @@ const ApiConfigChatDialog = ({
             )}
           </Box>
         </Box>
-        <IconButton size="small" onClick={onClose}>
-          <Close />
-        </IconButton>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {onWorkflowRefresh && (
+            <IconButton 
+              size="small" 
+              onClick={onWorkflowRefresh}
+              sx={{
+                color: "#9c27b0",
+                '&:hover': {
+                  bgcolor: alpha("#9c27b0", 0.1),
+                },
+              }}
+              title="Refresh workflow list"
+            >
+              <Refresh />
+            </IconButton>
+          )}
+          <IconButton size="small" onClick={onClose}>
+            <Close />
+          </IconButton>
+        </Box>
       </DialogTitle>
 
       {/* Chat Messages */}
@@ -438,7 +466,7 @@ const ApiConfigChatDialog = ({
           >
             <CircularProgress size={20} />
             <Typography variant="body2" color="text.secondary">
-              Configuring API integration...
+              Configuring UI based on your description...
             </Typography>
           </Box>
         )}

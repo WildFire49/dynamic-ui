@@ -26,9 +26,11 @@ import {
 } from '@mui/icons-material';
 import LockIcon from '@mui/icons-material/Lock';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const UserMenu = () => {
   const theme = useTheme();
+  const router = useRouter();
   const { user, logout, isSuperAdmin, isRegularUser } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -39,6 +41,11 @@ const UserMenu = () => {
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleChangePassword = () => {
+    handleClose();
+    router.push('/change-password');
   };
 
   const handleLogout = () => {
@@ -222,7 +229,7 @@ const UserMenu = () => {
             <ArrowIcon sx={{ color: theme.palette.text.secondary, ml: 1 }} />
           </MenuItem>
           <MenuItem 
-            onClick={handleClose} 
+            onClick={handleChangePassword} 
             sx={{ 
               py: 2,
               px: 3,

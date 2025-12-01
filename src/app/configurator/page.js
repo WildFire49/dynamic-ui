@@ -43,7 +43,7 @@ import {
   CalendarToday as ScheduleIcon,
   SupervisorAccount as SupervisoryIcon,
   Analytics as AnalyticsIcon,
-  RecordVoiceOver as VoiceIcon, 
+  RecordVoiceOver as VoiceIcon,
   Rocket as RocketIcon,
   CloudUpload as UploadIcon,
   Storage as BrainIcon,
@@ -69,7 +69,7 @@ import NavigationLoader from "../../components/common/NavigationLoader";
 const CONFIGURATOR_OPTIONS = [
   {
     id: "ui_workflow",
-    title: "UI Workflow Builder",
+    title: "Workflow Builder",
     description: "Visual drag-and-drop form workflow designer",
     subtitle: "Workflow Builder Agent",
     icon: WorkflowIcon,
@@ -137,7 +137,7 @@ const AGENT_TYPES = [
     id: "action_agent",
     title: "Action",
     description: "Intelligent\nbusiness logic automation",
-    subtitle: "Smart Decision Making",
+    subtitle: "Enforcing and Monitoring",
     icon: RuleIcon,
     color: "#64b5f6",
     gradient: "linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%)",
@@ -824,7 +824,7 @@ export default function ConfiguratorPage() {
                       },
                       {
                         label: "Data Accuracty",
-                        value: "100%",
+                        value: "99%",
                         suffix: "%",
                         icon: StorageIcon,
                       },
@@ -1104,7 +1104,7 @@ export default function ConfiguratorPage() {
                   textShadow: "0 2px 8px rgba(0,0,0,0.5)",
                 }}
               >
-                AI Agent Knowledge Base
+                Our AI Agents
               </Typography>
             </Fade>
 

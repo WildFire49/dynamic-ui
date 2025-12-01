@@ -28,7 +28,7 @@ import {
   Hub,
 } from "@mui/icons-material";
 import HubIcon from "@mui/icons-material/Hub";
-import Navbar from "@/components/layout/Navbar";
+import PageHeader from "@/components/layout/PageHeader";
 import DatabaseConnection from "@/components/retriever/DatabaseConnection";
 import TableSelector from "@/components/retriever/TableSelector";
 import KnowledgeGraphBuilder from "@/components/retriever/KnowledgeGraphBuilder";
@@ -212,11 +212,12 @@ const RetrieverConfiguratorPage = () => {
         bgcolor: "#f8fafc",
       }}
     >
-      {/* Navbar */}
-      <Navbar
+      {/* Page Header */}
+      <PageHeader
         title="Retriever Configurator"
         subtitle="Connect, build, and query your database with AI"
-        icon={BuildIcon}
+        showBackButton={true}
+        backPath="/configurator"
       />
 
       {/* Main Content Area */}

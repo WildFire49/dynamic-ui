@@ -349,6 +349,59 @@ class AuthService {
     return sessionStorage.getItem("refreshToken");
   }
 
+  // Change password API call
+  async changePassword(oldPassword, newPassword, confirmPassword) {
+    try {
+      const token = this.getAccessToken();
+
+      if (!token) {
+        return {
+          success: false,
+          message: "No authentication token found. Please login again.",
+        };
+      }
+
+      const response = await fetch(`${this.baseURL}/change/password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          clientId: this.clientId,
+          secretKey: this.secretKey,
+          productCode: this.productCode,
+        },
+        body: JSON.stringify({
+          token,
+          oldPassword,
+          newPassword,
+          confirmPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success !== false) {
+        notificationManager.success("Password changed successfully");
+        return {
+          success: true,
+          message: data.message || "Password changed successfully",
+        };
+      } else {
+        notificationManager.error(data.message || "Failed to change password");
+        return {
+          success: false,
+          message: data.message || "Failed to change password",
+        };
+      }
+    } catch (error) {
+      console.error("Change password error:", error);
+      notificationManager.error("Network error. Please try again.");
+      return {
+        success: false,
+        message: "Network error. Please try again.",
+      };
+    }
+  }
+
   // Logout
   logout() {
     if (!this.isClient()) return;

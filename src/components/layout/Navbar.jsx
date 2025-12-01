@@ -23,6 +23,7 @@ const ConfiguratorNavbar = ({
   icon: IconComponent = AccountTree,
   showBackButton = true,
   backPath = "/configurator",
+  rightContent = null,
 }) => {
   const router = useRouter();
 
@@ -132,6 +133,13 @@ const ConfiguratorNavbar = ({
               </>
             )}
           </Box>
+
+          {/* Right Side - Custom Content */}
+          {rightContent && (
+            <Box sx={{ display: "flex", alignItems: "center", px: 2 }}>
+              {rightContent}
+            </Box>
+          )}
         </Toolbar>
       </Box>
     </Paper>

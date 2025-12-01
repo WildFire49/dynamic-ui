@@ -86,6 +86,7 @@ import FormPreviewNode from "@/components/configurator/FormPreviewNode";
 import AIComponentBuilder from "@/components/configurator/AIComponentBuilder";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import uiConfiguratorService from "@/services/uiConfiguratorService";
+import PageHeader from "@/components/layout/PageHeader";
 import Image from "next/image";
 
 // Helper function to get icon based on category
@@ -1713,278 +1714,96 @@ const UIConfiguratorPage = () => {
 
   return (
     <Box sx={styles.navbarContainer}>
-      {/* Professional Navbar */}
-      <Paper elevation={0} sx={styles.navbarPaper}>
-        <Box sx={styles.navbarContent}>
-          {/* Back Button - Extreme Left */}
-          <Tooltip title="Back to Configurator">
-            <IconButton
-              onClick={() => router.push("/configurator")}
-              size="small"
+      {/* Page Header */}
+      <PageHeader
+        title="Workflow Builder"
+        subtitle="Visual form composer"
+        showBackButton={true}
+        backPath="/configurator"
+        leftContent={
+          <>
+            {/* Workflow Selector */}
+            <Button
+              onClick={(e) => setWorkflowMenuAnchor(e.currentTarget)}
+              endIcon={<ArrowDropDown />}
+              startIcon={<FolderOpen />}
               sx={{
-                color: "primary.main",
-                borderRadius: 0,
-                px: 2,
+                bgcolor: alpha("#000", 0.02),
+                color: "text.primary",
+                textTransform: "none",
+                px: 2.5,
+                py: 1,
+                fontSize: "0.95rem",
+                fontWeight: 600,
+                borderRadius: 2,
+                border: `1px solid transparent`,
                 "&:hover": {
-                  bgcolor: "action.hover",
+                  bgcolor: alpha("#000", 0.04),
+                  borderColor: alpha(theme.palette.primary.main, 0.2),
                 },
               }}
             >
-              <ArrowBack fontSize="medium" />
-            </IconButton>
-          </Tooltip>
-
-          {/* Left Section - MiFiX Studio + Workflow Builder */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            {/* Logo & Title */}
-            <Box sx={styles.navbarLogo}>
-              <img
-                src="/mifix-logo.png"
-                alt="MiFiX Studio"
-                style={styles.navbarLogoImage}
-              />
-              <Typography variant="h6" sx={styles.navbarTitle}>
-                MiFiX Studio
-              </Typography>
-            </Box>
-
-            {/* Workflow Info */}
-            <Box sx={styles.navbarWorkflowInfo}>
-              <Box sx={styles.navbarWorkflowIcon}>
-                <AccountTree sx={styles.navbarWorkflowIconSvg} />
-              </Box>
-              <Box>
-                <Typography variant="subtitle1" sx={styles.navbarWorkflowName}>
-                  Workflow Builder
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {workflowName}
                 </Typography>
-                <Typography
-                  variant="caption"
-                  sx={styles.navbarWorkflowSubtitle}
-                >
-                  Visual form composer
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-
-          {/* Center Section - Workflow Selector + Actions */}
-          <Box
-            sx={{ flex: 1, display: "flex", justifyContent: "center", mr: 4 }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              {/* Workflow Selector */}
-              <Button
-                onClick={(e) => setWorkflowMenuAnchor(e.currentTarget)}
-                endIcon={<ArrowDropDown />}
-                startIcon={<FolderOpen />}
-                sx={{
-                  bgcolor: alpha("#000", 0.02),
-                  color: "text.primary",
-                  textTransform: "none",
-                  px: 2.5,
-                  py: 1,
-                  fontSize: "1.1rem",
-                  fontWeight: 600,
-                  borderRadius: 2,
-                  border: `1px solid transparent`,
-                  "&:hover": {
-                    bgcolor: alpha("#000", 0.04),
-                    borderColor: alpha(theme.palette.primary.main, 0.2),
-                  },
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    {workflowName}
-                  </Typography>
-                  {currentWorkflowId && (
-                    <Chip
-                      label="Saved"
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: "0.75rem",
-                        bgcolor: alpha(theme.palette.success.main, 0.1),
-                        color: "success.main",
-                      }}
-                    />
-                  )}
-                </Box>
-              </Button>
-
-              {/* Workflows Dropdown Menu */}
-              <Menu
-                anchorEl={workflowMenuAnchor}
-                open={Boolean(workflowMenuAnchor)}
-                onClose={() => setWorkflowMenuAnchor(null)}
-                PaperProps={{
-                  sx: {
-                    width: 500,
-                    maxHeight: 400,
-                    mt: 1,
-                  },
-                }}
-              >
-                <Box
-                  sx={{
-                    px: 2,
-                    py: 1.5,
-                    borderBottom: 1,
-                    borderColor: "divider",
-                  }}
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                    Your Workflows
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {workflowsList.length} workflow
-                    {workflowsList.length !== 1 ? "s" : ""} available
-                  </Typography>
-                </Box>
-
-                {workflowsLoading ? (
-                  <Box
-                    sx={{ display: "flex", justifyContent: "center", py: 3 }}
-                  >
-                    <CircularProgress size={24} />
-                  </Box>
-                ) : workflowsList.length === 0 ? (
-                  <Box sx={{ px: 2, py: 3, textAlign: "center" }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No workflows found. Save your first workflow!
-                    </Typography>
-                  </Box>
-                ) : (
-                  workflowsList.map((workflow) => (
-                    <MenuItem
-                      key={workflow.workflow_id}
-                      onClick={() => {
-                        loadWorkflow(workflow.workflow_id);
-                        setWorkflowMenuAnchor(null);
-                      }}
-                      selected={currentWorkflowId === workflow.workflow_id}
-                      sx={{
-                        py: 1.5,
-                        px: 2,
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        gap: 0.5,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          width: "100%",
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 500, flex: 1 }}
-                        >
-                          {workflow.workflow_name}
-                        </Typography>
-                        <Chip
-                          label={workflow.status}
-                          size="small"
-                          sx={{
-                            height: 20,
-                            fontSize: "0.688rem",
-                            bgcolor:
-                              workflow.status === "draft"
-                                ? alpha(theme.palette.warning.main, 0.1)
-                                : alpha(theme.palette.success.main, 0.1),
-                            color:
-                              workflow.status === "draft"
-                                ? "warning.main"
-                                : "success.main",
-                          }}
-                        />
-                      </Box>
-                      <Box sx={{ display: "flex", gap: 2, width: "100%" }}>
-                        <Typography variant="caption" color="text.secondary">
-                          {workflow.total_nodes} nodes • {workflow.total_edges}{" "}
-                          connections
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          v{workflow.version}
-                        </Typography>
-                      </Box>
-                      {workflow.description && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ fontStyle: "italic" }}
-                        >
-                          {workflow.description}
-                        </Typography>
-                      )}
-                    </MenuItem>
-                  ))
-                )}
-
-                <Box
-                  sx={{ px: 2, py: 1.5, borderTop: 1, borderColor: "divider" }}
-                >
-                  <Button
-                    fullWidth
-                    variant="outlined"
+                {currentWorkflowId && (
+                  <Chip
+                    label="Saved"
                     size="small"
-                    onClick={() => {
-                      setWorkflowMenuAnchor(null);
-                      loadWorkflowsList();
+                    sx={{
+                      height: 20,
+                      fontSize: "0.75rem",
+                      bgcolor: alpha(theme.palette.success.main, 0.1),
+                      color: "success.main",
                     }}
-                    sx={{ textTransform: "none" }}
-                  >
-                    Refresh List
-                  </Button>
-                </Box>
-              </Menu>
+                  />
+                )}
+              </Box>
+            </Button>
 
-              {/* Actions */}
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<PlayArrow fontSize="small" />}
-                onClick={handleTestWorkflow}
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 500,
-                  px: 2,
-                  borderColor: alpha("#000", 0.12),
-                  color: "text.secondary",
-                  "&:hover": {
-                    borderColor: "primary.main",
-                    bgcolor: alpha(theme.palette.primary.main, 0.04),
-                    color: "primary.main",
-                  },
-                }}
-              >
-                Test
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<Save fontSize="small" />}
-                onClick={handleSaveWorkflow}
-                disableElevation
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 600,
-                  px: 2.5,
-                  bgcolor: "primary.main",
-                  "&:hover": {
-                    bgcolor: "primary.dark",
-                  },
-                }}
-              >
-                Save
-              </Button>
-            </Box>
-          </Box>
-
-          {/* Right Section - Template Manager */}
+            {/* Actions */}
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<PlayArrow fontSize="small" />}
+              onClick={handleTestWorkflow}
+              sx={{
+                textTransform: "none",
+                fontWeight: 500,
+                px: 2,
+                borderColor: alpha("#000", 0.12),
+                color: "text.secondary",
+                "&:hover": {
+                  borderColor: "primary.main",
+                  bgcolor: alpha(theme.palette.primary.main, 0.04),
+                  color: "primary.main",
+                },
+              }}
+            >
+              Test
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<Save fontSize="small" />}
+              onClick={handleSaveWorkflow}
+              disableElevation
+              sx={{
+                textTransform: "none",
+                fontWeight: 600,
+                px: 2.5,
+                bgcolor: "primary.main",
+                "&:hover": {
+                  bgcolor: "primary.dark",
+                },
+              }}
+            >
+              Save
+            </Button>
+          </>
+        }
+        rightContent={
           <Button
             href="/configurator/ui/template-manager"
             startIcon={<Description fontSize="small" />}
@@ -1992,10 +1811,8 @@ const UIConfiguratorPage = () => {
               color: "#1976d2",
               textTransform: "none",
               fontWeight: 600,
-              gap: 2,
               px: 2,
               py: 1,
-              mr: 2,
               borderRadius: 2,
               backgroundColor: "rgba(25, 118, 210, 0.08)",
               "&:hover": {
@@ -2005,8 +1822,131 @@ const UIConfiguratorPage = () => {
           >
             Template Manager
           </Button>
+        }
+      />
+
+      {/* Workflows Dropdown Menu */}
+      <Menu
+        anchorEl={workflowMenuAnchor}
+        open={Boolean(workflowMenuAnchor)}
+        onClose={() => setWorkflowMenuAnchor(null)}
+        PaperProps={{
+          sx: {
+            width: 500,
+            maxHeight: 400,
+            mt: 1,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            Your Workflows
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {workflowsList.length} workflow
+            {workflowsList.length !== 1 ? "s" : ""} available
+          </Typography>
         </Box>
-      </Paper>
+
+        {workflowsLoading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : workflowsList.length === 0 ? (
+          <Box sx={{ px: 2, py: 3, textAlign: "center" }}>
+            <Typography variant="body2" color="text.secondary">
+              No workflows found. Save your first workflow!
+            </Typography>
+          </Box>
+        ) : (
+          workflowsList.map((workflow) => (
+            <MenuItem
+              key={workflow.workflow_id}
+              onClick={() => {
+                loadWorkflow(workflow.workflow_id);
+                setWorkflowMenuAnchor(null);
+              }}
+              selected={currentWorkflowId === workflow.workflow_id}
+              sx={{
+                py: 1.5,
+                px: 2,
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: 0.5,
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  width: "100%",
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 500, flex: 1 }}>
+                  {workflow.workflow_name}
+                </Typography>
+                <Chip
+                  label={workflow.status}
+                  size="small"
+                  sx={{
+                    height: 20,
+                    fontSize: "0.688rem",
+                    bgcolor:
+                      workflow.status === "draft"
+                        ? alpha(theme.palette.warning.main, 0.1)
+                        : alpha(theme.palette.success.main, 0.1),
+                    color:
+                      workflow.status === "draft"
+                        ? "warning.main"
+                        : "success.main",
+                  }}
+                />
+              </Box>
+              <Box sx={{ display: "flex", gap: 2, width: "100%" }}>
+                <Typography variant="caption" color="text.secondary">
+                  {workflow.total_nodes} nodes • {workflow.total_edges}{" "}
+                  connections
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  v{workflow.version}
+                </Typography>
+              </Box>
+              {workflow.description && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontStyle: "italic" }}
+                >
+                  {workflow.description}
+                </Typography>
+              )}
+            </MenuItem>
+          ))
+        )}
+
+        <Box sx={{ px: 2, py: 1.5, borderTop: 1, borderColor: "divider" }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              setWorkflowMenuAnchor(null);
+              loadWorkflowsList();
+            }}
+            sx={{ textTransform: "none" }}
+          >
+            Refresh List
+          </Button>
+        </Box>
+      </Menu>
 
       {/* Main Content */}
       <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -2594,6 +2534,7 @@ const UIConfiguratorPage = () => {
         component={selectedComponent}
         formId={selectedComponent?.id}
         onConfigUpdate={handleApiConfigUpdate}
+        onWorkflowRefresh={loadWorkflowsList}
       />
 
       {/* Save Workflow Dialog */}
