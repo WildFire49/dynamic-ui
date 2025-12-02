@@ -22,8 +22,8 @@ const popAnimation = keyframes`
 
 const Chat = (props) => {
   const {
-    title = "MiFiX AI",
-    initial_message = "Hello! I'm MiFiX AI, your intelligent assistant. How can I help you today?",
+    title = "MiFiX.ai",
+    initial_message = "Hello! I'm MiFiX.ai, your intelligent assistant. How can I help you today?",
     avatar_url = "/mifix-logo.png", // Using the MiFiX logo as requested
     user_avatar_url = "/ai-chatbot.png", // User avatar icon as requested
     background_color,
@@ -117,7 +117,7 @@ const Chat = (props) => {
       >
         <Avatar 
           src={avatar_url} 
-          alt="MiFiX AI"
+          alt="MiFiX.ai"
           sx={{ width: 32, height: 32, mr: 1.5 }}
         />
         <Typography variant="h6" fontWeight="600" color="primary.main">

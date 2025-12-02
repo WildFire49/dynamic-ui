@@ -1756,7 +1756,7 @@ export default function HomePage() {
                     mb: 2,
                   }}
                 >
-                  Welcome to MiFiX AI
+                  Welcome to MiFiX.ai
                 </Typography>
 
                 <Typography
@@ -1804,7 +1804,7 @@ export default function HomePage() {
                       />
                     </Box>
                     <Typography variant="body2" sx={{ color: "#495057" }}>
-                      Hello! I&apos;m MiFiX AI, your intelligent assistant. How
+                      Hello! I&apos;m MiFiX.ai, your intelligent assistant. How
                       can I help you today?
                     </Typography>
                   </Box>
@@ -2354,7 +2354,7 @@ export default function HomePage() {
                         lineHeight: 1.2,
                       }}
                     >
-                      MiFiX AI
+                      MiFiX.ai
                     </Typography>
                     <Typography
                       sx={{

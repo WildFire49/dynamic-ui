@@ -53,6 +53,7 @@ import MiFixLogoLight from "../../public/assets/MiFixLogoLight";
 const drawerWidth = 240; // Reduced width
 
 import { MENU_ITEMS, getAccessibleMenuItems } from "../config/roleConfig";
+import useDashboardStore from "../store/dashboardStore";
 
 // Icon mapping for dynamic icon rendering
 const ICON_MAP = {
@@ -99,6 +100,10 @@ const Sidebar = ({
   const { user, getUserRoles, hasRole, isSuperAdmin, isRegularUser } =
     useAuth();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  
+  // Get visualizations from active dashboard
+  const { activeDashboardId, visualizationsByDashboard, getActiveDashboard } = useDashboardStore();
+  const activeDashboard = getActiveDashboard();
 
   // Get filtered menu items based on user roles
   const getFilteredMenuItems = () => {
@@ -143,15 +148,17 @@ const Sidebar = ({
     }
   };
 
-  // Load analyses from localStorage with pagination (5 per page)
-  const PAGE_SIZE = 5;
+  // Load analyses from Zustand store for active dashboard
+  const PAGE_SIZE = 10;
   const loadAnalyses = (pageNum = 1, append = false) => {
     if (pageNum === 1) setAnalysisLoading(true);
     else setAnalysisLoadingMore(true);
     try {
-      const saved = JSON.parse(localStorage.getItem("savedAnalyses") || "[]");
+      // Get visualizations from active dashboard in Zustand store
+      const dashboardVisualizations = visualizationsByDashboard[activeDashboardId] || [];
+      
       // Sort newest first
-      const sorted = [...saved].sort(
+      const sorted = [...dashboardVisualizations].sort(
         (a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0)
       );
       const start = (pageNum - 1) * PAGE_SIZE;
@@ -260,7 +267,7 @@ const Sidebar = ({
     } else {
       fetchConversations(1, false);
     }
-  }, [mode]);
+  }, [mode, activeDashboardId, visualizationsByDashboard]);
 
   const handleMenuClick = (item) => {
     // Handle navigation for specific items
@@ -447,7 +454,7 @@ const Sidebar = ({
             {mode === "dashboard" ? (
               <>
                 <DashboardIcon sx={{ fontSize: 20, color: "#3498db" }} />
-                Recent Analysis
+                Saved Insights
               </>
             ) : (
               <>
@@ -464,7 +471,7 @@ const Sidebar = ({
             }}
           >
             {mode === "dashboard"
-              ? `${analyses.length} shown`
+              ? `${analyses.length} in ${activeDashboard?.name || 'Dashboard'}`
               : `${conversations.length} conversation${
                   conversations.length !== 1 ? "s" : ""
                 }`}
@@ -526,8 +533,18 @@ const Sidebar = ({
                     <Paper
                       elevation={0}
                       onClick={() => {
+                        // Scroll to the widget in the dashboard
+                        const widgetElement = document.getElementById(`widget-${item.id}`);
+                        if (widgetElement) {
+                          widgetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          // Add a highlight effect
+                          widgetElement.style.boxShadow = '0 0 0 3px #3B82F6';
+                          setTimeout(() => {
+                            widgetElement.style.boxShadow = '';
+                          }, 2000);
+                        }
                         if (onSelectAnalysis) {
-                          onSelectAnalysis(item.timestamp);
+                          onSelectAnalysis(item.id);
                         }
                         // Close mobile drawer after selecting analysis
                         if (isMobile && onMobileClose) {
@@ -594,20 +611,21 @@ const Sidebar = ({
                           <Box
                             sx={{ minWidth: 0, flex: 1, overflow: "hidden" }}
                           >
-                            <Tooltip title={item.title || "Saved Analysis"}>
+                            <Tooltip title={item.question || item.title || "Saved Analysis"}>
                               <Typography
                                 variant="subtitle2"
                                 sx={{
-                                  fontSize: "0.9rem",
+                                  fontSize: "0.85rem",
                                   fontWeight: 600,
                                   color: "#2c3e50",
-                                  lineHeight: 1.2,
-                                  whiteSpace: "nowrap",
+                                  lineHeight: 1.3,
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
                                   overflow: "hidden",
-                                  textOverflow: "ellipsis",
                                 }}
                               >
-                                {item.title || "Saved Analysis"}
+                                {item.question || item.title || "Saved Analysis"}
                               </Typography>
                             </Tooltip>
                             <Typography
@@ -672,13 +690,13 @@ const Sidebar = ({
                         mb: 1,
                       }}
                     >
-                      No saved analyses yet
+                      No insights in {activeDashboard?.name || 'this dashboard'}
                     </Typography>
                     <Typography
                       variant="caption"
                       sx={{ color: "#95a5a6", fontSize: "0.75rem" }}
                     >
-                      Save analyses from chat to see them here
+                      Save visualizations from chat to see them here
                     </Typography>
                   </Box>
                 )}

@@ -83,7 +83,7 @@ const AccessDeniedResponseSimple = ({ content }) => {
         <Typography variant="body1" sx={{ color: "#424242", mb: 3, textAlign: "center" }}>
           {isConnectionError
             ? "Contact our team for technical assistance and to resolve this issue."
-            : "Contact our team to upgrade your plan and continue using MiFiX AI."}
+            : "Contact our team to upgrade your plan and continue using MiFiX.ai."}
         </Typography>
 
         {/* Contact Buttons - Using native links for better iOS compatibility */}

@@ -246,7 +246,7 @@ const WorkflowConfigurationPage = () => {
                     lineHeight: 1.2,
                   }}
                 >
-                  MiFiX AI
+                  MiFiX.ai
                 </Typography>
                 <Typography
                   sx={{

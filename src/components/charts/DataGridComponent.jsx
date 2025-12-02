@@ -38,7 +38,7 @@ const DataGridComponent = ({
           .split(' ')
           .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
           .join(' '),
-        width: 150,
+        width: 140,
         flex: 1,
         minWidth: 120,
         renderCell: (params) => {
@@ -106,9 +106,10 @@ const DataGridComponent = ({
         const firstItem = rows[0];
         finalColumns = Object.keys(firstItem).filter(key => key !== 'id').map((key) => ({
             field: key,
-            headerName: key.replace(/_/g, ' ').toUpperCase(),
+            headerName: key.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '),
             flex: 1,
-            minWidth: 150
+            minWidth: 140,
+            width: 180,
         }));
     }
 
@@ -165,7 +166,7 @@ const DataGridComponent = ({
 
   if (variant === 'clean') {
     return (
-      <Box sx={{ height: '100%', width: '100%' }}>
+      <Box sx={{ height: '100%', width: '100%', overflow: 'auto' }}>
         <DataGrid
           rows={processedRows}
           columns={processedColumns}
@@ -174,30 +175,56 @@ const DataGridComponent = ({
               paginationModel: { page: 0, pageSize: 10 },
             },
           }}
-          pageSizeOptions={[5, 10, 25]}
+          pageSizeOptions={[5, 10, 25, 50, 100]}
           disableSelectionOnClick
-          density="compact" // Use compact density for widgets
+          density="standard" // Use standard density for better readability
           sx={{
             border: 'none',
+            fontSize: '0.875rem',
             '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #f0f0f0',
-              fontSize: '0.75rem',
-              padding: '4px 8px'
+              borderBottom: '1px solid #E5E7EB',
+              fontSize: '0.875rem',
+              padding: '10px 12px',
+              color: '#374151',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
+            '& .MuiDataGrid-row': {
+              '&:hover': {
+                backgroundColor: '#F9FAFB',
+              },
             },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#f8fafc',
-              borderBottom: '1px solid #e2e8f0',
-              minHeight: '40px !important'
+              backgroundColor: '#F8FAFC',
+              borderBottom: '2px solid #E5E7EB',
+              minHeight: '44px !important',
+            },
+            '& .MuiDataGrid-columnHeader': {
+              padding: '10px 12px',
+            },
+            '& .MuiDataGrid-columnHeaderTitleContainer': {
+              justifyContent: 'center',
             },
             '& .MuiDataGrid-columnHeaderTitle': {
               fontWeight: 600,
               fontSize: '0.75rem',
-              color: '#64748b'
+              color: '#6B7280',
+              textTransform: 'uppercase',
+              letterSpacing: '0.03em',
             },
             '& .MuiDataGrid-footerContainer': {
-              borderTop: '1px solid #f0f0f0',
-              minHeight: '40px !important'
-            }
+              borderTop: '1px solid #E5E7EB',
+              minHeight: '44px !important',
+              backgroundColor: '#FAFAFA',
+            },
+            '& .MuiTablePagination-root': {
+              fontSize: '0.8125rem',
+              color: '#6B7280',
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              minHeight: 180,
+            },
           }}
         />
       </Box>
@@ -214,78 +241,80 @@ const DataGridComponent = ({
       overflow: 'hidden'
     }}>
       <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{ 
-          p: { xs: 2, sm: 3 }, 
-          pb: { xs: 1.5, sm: 2 },
-          borderBottom: '1px solid #f3f4f6',
-          flexShrink: 0,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: { xs: 2, sm: 0 }
-        }}>
-          <Box>
-            <Typography variant="h6" sx={{ 
-              fontWeight: 600,
-              color: '#1a1a1a',
-              fontSize: { xs: '1rem', sm: '1.125rem' },
-              letterSpacing: '-0.025em'
-            }}>
-              {title} ({processedRows.length} {processedRows.length === 1 ? 'record' : 'records'})
-            </Typography>
-          </Box>
-          
-          {/* Action Buttons */}
+        {/* Header - Only show when title is provided */}
+        {title && (
           <Box sx={{ 
-            display: 'flex', 
-            gap: { xs: 1, sm: 1.5 },
-            width: { xs: '100%', sm: 'auto' },
-            flexDirection: { xs: 'column', sm: 'row' }
+            p: { xs: 2, sm: 3 }, 
+            pb: { xs: 1.5, sm: 2 },
+            borderBottom: '1px solid #f3f4f6',
+            flexShrink: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 2, sm: 0 }
           }}>
-            {showSaveButton && onSave && (
+            <Box>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600,
+                color: '#1a1a1a',
+                fontSize: { xs: '1rem', sm: '1.125rem' },
+                letterSpacing: '-0.025em'
+              }}>
+                {title} ({processedRows.length} {processedRows.length === 1 ? 'record' : 'records'})
+              </Typography>
+            </Box>
+            
+            {/* Action Buttons */}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: { xs: 1, sm: 1.5 },
+              width: { xs: '100%', sm: 'auto' },
+              flexDirection: { xs: 'column', sm: 'row' }
+            }}>
+              {showSaveButton && onSave && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<TableChart />}
+                  onClick={onSave}
+                  sx={{ 
+                    textTransform: 'none',
+                    backgroundColor: '#0078d7',
+                    fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                    fontWeight: 500,
+                    width: { xs: '100%', sm: 'auto' },
+                    '&:hover': {
+                      backgroundColor: '#005a9e'
+                    }
+                  }}
+                >
+                  Save
+                </Button>
+              )}
               <Button
-                variant="contained"
+                variant="outlined"
                 size="small"
-                startIcon={<TableChart />}
-                onClick={onSave}
+                startIcon={<FileDownload />}
+                onClick={onExport || handleExportToCSV}
                 sx={{ 
                   textTransform: 'none',
-                  backgroundColor: '#0078d7',
+                  borderColor: '#d1d5db',
+                  color: '#6b7280',
                   fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                   fontWeight: 500,
                   width: { xs: '100%', sm: 'auto' },
                   '&:hover': {
-                    backgroundColor: '#005a9e'
+                    borderColor: '#9ca3af',
+                    backgroundColor: '#f9fafb'
                   }
                 }}
               >
-                Save
+                Download Report
               </Button>
-            )}
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FileDownload />}
-              onClick={onExport || handleExportToCSV}
-              sx={{ 
-                textTransform: 'none',
-                borderColor: '#d1d5db',
-                color: '#6b7280',
-                fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                fontWeight: 500,
-                width: { xs: '100%', sm: 'auto' },
-                '&:hover': {
-                  borderColor: '#9ca3af',
-                  backgroundColor: '#f9fafb'
-                }
-              }}
-            >
-              Download Report
-            </Button>
+            </Box>
           </Box>
-        </Box>
+        )}
 
         {/* Data Grid */}
         <Box sx={{ flex: 1, p: { xs: 1, sm: 2, md: 3 } }}>

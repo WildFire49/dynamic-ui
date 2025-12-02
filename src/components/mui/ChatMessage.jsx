@@ -180,79 +180,76 @@ const styles = {
 
 // Stellar Thinking Animation Component
 export const StellarThinking = () => (
-  <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start", px: 1 }}>
-    {/* Avatar */}
+  <Box 
+    sx={{ 
+      display: "flex", 
+      gap: 1.5, 
+      alignItems: "center", 
+      px: { xs: 1, sm: 2 },
+      py: 1,
+    }}
+  >
+    {/* Avatar - Simple circular */}
     <Box
       sx={{
-        width: { xs: 32, sm: 36 },
-        height: { xs: 32, sm: 36 },
+        width: 40,
+        height: 40,
         borderRadius: "50%",
-        backgroundColor: "#0078d7",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-        boxShadow: "0 2px 8px rgba(0, 120, 215, 0.15)",
         overflow: "hidden",
-        mt: 0.5
+        flexShrink: 0,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
       }}
     >
       <img 
         src="/ai-chatbot.png" 
-        alt="AI Thinking" 
-        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+        alt="AI" 
+        style={{ 
+          width: "100%", 
+          height: "100%", 
+          objectFit: "cover",
+        }} 
       />
     </Box>
 
-    {/* Thinking Bubble */}
+    {/* Thinking Bubble - Simple pill shape */}
     <Box
       sx={{
-        p: 2,
-        backgroundColor: "#ffffff", // White background
-        borderRadius: "0 20px 20px 20px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        border: "1px solid rgba(0,0,0,0.03)",
+        px: 2,
+        py: 1.25,
+        backgroundColor: "#fff",
+        borderRadius: "18px",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        border: "1px solid #E5E7EB",
         display: "flex",
         alignItems: "center",
-        gap: 0.8,
-        minWidth: 80
+        gap: 0.75,
       }}
     >
-      <Box
-        sx={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          backgroundColor: "#0078d7",
-          animation: "pulse 1.4s infinite ease-in-out both",
-          "&::before": { content: '""' } // Placeholder to satisfy linter if needed
-        }}
-      />
-      <Box
-        sx={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          backgroundColor: "#0078d7",
-          animation: "pulse 1.4s infinite ease-in-out both",
-          animationDelay: "0.2s"
-        }}
-      />
-      <Box
-        sx={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          backgroundColor: "#0078d7",
-          animation: "pulse 1.4s infinite ease-in-out both",
-          animationDelay: "0.4s"
-        }}
-      />
+      {/* Animated dots */}
+      {[0, 1, 2].map((i) => (
+        <Box
+          key={i}
+          sx={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #3B82F6, #1D4ED8)",
+            animation: "dotBounce 1.4s infinite ease-in-out both",
+            animationDelay: `${i * 0.16}s`,
+          }}
+        />
+      ))}
       <style>
         {`
-          @keyframes pulse {
-            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-            40% { transform: scale(1); opacity: 1; }
+          @keyframes dotBounce {
+            0%, 80%, 100% { 
+              transform: scale(0.7); 
+              opacity: 0.4; 
+            }
+            40% { 
+              transform: scale(1); 
+              opacity: 1; 
+            }
           }
         `}
       </style>
@@ -495,6 +492,8 @@ const ChatMessage = ({ message, index, onAction }) => {
                 analysis_result: {
                   supporting_data: queryResult.results,
                 },
+                question: queryResult.natural_language_query || message.content?.natural_language_query || '',
+                natural_language_query: queryResult.natural_language_query || message.content?.natural_language_query || '',
               }}
               loading={false}
               isFromDashboard={false}
@@ -734,6 +733,8 @@ const ChatMessage = ({ message, index, onAction }) => {
               analysis_result: {
                 supporting_data: message.content.data || [],
               },
+              question: message.content.question || message.content.natural_language_query || '',
+              natural_language_query: message.content.natural_language_query || message.content.question || '',
             }}
             loading={false}
             isFromDashboard={false}
@@ -1270,25 +1271,29 @@ const ChatMessage = ({ message, index, onAction }) => {
       sx={{
         ...styles.messageContainer,
         ...(isUser ? styles.userMessageContainer : styles.botMessageContainer),
-        alignItems: "flex-start", // Ensure avatar aligns with top of message
-        gap: 1.5, // Gap between avatar and bubble
+        alignItems: "flex-start",
+        gap: 2,
+        animation: !isUser ? "messageSlideIn 0.3s ease-out" : "none",
+        "@keyframes messageSlideIn": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" },
+        },
       }}
     >
-      {/* AI Avatar - Outside bubble, left aligned */}
+      {/* AI Avatar - Circular, outside bubble */}
       {!isUser && !isDataQueryResult && (
         <Box
           sx={{
-            width: { xs: 32, sm: 36 },
-            height: { xs: 32, sm: 36 },
+            width: { xs: 38, sm: 42 },
+            height: { xs: 38, sm: 42 },
             borderRadius: "50%",
-            backgroundColor: "#0078d7",
+            background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            boxShadow: "0 2px 8px rgba(0, 120, 215, 0.15)",
+            boxShadow: "0 3px 10px rgba(59, 130, 246, 0.2)",
             overflow: "hidden",
-            mt: 0.5 // Align with top of bubble text
           }}
         >
           <img 
@@ -1297,7 +1302,7 @@ const ChatMessage = ({ message, index, onAction }) => {
             style={{ 
               width: "100%", 
               height: "100%", 
-              objectFit: "cover" 
+              objectFit: "cover",
             }} 
             onError={(e) => {
               e.target.style.display = 'none';

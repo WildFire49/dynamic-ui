@@ -6,6 +6,10 @@ import {
   Assessment,
   TrendingUp,
   Insights,
+  BarChart as BarChartIcon,
+  TableRows as TableRowsIcon,
+  ShowChart as ShowChartIcon,
+  BookmarkBorder as BookmarkBorderIcon,
 } from "@mui/icons-material";
 import {
   Alert,
@@ -15,23 +19,31 @@ import {
   CardContent,
   Chip,
   Grid,
+  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
+  Paper,
   Skeleton,
   Snackbar,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
   Typography,
   alpha,
 } from "@mui/material";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -46,6 +58,7 @@ import RMComparisonChart from "./RMComparisonChart";
 import RMPerformanceComparison from "./RMPerformanceComparison";
 import RMPerformanceOverview from "./RMPerformanceOverview";
 import AnalysisSummaryWidget from "../widgets/AnalysisSummaryWidget";
+import SaveToDashboardPopover from "../SaveToDashboardPopover";
 
 // Color definitions for various chart elements
 const colors = {
@@ -90,6 +103,7 @@ const DynamicDataVisualization = ({
   analysisResult,
   loading = false,
   isFromDashboard = false,
+  isWidget = false,
   savedCharts = null,
   savedDataGrid = null,
   savedRMPerformanceData = null,
@@ -116,6 +130,9 @@ const DynamicDataVisualization = ({
   const [topPerformersSearch, setTopPerformersSearch] = useState("");
   const [lowPerformersSearch, setLowPerformersSearch] = useState("");
 
+  // View mode toggle: 'table' or 'chart'
+  const [viewMode, setViewMode] = useState("table");
+
   const [exportAnchorEl, setExportAnchorEl] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -123,6 +140,11 @@ const DynamicDataVisualization = ({
     severity: "success",
   });
   const exportMenuOpen = Boolean(exportAnchorEl);
+
+  // Save to Dashboard popover state
+  const [saveDashboardAnchorEl, setSaveDashboardAnchorEl] = useState(null);
+  const [pendingVisualizationData, setPendingVisualizationData] = useState(null);
+  const saveDashboardOpen = Boolean(saveDashboardAnchorEl);
 
   // Get all RMs from supporting data for infinite scroll
   const getAllRMsFromData = () => {
@@ -1996,14 +2018,16 @@ const DynamicDataVisualization = ({
       });
 
       // Create standardized visualization data structure
+      const queryText = analysisResult?.question || "Unknown Query";
       const visualizationData = {
         id,
         title:
           analysisResult?.question ||
           `Analysis - ${new Date().toLocaleDateString()}`,
+        originalPrompt: queryText, // Never changes - used for refresh
         timestamp: new Date().toISOString(),
         type: "pipeline",
-        question: analysisResult?.question || "Unknown Query",
+        question: queryText,
 
         // Store supporting data with multiple property names for compatibility
         supporting_data: supportingData,
@@ -2185,20 +2209,31 @@ const DynamicDataVisualization = ({
     }
   };
 
-  const handleSaveToDashboard = () => {
+  // Open the save to dashboard popover
+  const handleSaveToDashboard = (event) => {
     try {
       // Generate a unique ID for this visualization
       const id = Date.now().toString();
 
+      // Get the query/question from various possible sources
+      const queryText = 
+        analysisResult?.question ||
+        analysisResult?.natural_language_query ||
+        analysisResult?.content?.natural_language_query ||
+        analysisResult?.query ||
+        null;
+      
+      console.log("💾 [SAVE] Query text extracted:", queryText, "from analysisResult:", analysisResult);
+
       // Create the visualization data object
+      // originalPrompt is preserved for refresh - title can be edited by user
       const visualizationData = {
         id,
-        title:
-          analysisResult?.question ||
-          `Analysis - ${new Date().toLocaleDateString()}`,
+        title: queryText || `Analysis - ${new Date().toLocaleDateString()}`,
+        originalPrompt: queryText || "Unknown Query", // Never changes - used for refresh
         timestamp: new Date().toISOString(),
         type: "pipeline",
-        question: analysisResult?.question || "Unknown Query",
+        question: queryText || "Unknown Query",
         supportingData: analysisResult?.analysis_result?.supporting_data || [],
         pipelineData: analysisResult?.analysis_result?.supporting_data || [],
         charts: {
@@ -2213,34 +2248,14 @@ const DynamicDataVisualization = ({
         },
       };
 
-      // Get existing saved visualizations
-      const existing = JSON.parse(
-        localStorage.getItem("dashboardVisualizations") || "[]"
-      );
-
-      // Add new visualization
-      const updated = [visualizationData, ...existing];
-
-      // Save to localStorage
-      localStorage.setItem("dashboardVisualizations", JSON.stringify(updated));
-
-      // Show success message
-      setSnackbar({
-        open: true,
-        message: "All visualizations saved to dashboard successfully!",
-        severity: "success",
-      });
-
-      // Open dashboard in new tab after a brief delay
-      setTimeout(() => {
-        const dashboardUrl = `${window.location.origin}/dashboard`;
-        window.open(dashboardUrl, "_blank");
-      }, 1000);
+      // Store the visualization data and open popover
+      setPendingVisualizationData(visualizationData);
+      setSaveDashboardAnchorEl(event.currentTarget);
     } catch (error) {
-      console.error("Error saving to dashboard:", error);
+      console.error("Error preparing visualization data:", error);
       setSnackbar({
         open: true,
-        message: "Failed to save visualization. Please try again.",
+        message: "Failed to prepare visualization. Please try again.",
         severity: "error",
       });
     }
@@ -2252,14 +2267,16 @@ const DynamicDataVisualization = ({
       const supportingData =
         analysisResult?.analysis_result?.supporting_data || [];
 
+      const queryText = analysisResult?.question || "Unknown Query";
       const visualizationData = {
         id,
         title: `Table - ${
           analysisResult?.question || new Date().toLocaleDateString()
         }`,
+        originalPrompt: queryText, // Never changes - used for refresh
         timestamp: new Date().toISOString(),
         type: "table",
-        question: analysisResult?.question || "Unknown Query",
+        question: queryText,
 
         // Store supporting data with multiple property names for compatibility
         supporting_data: supportingData,
@@ -2307,11 +2324,13 @@ const DynamicDataVisualization = ({
       const charts = {};
       charts[chartType] = chartData[chartType];
 
+      const queryText = analysisResult?.question || "Unknown Query";
       const visualizationData = {
         id,
         title: `${chartTitle} - ${
           analysisResult?.question || new Date().toLocaleDateString()
         }`,
+        originalPrompt: queryText, // Never changes - used for refresh
         timestamp: new Date().toISOString(),
         type:
           chartType === "pieChart"
@@ -2319,7 +2338,7 @@ const DynamicDataVisualization = ({
             : chartType === "waterfallChart"
             ? "waterfall"
             : "pipeline",
-        question: analysisResult?.question || "Unknown Query",
+        question: queryText,
 
         // Store supporting data with multiple property names for compatibility
         supporting_data: supportingData,
@@ -2462,18 +2481,24 @@ const DynamicDataVisualization = ({
     return (
       <Box
         sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 300,
-          textAlign: "center",
-          p: 3,
+          bgcolor: "#FFFFFF",
+          border: "1px solid #E5E7EB",
+          borderRadius: "16px",
+          px: 3,
+          py: 2,
+          maxWidth: 480,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
         }}
       >
-        <TableChart sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-        <Typography variant="h6" color="text.secondary" gutterBottom>
-          No analysis data available
+        <Typography 
+          variant="body1" 
+          sx={{ 
+            color: "#374151",
+            lineHeight: 1.7,
+            fontSize: "0.95rem",
+          }}
+        >
+          Hmm, I couldn't find any matching data for this query. Could you try rephrasing your question? I'm here to help! 🔍
         </Typography>
       </Box>
     );
@@ -2527,132 +2552,519 @@ const DynamicDataVisualization = ({
         flexDirection: "column",
       }}
     >
-      {/* Save All to Dashboard Button */}
-      {!isFromDashboard && (
-        <Box
+
+      {/* 1. Data Table / Chart View - Matching AnalysisWidget Tabular Results style */}
+      {gridRows.length > 0 && (() => {
+        // Determine if this is a small result (few columns, few rows)
+        const columnCount = gridColumns.filter(c => c.field !== 'id').length;
+        const isSmallResult = gridRows.length <= 3 && columnCount <= 2;
+        const isSingleValue = gridRows.length === 1 && columnCount === 1;
+        
+        return (
+        <>
+        {/* Single value - Matching table layout */}
+        {isSingleValue && !isWidget ? (
+          <Box sx={{ 
+            maxWidth: { xs: '100%', sm: '380px' },
+            mb: 2,
+          }}>
+              {(() => {
+                const col = gridColumns.find(c => c.field !== 'id');
+                const fieldName = (col?.field || '').toLowerCase();
+                const value = gridRows[0]?.[col?.field];
+                const isNumeric = typeof value === 'number' || !isNaN(parseFloat(value));
+                const displayLabel = col?.headerName || col?.field?.replace(/_/g, ' ');
+                
+                // Check if field is a percentage, count, or ratio (not currency)
+                const isPercentage = fieldName.includes('percent') || fieldName.includes('pct') || fieldName.includes('otr') || fieldName.includes('ratio');
+                const isCount = fieldName.includes('count') || fieldName.includes('number') || fieldName.includes('total') && !fieldName.includes('amount');
+                const isCurrency = fieldName.includes('amount') || fieldName.includes('value') || fieldName.includes('price') || fieldName.includes('cost') || fieldName.includes('revenue');
+                
+                // Format value - show actual numbers, no aggressive rounding
+                const formatValue = (val) => {
+                  const num = parseFloat(val);
+                  if (isNaN(num)) return val;
+                  
+                  if (isPercentage) {
+                    return `${num.toFixed(2)}%`;
+                  }
+                  
+                  // For currency - show with ₹ symbol but don't abbreviate small values
+                  if (isCurrency) {
+                    if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
+                    if (num >= 100000) return `₹${(num / 100000).toFixed(2)} L`;
+                    // Show actual value with up to 2 decimal places for smaller amounts
+                    return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+                  }
+                  
+                  if (isCount) {
+                    if (num >= 10000000) return `${(num / 10000000).toFixed(2)} Cr`;
+                    if (num >= 100000) return `${(num / 100000).toFixed(2)} L`;
+                    return num.toLocaleString('en-IN');
+                  }
+                  
+                  // Default - show actual value with up to 2 decimal places
+                  return num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                };
+
+                const formattedValue = isNumeric ? formatValue(value) : value;
+                
+                return (
+                  <Card
+                    elevation={0}
+                    sx={{
+                      bgcolor: alpha('#3B82F6', 0.02),
+                      borderRadius: 3,
+                      border: '1px solid',
+                      borderColor: alpha('#3B82F6', 0.12),
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Header with Save button */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        px: 2,
+                        py: 1.25,
+                        borderBottom: '1px solid',
+                        borderColor: alpha('#3B82F6', 0.08),
+                      }}
+                    >
+                      {!isFromDashboard && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleSaveToDashboard}
+                          startIcon={<BookmarkBorderIcon sx={{ fontSize: 16 }} />}
+                          sx={{
+                            color: '#64748B',
+                            borderColor: '#E2E8F0',
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            fontSize: '0.75rem',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 1.5,
+                            '&:hover': {
+                              borderColor: '#3B82F6',
+                              color: '#3B82F6',
+                              bgcolor: alpha('#3B82F6', 0.04),
+                            },
+                          }}
+                        >
+                          Save To Dashboard
+                        </Button>
+                      )}
+                    </Box>
+
+                    {/* Content - Centered */}
+                    <Box sx={{ px: 3, py: 2.5, textAlign: 'center' }}>
+                      {/* Label */}
+                      <Typography 
+                        sx={{ 
+                          color: '#64748B',
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          mb: 1,
+                        }}
+                      >
+                        {displayLabel}
+                      </Typography>
+                      
+                      {/* Value - Bigger */}
+                      <Typography 
+                        sx={{ 
+                          color: '#1E293B',
+                          fontSize: '2rem',
+                          fontWeight: 700,
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {formattedValue}
+                      </Typography>
+                    </Box>
+                  </Card>
+                );
+              })()}
+          </Box>
+        ) : (
+        <Card
+          elevation={0}
           sx={{
-            mb: { xs: 2, sm: 3 },
-            display: "flex",
-            justifyContent: "center",
-            px: { xs: 1, sm: 0 },
+            border: isWidget ? 'none' : `1px solid ${alpha("#10b981", 0.15)}`,
+            mb: isWidget ? 0 : { xs: 2, sm: 3 },
+            // Dynamic width based on column count
+            width: isWidget ? "100%" : (
+              columnCount <= 2 ? 'fit-content' : 
+              columnCount <= 4 ? { xs: '100%', sm: '75%' } : 
+              '100%'
+            ),
+            maxWidth: "100%",
+            minWidth: columnCount <= 2 ? 280 : { xs: '100%', sm: 400 },
+            borderRadius: isWidget ? 0 : 2.5,
+            boxShadow: isWidget ? 'none' : "0 2px 12px rgba(0, 0, 0, 0.06)",
+            overflow: isWidget ? 'visible' : "hidden",
+            background: isWidget ? 'transparent' : "#ffffff",
+            height: isWidget ? '100%' : 'auto',
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
-          <Button
-            variant="contained"
-            size="medium"
-            startIcon={<TableChart />}
-            onClick={handleSaveAll}
+          {/* Header */}
+          <Box
             sx={{
-              textTransform: "none",
-              backgroundColor: "#059669",
-              px: { xs: 3, sm: 4, md: 6 },
-              py: { xs: 1, sm: 1.2, md: 1.5 },
-              fontSize: { xs: "0.875rem", sm: "0.95rem", md: "1rem" },
-              fontWeight: 600,
-              minWidth: { xs: "200px", sm: "auto" },
-              "&:hover": {
-                backgroundColor: "#047857",
-              },
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexDirection: "row",
+              gap: 1.5,
+              p: isWidget ? 1 : { xs: 2, sm: 2.5 },
+              borderBottom: isWidget ? 'none' : `1px solid #E5E7EB`,
+              background: isWidget ? 'transparent' : '#FFFFFF',
+              flexShrink: 0
             }}
           >
-            Save All to Dashboard
-          </Button>
-        </Box>
-      )}
-
-      {/* 1. Data Table */}
-      {gridRows.length > 0 && (
-        <Card
-          sx={{
-            border: "1px solid #e0e0e0",
-            mb: { xs: 3, sm: 4 },
-            width: "100%",
-            maxWidth: "100%",
-            borderRadius: 2,
-          }}
-        >
-          <CardContent sx={{ p: 0 }}>
+            {!isWidget ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Chip 
+                  label={`${gridRows.length} ${gridRows.length === 1 ? 'record' : 'records'}`}
+                  size="small"
+                  sx={{ bgcolor: alpha("#10b981", 0.1), color: "#059669", fontWeight: 600, height: 24 }}
+                />
+              </Box>
+            ) : (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Chip 
+                  label={`${gridRows.length} records`}
+                  size="small"
+                  sx={{ bgcolor: alpha("#10b981", 0.1), color: "#059669", fontWeight: 600, height: 24 }}
+                />
+              </Box>
+            )}
             <Box
               sx={{
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: { xs: "flex-start", sm: "center" },
-                mb: 2,
-                px: { xs: 2, sm: 3 },
-                py: { xs: 1.5, sm: 2 },
-                flexDirection: { xs: "column", sm: "row" },
-                gap: { xs: 2, sm: 0 },
+                gap: 1,
+                alignItems: "center",
+                ml: "auto",
               }}
             >
-              <Typography
-                variant="h5"
+              {/* View Toggle */}
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={(e, newMode) => newMode && setViewMode(newMode)}
+                size="small"
                 sx={{
-                  fontWeight: 700,
-                  color: "#1f2937",
-                  fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.5rem" },
+                  bgcolor: "#F3F4F6",
+                  borderRadius: 1.5,
+                  "& .MuiToggleButton-root": {
+                    border: "none",
+                    color: "#9CA3AF",
+                    px: 1,
+                    py: 0.5,
+                    "&.Mui-selected": {
+                      bgcolor: alpha("#3B82F6", 0.1),
+                      color: "#3B82F6",
+                    },
+                    "&:hover": {
+                      bgcolor: alpha("#3B82F6", 0.05),
+                    },
+                  },
                 }}
               >
-                Table Results ({gridRows.length} records)
-              </Typography>
-              <Box
-                sx={{
-                  display: "flex",
-                  gap: { xs: 1, sm: 1 },
-                  flexDirection: { xs: "column", sm: "row" },
-                  width: { xs: "100%", sm: "auto" },
-                }}
-              >
-                {!isFromDashboard && (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<TableChart />}
-                    onClick={handleSaveTable}
-                    sx={{
-                      textTransform: "none",
-                      backgroundColor: "#1976d2",
-                      fontSize: { xs: "0.875rem", sm: "0.8125rem" },
-                      "&:hover": {
-                        backgroundColor: "#1565c0",
-                      },
-                    }}
-                  >
-                    Save Table
-                  </Button>
-                )}
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<FileDownload />}
+                <ToggleButton value="area">
+                  <Tooltip title="Area Chart">
+                    <ShowChartIcon sx={{ fontSize: 16 }} />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="bar">
+                  <Tooltip title="Bar Chart">
+                    <BarChartIcon sx={{ fontSize: 16 }} />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="table">
+                  <Tooltip title="Table">
+                    <TableRowsIcon sx={{ fontSize: 16 }} />
+                  </Tooltip>
+                </ToggleButton>
+              </ToggleButtonGroup>
+
+              {/* Action buttons */}
+              <Tooltip title="Download">
+                <IconButton 
+                  size="small" 
                   onClick={handleExportClick}
+                  sx={{ 
+                    color: "#6B7280",
+                    "&:hover": { bgcolor: "#F3F4F6" }
+                  }}
+                >
+                  <FileDownload sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+
+              {!isFromDashboard && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<Assessment sx={{ fontSize: 14 }} />}
+                  onClick={handleSaveToDashboard}
                   sx={{
                     textTransform: "none",
-                    borderColor: "#d1d5db",
-                    color: "#6b7280",
-                    fontSize: { xs: "0.875rem", sm: "0.8125rem" },
+                    bgcolor: "#10B981",
+                    color: "#fff",
+                    borderRadius: 1.5,
+                    px: 2,
+                    py: 0.5,
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    minWidth: 'auto',
+                    boxShadow: "0 2px 6px rgba(16, 185, 129, 0.25)",
                     "&:hover": {
-                      borderColor: "#9ca3af",
-                      backgroundColor: "#f9fafb",
+                      bgcolor: "#059669",
                     },
                   }}
                 >
-                  Export
+                  Save to Dashboard
                 </Button>
+              )}
+            </Box>
+          </Box>
+
+          <CardContent sx={{ p: 0 }}>
+            {/* Table View */}
+            {viewMode === "table" && (
+              <Box sx={{ width: "100%", overflow: "auto" }}>
+                <DataGridComponent
+                  rows={gridRows}
+                  columns={gridColumns}
+                  title=""
+                  showSaveButton={false}
+                  onExport={handleExportClick}
+                  height={{ xs: 350, sm: 400, md: 450 }}
+                  variant="clean"
+                />
               </Box>
-            </Box>
-            <Box sx={{ mt: { xs: 2, sm: 4 }, width: "100%", overflow: "auto" }}>
-              <DataGridComponent
-                rows={gridRows}
-                columns={gridColumns}
-                title=""
-                showSaveButton={false}
-                onExport={handleExportClick}
-                height={{ xs: 300, sm: 350, md: 400 }}
-              />
-            </Box>
+            )}
+
+            {/* Chart View - Area or Bar */}
+            {(viewMode === "area" || viewMode === "bar") && (
+              <Box sx={{ p: isWidget ? 0 : { xs: 2, sm: 3 } }}>
+                {(() => {
+                  // Helper to check if value is a date string
+                  const isDateString = (val) => {
+                    if (typeof val !== 'string') return false;
+                    const datePattern = /^\d{4}-\d{2}-\d{2}/;
+                    return datePattern.test(val) && !isNaN(Date.parse(val));
+                  };
+
+                  // Helper to format date for display
+                  const formatDateLabel = (dateStr) => {
+                    try {
+                      const date = new Date(dateStr);
+                      return date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+                    } catch {
+                      return dateStr?.toString().substring(0, 10) || '';
+                    }
+                  };
+
+                  // Helper to format large numbers
+                  const formatValue = (val) => {
+                    const num = parseFloat(val);
+                    if (isNaN(num)) return val;
+                    if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)}Cr`;
+                    if (num >= 100000) return `₹${(num / 100000).toFixed(2)}L`;
+                    if (num >= 1000) return `₹${(num / 1000).toFixed(1)}K`;
+                    return num.toLocaleString('en-IN');
+                  };
+
+                  // Find numeric columns (excluding id-like fields)
+                  const numericColumns = gridColumns.filter(col => {
+                    if (col.field === 'id' || col.field.endsWith('_id')) return false;
+                    const sampleValue = gridRows[0]?.[col.field];
+                    return typeof sampleValue === 'number' || 
+                           (typeof sampleValue === 'string' && !isNaN(parseFloat(sampleValue)) && !isDateString(sampleValue));
+                  });
+                  
+                  // Find label column - prefer date columns, then string columns
+                  const dateColumn = gridColumns.find(col => {
+                    const sampleValue = gridRows[0]?.[col.field];
+                    return isDateString(sampleValue);
+                  });
+
+                  const stringColumn = gridColumns.find(col => {
+                    const sampleValue = gridRows[0]?.[col.field];
+                    return typeof sampleValue === 'string' && !isDateString(sampleValue) && isNaN(parseFloat(sampleValue));
+                  });
+
+                  const labelColumn = dateColumn || stringColumn;
+                  const isTimeSeries = !!dateColumn;
+
+                  // Chart colors
+                  const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+
+                  if (numericColumns.length > 0 && labelColumn) {
+                    // Prepare chart data
+                    const chartData = gridRows.map((row, index) => {
+                      const dataPoint = {
+                        name: isTimeSeries 
+                          ? formatDateLabel(row[labelColumn.field])
+                          : (row[labelColumn.field]?.toString().substring(0, 15) || `Item ${index + 1}`),
+                        fullName: row[labelColumn.field]
+                      };
+                      // Add all numeric columns
+                      numericColumns.forEach(col => {
+                        dataPoint[col.field] = parseFloat(row[col.field]) || 0;
+                      });
+                      return dataPoint;
+                    });
+
+                    // Area Chart - when viewMode is 'area'
+                    if (viewMode === 'area') {
+                      return (
+                        <Box>
+                          <ResponsiveContainer width="100%" height={350}>
+                            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
+                              <defs>
+                                {numericColumns.slice(0, 4).map((col, idx) => (
+                                  <linearGradient key={col.field} id={`color${col.field}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={CHART_COLORS[idx % CHART_COLORS.length]} stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor={CHART_COLORS[idx % CHART_COLORS.length]} stopOpacity={0}/>
+                                  </linearGradient>
+                                ))}
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                              <XAxis 
+                                dataKey="name" 
+                                tick={{ fontSize: 11, fill: '#6B7280' }}
+                                axisLine={{ stroke: '#E5E7EB' }}
+                                tickLine={false}
+                                angle={-45}
+                                textAnchor="end"
+                                height={60}
+                              />
+                              <YAxis 
+                                tick={{ fontSize: 11, fill: '#6B7280' }}
+                                axisLine={false}
+                                tickLine={false}
+                                tickFormatter={formatValue}
+                              />
+                              <RechartsTooltip
+                                contentStyle={{
+                                  backgroundColor: '#fff',
+                                  border: '1px solid #E5E7EB',
+                                  borderRadius: 8,
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                }}
+                                formatter={(value, name) => [formatValue(value), name.replace(/_/g, ' ')]}
+                                labelFormatter={(label) => label}
+                              />
+                              <Legend 
+                                wrapperStyle={{ paddingTop: 20 }}
+                                formatter={(value) => value.replace(/_/g, ' ')}
+                              />
+                              {numericColumns.slice(0, 4).map((col, idx) => (
+                                <Area
+                                  key={col.field}
+                                  type="monotone"
+                                  dataKey={col.field}
+                                  stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                                  strokeWidth={2}
+                                  fill={`url(#color${col.field})`}
+                                  dot={{ r: 3, fill: CHART_COLORS[idx % CHART_COLORS.length] }}
+                                />
+                              ))}
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </Box>
+                      );
+                    }
+
+                    // Bar Chart - when viewMode is 'bar' (vertical bars like dashboard)
+                    return (
+                      <Box>
+                        <ResponsiveContainer width="100%" height={350}>
+                          <BarChart
+                            data={chartData}
+                            margin={{ top: 10, right: 30, left: 10, bottom: 60 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                            <XAxis 
+                              dataKey="name" 
+                              tick={{ fontSize: 11, fill: '#6B7280' }}
+                              axisLine={{ stroke: '#E5E7EB' }}
+                              tickLine={false}
+                              angle={-45}
+                              textAnchor="end"
+                              height={60}
+                            />
+                            <YAxis 
+                              tick={{ fontSize: 11, fill: '#6B7280' }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickFormatter={formatValue}
+                            />
+                            <RechartsTooltip
+                              contentStyle={{
+                                backgroundColor: '#fff',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: 8,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                              }}
+                              formatter={(value, name) => [formatValue(value), name.replace(/_/g, ' ')]}
+                              labelFormatter={(label) => label}
+                            />
+                            <Legend 
+                              wrapperStyle={{ paddingTop: 20 }}
+                              formatter={(value) => value.replace(/_/g, ' ')}
+                            />
+                            {numericColumns.slice(0, 4).map((col, idx) => (
+                              <Bar 
+                                key={col.field}
+                                dataKey={col.field} 
+                                fill={CHART_COLORS[idx % CHART_COLORS.length]}
+                                radius={[4, 4, 0, 0]}
+                              />
+                            ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </Box>
+                    );
+                  }
+
+                  // Fallback message if chart can't be generated
+                  return (
+                    <Box 
+                      sx={{ 
+                        textAlign: "center", 
+                        py: 6,
+                        bgcolor: alpha("#10b981", 0.05),
+                        borderRadius: 2,
+                      }}
+                    >
+                      <BarChartIcon sx={{ fontSize: 48, color: "#10b981", mb: 2, opacity: 0.5 }} />
+                      <Typography variant="h6" color="text.secondary">
+                        Chart visualization not available
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Data structure doesn't support automatic chart generation
+                      </Typography>
+                    </Box>
+                  );
+                })()}
+              </Box>
+            )}
           </CardContent>
         </Card>
-      )}
+        )}
+        </>
+        );
+      })()}
 
       {/* 2. Graph Metrics */}
       <Box
@@ -2785,15 +3197,16 @@ const DynamicDataVisualization = ({
                   },
                 };
 
+                const queryText = analysisResult.question || "RM Performance Analysis";
                 const saveData = {
                   id: Date.now(),
                   title:
                     analysisResult.question ||
                     `RM Performance Analysis - ${new Date().toLocaleDateString()}`,
+                  originalPrompt: queryText, // Never changes - used for refresh
                   timestamp: new Date().toISOString(),
                   type: "rmPerformance",
-                  question:
-                    analysisResult.question || "RM Performance Analysis",
+                  question: queryText,
 
                   // Include supporting data - this is crucial!
                   supporting_data:
@@ -3315,7 +3728,7 @@ const DynamicDataVisualization = ({
                         },
                       }}
                     />
-                    <Tooltip
+                    <RechartsTooltip
                       contentStyle={{
                         backgroundColor: "#ffffff",
                         border: "1px solid #e5e7eb",
@@ -3475,7 +3888,7 @@ const DynamicDataVisualization = ({
                           domain={[-1.1, 0]}
                           tickFormatter={(value) => value.toFixed(1)}
                         />
-                        <Tooltip
+                        <RechartsTooltip
                           contentStyle={{
                             backgroundColor: "white",
                             border: "1px solid #e5e7eb",
@@ -4008,6 +4421,29 @@ const DynamicDataVisualization = ({
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Save to Dashboard Popover */}
+      <SaveToDashboardPopover
+        anchorEl={saveDashboardAnchorEl}
+        open={saveDashboardOpen}
+        onClose={() => {
+          setSaveDashboardAnchorEl(null);
+          setPendingVisualizationData(null);
+        }}
+        onSave={(dashboardId) => {
+          setSnackbar({
+            open: true,
+            message: `Saved to dashboard successfully!`,
+            severity: "success",
+          });
+          // Open dashboard in new tab after a brief delay
+          setTimeout(() => {
+            const dashboardUrl = `${window.location.origin}/dashboard`;
+            window.open(dashboardUrl, "_blank");
+          }, 1000);
+        }}
+        visualizationData={pendingVisualizationData}
+      />
     </Box>
   );
 };

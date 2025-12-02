@@ -8,7 +8,7 @@ import { SnackbarProvider } from "@/contexts/SnackbarContext";
 import ThemeCustomizer from "@/components/theme/ThemeCustomizer";
 
 export const metadata = {
-  title: "MiFiX AI",
+  title: "MiFiX.ai",
   description: "A dynamic UI generated with Material-UI",
   icons: {
     icon: [

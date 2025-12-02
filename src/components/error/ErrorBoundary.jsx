@@ -318,7 +318,7 @@ const ErrorPage = ({
                   mb: 2
                 }}
               >
-                "Hi there! 🤖 I'm your MiFiX AI assistant, and it looks like I encountered a small glitch in my neural networks. 
+                "Hi there! 🤖 I'm your MiFiX.ai assistant, and it looks like I encountered a small glitch in my neural networks. 
                 My developers have been automatically notified, and I'm already running diagnostics to fix this."
               </Typography>
               <Typography

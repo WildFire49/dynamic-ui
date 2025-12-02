@@ -154,7 +154,7 @@ Thanks!`;
           >
             {isConnectionError
               ? "Contact our team for technical assistance and to resolve this issue."
-              : "Contact our team to upgrade your plan and continue using MiFiX AI."}
+              : "Contact our team to upgrade your plan and continue using MiFiX.ai."}
           </Typography>
 
           {/* Contact Buttons */}

@@ -11,6 +11,8 @@ import {
   IconButton,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { useAuth } from '../../contexts/AuthContext';
 import UserMenu from '../auth/UserMenu';
 import Sidebar from '../Sidebar';
@@ -78,7 +80,7 @@ const AppLayout = ({
             px: { xs: 2, md: 3 }
           }}>
             {/* Left side - App title/breadcrumb */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {/* Hamburger Menu for Mobile */}
               <IconButton
                 color="inherit"
@@ -92,18 +94,21 @@ const AppLayout = ({
               >
                 <MenuIcon />
               </IconButton>
+              {mode === 'dashboard' ? (
+                <DashboardIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+              ) : (
+                <SmartToyIcon sx={{ color: '#1976d2', fontSize: 20 }} />
+              )}
               <Typography 
                 variant="h6" 
                 sx={{ 
-                  fontWeight: 700,
-                  fontSize: { xs: '1.1rem', md: '1.25rem' },
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  color: '#1F2937',
+                  lineHeight: 1,
                 }}
               >
-                {mode === 'dashboard' ? 'Analytics Dashboard' : 'AI Assistant'}
+                {mode === 'dashboard' ? 'Dashboard' : 'AI Assistant'}
               </Typography>
             </Box>
 
@@ -151,6 +156,12 @@ const AppLayout = ({
           flex: 1, 
           overflow: 'auto',
           background: theme.palette.background.default,
+          // Hide scrollbar but keep scroll functionality
+          scrollbarWidth: 'none', // Firefox
+          msOverflowStyle: 'none', // IE/Edge
+          '&::-webkit-scrollbar': {
+            display: 'none', // Chrome/Safari/Opera
+          },
         }}>
           {children}
         </Box>
