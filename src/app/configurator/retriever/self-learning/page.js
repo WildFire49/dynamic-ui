@@ -1424,29 +1424,49 @@ const RegressionTestingPage = () => {
                               ).toLocaleDateString()
                             : session.test_session_id}
                         </Typography>
-                        <Chip
-                          label={`${Math.round(
-                            session.average_accuracy * 100
-                          )}%`}
-                          size="small"
-                          sx={{
-                            height: 20,
-                            fontSize: "0.7rem",
-                            fontWeight: 700,
-                            bgcolor:
-                              session.average_accuracy >= 0.8
-                                ? `${theme.palette.success.main}20`
-                                : session.average_accuracy >= 0.5
-                                ? `${theme.palette.warning.main}20`
-                                : `${theme.palette.error.main}20`,
-                            color:
-                              session.average_accuracy >= 0.8
-                                ? theme.palette.success.main
-                                : session.average_accuracy >= 0.5
-                                ? theme.palette.warning.main
-                                : theme.palette.error.main,
-                          }}
-                        />
+                        {(() => {
+                          // Use result_match_count if available (from detailed session), otherwise use passed/total
+                          const totalQueries =
+                            session.total_queries ||
+                            session.total_queries_tested ||
+                            0;
+                          const passedQueries =
+                            session.passed || session.queries_passed || 0;
+                          const resultMatches = session.result_match_count;
+                          // If result_match_count is available, use it; otherwise fall back to passed/total
+                          const overallAccuracy =
+                            resultMatches !== undefined &&
+                            resultMatches !== null
+                              ? totalQueries > 0
+                                ? (resultMatches / totalQueries) * 100
+                                : 0
+                              : totalQueries > 0
+                              ? (passedQueries / totalQueries) * 100
+                              : 0;
+                          return (
+                            <Chip
+                              label={`${Math.round(overallAccuracy)}%`}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: "0.7rem",
+                                fontWeight: 700,
+                                bgcolor:
+                                  overallAccuracy >= 80
+                                    ? `${theme.palette.success.main}20`
+                                    : overallAccuracy >= 60
+                                    ? `${theme.palette.warning.main}20`
+                                    : `${theme.palette.error.main}20`,
+                                color:
+                                  overallAccuracy >= 80
+                                    ? theme.palette.success.main
+                                    : overallAccuracy >= 60
+                                    ? theme.palette.warning.main
+                                    : theme.palette.error.main,
+                              }}
+                            />
+                          );
+                        })()}
                       </Box>
                     }
                     secondary={
@@ -1457,7 +1477,10 @@ const RegressionTestingPage = () => {
                           component="span"
                         >
                           {session.total_queries || 0} Queries •{" "}
-                          {session.passed || 0} Passed
+                          {session.result_match_count !== undefined &&
+                          session.result_match_count !== null
+                            ? `${session.result_match_count} Result Matches`
+                            : `${session.passed || 0} Passed`}
                         </Typography>
                       </React.Fragment>
                     }
@@ -1548,7 +1571,7 @@ const RegressionTestingPage = () => {
               </Box>
 
               <Grid container spacing={3}>
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} md={2.4}>
                   <StatCard
                     title="Total Queries"
                     value={
@@ -1561,13 +1584,45 @@ const RegressionTestingPage = () => {
                     subtext="Executed in batch"
                   />
                 </Grid>
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} md={2.4}>
+                  {(() => {
+                    const totalQueries =
+                      selectedSession.total_queries_tested ||
+                      selectedSession.total_queries ||
+                      0;
+                    const resultMatches =
+                      selectedSession.result_match_count ||
+                      selectedSession.results?.filter((r) => r.result_match)
+                        .length ||
+                      0;
+                    const overallAccuracy =
+                      totalQueries > 0
+                        ? (resultMatches / totalQueries) * 100
+                        : 0;
+                    return (
+                      <StatCard
+                        title="Overall Accuracy"
+                        value={`${Math.round(overallAccuracy)}%`}
+                        icon={<SpeedIcon />}
+                        color={
+                          overallAccuracy >= 80
+                            ? theme.palette.success.main
+                            : overallAccuracy >= 60
+                            ? theme.palette.warning.main
+                            : theme.palette.error.main
+                        }
+                        subtext={`${resultMatches} / ${totalQueries} Result Matches`}
+                      />
+                    );
+                  })()}
+                </Grid>
+                <Grid item xs={12} md={2.4}>
                   <StatCard
-                    title="Success Rate"
+                    title="Pass Rate"
                     value={`${Math.round(
                       (selectedSession.average_accuracy || 0) * 100
                     )}%`}
-                    icon={<SpeedIcon />}
+                    icon={<PassIcon />}
                     color={
                       (selectedSession.average_accuracy || 0) >= 0.8
                         ? theme.palette.success.main
@@ -1584,7 +1639,7 @@ const RegressionTestingPage = () => {
                     } Failed`}
                   />
                 </Grid>
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} md={2.4}>
                   <StatCard
                     title="SQL Matches"
                     value={
@@ -1598,7 +1653,7 @@ const RegressionTestingPage = () => {
                     subtext="Exact SQL syntax match"
                   />
                 </Grid>
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} md={2.4}>
                   <StatCard
                     title="Result Matches"
                     value={
@@ -1607,7 +1662,7 @@ const RegressionTestingPage = () => {
                         .length ||
                       0
                     }
-                    icon={<PassIcon />}
+                    icon={<DiffIcon />}
                     color={theme.palette.success.main}
                     subtext="Data execution match"
                   />
