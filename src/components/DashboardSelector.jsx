@@ -12,6 +12,10 @@ import {
   Tooltip,
   alpha,
   Divider,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -20,6 +24,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import useDashboardStore from '../store/dashboardStore';
 
 // Icon mapping - BM = Bank Manager, RM/XCO = Relationship Manager
@@ -74,6 +79,7 @@ const DashboardSelector = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [newDashboardName, setNewDashboardName] = useState('');
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
 
   const handleDashboardClick = (dashboardId) => {
     setActiveDashboard(dashboardId);
@@ -114,18 +120,22 @@ const DashboardSelector = () => {
   return (
     <Box sx={{ 
       display: 'flex', 
+      justifyContent: 'center',
       alignItems: 'center', 
-      gap: 0.5,
-      py: 2,
+      py: 1.5,
       px: 3,
       bgcolor: '#fff',
       borderBottom: '1px solid #E5E7EB',
     }}>
-      {/* Dashboard Pills with Dividers */}
+      {/* Dashboard Tabs - Centered with subtle borders */}
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: 0.5,
+        gap: 0,
+        bgcolor: '#F8FAFC',
+        borderRadius: 2,
+        border: '1px solid #E5E7EB',
+        p: 0.5,
       }}>
         {dashboards.map((dashboard, index) => {
           const IconComponent = ICON_MAP[dashboard.icon] || DashboardIcon;
@@ -134,48 +144,34 @@ const DashboardSelector = () => {
           
           return (
             <React.Fragment key={dashboard.id}>
-              {/* Divider between dashboards */}
-              {index > 0 && (
-                <Divider 
-                  orientation="vertical" 
-                  flexItem 
-                  sx={{ 
-                    mx: 1.5, 
-                    borderColor: '#E5E7EB',
-                    height: 48,
-                    alignSelf: 'center',
-                  }} 
-                />
-              )}
-              
               <Box
                 onClick={() => handleDashboardClick(dashboard.id)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 2,
-                  px: 3,
-                  py: 2,
-                  borderRadius: 3,
+                  gap: 1.5,
+                  px: 2.5,
+                  py: 1.5,
+                  borderRadius: 1.5,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   bgcolor: isActive ? '#fff' : 'transparent',
-                  border: isActive ? `1.5px solid ${alpha(dashboard.color, 0.3)}` : '1.5px solid transparent',
-                  boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                  border: isActive ? '1px solid #E5E7EB' : '1px solid transparent',
+                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
                   '&:hover': {
-                    bgcolor: isActive ? '#fff' : alpha('#6B7280', 0.04),
+                    bgcolor: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
                   },
                 }}
               >
                 <Box
                   sx={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 2.5,
+                    width: 42,
+                    height: 42,
+                    borderRadius: 2,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: alpha(dashboard.color, isActive ? 0.12 : 0.08),
+                    bgcolor: alpha(dashboard.color, isActive ? 0.12 : 0.06),
                     transition: 'all 0.2s ease',
                     overflow: 'hidden',
                   }}
@@ -197,10 +193,10 @@ const DashboardSelector = () => {
                     }} />
                   )}
                 </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 100 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                   <Typography
                     sx={{
-                      fontSize: '1.05rem',
+                      fontSize: '0.95rem',
                       fontWeight: isActive ? 600 : 500,
                       color: isActive ? '#1F2937' : '#4B5563',
                       whiteSpace: 'nowrap',
@@ -211,96 +207,108 @@ const DashboardSelector = () => {
                   </Typography>
                   <Typography
                     sx={{
-                      fontSize: '0.8rem',
+                      fontSize: '0.75rem',
                       color: '#9CA3AF',
-                      lineHeight: 1.3,
+                      lineHeight: 1.2,
                     }}
                   >
                     {count} {count === 1 ? 'insight' : 'insights'}
                   </Typography>
                 </Box>
                 
-                {/* Action buttons - only show on active dashboard */}
+                {/* 3-dot menu - only show on active dashboard */}
                 {isActive && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1 }}>
-                    <Tooltip title="Rename">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedDashboard(dashboard);
-                          setNewDashboardName(dashboard.name);
-                          setRenameDialogOpen(true);
-                        }}
-                        sx={{
-                          p: 0.75,
-                          color: '#9CA3AF',
-                          '&:hover': { 
-                            color: '#6B7280',
-                            bgcolor: '#F3F4F6',
-                          },
-                        }}
-                      >
-                        <EditIcon sx={{ fontSize: 18 }} />
-                      </IconButton>
-                    </Tooltip>
-                    {dashboards.length > 1 && (
-                      <Tooltip title="Delete">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedDashboard(dashboard);
-                            handleDeleteDashboard();
-                          }}
-                          sx={{
-                            p: 0.75,
-                            color: '#9CA3AF',
-                            '&:hover': { 
-                              color: '#EF4444',
-                              bgcolor: alpha('#EF4444', 0.08),
-                            },
-                          }}
-                        >
-                          <DeleteIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDashboard(dashboard);
+                      setMenuAnchorEl(e.currentTarget);
+                    }}
+                    sx={{
+                      p: 0.5,
+                      ml: 0.5,
+                      color: '#9CA3AF',
+                      '&:hover': { 
+                        color: '#6B7280',
+                        bgcolor: 'rgba(0,0,0,0.04)',
+                      },
+                    }}
+                  >
+                    <MoreVertIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
                 )}
               </Box>
             </React.Fragment>
           );
         })}
-      </Box>
-
-      {/* Divider before actions */}
-      <Divider orientation="vertical" flexItem sx={{ mx: 2, borderColor: '#E5E7EB', height: 40, alignSelf: 'center' }} />
-
-      {/* Actions */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        {/* Add Dashboard Button */}
+        
+        {/* Add Dashboard Button - inside the container */}
         <Tooltip title="Create new dashboard">
           <IconButton
             onClick={() => setCreateDialogOpen(true)}
             sx={{
-              color: '#6B7280',
-              bgcolor: '#F9FAFB',
-              border: '1px dashed #D1D5DB',
-              borderRadius: 2.5,
-              p: 1.25,
+              color: '#9CA3AF',
+              borderRadius: 1.5,
+              p: 1,
+              ml: 0.5,
               '&:hover': {
-                bgcolor: '#F3F4F6',
-                borderColor: '#9CA3AF',
-                color: '#374151',
+                bgcolor: 'rgba(255,255,255,0.6)',
+                color: '#6B7280',
               },
             }}
           >
-            <AddIcon sx={{ fontSize: 24 }} />
+            <AddIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Tooltip>
       </Box>
 
+      {/* 3-dot Menu for Edit/Delete */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={() => setMenuAnchorEl(null)}
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            border: '1px solid #E5E7EB',
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: 140,
+            mt: 0.5,
+          },
+        }}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        <MenuItem 
+          onClick={() => {
+            setNewDashboardName(selectedDashboard?.name || '');
+            setRenameDialogOpen(true);
+            setMenuAnchorEl(null);
+          }}
+          sx={{ py: 1, fontSize: '0.875rem' }}
+        >
+          <ListItemIcon>
+            <EditIcon sx={{ fontSize: 18, color: '#6B7280' }} />
+          </ListItemIcon>
+          <ListItemText primary="Rename" primaryTypographyProps={{ fontSize: '0.875rem' }} />
+        </MenuItem>
+        {dashboards.length > 1 && (
+          <MenuItem 
+            onClick={() => {
+              handleDeleteDashboard();
+              setMenuAnchorEl(null);
+            }}
+            sx={{ py: 1, fontSize: '0.875rem', color: '#EF4444' }}
+          >
+            <ListItemIcon>
+              <DeleteIcon sx={{ fontSize: 18, color: '#EF4444' }} />
+            </ListItemIcon>
+            <ListItemText primary="Delete" primaryTypographyProps={{ fontSize: '0.875rem', color: '#EF4444' }} />
+          </MenuItem>
+        )}
+      </Menu>
 
       {/* Create Dashboard Dialog */}
       <Dialog 

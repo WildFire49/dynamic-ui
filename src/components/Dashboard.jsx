@@ -959,15 +959,13 @@ const Dashboard = () => {
               : resizing?.id === item.id
                 ? '2px solid #10B981'
                 : '1px solid #E5E7EB',
-            borderRadius: 2,
-            bgcolor: draggedItem?.id === item.id 
-              ? 'rgba(59, 130, 246, 0.08)' 
-              : '#fff',
+            borderRadius: 3,
+            bgcolor: '#fff',
             overflow: 'hidden',
             cursor: draggedItem ? 'grabbing' : 'grab',
             boxShadow: draggedItem?.id === item.id 
               ? '0 8px 24px rgba(59, 130, 246, 0.25)' 
-              : 'none',
+              : '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',
             transform: draggedItem?.id === item.id 
               ? 'scale(1.02)' 
               : 'scale(1)',
@@ -975,8 +973,8 @@ const Dashboard = () => {
             zIndex: draggedItem?.id === item.id ? 10 : 1,
             position: 'relative',
             '&:hover': {
-              boxShadow: draggedItem ? undefined : '0 4px 12px rgba(0,0,0,0.08)',
-              transform: draggedItem ? undefined : 'translateY(-2px)',
+              boxShadow: draggedItem ? undefined : '0 4px 16px rgba(0,0,0,0.08)',
+              transform: draggedItem ? undefined : 'translateY(-1px)',
             },
             '&:active': {
               cursor: 'grabbing'
@@ -1242,234 +1240,190 @@ const Dashboard = () => {
 
 
   return (
-    <Box sx={{ bgcolor: '#F9FAFB', minHeight: '100vh' }}>
+    <Box sx={{ bgcolor: '#F3F4F6', minHeight: '100vh' }}>
       {/* Dashboard Selector Tabs */}
       <DashboardSelector />
       
-      <Container maxWidth="xl" sx={{ py: 3 }}>
-        {/* Header Row - Personalized with AI Avatar */}
-        <Box sx={{ mb: 3 }}>
-          {/* Header with message and controls */}
-          <Stack 
-            direction={{ xs: 'column', md: 'row' }} 
-            justifyContent="space-between" 
-            alignItems={{ xs: 'flex-start', md: 'center' }}
-            spacing={2}
-            sx={{ mb: 2 }}
-          >
-            {/* Left side - Message */}
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <Box
-                component="img"
-                src="/ai-chatbot.png"
-                alt="Mifix"
-                sx={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '12px',
-                  objectFit: 'cover',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                }}
-              />
-              <Box>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Typography sx={{ 
-                    fontWeight: 600, 
-                    color: '#111827', 
-                    fontSize: '1.1rem',
-                    lineHeight: 1.3 
-                  }}>
-                    {allItems.length > 0 
-                      ? `${allItems.length} Saved Visualization${allItems.length !== 1 ? 's' : ''}` 
-                      : `No Visualizations Yet`}
-                  </Typography>
-                  {allItems.length > 0 && (
-                    <Tooltip title="Refresh dashboard">
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          // Hard refresh the page to get latest data
-                          window.location.reload();
-                        }}
-                        sx={{
-                          color: '#9CA3AF',
-                          p: 0.5,
-                          '&:hover': { 
-                            color: '#374151',
-                            bgcolor: '#F3F4F6',
-                          },
-                        }}
-                      >
-                        <RefreshIcon sx={{ fontSize: 18 }} />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                </Stack>
-                <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '0.85rem' }}>
-                  {allItems.length > 0 
-                    ? (lastGlobalUpdate ? `Last synced ${formatLastUpdated(lastGlobalUpdate)}` : 'Your analytics at a glance')
-                    : `Start by asking questions to generate insights`}
-                </Typography>
-              </Box>
-            </Stack>
-
-            {/* Right side - Controls */}
-            <Stack 
-              direction="row" 
-              spacing={2}
-              alignItems="center"
-            >
-            {/* Search Box - Wider */}
-            <Paper
-              elevation={0}
+      {/* Toolbar - Single row with all controls */}
+      <Box 
+        sx={{ 
+          bgcolor: '#fff', 
+          borderBottom: '1px solid #E5E7EB',
+          px: 3,
+          py: 1.5,
+        }}
+      >
+        <Stack 
+          direction="row" 
+          alignItems="center" 
+          justifyContent="space-between"
+          spacing={3}
+        >
+          {/* Left - Avatar & Personalized Message */}
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
+            <Box
+              component="img"
+              src="/ai-chatbot.png"
+              alt="MiFiX"
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                border: '1px solid #E5E7EB',
-                borderRadius: 2,
-                px: 1.5,
-                py: 0.5,
-                width: { xs: '100%', sm: 320 },
-                bgcolor: '#fff',
-                transition: 'all 0.2s',
-                '&:focus-within': {
-                  borderColor: CHART_COLORS.primary,
-                  boxShadow: `0 0 0 3px ${alpha(CHART_COLORS.primary, 0.1)}`,
-                }
+                width: 36,
+                height: 36,
+                borderRadius: '16px',
+                objectFit: 'contain',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
               }}
-            >
-              <SearchIcon sx={{ color: '#9CA3AF', fontSize: 18, mr: 1 }} />
-              <InputBase
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{ 
-                  flex: 1, 
-                  fontSize: '0.8125rem',
-                  '& input::placeholder': { color: '#9CA3AF', opacity: 1 }
-                }}
-              />
-              {searchQuery && (
-                <IconButton size="small" onClick={() => setSearchQuery('')} sx={{ p: 0.25 }}>
-                  <CloseIcon sx={{ fontSize: 14, color: '#9CA3AF' }} />
+            />
+            <Typography sx={{ 
+              fontWeight: 500, 
+              color: '#374151', 
+              fontSize: '0.9rem',
+              whiteSpace: 'nowrap',
+            }}>
+              {allItems.length > 0 
+                ? <>MiFiX.ai has saved <Box component="span" sx={{ fontWeight: 600, color: '#111827' }}>{allItems.length}</Box> visualization{allItems.length !== 1 ? 's' : ''} for you</>
+                : `MiFiX.ai is ready to create visualizations for you`}
+            </Typography>
+            {lastGlobalUpdate && allItems.length > 0 && (
+              <Typography sx={{ color: '#9CA3AF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                • Updated {formatLastUpdated(lastGlobalUpdate)}
+              </Typography>
+            )}
+            {allItems.length > 0 && (
+              <Tooltip title="Refresh">
+                <IconButton
+                  size="small"
+                  onClick={() => window.location.reload()}
+                  sx={{ color: '#9CA3AF', p: 0.5, '&:hover': { color: '#374151' } }}
+                >
+                  <RefreshIcon sx={{ fontSize: 16 }} />
                 </IconButton>
-              )}
-            </Paper>
+              </Tooltip>
+            )}
+          </Stack>
 
-            {/* Global View Mode Toggle - Simple with text */}
+          {/* Center - Search */}
+          <Paper
+            elevation={0}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              border: '1px solid #E5E7EB',
+              borderRadius: 2,
+              px: 1.5,
+              py: 0.5,
+              width: 280,
+              bgcolor: '#F9FAFB',
+              transition: 'all 0.2s',
+              '&:focus-within': {
+                borderColor: CHART_COLORS.primary,
+                bgcolor: '#fff',
+                boxShadow: `0 0 0 2px ${alpha(CHART_COLORS.primary, 0.1)}`,
+              }
+            }}
+          >
+            <SearchIcon sx={{ color: '#9CA3AF', fontSize: 16, mr: 1 }} />
+            <InputBase
+              placeholder="Search visualizations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{ 
+                flex: 1, 
+                fontSize: '0.8rem',
+                '& input::placeholder': { color: '#9CA3AF', opacity: 1 }
+              }}
+            />
+            {searchQuery && (
+              <IconButton size="small" onClick={() => setSearchQuery('')} sx={{ p: 0.25 }}>
+                <CloseIcon sx={{ fontSize: 14, color: '#9CA3AF' }} />
+              </IconButton>
+            )}
+          </Paper>
+
+          {/* Right - View Controls */}
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            {/* View Mode Toggle */}
             <ToggleButtonGroup
               value={globalViewMode}
               exclusive
               onChange={(e, newMode) => newMode && setGlobalViewMode(newMode)}
               size="small"
               sx={{
-                bgcolor: '#fff',
+                bgcolor: '#F9FAFB',
                 border: '1px solid #E5E7EB',
-                borderRadius: 2,
+                borderRadius: 1.5,
                 '& .MuiToggleButton-root': {
                   border: 'none',
                   color: '#6B7280',
-                  px: 2,
-                  py: 0.75,
-                  fontSize: '0.8125rem',
+                  px: 1.5,
+                  py: 0.5,
+                  fontSize: '0.75rem',
                   fontWeight: 500,
                   textTransform: 'none',
-                  transition: 'all 0.2s ease',
                   '&.Mui-selected': {
                     bgcolor: CHART_COLORS.primary,
                     color: '#fff',
-                    transform: 'scale(1.02)',
-                    '&:hover': {
-                      bgcolor: CHART_COLORS.primary,
-                    },
+                    '&:hover': { bgcolor: CHART_COLORS.primary },
                   },
-                  '&:hover': {
-                    bgcolor: alpha(CHART_COLORS.primary, 0.08),
-                  },
+                  '&:hover': { bgcolor: alpha(CHART_COLORS.primary, 0.08) },
                 },
               }}
             >
               <ToggleButton value="auto">
-                <GridViewIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                <GridViewIcon sx={{ fontSize: 14, mr: 0.5 }} />
                 Auto
               </ToggleButton>
               <ToggleButton value="area">
-                <ShowChartIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                <ShowChartIcon sx={{ fontSize: 14, mr: 0.5 }} />
                 Charts
               </ToggleButton>
               <ToggleButton value="table">
-                <TableChartIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                <TableChartIcon sx={{ fontSize: 14, mr: 0.5 }} />
                 Tables
               </ToggleButton>
             </ToggleButtonGroup>
 
-            {/* Spacer */}
-            <Box sx={{ flex: 1 }} />
-
-            {/* Widget Count Badge - when searching */}
-            {searchQuery && (
-              <Chip
-                size="small"
-                label={`${allItems.length} found`}
-                sx={{
-                  bgcolor: alpha(CHART_COLORS.primary, 0.1),
-                  color: CHART_COLORS.primary,
-                  fontWeight: 600,
-                  fontSize: '0.7rem',
-                  height: 24,
-                }}
-              />
-            )}
-
-            {/* Sort Toggle */}
-            <Paper
-              elevation={0}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
+            {/* Sort */}
+            <Button
+              size="small"
+              startIcon={<SortIcon sx={{ fontSize: 14 }} />}
+              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+              sx={{ 
+                px: 1.5, 
+                py: 0.5,
+                color: '#6B7280',
+                bgcolor: '#F9FAFB',
                 border: '1px solid #E5E7EB',
-                borderRadius: 2,
-                overflow: 'hidden',
-                bgcolor: '#fff',
-                flexShrink: 0,
+                borderRadius: 1.5,
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '0.75rem',
+                whiteSpace: 'nowrap',
+                '&:hover': { bgcolor: '#F3F4F6' }
               }}
             >
-              <Button
-                size="small"
-                startIcon={<SortIcon sx={{ fontSize: 14 }} />}
-                onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-                sx={{ 
-                  px: 1.5, 
-                  py: 0.5,
-                  color: '#374151',
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.75rem',
-                  borderRadius: 0,
-                  whiteSpace: 'nowrap',
-                  '&:hover': { bgcolor: '#F3F4F6' }
-                }}
-              >
-                {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
-              </Button>
-            </Paper>
-            </Stack>
+              {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
+            </Button>
           </Stack>
-        </Box>
+        </Stack>
+      </Box>
+
+      {/* Main Content Area */}
+      <Container maxWidth="xl" sx={{ py: 3 }}>
 
         {/* Widgets Grid */}
         {allItems.length === 0 ? (
           <Paper 
             elevation={0}
             sx={{ 
-              p: 6, 
+              p: 8, 
               textAlign: 'center', 
-              borderRadius: 2, 
-              border: '2px dashed #E5E7EB', 
-              bgcolor: '#fff' 
+              borderRadius: 3, 
+              border: '2px dashed #D1D5DB', 
+              bgcolor: '#fff',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
             }}
           >
-            <DashboardIcon sx={{ fontSize: 48, color: '#D1D5DB', mb: 2 }} />
+            <DashboardIcon sx={{ fontSize: 56, color: '#D1D5DB', mb: 2 }} />
             <Typography variant="h6" sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>
               Your Dashboard is Empty
             </Typography>
@@ -1486,7 +1440,7 @@ const Dashboard = () => {
                 sm: 'repeat(2, 1fr)',
                 lg: 'repeat(2, 1fr)'
               },
-              gap: 2,
+              gap: 2.5,
               alignItems: 'start'
             }}
           >
