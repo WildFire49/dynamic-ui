@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import {
   Box,
   Typography,
@@ -29,7 +29,7 @@ import {
   Percent,
   Link as LinkIcon,
   Category,
-  AttachMoney,
+  CurrencyRupee,
   AccountBalance,
   Security,
   Person,
@@ -40,6 +40,9 @@ import {
   ErrorOutline,
   Lightbulb,
   Science,
+  CloudUpload,
+  Download,
+  Description,
 } from "@mui/icons-material";
 
 // Icon mapping
@@ -59,7 +62,8 @@ const iconMap = {
   Percent,
   Link: LinkIcon,
   Category,
-  AttachMoney,
+  AttachMoney: CurrencyRupee,
+  CurrencyRupee,
   AccountBalance,
   Security,
   Person,
@@ -70,7 +74,25 @@ const iconMap = {
   ErrorOutline,
   Lightbulb,
   Science,
+  CloudUpload,
+  Download,
+  Description,
 };
+
+// Excel icon component - defined outside to prevent re-renders
+const ExcelIcon = memo(({ size = 24 }) => (
+  <Box
+    component="img"
+    src="/excel.png"
+    alt="Excel"
+    sx={{
+      width: size,
+      height: size,
+      objectFit: 'contain',
+    }}
+  />
+));
+ExcelIcon.displayName = 'ExcelIcon';
 
 /**
  * ProductConfigSidebar - Context-aware sidebar showing calculations and info
@@ -418,15 +440,12 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
 
   // Render calculation section
   const renderCalculation = (section) => {
-    const colorKey = section.color || "primary";
-    const color = theme.palette[colorKey]?.main || theme.palette.primary.main;
-
     return (
       <Box key={section.id} sx={{ mb: 3 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <Typography
             variant="subtitle2"
-            sx={{ fontWeight: 700, fontSize: "0.875rem", color: color }}
+            sx={{ fontWeight: 700, fontSize: "0.9rem", color: '#1e293b' }}
           >
             {section.title}
           </Typography>
@@ -435,31 +454,41 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
         {section.calculations?.map((calc, index) => {
           const value = getFormValue(calc.formula);
           const formattedValue = formatValue(value, calc.format, calc.suffix);
+          const hasValue = value !== null && value !== undefined && value !== '';
           
           return (
             <Box
               key={index}
               sx={{
-                p: 1.5,
-                mb: 1,
+                p: 2,
+                mb: 1.5,
                 borderRadius: 2,
-                bgcolor: calc.highlight ? alpha(color, 0.08) : alpha(theme.palette.grey[100], 0.5),
-                border: `1px solid ${alpha(calc.highlight ? color : theme.palette.divider, 0.2)}`,
+                bgcolor: calc.highlight ? '#f0fdf4' : '#f8fafc',
+                border: `1px solid ${calc.highlight ? '#86efac' : '#e2e8f0'}`,
+                transition: 'all 0.3s ease',
+                transform: hasValue ? 'scale(1)' : 'scale(0.98)',
+                opacity: hasValue ? 1 : 0.7,
+                '&:hover': {
+                  transform: 'translateX(4px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                },
               }}
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <Typography
-                  variant="caption"
-                  sx={{ fontSize: "0.75rem", color: theme.palette.text.secondary }}
+                  variant="body2"
+                  sx={{ fontSize: "0.8rem", color: '#475569', fontWeight: 500 }}
                 >
                   {calc.label}
                 </Typography>
                 <Typography
                   variant="body1"
                   sx={{
-                    fontWeight: calc.highlight ? 700 : 600,
-                    fontSize: calc.highlight ? "1.125rem" : "0.938rem",
-                    color: calc.highlight ? color : theme.palette.text.primary,
+                    fontWeight: 700,
+                    fontSize: calc.highlight ? "1.25rem" : "1rem",
+                    color: hasValue ? (calc.highlight ? '#16a34a' : '#1e293b') : '#94a3b8',
+                    transition: 'all 0.3s ease',
+                    fontFamily: 'monospace',
                   }}
                 >
                   {formattedValue}
@@ -468,7 +497,7 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
               {calc.helpText && (
                 <Typography
                   variant="caption"
-                  sx={{ fontSize: "0.688rem", color: theme.palette.text.disabled, display: "block", mt: 0.5 }}
+                  sx={{ fontSize: "0.7rem", color: '#64748b', display: "block", mt: 0.75, fontStyle: 'italic' }}
                 >
                   {calc.helpText}
                 </Typography>
@@ -521,15 +550,12 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
 
   // Render info section
   const renderInfo = (section) => {
-    const colorKey = section.color || "primary";
-    const color = theme.palette[colorKey]?.main || theme.palette.primary.main;
-
     return (
       <Box key={section.id} sx={{ mb: 3 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <Typography
             variant="subtitle2"
-            sx={{ fontWeight: 700, fontSize: "0.875rem" }}
+            sx={{ fontWeight: 700, fontSize: "0.9rem", color: '#1e293b' }}
           >
             {section.title}
           </Typography>
@@ -538,18 +564,18 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
         <Paper
           elevation={0}
           sx={{
-            p: 2,
+            p: 0,
             borderRadius: 2,
-            bgcolor: alpha(theme.palette.grey[100], 0.3),
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            maxHeight: 400,
-            overflowY: 'auto',
+            bgcolor: '#f8fafc',
+            border: `1px solid #e2e8f0`,
+            overflow: 'hidden',
           }}
         >
           {/* Regular fields */}
           {section.fields?.map((field, index) => {
             const value = getFormValue(field.key);
             const formattedValue = formatValue(value, field.format, field.suffix);
+            const hasValue = value !== null && value !== undefined && value !== '';
 
             return (
               <Box
@@ -558,22 +584,31 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  py: 1,
-                  borderBottom:
-                    index < section.fields.length - 1
-                      ? `1px solid ${alpha(theme.palette.divider, 0.1)}`
-                      : "none",
+                  py: 1.5,
+                  px: 2,
+                  borderBottom: index < section.fields.length - 1 ? `1px solid #e2e8f0` : "none",
+                  transition: 'all 0.2s ease',
+                  bgcolor: hasValue ? 'white' : '#f8fafc',
+                  '&:hover': {
+                    bgcolor: '#f1f5f9',
+                  },
                 }}
               >
                 <Typography
-                  variant="caption"
-                  sx={{ fontSize: "0.75rem", color: theme.palette.text.secondary }}
+                  variant="body2"
+                  sx={{ fontSize: "0.8rem", color: '#475569', fontWeight: 500 }}
                 >
                   {field.label}
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ fontSize: "0.813rem", fontWeight: 600, color: theme.palette.text.primary }}
+                  sx={{ 
+                    fontSize: "0.85rem", 
+                    fontWeight: 600, 
+                    color: hasValue ? '#1e293b' : '#94a3b8',
+                    transition: 'all 0.3s ease',
+                    fontFamily: hasValue ? 'inherit' : 'inherit',
+                  }}
                 >
                   {formattedValue}
                 </Typography>
@@ -667,24 +702,24 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
 
   // Render status section
   const renderStatus = (section) => {
-    const statusIcons = {
-      pending: { icon: "HelpOutline", color: theme.palette.warning.main },
-      checking: { icon: "Info", color: theme.palette.info.main },
-      success: { icon: "CheckCircleOutline", color: theme.palette.success.main },
-      error: { icon: "ErrorOutline", color: theme.palette.error.main },
+    const statusConfig = {
+      pending: { icon: "HelpOutline", color: '#f59e0b', bgcolor: '#fef3c7', border: '#fcd34d' },
+      checking: { icon: "Info", color: '#3b82f6', bgcolor: '#dbeafe', border: '#93c5fd' },
+      success: { icon: "CheckCircleOutline", color: '#16a34a', bgcolor: '#dcfce7', border: '#86efac' },
+      error: { icon: "ErrorOutline", color: '#dc2626', bgcolor: '#fee2e2', border: '#fca5a5' },
     };
 
     return (
       <Box key={section.id} sx={{ mb: 3 }}>
         <Typography
           variant="subtitle2"
-          sx={{ fontWeight: 700, fontSize: "0.875rem", mb: 1.5 }}
+          sx={{ fontWeight: 700, fontSize: "0.9rem", mb: 2, color: '#1e293b' }}
         >
           {section.title}
         </Typography>
 
         {section.items?.map((item, index) => {
-          const statusConfig = statusIcons[item.status] || statusIcons.pending;
+          const config = statusConfig[item.status] || statusConfig.pending;
 
           return (
             <Box
@@ -693,27 +728,31 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 1.5,
-                p: 1.5,
-                mb: 1,
+                p: 2,
+                mb: 1.5,
                 borderRadius: 2,
-                bgcolor: alpha(statusConfig.color, 0.05),
-                border: `1px solid ${alpha(statusConfig.color, 0.2)}`,
+                bgcolor: config.bgcolor,
+                border: `1px solid ${config.border}`,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateX(4px)',
+                },
               }}
             >
-              <Box sx={{ color: statusConfig.color, fontSize: 20, mt: 0.25, flexShrink: 0 }}>
-                {renderIcon(statusConfig.icon)}
+              <Box sx={{ color: config.color, fontSize: 20, mt: 0.25, flexShrink: 0 }}>
+                {renderIcon(config.icon)}
               </Box>
               <Box sx={{ flex: 1 }}>
                 <Typography
                   variant="body2"
-                  sx={{ fontSize: "0.813rem", fontWeight: 600, color: theme.palette.text.primary, mb: 0.5 }}
+                  sx={{ fontSize: "0.85rem", fontWeight: 600, color: '#1e293b', mb: 0.5 }}
                 >
                   {item.label}
                 </Typography>
                 {item.message && (
                   <Typography
                     variant="caption"
-                    sx={{ fontSize: "0.75rem", color: theme.palette.text.secondary }}
+                    sx={{ fontSize: "0.75rem", color: '#475569' }}
                   >
                     {item.message}
                   </Typography>
@@ -728,29 +767,30 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
 
   // Render guidance section
   const renderGuidance = (section) => {
-    const colorKey = section.color || "info";
-    const color = theme.palette[colorKey]?.main || theme.palette.info.main;
-
     return (
-      <Alert
+      <Paper
         key={section.id}
-        severity={section.color || "info"}
-        icon={false}
+        elevation={0}
         sx={{
           mb: 3,
+          p: 2.5,
           borderRadius: 2,
-          "& .MuiAlert-message": {
-            width: "100%",
-          },
+          bgcolor: '#eff6ff',
+          border: '1px solid #bfdbfe',
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: "0.875rem", mb: 0.5 }}>
-          {section.title}
-        </Typography>
-        <Typography variant="body2" sx={{ fontSize: "0.813rem", lineHeight: 1.6 }}>
-          {section.content}
-        </Typography>
-      </Alert>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+          <Lightbulb sx={{ color: '#2563eb', fontSize: 20, mt: 0.25 }} />
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: "0.875rem", mb: 0.75, color: '#1e40af' }}>
+              {section.title}
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: "0.8rem", lineHeight: 1.6, color: '#1e3a5f' }}>
+              {section.content}
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
     );
   };
 
@@ -959,8 +999,325 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
     );
   };
 
+  // Render LPF ranges section
+  const renderLpfRanges = (section) => {
+    return (
+      <Box key={section.id} sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: '8px',
+              bgcolor: '#fef3c7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Receipt sx={{ color: '#d97706', fontSize: 18 }} />
+          </Box>
+          <Box>
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: 700, fontSize: "0.9rem", color: '#1e293b' }}
+            >
+              {section.title}
+            </Typography>
+            {section.description && (
+              <Typography
+                variant="caption"
+                sx={{ fontSize: "0.7rem", color: '#64748b' }}
+              >
+                {section.description}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+
+        {/* LPF Ranges Cards */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {section.ranges?.map((range, index) => {
+            const minLoan = getFormValue(range.minLoanKey);
+            const maxLoan = getFormValue(range.maxLoanKey);
+            const percentage = getFormValue(range.percentageKey);
+            const minFee = getFormValue(range.minFeeKey);
+            const gst = getFormValue(range.gstKey);
+            
+            const hasData = minLoan || maxLoan || percentage || minFee;
+            
+            return (
+              <Paper
+                key={index}
+                elevation={0}
+                sx={{
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  border: hasData ? '1px solid #86efac' : '1px solid #e2e8f0',
+                  bgcolor: hasData ? '#f0fdf4' : '#f8fafc',
+                  transition: 'all 0.3s ease',
+                  transform: hasData ? 'scale(1)' : 'scale(0.98)',
+                  opacity: hasData ? 1 : 0.6,
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  },
+                }}
+              >
+                {/* Range Header */}
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.25,
+                    bgcolor: hasData ? '#dcfce7' : '#f1f5f9',
+                    borderBottom: '1px solid',
+                    borderColor: hasData ? '#86efac' : '#e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 700, fontSize: '0.8rem', color: '#1e293b' }}
+                  >
+                    Range {range.rangeNumber}
+                  </Typography>
+                  {hasData && (
+                    <Chip
+                      label="Configured"
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        bgcolor: '#16a34a',
+                        color: 'white',
+                        '& .MuiChip-label': { px: 1 },
+                      }}
+                    />
+                  )}
+                </Box>
+
+                {/* Range Content */}
+                <Box sx={{ p: 2 }}>
+                  {/* Loan Amount Range */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', mb: 0.75, display: 'block' }}
+                    >
+                      Loan Amount Range
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ flex: 1, textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: 1, border: '1px solid #e2e8f0' }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Min</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: minLoan ? '#1e293b' : '#94a3b8', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                          {minLoan ? `₹${parseFloat(minLoan).toLocaleString('en-IN')}` : '—'}
+                        </Typography>
+                      </Box>
+                      <Typography sx={{ color: '#94a3b8', fontWeight: 600 }}>→</Typography>
+                      <Box sx={{ flex: 1, textAlign: 'center', p: 1, bgcolor: 'white', borderRadius: 1, border: '1px solid #e2e8f0' }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Max</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: maxLoan ? '#1e293b' : '#94a3b8', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                          {maxLoan ? `₹${parseFloat(maxLoan).toLocaleString('en-IN')}` : '—'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  {/* Fee Details Grid */}
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1 }}>
+                    {/* LPF Percentage */}
+                    <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: '#fef3c7', borderRadius: 1.5 }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#92400e', fontWeight: 600, display: 'block', mb: 0.5 }}>LPF %</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 700, color: percentage ? '#92400e' : '#94a3b8', fontSize: '1.1rem' }}>
+                        {percentage ? `${percentage}%` : '—'}
+                      </Typography>
+                    </Box>
+
+                    {/* Minimum LPF */}
+                    <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: '#dbeafe', borderRadius: 1.5 }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#1e40af', fontWeight: 600, display: 'block', mb: 0.5 }}>Min LPF</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 700, color: minFee ? '#1e40af' : '#94a3b8', fontSize: '0.95rem', fontFamily: 'monospace' }}>
+                        {minFee ? `₹${parseFloat(minFee).toLocaleString('en-IN')}` : '—'}
+                      </Typography>
+                    </Box>
+
+                    {/* GST */}
+                    <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: '#f3e8ff', borderRadius: 1.5 }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#7c3aed', fontWeight: 600, display: 'block', mb: 0.5 }}>GST</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 700, color: gst ? '#7c3aed' : '#94a3b8', fontSize: '0.95rem' }}>
+                        {gst || '18%'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Paper>
+            );
+          })}
+        </Box>
+
+        {/* Add Range Button Hint */}
+        <Box
+          sx={{
+            mt: 2,
+            p: 1.5,
+            borderRadius: 1.5,
+            border: '1px dashed #cbd5e1',
+            bgcolor: '#f8fafc',
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.75rem' }}>
+            Configure LPF ranges in the form to see them here
+          </Typography>
+        </Box>
+      </Box>
+    );
+  };
+
+  // Render file upload section for bulk data import
+  const renderFileUpload = (section) => {
+    return (
+      <Box key={section.id} sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
+          <ExcelIcon size={28} />
+          <Typography
+            variant="subtitle2"
+            sx={{ fontWeight: 700, fontSize: "0.9rem", color: '#1e293b' }}
+          >
+            {section.title}
+          </Typography>
+        </Box>
+
+        {section.description && (
+          <Typography
+            variant="body2"
+            sx={{ fontSize: "0.8rem", color: '#475569', display: "block", mb: 2, lineHeight: 1.5 }}
+          >
+            {section.description}
+          </Typography>
+        )}
+
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            borderRadius: 2,
+            bgcolor: '#f8fafc',
+            border: `2px dashed #cbd5e1`,
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              bgcolor: '#f1f5f9',
+              borderColor: '#217346',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 12px rgba(33, 115, 70, 0.15)',
+            },
+          }}
+        >
+          <input
+            type="file"
+            accept={section.accept || ".xlsx,.xls,.csv"}
+            style={{ display: 'none' }}
+            id={`sidebar-upload-${section.id}`}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                console.log('File selected:', file.name);
+              }
+            }}
+          />
+          <label htmlFor={`sidebar-upload-${section.id}`} style={{ cursor: 'pointer', display: 'block' }}>
+            <Box sx={{ mb: 1.5, display: 'flex', justifyContent: 'center' }}>
+              <ExcelIcon size={52} />
+            </Box>
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 700, color: '#217346', mb: 0.5, fontSize: '0.9rem' }}
+            >
+              Click to Upload Excel
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ fontSize: "0.75rem", color: '#64748b' }}
+            >
+              Supports {section.accept || ".xlsx, .xls, .csv"}
+            </Typography>
+          </label>
+        </Paper>
+
+        {/* Expected columns */}
+        {section.columns && section.columns.length > 0 && (
+          <Box sx={{ mt: 2.5 }}>
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: 700, fontSize: "0.75rem", color: '#334155', mb: 1, display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+            >
+              Required Columns
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+              {section.columns.map((col, idx) => (
+                <Chip
+                  key={idx}
+                  label={col}
+                  size="small"
+                  sx={{
+                    height: 26,
+                    fontSize: '0.7rem',
+                    fontWeight: 500,
+                    bgcolor: '#e2e8f0',
+                    color: '#334155',
+                    border: '1px solid #cbd5e1',
+                    '& .MuiChip-label': { px: 1.5 },
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Download template button */}
+        {section.templateDownload && (
+          <Box
+            sx={{
+              mt: 2.5,
+              p: 1.5,
+              borderRadius: 1.5,
+              bgcolor: '#217346',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: '#1a5c38',
+                transform: 'translateY(-1px)',
+              },
+            }}
+            onClick={() => {
+              console.log('Download template:', section.templateName);
+            }}
+          >
+            <Download sx={{ fontSize: 18, color: 'white' }} />
+            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', color: 'white' }}>
+              Download Template
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
   const renderSection = (section) => {
     switch (section.type) {
+      case "lpf_ranges":
+        return renderLpfRanges(section);
+      case "file_upload":
+        return renderFileUpload(section);
       case "guidance":
         return renderGuidance(section);
       case "impact":
@@ -1011,6 +1368,9 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
         p: 2.5,
         height: "100%",
         overflow: "auto",
+        // Prevent layout shifts and flickering
+        willChange: 'auto',
+        contain: 'layout style',
         "&::-webkit-scrollbar": {
           width: 6,
         },
@@ -1022,7 +1382,16 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
     >
       {contextSections.map((section, index) => (
         <React.Fragment key={section.id}>
-          {renderSection(section)}
+          <Box
+            sx={{
+              // Smooth transitions for value updates
+              '& *': {
+                transition: 'color 0.2s ease, background-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease',
+              },
+            }}
+          >
+            {renderSection(section)}
+          </Box>
           {index < contextSections.length - 1 && (
             <Divider sx={{ my: 3, borderColor: alpha(theme.palette.divider, 0.1) }} />
           )}
@@ -1032,4 +1401,22 @@ const ProductConfigSidebar = ({ config, stages = [], currentStageIndex = 0, form
   );
 };
 
-export default ProductConfigSidebar;
+// Memoize the component to prevent unnecessary re-renders
+export default React.memo(ProductConfigSidebar, (prevProps, nextProps) => {
+  // Only re-render if these specific props change
+  if (prevProps.currentStageIndex !== nextProps.currentStageIndex) return false;
+  if (prevProps.config !== nextProps.config) return false;
+  if (prevProps.stages !== nextProps.stages) return false;
+  
+  // Deep compare formData for the current stage only
+  const prevStageId = prevProps.stages?.[prevProps.currentStageIndex]?.id;
+  const nextStageId = nextProps.stages?.[nextProps.currentStageIndex]?.id;
+  
+  if (prevStageId !== nextStageId) return false;
+  
+  const prevStageData = prevProps.formData?.[prevStageId];
+  const nextStageData = nextProps.formData?.[nextStageId];
+  
+  // Compare stringified stage data
+  return JSON.stringify(prevStageData) === JSON.stringify(nextStageData);
+});

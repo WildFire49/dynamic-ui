@@ -478,19 +478,14 @@ class AuthService {
   // Logout
   logout() {
     if (!this.isClient()) return;
-    // Clear localStorage
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("accessTokenExpiry");
-    localStorage.removeItem("userInfo");
-    localStorage.removeItem("roles");
-    localStorage.removeItem("roleCode");
-    localStorage.removeItem("roleName");
-    localStorage.removeItem("roleId");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userId");
 
-    // Clear refresh token from localStorage
-    localStorage.removeItem("refreshToken");
+    // Clear ALL localStorage data to ensure clean state for new login
+    localStorage.clear();
+
+    // Also clear sessionStorage
+    sessionStorage.clear();
+
+    console.log("✅ Logged out - all local data cleared");
   }
 
   // Check if user is authenticated

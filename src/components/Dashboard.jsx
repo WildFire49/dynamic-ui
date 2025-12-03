@@ -77,6 +77,7 @@ import DataGridComponent from './charts/DataGridComponent';
 import AnalysisWidget from './widgets/AnalysisWidget';
 import DashboardSelector from './DashboardSelector';
 import useDashboardStore from '../store/dashboardStore';
+import { DashboardLoadingSkeleton } from './skeletons/WidgetSkeleton';
 
 // Chart colors matching the reference UI
 const CHART_COLORS = {
@@ -1550,25 +1551,7 @@ const Dashboard = () => {
 
         {/* Widgets Grid */}
         {isLoading ? (
-          <Paper 
-            elevation={0}
-            sx={{ 
-              p: 8, 
-              textAlign: 'center', 
-              borderRadius: 3, 
-              border: '1px solid #E5E7EB', 
-              bgcolor: '#fff',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            }}
-          >
-            <CircularProgress size={48} sx={{ color: '#3B82F6', mb: 2 }} />
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>
-              Loading Dashboard
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#6B7280' }}>
-              Fetching your saved visualizations...
-            </Typography>
-          </Paper>
+          <DashboardLoadingSkeleton />
         ) : allItems.length === 0 ? (
           <Paper 
             elevation={0}

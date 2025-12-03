@@ -23,13 +23,13 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import DynamicFormView from "../../components/DynamicFormView";
 import DynamicLeadsRenderer from "../../components/DynamicLeadsRenderer";
 import LeadsSidebar from "../../components/leads/LeadsSidebar";
 import { productConfigSchema } from "../../components/productConfig";
 import ProductConfigSidebar from "../../components/ProductConfigSidebar";
-import { productConfigStages } from "../../components/productConfigStages";
+import { productConfigStages } from "../../components/productConfigStagesNew";
 
 // Icon mapping for stages
 const iconMap = {
@@ -108,7 +108,7 @@ export default function ProductConfiguratorPage() {
     setCurrentStageIndex(newValue);
   };
 
-  const handleFormDataChange = (stageId, fieldId, value) => {
+  const handleFormDataChange = useCallback((stageId, fieldId, value) => {
     setFormData((prevData) => ({
       ...prevData,
       [stageId]: {
@@ -116,8 +116,7 @@ export default function ProductConfiguratorPage() {
         [fieldId]: value,
       },
     }));
-    console.log("Form data updated:", stageId, fieldId, value);
-  };
+  }, []);
 
   const handleSave = (data) => {
     console.log("Product saved:", data);
@@ -555,8 +554,10 @@ export default function ProductConfiguratorPage() {
                         variant="contained"
                         onClick={handleSubmit}
                         sx={{
-                          background:
-                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          bgcolor: "#16a34a",
+                          "&:hover": {
+                            bgcolor: "#15803d",
+                          },
                         }}
                       >
                         Submit Configuration

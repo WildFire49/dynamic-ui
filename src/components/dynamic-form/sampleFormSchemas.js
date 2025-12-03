@@ -578,7 +578,8 @@ export const getFormSchemaByKeyword = (message) => {
   const lowerMessage = message.toLowerCase();
 
   // HDFC Bank Customer Onboarding - Start with L1 (PRIORITY)
-  if (lowerMessage.includes("HDFC")) {
+  if (
+    lowerMessage.includes("HDFC") ||lowerMessage.includes("onboard") ) {
     console.log("🎯 Detected HDFC onboarding request - returning L1 schema");
     return l1CustomerOnboardingSchema;
   }
