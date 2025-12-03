@@ -96,11 +96,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (username, password) => {
+  const login = async (username, password, productCode = null) => {
     try {
       setLoading(true);
 
-      const loginResult = await authService.login(username, password);
+      const loginResult = await authService.login(
+        username,
+        password,
+        productCode
+      );
       console.log("Login result:", loginResult.success ? "Success" : "Failed");
 
       if (loginResult.success) {
@@ -160,7 +164,11 @@ export const AuthProvider = ({ children }) => {
 
   // Helper functions for role checking
   const hasRole = (roleCode) => {
-    return user?.roles?.some((role) => role.roleCode === roleCode) || false;
+    if (!user?.roles) return false;
+    return user.roles.some((role) => {
+      if (typeof role === "string") return role === roleCode;
+      return (role.roleCode || role.code || role.role) === roleCode;
+    });
   };
 
   const isSuperAdmin = () => {
@@ -172,7 +180,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const getUserRoles = () => {
-    return user?.roles?.map((role) => role.roleCode) || [];
+    if (!user?.roles) return [];
+    // Handle different role structures from SSO
+    // Could be: { roleCode: 'X' } or { code: 'X' } or just string 'X'
+    return user.roles
+      .map((role) => {
+        if (typeof role === "string") return role;
+        return role.roleCode || role.code || role.role || role;
+      })
+      .filter(Boolean);
   };
 
   const getAccessibleMenuItems = () => {

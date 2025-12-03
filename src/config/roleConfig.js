@@ -5,10 +5,10 @@
 // Role Code Constants
 // ============================
 export const ROLES = {
-  SUPER_ADMIN: 'RE-20448',
-  RECON_USER: 'RE-20612',
-  RECON_CONFIGURATOR: 'RE-20920',
-  ADMIN_CONFIGURATOR: 'RE-20769',
+  SUPER_ADMIN: "RE-20448",
+  RECON_USER: "RE-20612",
+  RECON_CONFIGURATOR: "RE-20920",
+  ADMIN_CONFIGURATOR: "RE-20769",
 };
 
 // ============================
@@ -26,26 +26,14 @@ export const ROLE_CATEGORIES = {
 // ============================
 export const ROUTE_ACCESS = {
   // Public routes (accessible to all authenticated users)
-  PUBLIC_ROUTES: [
-    'chat',
-    'profile',
-  ],
-  
+  PUBLIC_ROUTES: ["chat", "profile"],
+
   // Admin-only routes
-  ADMIN_ROUTES: [
-    'configurator',
-    'accessControl', 
-    'settings',
-    'userManagement',
-  ],
-  
+  ADMIN_ROUTES: ["configurator", "accessControl", "settings", "userManagement"],
+
   // Routes accessible to both admin and regular users
-  SHARED_ROUTES: [
-    'dashboard',
-    'chat',
-    'profile',
-  ],
-  
+  SHARED_ROUTES: ["dashboard", "chat", "profile"],
+
   // Specific route permissions
   ROUTE_PERMISSIONS: {
     chat: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.RECON_CONFIGURATOR],
@@ -54,47 +42,47 @@ export const ROUTE_ACCESS = {
     accessControl: [ROLES.SUPER_ADMIN], // Admin only
     settings: [ROLES.SUPER_ADMIN], // Admin only
     userManagement: [ROLES.SUPER_ADMIN], // Admin only
-  }
+  },
 };
 
 // ============================
 // Menu Configuration
 // ============================
 export const MENU_ITEMS = [
-  { 
-    id: 'chat', 
-    label: 'Chat', 
-    icon: 'ChatIcon', 
+  {
+    id: "chat",
+    label: "Chat",
+    icon: "ChatIcon",
     roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.RECON_CONFIGURATOR],
-    path: '/'
+    path: "/",
   },
-  { 
-    id: 'dashboard', 
-    label: 'Dashboard', 
-    icon: 'DashboardIcon', 
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: "DashboardIcon",
     roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.RECON_CONFIGURATOR],
-    path: '/dashboard'
+    path: "/dashboard",
   },
-  { 
-    id: 'configurator', 
-    label: 'Configurator', 
-    icon: 'ConfiguratorIcon', 
+  {
+    id: "configurator",
+    label: "Configurator",
+    icon: "ConfiguratorIcon",
     roles: [ROLES.SUPER_ADMIN, ROLES.RECON_CONFIGURATOR],
-    path: '/configurator'
+    path: "/configurator",
   },
-  { 
-    id: 'accessControl', 
-    label: 'Access Control', 
-    icon: 'AccessControlIcon', 
+  {
+    id: "accessControl",
+    label: "Access Control",
+    icon: "AccessControlIcon",
     roles: [ROLES.SUPER_ADMIN],
-    path: '/access-control'
+    path: "/access-control",
   },
-  { 
-    id: 'settings', 
-    label: 'Settings', 
-    icon: 'SettingsIcon', 
+  {
+    id: "settings",
+    label: "Settings",
+    icon: "SettingsIcon",
     roles: [ROLES.SUPER_ADMIN],
-    path: '/settings'
+    path: "/settings",
   },
 ];
 
@@ -102,10 +90,10 @@ export const MENU_ITEMS = [
 // Role Display Names
 // ============================
 export const ROLE_DISPLAY_NAMES = {
-  [ROLES.SUPER_ADMIN]: 'Super Admin',
-  [ROLES.RECON_USER]: 'Recon User', 
-  [ROLES.RECON_CONFIGURATOR]: 'Recon Configurator', // Display as "Recon User" instead of "Recon Configurator"
-  [ROLES.ADMIN_CONFIGURATOR]: 'Admin Configurator', // Display as "Recon User" instead of "Recon Configurator"
+  [ROLES.SUPER_ADMIN]: "Super Admin",
+  [ROLES.RECON_USER]: "Recon User",
+  [ROLES.RECON_CONFIGURATOR]: "Recon Configurator", // Display as "Recon User" instead of "Recon Configurator"
+  [ROLES.ADMIN_CONFIGURATOR]: "Admin Configurator", // Display as "Recon User" instead of "Recon Configurator"
 };
 
 // ============================
@@ -121,14 +109,14 @@ export const ROLE_DISPLAY_NAMES = {
 export const hasRouteAccess = (routeId, userRoles = []) => {
   const routePermissions = ROUTE_ACCESS.ROUTE_PERMISSIONS[routeId];
   if (!routePermissions) return false;
-  
-  return userRoles.some(role => routePermissions.includes(role));
+
+  return userRoles.some((role) => routePermissions.includes(role));
 };
 
 /**
  * Check if a user has a specific role
  * @param {string} roleCode - The role code to check
- * @param {Array} userRoles - Array of user role codes  
+ * @param {Array} userRoles - Array of user role codes
  * @returns {boolean} - Whether user has the role
  */
 export const hasRole = (roleCode, userRoles = []) => {
@@ -150,8 +138,10 @@ export const isSuperAdmin = (userRoles = []) => {
  * @returns {boolean} - Whether user is regular user
  */
 export const isRegularUser = (userRoles = []) => {
-  return userRoles.some(role => ROLE_CATEGORIES.USER_ROLES.includes(role)) && 
-         !isSuperAdmin(userRoles);
+  return (
+    userRoles.some((role) => ROLE_CATEGORIES.USER_ROLES.includes(role)) &&
+    !isSuperAdmin(userRoles)
+  );
 };
 
 /**
@@ -169,9 +159,20 @@ export const getRoleDisplayName = (roleCode) => {
  * @returns {Array} - Filtered menu items user has access to
  */
 export const getAccessibleMenuItems = (userRoles = []) => {
-  return MENU_ITEMS.filter(item => 
-    item.roles.some(requiredRole => userRoles.includes(requiredRole))
-  );
+  // Basic menu items available to all authenticated users
+  const basicMenuIds = ["chat", "dashboard"];
+
+  // If user has ANY role (including generic "USER"), show basic items
+  const hasAnyRole = userRoles.length > 0;
+
+  return MENU_ITEMS.filter((item) => {
+    // Always show basic menu items for any authenticated user with roles
+    if (basicMenuIds.includes(item.id) && hasAnyRole) {
+      return true;
+    }
+    // For other items, check specific role requirements
+    return item.roles.some((requiredRole) => userRoles.includes(requiredRole));
+  });
 };
 
 /**

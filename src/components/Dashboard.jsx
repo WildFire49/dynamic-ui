@@ -28,7 +28,8 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   InputBase,
-  ClickAwayListener
+  ClickAwayListener,
+  CircularProgress
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -50,7 +51,10 @@ import {
   Search as SearchIcon,
   Sort as SortIcon,
   GridView as GridViewIcon,
-  FileDownload as FileDownloadIcon
+  FileDownload as FileDownloadIcon,
+  CloudDone as CloudDoneIcon,
+  CloudSync as CloudSyncIcon,
+  CloudOff as CloudOffIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -101,6 +105,11 @@ const Dashboard = () => {
     removeVisualization,
     updateVisualization,
     migrateFromLocalStorage,
+    loadFromServer,
+    syncToServer,
+    isLoading,
+    isSyncing,
+    lastSyncedAt,
   } = useDashboardStore();
 
   const [savedVisualizations, setSavedVisualizations] = useState([]);
@@ -234,13 +243,35 @@ const Dashboard = () => {
     return value.toLocaleString();
   };
 
-  // Migrate existing localStorage data to Zustand store on first load (only once)
+  // Load dashboards from API on mount
   useEffect(() => {
-    const hasMigrated = localStorage.getItem('dashboardMigrated');
-    if (!hasMigrated) {
-      migrateFromLocalStorage();
-      localStorage.setItem('dashboardMigrated', 'true');
-    }
+    const initializeDashboard = async () => {
+      const username = localStorage.getItem('username') || localStorage.getItem('userId');
+      
+      if (username) {
+        // Try to load from server first
+        const result = await loadFromServer(username);
+        
+        if (!result.success) {
+          console.log('📦 Server load failed, using local data');
+          // If server fails, migrate any old localStorage data
+          const hasMigrated = localStorage.getItem('dashboardMigrated');
+          if (!hasMigrated) {
+            migrateFromLocalStorage();
+            localStorage.setItem('dashboardMigrated', 'true');
+          }
+        }
+      } else {
+        // No user, just migrate local data
+        const hasMigrated = localStorage.getItem('dashboardMigrated');
+        if (!hasMigrated) {
+          migrateFromLocalStorage();
+          localStorage.setItem('dashboardMigrated', 'true');
+        }
+      }
+    };
+
+    initializeDashboard();
   }, []);
 
   // Subscribe to Zustand store changes for real-time updates
@@ -567,49 +598,101 @@ const Dashboard = () => {
   
   const displayItems = getDisplayItems();
 
-  // Resize handlers
+  // Optimized resize handlers using refs for smooth performance
+  const resizeRef = useRef(null);
+  const rafRef = useRef(null);
+  const lastHeightRef = useRef(null);
+
   const handleResizeStart = (e, itemId, currentWidth, currentHeight) => {
     e.preventDefault();
     e.stopPropagation();
-    setResizing({
+    
+    // Store resize state in ref for immediate access (no re-renders)
+    resizeRef.current = {
       id: itemId,
-      startX: e.clientX,
       startY: e.clientY,
       startWidth: currentWidth,
       startHeight: currentHeight,
+    };
+    lastHeightRef.current = currentHeight;
+    
+    // Add cursor style to body for smooth UX
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    
+    setResizing({ id: itemId }); // Minimal state for UI feedback
+  };
+
+  const handleResizeMove = React.useCallback((e) => {
+    if (!resizeRef.current) return;
+    
+    // Cancel any pending RAF to prevent frame buildup
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+    }
+    
+    // Use RAF for smooth 60fps updates
+    rafRef.current = requestAnimationFrame(() => {
+      if (!resizeRef.current) return;
+      
+      const { id, startY, startHeight, startWidth } = resizeRef.current;
+      const deltaY = e.clientY - startY;
+      const newHeight = Math.max(200, Math.min(800, startHeight + deltaY));
+      
+      // Skip if height hasn't changed (optimization)
+      if (lastHeightRef.current === newHeight) return;
+      lastHeightRef.current = newHeight;
+      
+      // Direct DOM manipulation for instant visual feedback
+      const element = document.getElementById(`widget-${id}`);
+      if (element) {
+        element.style.height = `${newHeight}px`;
+      }
     });
-  };
+  }, []);
 
-  const handleResizeMove = (e) => {
-    if (!resizing) return;
+  const handleResizeEnd = React.useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+    }
     
-    const deltaX = e.clientX - resizing.startX;
-    const deltaY = e.clientY - resizing.startY;
+    // Commit final height to React state
+    if (resizeRef.current && lastHeightRef.current) {
+      const { id, startWidth } = resizeRef.current;
+      const finalHeight = lastHeightRef.current;
+      
+      setWidgetSizes(prev => ({
+        ...prev,
+        [id]: { 
+          width: prev[id]?.width || startWidth,
+          height: finalHeight 
+        }
+      }));
+    }
     
-    const newWidth = Math.max(300, resizing.startWidth + deltaX);
-    const newHeight = Math.max(200, resizing.startHeight + deltaY);
+    // Reset cursor and selection
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
     
-    setWidgetSizes(prev => ({
-      ...prev,
-      [resizing.id]: { width: newWidth, height: newHeight }
-    }));
-  };
-
-  const handleResizeEnd = () => {
+    resizeRef.current = null;
+    lastHeightRef.current = null;
     setResizing(null);
-  };
+  }, []);
 
-  // Add/remove resize event listeners
+  // Add/remove resize event listeners with passive option for performance
   React.useEffect(() => {
     if (resizing) {
-      window.addEventListener('mousemove', handleResizeMove);
+      window.addEventListener('mousemove', handleResizeMove, { passive: true });
       window.addEventListener('mouseup', handleResizeEnd);
       return () => {
         window.removeEventListener('mousemove', handleResizeMove);
         window.removeEventListener('mouseup', handleResizeEnd);
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+        }
       };
     }
-  }, [resizing]);
+  }, [resizing, handleResizeMove, handleResizeEnd]);
 
   // Get widget size with defaults
   const getWidgetSize = (itemId, isFullWidth) => {
@@ -676,7 +759,7 @@ const Dashboard = () => {
   };
 
   // Render Area Chart
-  const renderAreaChart = (data, height = 280) => {
+  const renderAreaChart = (data) => {
     const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
     const labelKey = keys.find(k => 
       k.toLowerCase().includes('month') || 
@@ -688,7 +771,7 @@ const Dashboard = () => {
 
     // Handle single-value data - use bar chart instead for better visualization
     if (valueKeys.length === 0 && keys.length > 0) {
-      return renderBarChart(data, height);
+      return renderBarChart(data);
     }
 
     if (valueKeys.length === 0) {
@@ -696,7 +779,7 @@ const Dashboard = () => {
     }
 
     return (
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -744,7 +827,7 @@ const Dashboard = () => {
   };
 
   // Render Bar Chart
-  const renderBarChart = (data, height = 280) => {
+  const renderBarChart = (data) => {
     const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
     const labelKey = keys.find(k => typeof data[0]?.[k] === 'string') || keys[0];
     let valueKeys = keys.filter(k => k !== labelKey && typeof data[0]?.[k] === 'number');
@@ -765,7 +848,7 @@ const Dashboard = () => {
     }
 
     return (
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
           <XAxis 
@@ -968,19 +1051,23 @@ const Dashboard = () => {
               : '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',
             transform: draggedItem?.id === item.id 
               ? 'scale(1.02)' 
-              : 'scale(1)',
-            transition: resizing ? 'none' : 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              : 'translateZ(0)', // GPU acceleration
+            transition: resizing?.id === item.id ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease',
             zIndex: draggedItem?.id === item.id ? 10 : 1,
             position: 'relative',
+            willChange: resizing?.id === item.id ? 'height' : 'auto',
+            contain: 'layout style',
             '&:hover': {
               boxShadow: draggedItem ? undefined : '0 4px 16px rgba(0,0,0,0.08)',
-              transform: draggedItem ? undefined : 'translateY(-1px)',
             },
             '&:active': {
               cursor: 'grabbing'
             },
-            // Show resize handle on hover
+            // Show resize handle on hover (bottom edge)
             '&:hover .resize-handle': {
+              opacity: 0.6,
+            },
+            '&:hover .resize-handle:hover': {
               opacity: 1,
             }
           }}
@@ -1027,7 +1114,13 @@ const Dashboard = () => {
                   <Typography 
                     variant="subtitle1" 
                     noWrap 
-                    onClick={() => handleStartEditTitle(item)}
+                    draggable={false}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartEditTitle(item);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onDragStart={(e) => e.preventDefault()}
                     sx={{ 
                       fontWeight: 600, 
                       color: '#111827',
@@ -1037,6 +1130,7 @@ const Dashboard = () => {
                       px: 1,
                       py: 0.25,
                       borderRadius: 1,
+                      userSelect: 'none',
                       '&:hover': {
                         bgcolor: '#F3F4F6',
                       }
@@ -1169,7 +1263,11 @@ const Dashboard = () => {
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              minHeight: 0,
+              minHeight: 150,
+              '& > *': {
+                flex: 1,
+                minHeight: 0,
+              }
             }}>
               {renderVisualization(item, currentViewMode)}
             </Box>
@@ -1198,7 +1296,7 @@ const Dashboard = () => {
               </Box>
             )}
             
-            {/* Resize Handle - Bottom right corner */}
+            {/* Resize Handle - Bottom edge (vertical resize only) */}
             <Box
               className="resize-handle"
               onMouseDown={(e) => {
@@ -1211,25 +1309,27 @@ const Dashboard = () => {
               sx={{
                 position: 'absolute',
                 bottom: 0,
-                right: 0,
-                width: 20,
-                height: 20,
-                cursor: 'nwse-resize',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 60,
+                height: 8,
+                cursor: 'ns-resize', // Vertical resize cursor
                 opacity: 0,
                 transition: 'opacity 0.2s',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                borderRadius: '4px 4px 0 0',
                 '&:hover': {
                   opacity: 1,
+                  bgcolor: 'rgba(59, 130, 246, 0.1)',
                 },
                 '&::before': {
                   content: '""',
-                  width: 10,
-                  height: 10,
-                  borderRight: '2px solid #9CA3AF',
-                  borderBottom: '2px solid #9CA3AF',
-                  borderRadius: '0 0 4px 0',
+                  width: 30,
+                  height: 3,
+                  bgcolor: '#9CA3AF',
+                  borderRadius: 2,
                 },
               }}
             />
@@ -1288,11 +1388,49 @@ const Dashboard = () => {
                 • Updated {formatLastUpdated(lastGlobalUpdate)}
               </Typography>
             )}
+            {/* Sync Status Indicator */}
+            {isSyncing ? (
+              <Tooltip title="Syncing to cloud...">
+                <Chip
+                  icon={<CloudSyncIcon sx={{ fontSize: 14 }} />}
+                  label="Syncing"
+                  size="small"
+                  sx={{ 
+                    bgcolor: alpha('#3B82F6', 0.1), 
+                    color: '#3B82F6',
+                    fontSize: '0.7rem',
+                    height: 24,
+                    '& .MuiChip-icon': { color: '#3B82F6' }
+                  }}
+                />
+              </Tooltip>
+            ) : lastSyncedAt ? (
+              <Tooltip title={`Last synced: ${new Date(lastSyncedAt).toLocaleString()}`}>
+                <Chip
+                  icon={<CloudDoneIcon sx={{ fontSize: 14 }} />}
+                  label="Synced"
+                  size="small"
+                  sx={{ 
+                    bgcolor: alpha('#10B981', 0.1), 
+                    color: '#10B981',
+                    fontSize: '0.7rem',
+                    height: 24,
+                    '& .MuiChip-icon': { color: '#10B981' }
+                  }}
+                />
+              </Tooltip>
+            ) : null}
             {allItems.length > 0 && (
-              <Tooltip title="Refresh">
+              <Tooltip title="Sync to cloud">
                 <IconButton
                   size="small"
-                  onClick={() => window.location.reload()}
+                  onClick={async () => {
+                    const username = localStorage.getItem('username') || localStorage.getItem('userId');
+                    if (username) {
+                      await syncToServer(username);
+                    }
+                  }}
+                  disabled={isSyncing}
                   sx={{ color: '#9CA3AF', p: 0.5, '&:hover': { color: '#374151' } }}
                 >
                   <RefreshIcon sx={{ fontSize: 16 }} />
@@ -1411,7 +1549,27 @@ const Dashboard = () => {
       <Container maxWidth="xl" sx={{ py: 3 }}>
 
         {/* Widgets Grid */}
-        {allItems.length === 0 ? (
+        {isLoading ? (
+          <Paper 
+            elevation={0}
+            sx={{ 
+              p: 8, 
+              textAlign: 'center', 
+              borderRadius: 3, 
+              border: '1px solid #E5E7EB', 
+              bgcolor: '#fff',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            }}
+          >
+            <CircularProgress size={48} sx={{ color: '#3B82F6', mb: 2 }} />
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>
+              Loading Dashboard
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#6B7280' }}>
+              Fetching your saved visualizations...
+            </Typography>
+          </Paper>
+        ) : allItems.length === 0 ? (
           <Paper 
             elevation={0}
             sx={{ 
@@ -1434,14 +1592,12 @@ const Dashboard = () => {
         ) : (
           <Box 
             sx={{ 
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                lg: 'repeat(2, 1fr)'
-              },
-              gap: 2.5,
-              alignItems: 'start'
+              columnCount: { xs: 1, sm: 2, lg: 2 },
+              columnGap: 2.5,
+              '& > *': {
+                breakInside: 'avoid',
+                marginBottom: 2.5,
+              }
             }}
           >
             {displayItems.map((item, index) => {

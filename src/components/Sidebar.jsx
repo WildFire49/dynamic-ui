@@ -107,10 +107,16 @@ const Sidebar = ({
 
   // Get filtered menu items based on user roles
   const getFilteredMenuItems = () => {
-    if (!user) return [];
+    if (!user) {
+      console.log("Sidebar: No user, returning empty menu");
+      return [];
+    }
 
     const userRoleCodes = getUserRoles();
-    return getAccessibleMenuItems(userRoleCodes).map((item) => ({
+    console.log("Sidebar: User roles:", userRoleCodes, "User:", user);
+    const items = getAccessibleMenuItems(userRoleCodes);
+    console.log("Sidebar: Accessible menu items:", items.map(i => i.id));
+    return items.map((item) => ({
       ...item,
       icon: ICON_MAP[item.icon] || ChatIcon, // Fallback to ChatIcon if not found
     }));

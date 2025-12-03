@@ -2577,11 +2577,18 @@ const DynamicDataVisualization = ({
                 
                 // Check if field is a percentage, count, or ratio (not currency)
                 const isPercentage = fieldName.includes('percent') || fieldName.includes('pct') || fieldName.includes('otr') || fieldName.includes('ratio');
-                const isCount = fieldName.includes('count') || fieldName.includes('number') || fieldName.includes('total') && !fieldName.includes('amount');
-                const isCurrency = fieldName.includes('amount') || fieldName.includes('value') || fieldName.includes('price') || fieldName.includes('cost') || fieldName.includes('revenue');
+                const isCount = fieldName.includes('count') || fieldName.includes('number') || (fieldName.includes('total') && !fieldName.includes('amount'));
+                const isCurrency = fieldName.includes('amount') || fieldName.includes('value') || fieldName.includes('price') || fieldName.includes('cost') || fieldName.includes('revenue') || fieldName.includes('sum(');
                 
                 // Format value - show actual numbers, no aggressive rounding
                 const formatValue = (val) => {
+                  // Handle null, undefined, or empty values
+                  if (val === null || val === undefined || val === '') {
+                    if (isCurrency) return '₹0';
+                    if (isPercentage) return '0%';
+                    return '0';
+                  }
+                  
                   const num = parseFloat(val);
                   if (isNaN(num)) return val;
                   
@@ -2607,7 +2614,9 @@ const DynamicDataVisualization = ({
                   return num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
                 };
 
-                const formattedValue = isNumeric ? formatValue(value) : value;
+                const formattedValue = (value === null || value === undefined) 
+                  ? formatValue(value) 
+                  : (isNumeric ? formatValue(value) : value);
                 
                 return (
                   <Card
@@ -2875,6 +2884,10 @@ const DynamicDataVisualization = ({
 
                   // Helper to format large numbers
                   const formatValue = (val) => {
+                    // Handle null, undefined, or empty values
+                    if (val === null || val === undefined || val === '') {
+                      return '₹0';
+                    }
                     const num = parseFloat(val);
                     if (isNaN(num)) return val;
                     if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)}Cr`;

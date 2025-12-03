@@ -16,9 +16,13 @@ import {
   alpha,
   Grid,
   Fade,
+  Select,
+  MenuItem,
+  FormControl,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Login as LoginIcon } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Login as LoginIcon, KeyboardArrowDown } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import authService from '../../services/authService';
 import { keyframes } from '@emotion/react';
 import MiFixLogoLight from '../../../public/assets/MiFixLogoLight';
 import MifixBg from '../../../public/assets/MifixBg';
@@ -57,6 +61,12 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Product code selection
+  const productCodes = authService.getProductCodes();
+  const [selectedProductCode, setSelectedProductCode] = useState(
+    authService.getCurrentProductCode() || productCodes[0]?.code || 'MIFIX-AI'
+  );
 
   const handleChange = (field) => (event) => {
     setFormData({
@@ -79,7 +89,7 @@ const LoginScreen = () => {
     setError('');
 
     try {
-      const result = await login(formData.username.trim(), formData.password);
+      const result = await login(formData.username.trim(), formData.password, selectedProductCode);
       
       if (!result.success) {
         setError(result.message || 'Invalid credentials. Please try again.');
@@ -228,6 +238,59 @@ const LoginScreen = () => {
                     {error}
                   </Alert>
                 </Fade>
+              )}
+
+              {/* Product Code Dropdown - Subtle */}
+              {productCodes.length > 1 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      mb: 1,
+                      fontWeight: 500,
+                      color: '#666',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    Product
+                  </Typography>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={selectedProductCode}
+                      onChange={(e) => setSelectedProductCode(e.target.value)}
+                      disabled={isSubmitting}
+                      IconComponent={KeyboardArrowDown}
+                      sx={{
+                        borderRadius: 1,
+                        backgroundColor: '#f8f9fa',
+                        fontSize: '0.875rem',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#e0e0e0',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#ccc',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#00468e',
+                          borderWidth: 1,
+                        },
+                        '& .MuiSelect-icon': {
+                          color: '#666',
+                        },
+                      }}
+                    >
+                      {productCodes.map((product) => (
+                        <MenuItem 
+                          key={product.code} 
+                          value={product.code}
+                          sx={{ fontSize: '0.875rem' }}
+                        >
+                          {product.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
               )}
 
               {/* User ID Field */}

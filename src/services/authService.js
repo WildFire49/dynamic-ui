@@ -4,96 +4,157 @@ import { ROLES } from "../config/roleConfig";
 import apiClient from "./apiClient";
 import notificationManager from "@/utils/notificationManager";
 
+// Parse product codes from environment variable
+// Format: CODE|Label|ClientID|SecretKey (pipe-separated, comma between products)
+const parseProductCodes = () => {
+  const envCodes = process.env.NEXT_PUBLIC_PRODUCT_CODES || "";
+  if (!envCodes) {
+    // Default fallback
+    return [
+      {
+        code: "MIFIX-AI",
+        label: "MiFiX AI",
+        clientId: "cli-1a1abfd3-05c8-4e28-b2aa-6c597b77163c",
+        secretKey: "Zn6WlZiewaBMJCydrqm8TdlgKOX/+MoAXP+D/gG8mTo=",
+      },
+    ];
+  }
+
+  return envCodes
+    .split(",")
+    .map((item) => {
+      const [code, label, clientId, secretKey] = item.split("|");
+      return { code, label, clientId, secretKey };
+    })
+    .filter((p) => p.code && p.clientId && p.secretKey);
+};
+
 // Authentication service with API integration
 // Note: This service handles auth-specific logic like token storage and user management
 // For general API calls with bearer token, use apiClient directly
 class AuthService {
   constructor() {
-    this.baseURL = "https://ams-uat.mifix.io/idp/sso";
-    this.clientId = "cli-1a1abfd3-05c8-4e28-b2aa-6c597b77163c";
-    this.secretKey = "Zn6WlZiewaBMJCydrqm8TdlgKOX/+MoAXP+D/gG8mTo=";
-    this.productCode = "MIFIX-AI";
+    // SSO URL from env or fallback
+    this.ssoBaseURL =
+      process.env.NEXT_PUBLIC_SSO_BASE_URL ||
+      "https://ams-uat.mifix.io/idp/sso";
+    this.productCodes = parseProductCodes();
+    // Default to first product code (MIFIX-AI)
+    const defaultProduct = this.productCodes[0];
+    this.clientId = defaultProduct?.clientId;
+    this.secretKey = defaultProduct?.secretKey;
+    this.productCode = defaultProduct?.code;
+  }
+
+  // Get available product codes for dropdown
+  getProductCodes() {
+    return this.productCodes;
+  }
+
+  // Set active product code
+  setProductCode(code) {
+    const product = this.productCodes.find((p) => p.code === code);
+    if (product) {
+      this.clientId = product.clientId;
+      this.secretKey = product.secretKey;
+      this.productCode = product.code;
+      // Store selected product code
+      localStorage.setItem("selectedProductCode", code);
+    }
+  }
+
+  // Get current product code
+  getCurrentProductCode() {
+    if (typeof window === "undefined") return this.productCode;
+    return localStorage.getItem("selectedProductCode") || this.productCode;
   }
 
   // Login API call
-  async login(username, password) {
+  async login(username, password, productCode = null) {
+    // If product code provided, set it
+    if (productCode) {
+      this.setProductCode(productCode);
+    }
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username,
-            password,
-          }),
-        }
-      );
+      // Use SSO endpoint for login with product-specific credentials
+      const response = await fetch(`${this.ssoBaseURL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          clientId: this.clientId,
+          secretKey: this.secretKey,
+          productCode: this.productCode,
+        },
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      });
 
       const data = await response.json();
 
-      if (data.success) {
-        // Store access token in localStorage
-        localStorage.setItem("accessToken", data.data.access_token);
-        localStorage.setItem(
-          "accessTokenExpiry",
-          data.data.access_token_expiry
-        );
+      // SSO API returns { status: 200, data: { message, data: { accessToken, refreshToken, ... } } }
+      const isSuccess = data.status === 200 || data.success;
+      const responseData = data.data?.data || data.data;
 
-        // Store refresh token in localStorage (persists across sessions)
-        localStorage.setItem("refreshToken", data.data.refresh_token);
+      if (isSuccess && responseData) {
+        // Handle SSO response format (camelCase) or standard format (snake_case)
+        const accessToken =
+          responseData.accessToken || responseData.access_token;
+        const refreshToken =
+          responseData.refreshToken || responseData.refresh_token;
+        const accessTokenExpiry =
+          responseData.accessTokenExpiry || responseData.access_token_expiry;
 
-        // Store user info from user_data if available
-        if (data.data.user_data) {
-          const userData = data.data.user_data;
-          localStorage.setItem("userInfo", JSON.stringify(userData));
-          localStorage.setItem("userId", userData.userId);
-          localStorage.setItem("username", userData.username);
+        // Store tokens in localStorage
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("accessTokenExpiry", accessTokenExpiry);
+        localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("username", username);
+        localStorage.setItem("selectedProductCode", this.productCode);
 
-          // Store roles array
-          if (userData.roles && userData.roles.length > 0) {
-            localStorage.setItem("roles", JSON.stringify(userData.roles));
+        // Call verify API to get user roles and info
+        const verifyResult = await this.verifyToken(accessToken);
 
-            // Store primary roleCode (first role)
-            const primaryRole = userData.roles[0];
-            localStorage.setItem("roleCode", primaryRole.roleCode);
-            localStorage.setItem("roleName", primaryRole.roleName);
-            localStorage.setItem("roleId", primaryRole.roleId);
-          }
-
-          // Show success notification
+        if (verifyResult.success) {
           notificationManager.success("Login successful");
-
           return {
             success: true,
             data: {
-              ...data.data,
-              userInfo: userData,
+              ...responseData,
+              userInfo: verifyResult.data,
             },
-            message: data.message,
+            message: data.data?.message || "Login successful",
           };
         } else {
-          // Fallback: user_data not in response, store basic info
-          localStorage.setItem("username", username);
-          localStorage.setItem("userId", data.data.user_id);
+          // Verify failed but login succeeded - still allow access with limited info
+          console.warn("Token verify failed, using basic user info");
+          const basicUserInfo = {
+            username: username,
+            roles: [{ roleCode: "USER", roleName: "User", roleId: "default" }],
+          };
+          localStorage.setItem("userInfo", JSON.stringify(basicUserInfo));
+          localStorage.setItem("roles", JSON.stringify(basicUserInfo.roles));
+          localStorage.setItem("roleCode", "USER");
 
-          // Show success notification
           notificationManager.success("Login successful");
-
           return {
             success: true,
-            data: data.data,
-            message: data.message,
+            data: {
+              ...responseData,
+              userInfo: basicUserInfo,
+            },
+            message: "Login successful",
           };
         }
       } else {
         // Show error notification
-        notificationManager.error(data.message || "Login failed");
+        const errorMessage =
+          data.data?.message || data.message || "Login failed";
+        notificationManager.error(errorMessage);
         return {
           success: false,
-          message: data.message || "Login failed",
+          message: errorMessage,
         };
       }
     } catch (error) {
@@ -106,7 +167,7 @@ class AuthService {
     }
   }
 
-  // Verify token and get user info
+  // Verify token and get user info (calls SSO verify endpoint)
   async verifyToken(token = null) {
     try {
       const tokenToVerify = token || localStorage.getItem("accessToken");
@@ -115,25 +176,30 @@ class AuthService {
         return { success: false, message: "No token found" };
       }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/verify`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token: tokenToVerify }),
-        }
-      );
+      // Call SSO verify endpoint - POST with token in body
+      const response = await fetch(`${this.ssoBaseURL}/token/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          clientId: this.clientId,
+          secretKey: this.secretKey,
+          productCode: this.productCode,
+        },
+        body: JSON.stringify({ token: tokenToVerify }),
+      });
 
       const data = await response.json();
 
-      if (data.status === 200 && data.data) {
+      // SSO verify returns { status: 200, data: { message, data: { userId, username, roles, ... } } }
+      const isSuccess = data.status === 200 || data.success;
+      const userData = data.data?.data || data.data;
+
+      if (isSuccess && userData) {
         // Store user info
-        const userData = data.data.data;
         localStorage.setItem("userInfo", JSON.stringify(userData));
-        localStorage.setItem("userId", userData.userId);
-        localStorage.setItem("username", userData.username);
+        if (userData.userId) localStorage.setItem("userId", userData.userId);
+        if (userData.username)
+          localStorage.setItem("username", userData.username);
 
         // Store roles array
         if (userData.roles && userData.roles.length > 0) {
@@ -141,20 +207,27 @@ class AuthService {
 
           // Store primary roleCode (first role)
           const primaryRole = userData.roles[0];
-          localStorage.setItem("roleCode", primaryRole.roleCode);
-          localStorage.setItem("roleName", primaryRole.roleName);
-          localStorage.setItem("roleId", primaryRole.roleId);
+          localStorage.setItem(
+            "roleCode",
+            primaryRole.roleCode || primaryRole.code
+          );
+          localStorage.setItem(
+            "roleName",
+            primaryRole.roleName || primaryRole.name
+          );
+          localStorage.setItem("roleId", primaryRole.roleId || primaryRole.id);
         }
 
         return {
           success: true,
           data: userData,
-          message: data.data.message,
+          message: data.data?.message || "Token verified",
         };
       } else {
         return {
           success: false,
-          message: data.message || "Token verification failed",
+          message:
+            data.data?.message || data.message || "Token verification failed",
         };
       }
     } catch (error) {
@@ -166,27 +239,27 @@ class AuthService {
     }
   }
 
-  // Refresh token
+  // Refresh token (uses SSO refresh endpoint)
   async refreshToken() {
     try {
       // Get refresh token from localStorage
-      const refreshToken = localStorage.getItem("refreshToken");
+      const refreshTokenValue = localStorage.getItem("refreshToken");
 
-      if (!refreshToken) {
+      if (!refreshTokenValue) {
         console.error("No refresh token found in localStorage");
         return { success: false, message: "No refresh token found" };
       }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/refresh`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        }
-      );
+      const response = await fetch(`${this.ssoBaseURL}/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          clientId: this.clientId,
+          secretKey: this.secretKey,
+          productCode: this.productCode,
+        },
+        body: JSON.stringify({ refreshToken: refreshTokenValue }),
+      });
 
       // Check if response is ok
       if (!response.ok) {
@@ -202,28 +275,28 @@ class AuthService {
       }
 
       const data = await response.json();
+      const isSuccess = data.status === 200 || data.success;
+      const responseData = data.data?.data || data.data;
 
-      if (data.success) {
-        // Update access token in localStorage
-        localStorage.setItem("accessToken", data.data.access_token);
-        localStorage.setItem(
-          "accessTokenExpiry",
-          data.data.access_token_expiry
-        );
+      if (isSuccess && responseData) {
+        // Handle SSO response format (camelCase) or standard format (snake_case)
+        const accessToken =
+          responseData.accessToken || responseData.access_token;
+        const newRefreshToken =
+          responseData.refreshToken || responseData.refresh_token;
+        const accessTokenExpiry =
+          responseData.accessTokenExpiry || responseData.access_token_expiry;
 
-        // Update refresh token in localStorage
-        localStorage.setItem("refreshToken", data.data.refresh_token);
-
-        // Update userId if provided
-        if (data.data.user_id) {
-          localStorage.setItem("userId", data.data.user_id);
-        }
+        // Update tokens in localStorage
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("accessTokenExpiry", accessTokenExpiry);
+        localStorage.setItem("refreshToken", newRefreshToken);
 
         console.log("✅ Token refreshed successfully");
         return {
           success: true,
-          data: data.data,
-          message: data.message,
+          data: responseData,
+          message: data.data?.message || "Token refreshed",
         };
       } else {
         console.error("Token refresh failed:", data.message);
@@ -231,7 +304,7 @@ class AuthService {
         localStorage.removeItem("refreshToken");
         return {
           success: false,
-          message: data.message || "Token refresh failed",
+          message: data.data?.message || data.message || "Token refresh failed",
         };
       }
     } catch (error) {

@@ -16,6 +16,7 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  CircularProgress,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -80,40 +81,66 @@ const DashboardSelector = () => {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [newDashboardName, setNewDashboardName] = useState('');
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleDashboardClick = (dashboardId) => {
     setActiveDashboard(dashboardId);
   };
 
-  const handleCreateDashboard = () => {
-    if (newDashboardName.trim()) {
-      const id = newDashboardName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
-      const colorIndex = dashboards.length % DASHBOARD_COLORS.length;
-      addDashboard({
-        id,
-        name: newDashboardName.trim(),
-        icon: 'Dashboard',
-        color: DASHBOARD_COLORS[colorIndex],
-      });
-      setNewDashboardName('');
-      setCreateDialogOpen(false);
-      setActiveDashboard(id);
+  const handleCreateDashboard = async () => {
+    if (newDashboardName.trim() && !isLoading) {
+      setIsLoading(true);
+      try {
+        const id = newDashboardName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+        const colorIndex = dashboards.length % DASHBOARD_COLORS.length;
+        const result = await addDashboard({
+          id,
+          name: newDashboardName.trim(),
+          icon: 'Dashboard',
+          color: DASHBOARD_COLORS[colorIndex],
+        });
+        
+        // Use server-generated ID if available
+        const dashboardId = result?.data?.id || id;
+        
+        setNewDashboardName('');
+        setCreateDialogOpen(false);
+        await setActiveDashboard(dashboardId);
+      } catch (error) {
+        console.error('Error creating dashboard:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleRenameDashboard = () => {
-    if (newDashboardName.trim() && selectedDashboard) {
-      renameDashboard(selectedDashboard.id, newDashboardName.trim());
-      setNewDashboardName('');
-      setRenameDialogOpen(false);
-      setSelectedDashboard(null);
+  const handleRenameDashboard = async () => {
+    if (newDashboardName.trim() && selectedDashboard && !isLoading) {
+      setIsLoading(true);
+      try {
+        await renameDashboard(selectedDashboard.id, newDashboardName.trim());
+        setNewDashboardName('');
+        setRenameDialogOpen(false);
+        setSelectedDashboard(null);
+      } catch (error) {
+        console.error('Error renaming dashboard:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleDeleteDashboard = () => {
-    if (selectedDashboard) {
-      deleteDashboard(selectedDashboard.id);
-      setSelectedDashboard(null);
+  const handleDeleteDashboard = async () => {
+    if (selectedDashboard && !isLoading) {
+      setIsLoading(true);
+      try {
+        await deleteDashboard(selectedDashboard.id);
+        setSelectedDashboard(null);
+      } catch (error) {
+        console.error('Error deleting dashboard:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -152,12 +179,14 @@ const DashboardSelector = () => {
                   gap: 1.5,
                   px: 2.5,
                   py: 1.5,
-                  borderRadius: 1.5,
+                  borderRadius: 2,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   bgcolor: isActive ? '#fff' : 'transparent',
-                  border: isActive ? '1px solid #E5E7EB' : '1px solid transparent',
-                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                  border: isActive ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
+                  boxShadow: isActive 
+                    ? '0 2px 8px rgba(59, 130, 246, 0.15), 0 1px 3px rgba(0,0,0,0.05)' 
+                    : 'none',
                   '&:hover': {
                     bgcolor: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
                   },
@@ -296,16 +325,21 @@ const DashboardSelector = () => {
         </MenuItem>
         {dashboards.length > 1 && (
           <MenuItem 
-            onClick={() => {
-              handleDeleteDashboard();
+            onClick={async () => {
+              await handleDeleteDashboard();
               setMenuAnchorEl(null);
             }}
+            disabled={isLoading}
             sx={{ py: 1, fontSize: '0.875rem', color: '#EF4444' }}
           >
             <ListItemIcon>
-              <DeleteIcon sx={{ fontSize: 18, color: '#EF4444' }} />
+              {isLoading ? (
+                <CircularProgress size={18} sx={{ color: '#EF4444' }} />
+              ) : (
+                <DeleteIcon sx={{ fontSize: 18, color: '#EF4444' }} />
+              )}
             </ListItemIcon>
-            <ListItemText primary="Delete" primaryTypographyProps={{ fontSize: '0.875rem', color: '#EF4444' }} />
+            <ListItemText primary={isLoading ? "Deleting..." : "Delete"} primaryTypographyProps={{ fontSize: '0.875rem', color: '#EF4444' }} />
           </MenuItem>
         )}
       </Menu>
@@ -345,6 +379,7 @@ const DashboardSelector = () => {
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button 
             onClick={() => setCreateDialogOpen(false)} 
+            disabled={isLoading}
             sx={{ 
               color: '#6B7280',
               textTransform: 'none',
@@ -356,7 +391,7 @@ const DashboardSelector = () => {
           <Button 
             onClick={handleCreateDashboard} 
             variant="contained"
-            disabled={!newDashboardName.trim()}
+            disabled={!newDashboardName.trim() || isLoading}
             sx={{
               textTransform: 'none',
               fontWeight: 600,
@@ -366,7 +401,7 @@ const DashboardSelector = () => {
               '&:hover': { bgcolor: '#4F46E5' },
             }}
           >
-            Create Dashboard
+            {isLoading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Create Dashboard'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -403,6 +438,7 @@ const DashboardSelector = () => {
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button 
             onClick={() => setRenameDialogOpen(false)} 
+            disabled={isLoading}
             sx={{ 
               color: '#6B7280',
               textTransform: 'none',
@@ -414,7 +450,7 @@ const DashboardSelector = () => {
           <Button 
             onClick={handleRenameDashboard} 
             variant="contained"
-            disabled={!newDashboardName.trim()}
+            disabled={!newDashboardName.trim() || isLoading}
             sx={{
               textTransform: 'none',
               fontWeight: 600,
@@ -424,7 +460,7 @@ const DashboardSelector = () => {
               '&:hover': { bgcolor: '#4F46E5' },
             }}
           >
-            Save Changes
+            {isLoading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>

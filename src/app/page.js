@@ -94,14 +94,14 @@ const getAuthHeaders = () => {
 export default function HomePage() {
   const { user } = useAuth();
 
-  // Use ref to store stable getUserId function
-  const getUserIdRef = useRef(() => {
-    // Try multiple sources in priority order
+  // Get username for chat API - prioritize username over userId (UUID)
+  const getUserId = useCallback(() => {
+    // Try multiple sources in priority order - username first!
     const sources = [
-      user?.userId,
-      user?.username,
-      authService.getUserId(),
+      user?.username, // Prioritize username for chat API
       authService.getUsername(),
+      user?.userId,
+      authService.getUserId(),
       "default_user", // Final fallback
     ];
 
@@ -109,12 +109,7 @@ export default function HomePage() {
     const validId = sources.find((id) => id && id.trim() !== "");
     console.log("🔍 getUserId sources:", sources, "→ selected:", validId);
     return validId || "default_user";
-  });
-
-  // Memoize getUserId function to prevent unnecessary re-renders
-  const getUserId = useCallback(() => {
-    return getUserIdRef.current();
-  }, []); // Empty dependency array since the ref handles the updates
+  }, [user]); // Re-compute when user changes
 
   const [chatHistory, setChatHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -219,10 +214,31 @@ export default function HomePage() {
         } else {
           // Handle AI responses
           let content;
+          let response = null;
+
           try {
             // Try to parse as JSON first
             const parsedContent = JSON.parse(msg.content);
-            content = parsedContent;
+
+            // Check if this is a data_query_result or other structured response
+            if (parsedContent.type === "data_query_result") {
+              // Structure it the way ChatMessage expects
+              response = {
+                type: "data_query_result",
+                content: parsedContent.content,
+              };
+              content = {
+                response: response,
+              };
+            } else if (parsedContent.type) {
+              // Other typed responses
+              response = parsedContent;
+              content = {
+                response: response,
+              };
+            } else {
+              content = parsedContent;
+            }
           } catch {
             // If not JSON, treat as plain text
             content = {
@@ -233,6 +249,7 @@ export default function HomePage() {
           return {
             type: "ai",
             content: content,
+            response: response, // Also set at top level for compatibility
             isBot: true,
             timestamp: msg.created_at,
             isHistorical: true, // Mark as historical to prevent auto-scroll
@@ -696,13 +713,13 @@ export default function HomePage() {
           requestBody.conversation_id = conversationId;
         }
 
-        // Ensure user_id is always present
+        // Ensure user_id is always present (use username, not UUID)
         if (!requestBody.user_id) {
           const userId =
             currentUserId ||
             getUserId() ||
+            authService.getUsername() || // Prioritize username
             authService.getUserId() ||
-            authService.getUsername() ||
             "default_user";
           if (!userId || userId.trim() === "") {
             console.error("❌ callChatApi user_id validation failed:", {
@@ -1045,12 +1062,12 @@ export default function HomePage() {
         setIsAnalyzing(true);
         setIsTyping(true);
 
-        // Ensure user_id is never empty - use multiple fallbacks
+        // Ensure user_id is never empty - use username (not UUID)
         const userId =
           currentUserId ||
           getUserId() ||
+          authService.getUsername() || // Prioritize username
           authService.getUserId() ||
-          authService.getUsername() ||
           "default_user";
 
         // Validate userId is not empty string
@@ -1201,8 +1218,8 @@ export default function HomePage() {
           user_id:
             currentUserId ||
             getUserId() ||
+            authService.getUsername() || // Prioritize username
             authService.getUserId() ||
-            authService.getUsername() ||
             "default_user",
           message: finalMessageText,
           ...(conversationId && { conversation_id: conversationId }),
@@ -2391,9 +2408,13 @@ export default function HomePage() {
                         lineHeight: 1.2,
                       }}
                     >
-                      {user?.roles
-                        ?.find((role) => role.productCode === "MIFIX-AI")
-                        ?.roleName?.replace("Configurator", "User") || "User"}
+                      {user?.roles?.find(
+                        (role) =>
+                          role.productCode ===
+                          authService.getCurrentProductCode()
+                      )?.roleName ||
+                        user?.username ||
+                        "User"}
                     </Typography>
                     <Typography
                       sx={{

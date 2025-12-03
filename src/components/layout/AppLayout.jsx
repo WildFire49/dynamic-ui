@@ -10,12 +10,14 @@ import {
   alpha,
   IconButton,
 } from '@mui/material';
+import Image from 'next/image';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { useAuth } from '../../contexts/AuthContext';
 import UserMenu from '../auth/UserMenu';
 import Sidebar from '../Sidebar';
+import authService from '../../services/authService';
 
 const AppLayout = ({ 
   children, 
@@ -112,41 +114,100 @@ const AppLayout = ({
               </Typography>
             </Box>
 
-            {/* Right side - User menu */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {user && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  {/* User role indicator */}
-                  <Box sx={{ 
-                    display: { xs: 'none', md: 'flex' }, 
-                    flexDirection: 'column', 
-                    alignItems: 'flex-end' 
-                  }}>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontWeight: 600,
-                        color: theme.palette.text.primary,
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {user.username}
-                    </Typography>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        color: theme.palette.text.secondary,
-                        fontSize: '0.75rem',
-                      }}
-                    >
-                      {user.roles?.find(role => role.productCode === 'MIFIX-AI')?.roleName || 'User'}
-                    </Typography>
-                  </Box>
-                  
-                  {/* User menu */}
-                  <UserMenu />
+            {/* Right Side - Unified Status & User Panel */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: { xs: 1, sm: 2 },
+                flex: "0 0 auto",
+                background: "linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,249,250,0.9))",
+                borderRadius: 4,
+                px: { xs: 1, sm: 2 },
+                py: 1,
+                border: "1px solid rgba(25, 118, 210, 0.08)",
+                boxShadow: "0 4px 20px rgba(25, 118, 210, 0.08)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              {/* Bot Status Section */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  pr: { xs: 1, md: 2 },
+                  borderRight: { xs: "none", md: "1px solid rgba(25, 118, 210, 0.1)" },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "relative",
+                    overflow: "hidden",
+                    background: "linear-gradient(135deg, rgba(25, 118, 210, 0.1), rgba(66, 165, 245, 0.1))",
+                    border: "2px solid rgba(25, 118, 210, 0.2)",
+                  }}
+                >
+                  <Image
+                    src="/ai-chatbot.png"
+                    alt="MiFiX AI"
+                    width={32}
+                    height={32}
+                    style={{
+                      borderRadius: "50%",
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      bottom: -1,
+                      right: -1,
+                      width: 10,
+                      height: 10,
+                      backgroundColor: "#4caf50",
+                      borderRadius: "50%",
+                      border: "2px solid white",
+                      boxShadow: "0 2px 4px rgba(76, 175, 80, 0.3)",
+                    }}
+                  />
                 </Box>
-              )}
+                <Box sx={{ display: { xs: "none", md: "block" } }}>
+                  <Typography sx={{ fontWeight: 600, fontSize: "14px", color: "#1976d2", lineHeight: 1.2 }}>
+                    MiFiX.ai
+                  </Typography>
+                  <Typography sx={{ fontSize: "11px", color: "#4caf50", lineHeight: 1, fontWeight: 500 }}>
+                    Online
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* User Section */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Box sx={{ display: { xs: "none", md: "block" }, textAlign: "right" }}>
+                  <Typography sx={{ fontWeight: 600, fontSize: "14px", color: "#1976d2", lineHeight: 1.2 }}>
+                    {user?.username || 'User'}
+                  </Typography>
+                  <Typography sx={{ fontSize: "11px", color: "#666", lineHeight: 1, fontWeight: 500 }}>
+                    {(() => {
+                      // Get the selected product code from localStorage
+                      const selectedProductCode = authService.getCurrentProductCode();
+                      // Find the role matching the selected product code
+                      const matchingRole = user?.roles?.find(role => role.productCode === selectedProductCode);
+                      return matchingRole?.roleName || 'User';
+                    })()}
+                  </Typography>
+                </Box>
+                <UserMenu />
+              </Box>
             </Box>
           </Toolbar>
         </AppBar>
