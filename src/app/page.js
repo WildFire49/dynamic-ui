@@ -2402,10 +2402,11 @@ export default function HomePage() {
                   >
                     <Typography
                       sx={{
-                        fontWeight: 600,
+                        fontWeight: 700,
                         fontSize: "14px",
                         color: "#1976d2",
                         lineHeight: 1.2,
+                        textAlign: "right",
                       }}
                     >
                       {user?.roles?.find(
@@ -2413,19 +2414,53 @@ export default function HomePage() {
                           role.productCode ===
                           authService.getCurrentProductCode()
                       )?.roleName ||
-                        user?.username ||
+                        user?.roles?.[0]?.roleName ||
                         "User"}
                     </Typography>
-                    <Typography
+                    <Box
                       sx={{
-                        fontSize: "11px",
-                        color: "#666",
-                        lineHeight: 1,
-                        fontWeight: 500,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        gap: 0.8,
+                        mt: 0.5,
                       }}
                     >
-                      Logged In
-                    </Typography>
+                      <Box
+                        sx={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          bgcolor: "#22C55E",
+                          boxShadow: "0 0 0 2px rgba(34, 197, 94, 0.2)",
+                          animation: "blink 2s infinite",
+                          "@keyframes blink": {
+                            "0%": {
+                              opacity: 1,
+                              boxShadow: "0 0 0 2px rgba(34, 197, 94, 0.2)",
+                            },
+                            "50%": {
+                              opacity: 0.5,
+                              boxShadow: "0 0 0 4px rgba(34, 197, 94, 0)",
+                            },
+                            "100%": {
+                              opacity: 1,
+                              boxShadow: "0 0 0 2px rgba(34, 197, 94, 0.2)",
+                            },
+                          },
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          fontSize: "11px",
+                          color: "#6B7280",
+                          lineHeight: 1,
+                          fontWeight: 500,
+                        }}
+                      >
+                        Logged In
+                      </Typography>
+                    </Box>
                   </Box>
                   <UserMenu />
                 </Box>

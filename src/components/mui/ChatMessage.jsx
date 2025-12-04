@@ -32,6 +32,7 @@ import DynamicFormRenderer from "../dynamic-form/DynamicFormRenderer";
 import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
 import { getFormSchemaByKeyword } from "../dynamic-form/sampleFormSchemas";
 import { PhoneNumberDetector, HardcodedPhoneWidget } from "./PhoneWidget";
+import DashboardGeneratedResponse from "./DashboardGeneratedResponse";
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -457,6 +458,22 @@ const ChatMessage = ({ message, index, onAction }) => {
               </Box>
             </CardContent>
           </Card>
+        </Box>
+      );
+    }
+
+    // Check for dashboard_generated type - Dashboard creation response
+    const isDashboardGenerated = 
+      message.response?.type === "dashboard_generated" || 
+      message.content?.response?.type === "dashboard_generated";
+    
+    if (isDashboardGenerated) {
+      const dashboardData = message.response?.data || message.content?.response?.data;
+      console.log("✅ MATCH: Rendering dashboard_generated", dashboardData);
+      
+      return (
+        <Box sx={{ width: "100%", maxWidth: 500 }}>
+          <DashboardGeneratedResponse data={dashboardData} />
         </Box>
       );
     }

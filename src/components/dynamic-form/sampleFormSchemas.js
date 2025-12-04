@@ -578,66 +578,66 @@ export const getFormSchemaByKeyword = (message) => {
   const lowerMessage = message.toLowerCase();
 
   // HDFC Bank Customer Onboarding - Start with L1 (PRIORITY)
-  if (
-    lowerMessage.includes("HDFC") ||lowerMessage.includes("onboard") ) {
-    console.log("🎯 Detected HDFC onboarding request - returning L1 schema");
-    return l1CustomerOnboardingSchema;
-  }
-
-  // L1 Customer Information - comprehensive form
-  // if (lowerMessage.includes('l1') ||
-  //     (lowerMessage.includes('customer') && lowerMessage.includes('information')) ||
-  //     (lowerMessage.includes('complete') && lowerMessage.includes('kyc'))) {
-  //   console.log('🎯 Detected L1 request');
+  // if (
+  //   lowerMessage.includes("HDFC") ||lowerMessage.includes("onboard") ) {
+  //   console.log("🎯 Detected HDFC onboarding request - returning L1 schema");
   //   return l1CustomerOnboardingSchema;
   // }
-  // L1 Customer Information - comprehensive form
-  if (
-    lowerMessage.includes("l1 customer") || // More specific
-    lowerMessage.includes("l1 form") ||
-    (lowerMessage.includes("complete") && lowerMessage.includes("kyc"))
-  ) {
-    console.log("🎯 Detected L1 request");
-    return l1CustomerOnboardingSchema;
-  }
 
-  // L2 Instant KCC - Land & Crop Details
-  if (
-    lowerMessage.includes("l2") ||
-    lowerMessage.includes("instant kcc") ||
-    lowerMessage.includes("land details") ||
-    lowerMessage.includes("crop details")
-  ) {
-    console.log("🎯 Detected L2 request");
-    return instantKCCSchema;
-  }
+  // // L1 Customer Information - comprehensive form
+  // // if (lowerMessage.includes('l1') ||
+  // //     (lowerMessage.includes('customer') && lowerMessage.includes('information')) ||
+  // //     (lowerMessage.includes('complete') && lowerMessage.includes('kyc'))) {
+  // //   console.log('🎯 Detected L1 request');
+  // //   return l1CustomerOnboardingSchema;
+  // // }
+  // // L1 Customer Information - comprehensive form
+  // if (
+  //   lowerMessage.includes("l1 customer") || // More specific
+  //   lowerMessage.includes("l1 form") ||
+  //   (lowerMessage.includes("complete") && lowerMessage.includes("kyc"))
+  // ) {
+  //   console.log("🎯 Detected L1 request");
+  //   return l1CustomerOnboardingSchema;
+  // }
 
-  // L3 Bank Account Details
-  if (lowerMessage.includes("l3") || lowerMessage.includes("disbursement")) {
-    console.log("🎯 Detected L3 request");
-    return bankAccountDetailsSchema;
-  }
+  // // L2 Instant KCC - Land & Crop Details
+  // if (
+  //   lowerMessage.includes("l2") ||
+  //   lowerMessage.includes("instant kcc") ||
+  //   lowerMessage.includes("land details") ||
+  //   lowerMessage.includes("crop details")
+  // ) {
+  //   console.log("🎯 Detected L2 request");
+  //   return instantKCCSchema;
+  // }
 
-  // Bank account opening
-  if (lowerMessage.includes("open") && lowerMessage.includes("account")) {
-    console.log("🎯 Detected bank account opening request");
-    return bankAccountOpeningSchema;
-  }
+  // // L3 Bank Account Details
+  // if (lowerMessage.includes("l3") || lowerMessage.includes("disbursement")) {
+  //   console.log("🎯 Detected L3 request");
+  //   return bankAccountDetailsSchema;
+  // }
 
-  // Simple registration
-  if (
-    lowerMessage.includes("register") ||
-    lowerMessage.includes("registration")
-  ) {
-    console.log("🎯 Detected registration request");
-    return simpleRegistrationSchema;
-  }
+  // // Bank account opening
+  // if (lowerMessage.includes("open") && lowerMessage.includes("account")) {
+  //   console.log("🎯 Detected bank account opening request");
+  //   return bankAccountOpeningSchema;
+  // }
 
-  // HDFC Customer Onboarding (fallback - broader match)
-  if (lowerMessage.includes("HDFC") && lowerMessage.includes("customer")) {
-    console.log("🎯 Detected HDFC customer request - returning L1 schema");
-    return l1CustomerOnboardingSchema;
-  }
+  // // Simple registration
+  // if (
+  //   lowerMessage.includes("register") ||
+  //   lowerMessage.includes("registration")
+  // ) {
+  //   console.log("🎯 Detected registration request");
+  //   return simpleRegistrationSchema;
+  // }
+
+  // // HDFC Customer Onboarding (fallback - broader match)
+  // if (lowerMessage.includes("HDFC") && lowerMessage.includes("customer")) {
+  //   console.log("🎯 Detected HDFC customer request - returning L1 schema");
+  //   return l1CustomerOnboardingSchema;
+  // }
 
   return null;
 };

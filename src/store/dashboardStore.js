@@ -275,8 +275,9 @@ const useDashboardStore = create(
 
       /**
        * Set active dashboard
+       * Note: syncToApi is disabled by default - active dashboard is managed locally
        */
-      setActiveDashboard: async (dashboardId, syncToApi = true) => {
+      setActiveDashboard: async (dashboardId, syncToApi = false) => {
         set({ activeDashboardId: dashboardId });
 
         const username = getUsername();
@@ -286,6 +287,7 @@ const useDashboardStore = create(
           await get().loadWidgetsForDashboard(username, dashboardId);
         }
 
+        // Only sync to API if explicitly requested (disabled by default)
         if (syncToApi && username) {
           await dashboardService.setActiveDashboard(username, dashboardId);
         }

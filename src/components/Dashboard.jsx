@@ -31,7 +31,8 @@ import {
   ClickAwayListener,
   CircularProgress,
   Snackbar,
-  Alert
+  Alert,
+  Skeleton
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -81,7 +82,7 @@ import DataGridComponent from './charts/DataGridComponent';
 import AnalysisWidget from './widgets/AnalysisWidget';
 import DashboardSelector from './DashboardSelector';
 import useDashboardStore from '../store/dashboardStore';
-import { DashboardLoadingSkeleton } from './skeletons/WidgetSkeleton';
+import { DashboardLoadingSkeleton, WidgetContentSkeleton } from './skeletons/WidgetSkeleton';
 import WidgetConfigStudio from './widgets/WidgetConfigStudio';
 import dashboardService from '../services/dashboardService';
 
@@ -100,7 +101,7 @@ const CHART_COLORS = {
   bar: '#3B82F6'
 };
 
-const Dashboard = () => {
+const Dashboard = ({ initialDashboardId }) => {
   const theme = useTheme();
   
   // Zustand store for multi-dashboard support
@@ -117,6 +118,7 @@ const Dashboard = () => {
     isLoading,
     isSyncing,
     lastSyncedAt,
+    setActiveDashboard,
   } = useDashboardStore();
 
   const [savedVisualizations, setSavedVisualizations] = useState([]);
@@ -141,10 +143,15 @@ const Dashboard = () => {
   const [sortOrder, setSortOrder] = useState('newest'); // 'newest' or 'oldest'
   const [globalViewMode, setGlobalViewMode] = useState('auto'); // 'auto', 'area', 'bar', 'table'
   const [configStudio, setConfigStudio] = useState({ open: false, widget: null }); // Widget config studio
+  const [loadingWidgets, setLoadingWidgets] = useState(new Set()); // Track widgets currently loading data
   
   // Refs to prevent duplicate API calls
   const dataFetchInProgress = useRef(false);
   const fetchedWidgetIds = useRef(new Set());
+  const initialFetchDone = useRef(false); // Prevent duplicate initial fetch
+  
+  // Cache for widget data per dashboard - persists across tab switches
+  const widgetDataCache = useRef(new Map()); // Map<dashboardId, Map<widgetId, data>>
 
   // Helper to get title - prioritize question/query over generic titles
   const getTitle = (item) => {
@@ -257,18 +264,109 @@ const Dashboard = () => {
     return value.toLocaleString();
   };
 
-  // Load dashboards from API on mount
+  // Cache helper functions
+  const getCachedData = (dashboardId, widgetId) => {
+    const dashboardCache = widgetDataCache.current.get(dashboardId);
+    return dashboardCache?.get(widgetId);
+  };
+
+  const setCachedData = (dashboardId, widgetId, data) => {
+    if (!widgetDataCache.current.has(dashboardId)) {
+      widgetDataCache.current.set(dashboardId, new Map());
+    }
+    widgetDataCache.current.get(dashboardId).set(widgetId, data);
+  };
+
+  const applyCache = (widgets, dashboardId) => {
+    return widgets.map(w => {
+      const cached = getCachedData(dashboardId, w.id);
+      if (cached) {
+        return { ...w, ...cached };
+      }
+      return w;
+    });
+  };
+
+  // Load dashboards from API on mount and immediately fetch widget data
   useEffect(() => {
+    // Prevent duplicate initialization
+    if (initialFetchDone.current) return;
+    initialFetchDone.current = true;
+    
     const initializeDashboard = async () => {
-      const username = localStorage.getItem('username') || localStorage.getItem('userId');
+      const username = JSON.parse(localStorage.getItem('user') || '{}').username || 
+                      localStorage.getItem('username') || 
+                      localStorage.getItem('userId') || '';
+      const connectionId = localStorage.getItem('connectionId') || 
+                          localStorage.getItem('activeConnectionId') || 
+                          process.env.NEXT_PUBLIC_CONNECTION_ID || '';
       
       if (username) {
         // Try to load from server first
         const result = await loadFromServer(username);
         
-        if (!result.success) {
+        if (result.success) {
+          // If initialDashboardId is provided (from URL), switch to that dashboard
+          let activeId;
+          if (initialDashboardId) {
+            console.log(`🎯 Switching to dashboard from URL: ${initialDashboardId}`);
+            await setActiveDashboard(initialDashboardId);
+            activeId = initialDashboardId;
+          } else {
+            activeId = useDashboardStore.getState().activeDashboardId;
+          }
+          
+          // Immediately fetch widget data after loading widgets
+          const freshState = useDashboardStore.getState();
+          const widgets = freshState.visualizationsByDashboard[activeId] || [];
+          
+          if (widgets.length > 0 && connectionId) {
+            const widgetIds = widgets.map(w => w.id);
+            console.log(`📥 Immediately fetching data for ${widgetIds.length} widgets`);
+            
+            // Mark all widgets as loading and prevent other effects from fetching
+            dataFetchInProgress.current = true;
+            setLoadingWidgets(new Set(widgetIds));
+            setSavedVisualizations([...widgets]);
+            
+            // Fetch data immediately
+            try {
+              const dataResult = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
+              
+              if (dataResult.success && dataResult.data?.results) {
+                const updatedWidgets = widgets.map(w => {
+                  const widgetResult = dataResult.data.results.find(r => r.widgetId === w.id);
+                  if (widgetResult?.success && widgetResult.data) {
+                    const widgetData = {
+                      timestamp: new Date().toISOString(),
+                      pipelineData: widgetResult.data.pipelineData || [],
+                      supportingData: widgetResult.data.supportingData || widgetResult.data.pipelineData || [],
+                      dataGrid: widgetResult.data.dataGrid,
+                      executionTimeMs: widgetResult.executionTimeMs,
+                      rowCount: widgetResult.rowCount,
+                    };
+                    // Cache the data for this widget
+                    setCachedData(activeId, w.id, widgetData);
+                    return { ...w, ...widgetData };
+                  }
+                  return w;
+                });
+                
+                setSavedVisualizations(updatedWidgets);
+                widgetIds.forEach(id => fetchedWidgetIds.current.add(id));
+                console.log(`✅ Fetched and cached data for ${dataResult.data.successCount}/${dataResult.data.totalRequested} widgets`);
+              }
+            } catch (error) {
+              console.error('❌ Error fetching widget data:', error);
+            } finally {
+              setLoadingWidgets(new Set());
+              dataFetchInProgress.current = false;
+            }
+          } else {
+            setSavedVisualizations([...widgets]);
+          }
+        } else {
           console.log('📦 Server load failed, using local data');
-          // If server fails, migrate any old localStorage data
           const hasMigrated = localStorage.getItem('dashboardMigrated');
           if (!hasMigrated) {
             migrateFromLocalStorage();
@@ -283,6 +381,7 @@ const Dashboard = () => {
           localStorage.setItem('dashboardMigrated', 'true');
         }
       }
+      setIsInitialLoad(false);
     };
 
     initializeDashboard();
@@ -323,42 +422,71 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
-  // Reset fetched widget IDs when dashboard changes
+  // Load data from Zustand store when active dashboard changes - apply cache if available
+  // Skip during initial load - initializeDashboard handles that
   useEffect(() => {
-    fetchedWidgetIds.current.clear();
-    dataFetchInProgress.current = false;
-  }, [activeDashboardId]);
-
-  // Load data from Zustand store when active dashboard changes
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Get visualizations ONLY from Zustand store for active dashboard
-        const freshState = useDashboardStore.getState();
-        const storeVisualizations = freshState.visualizationsByDashboard[activeDashboardId] || [];
-        console.log(`📊 Loading dashboard "${activeDashboardId}":`, storeVisualizations.length, 'items');
-        
-        setSavedVisualizations([...storeVisualizations]);
-        
-        // Analyses are still from localStorage (not dashboard-specific yet)
-        const savedAn = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
-        setSavedAnalyses(savedAn);
-        
-        const savedOrder = JSON.parse(localStorage.getItem('dashboardWidgetOrder') || '[]');
-        setWidgetOrder(savedOrder);
-      } catch (error) {
-        console.error("Error loading dashboard data:", error);
+    // Skip if initial load hasn't completed yet
+    if (!initialFetchDone.current) {
+      return;
+    }
+    
+    const loadData = () => {
+      // Get visualizations from Zustand store for active dashboard
+      const freshState = useDashboardStore.getState();
+      const storeVisualizations = freshState.visualizationsByDashboard[activeDashboardId] || [];
+      
+      // Apply cached data if available
+      const visualizationsWithCache = applyCache(storeVisualizations, activeDashboardId);
+      const hasCachedData = visualizationsWithCache.some(v => v.pipelineData?.length > 0);
+      
+      if (hasCachedData) {
+        console.log(`📦 Using cached data for dashboard "${activeDashboardId}"`);
+        setLoadingWidgets(new Set());
+      } else if (storeVisualizations.length > 0 && !dataFetchInProgress.current) {
+        // No cached data - mark all widgets as loading so skeleton shows
+        const widgetIds = storeVisualizations.map(v => v.id);
+        setLoadingWidgets(new Set(widgetIds));
+      } else {
+        setLoadingWidgets(new Set());
       }
-      setIsInitialLoad(false);
+      
+      setSavedVisualizations([...visualizationsWithCache]);
+      
+      // Load analyses from localStorage
+      const savedAn = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
+      setSavedAnalyses(savedAn);
+      
+      const savedOrder = JSON.parse(localStorage.getItem('dashboardWidgetOrder') || '[]');
+      setWidgetOrder(savedOrder);
     };
+    
     loadData();
   }, [activeDashboardId]);
 
-  // Fetch widget data when visualizations are loaded (separate effect to handle async widget loading)
+  // Fetch widget data when switching dashboards (not for initial load - that's handled by initializeDashboard)
+  // This effect only runs when activeDashboardId changes AFTER initial load
+  const prevDashboardId = useRef(activeDashboardId);
   useEffect(() => {
-    const fetchData = async () => {
-      // Skip if no visualizations or fetch already in progress
-      if (savedVisualizations.length === 0 || dataFetchInProgress.current) {
+    // Skip if this is the initial load (initializeDashboard handles it)
+    if (!initialFetchDone.current) {
+      prevDashboardId.current = activeDashboardId;
+      return;
+    }
+    
+    // Only fetch if dashboard actually changed
+    if (prevDashboardId.current === activeDashboardId) {
+      return;
+    }
+    
+    prevDashboardId.current = activeDashboardId;
+    
+    const fetchDataForNewDashboard = async () => {
+      // Get widgets directly from store to avoid stale state
+      const freshState = useDashboardStore.getState();
+      const storeWidgets = freshState.visualizationsByDashboard[activeDashboardId] || [];
+      
+      if (storeWidgets.length === 0 || dataFetchInProgress.current) {
+        console.log(`⏭️ Skipping fetch: ${storeWidgets.length} widgets, fetchInProgress: ${dataFetchInProgress.current}`);
         return;
       }
 
@@ -369,80 +497,62 @@ const Dashboard = () => {
                       localStorage.getItem('username') || 
                       localStorage.getItem('userId') || '';
 
-      if (!username) {
-        console.log('⚠️ No username available for widget data fetch');
-        return;
-      }
+      if (!username) return;
 
-      // Check if any widgets need data (no pipelineData) AND haven't been fetched yet
-      const widgetsNeedingData = savedVisualizations.filter(v => 
-        !v.pipelineData?.length && 
-        !v.data?.pipelineData?.length &&
-        !fetchedWidgetIds.current.has(v.id)
+      // Check if any widgets need data (not in cache)
+      const widgetsNeedingData = storeWidgets.filter(v => 
+        !getCachedData(activeDashboardId, v.id)
       );
       
       if (widgetsNeedingData.length === 0) {
+        console.log(`📦 All widgets have cached data for dashboard "${activeDashboardId}"`);
         return;
       }
 
-      console.log(`📥 Fetching data for ${widgetsNeedingData.length} widgets:`, widgetsNeedingData.map(v => v.id));
+      console.log(`📥 Fetching data for ${widgetsNeedingData.length} widgets (dashboard switch)`);
       dataFetchInProgress.current = true;
-      setIsRefreshingAll(true);
       
-      // Store the current widgets to update (capture at fetch time)
-      const widgetsToUpdate = [...savedVisualizations];
+      const widgetIds = widgetsNeedingData.map(v => v.id);
+      setLoadingWidgets(new Set(widgetIds));
       
       try {
-        const widgetIds = widgetsNeedingData.map(v => v.id);
-        // Mark these widgets as being fetched
-        widgetIds.forEach(id => fetchedWidgetIds.current.add(id));
-        
         const result = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
         
         if (result.success && result.data?.results) {
-          console.log('📦 API Response results:', result.data.results);
-          
-          // Update widgets with fetched data using captured widgets
-          const updatedWidgets = widgetsToUpdate.map(v => {
+          // Apply cache to widgets with fetched data
+          const updatedWidgets = storeWidgets.map(v => {
             const widgetResult = result.data.results.find(r => r.widgetId === v.id);
-            
             if (widgetResult?.success && widgetResult.data) {
-              const refreshedData = widgetResult.data;
-              console.log(`📊 Widget ${v.id} updated with ${refreshedData.pipelineData?.length} rows`);
-              return {
-                ...v,
+              const widgetData = {
                 timestamp: new Date().toISOString(),
-                pipelineData: refreshedData.pipelineData || [],
-                supportingData: refreshedData.supportingData || refreshedData.pipelineData || [],
-                dataGrid: refreshedData.dataGrid || {
-                  gridRows: (refreshedData.pipelineData || []).map((row, idx) => ({ id: idx + 1, ...row })),
-                  gridColumns: [],
-                },
+                pipelineData: widgetResult.data.pipelineData || [],
+                supportingData: widgetResult.data.supportingData || widgetResult.data.pipelineData || [],
+                dataGrid: widgetResult.data.dataGrid,
                 executionTimeMs: widgetResult.executionTimeMs,
                 rowCount: widgetResult.rowCount,
               };
+              // Cache the data
+              setCachedData(activeDashboardId, v.id, widgetData);
+              return { ...v, ...widgetData };
             }
+            // Check if already cached
+            const cached = getCachedData(activeDashboardId, v.id);
+            if (cached) return { ...v, ...cached };
             return v;
           });
-          
-          console.log('📋 Setting updated visualizations:', updatedWidgets.length, 'items');
           setSavedVisualizations(updatedWidgets);
-          console.log(`✅ Fetched data for ${result.data.successCount}/${result.data.totalRequested} widgets`);
-        } else {
-          // Remove from fetched set so they can be retried
-          widgetIds.forEach(id => fetchedWidgetIds.current.delete(id));
-          console.error('❌ Failed to fetch widget data:', result.message);
+          console.log(`✅ Fetched and cached data for ${result.data.successCount} widgets`);
         }
       } catch (error) {
         console.error('❌ Error fetching widget data:', error);
       } finally {
         dataFetchInProgress.current = false;
-        setIsRefreshingAll(false);
+        setLoadingWidgets(new Set());
       }
     };
 
-    fetchData();
-  }, [savedVisualizations]);
+    fetchDataForNewDashboard();
+  }, [activeDashboardId]);
 
   // Note: savedVisualizations are now managed by Zustand store
   // No need to sync to localStorage as Zustand persist handles it
@@ -463,11 +573,6 @@ const Dashboard = () => {
   const allItems = useMemo(() => {
     // Combine visualizations and analyses
     let items = [...savedVisualizations, ...savedAnalyses];
-    
-    // Debug: Log items to verify data is loaded
-    if (items.length > 0) {
-      console.log('📊 Dashboard items:', items.length, 'First item data:', items[0]?.pipelineData?.length || items[0]?.data?.pipelineData?.length || 0, 'rows');
-    }
     
     // Deduplicate by ID (keep first occurrence)
     const seenIds = new Set();
@@ -1249,6 +1354,12 @@ const Dashboard = () => {
     }
 
     const data = getItemData(item);
+    
+    // Show skeleton while loading data
+    if (loadingWidgets.has(item.id)) {
+      return <WidgetContentSkeleton variant="chart" />;
+    }
+    
     if (data.length === 0) {
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
@@ -1885,28 +1996,8 @@ const Dashboard = () => {
       <Container maxWidth="xl" sx={{ py: 3 }}>
 
         {/* Widgets Grid */}
-        {isLoading ? (
+        {(isLoading || isInitialLoad || loadingWidgets.size > 0) && allItems.length === 0 ? (
           <DashboardLoadingSkeleton />
-        ) : allItems.length === 0 ? (
-          <Paper 
-            elevation={0}
-            sx={{ 
-              p: 8, 
-              textAlign: 'center', 
-              borderRadius: 3, 
-              border: '2px dashed #D1D5DB', 
-              bgcolor: '#fff',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            }}
-          >
-            <DashboardIcon sx={{ fontSize: 56, color: '#D1D5DB', mb: 2 }} />
-            <Typography variant="h6" sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>
-              Your Dashboard is Empty
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#6B7280', maxWidth: 400, mx: 'auto' }}>
-              Generate analyses using the chat interface and save them to your dashboard to see beautiful visualizations here.
-            </Typography>
-          </Paper>
         ) : (
           <Box 
             sx={{ 

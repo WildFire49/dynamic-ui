@@ -84,178 +84,66 @@ const WidgetSkeleton = ({ variant = 'chart', height = 'auto' }) => (
 );
 
 /**
- * Bar chart skeleton with animated bars
+ * Bar chart skeleton with animated growing bars - looks like a real chart loading
  */
 const BarChartSkeleton = () => (
-  <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-    {/* Y-axis labels */}
-    <Box sx={{ display: 'flex', height: '100%' }}>
-      <Box sx={{ width: 40, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', pr: 1 }}>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton 
-            key={i}
-            variant="text" 
-            width={30} 
-            height={12}
-            sx={{ bgcolor: '#F3F4F6' }}
-          />
-        ))}
-      </Box>
-      {/* Bars */}
-      <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 2, pb: 3 }}>
-        {[65, 85, 45, 70, 55, 90, 40].map((height, i) => (
-          <Box key={i} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Skeleton 
-              variant="rectangular" 
-              width="100%"
-              height={`${height}%`}
-              sx={{ 
-                borderRadius: '4px 4px 0 0',
-                bgcolor: '#E5E7EB',
-                animation: 'pulse 1.5s ease-in-out infinite',
-                animationDelay: `${i * 0.1}s`,
-                '@keyframes pulse': {
-                  '0%': { opacity: 0.6 },
-                  '50%': { opacity: 1 },
-                  '100%': { opacity: 0.6 },
-                },
-              }}
-            />
-          </Box>
-        ))}
-      </Box>
-    </Box>
-    {/* X-axis labels */}
-    <Box sx={{ display: 'flex', gap: 2, pl: 5, mt: 1 }}>
-      {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-        <Box key={i} sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          <Skeleton 
-            variant="text" 
-            width={40} 
-            height={12}
-            sx={{ bgcolor: '#F3F4F6' }}
-          />
-        </Box>
+  <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 1 }}>
+    {/* Simple skeleton bars - no heavy animations */}
+    <Box sx={{ display: 'flex', height: '100%', alignItems: 'flex-end', gap: 1.5, pb: 2 }}>
+      {[75, 45, 90, 60, 35, 80, 55].map((height, i) => (
+        <Skeleton 
+          key={i}
+          variant="rectangular"
+          sx={{ 
+            flex: 1, 
+            height: `${height}%`,
+            borderRadius: '4px 4px 0 0',
+            bgcolor: '#E5E7EB',
+          }}
+          animation="wave"
+        />
       ))}
     </Box>
   </Box>
 );
 
 /**
- * Line chart skeleton with shimmer effect
+ * Line chart skeleton - simple and performant
  */
 const LineChartSkeleton = () => (
-  <Box sx={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
-    {/* Background */}
+  <Box sx={{ height: '100%', p: 1 }}>
     <Skeleton 
       variant="rectangular" 
       width="100%"
       height="100%"
-      sx={{ 
-        borderRadius: 2,
-        bgcolor: '#F3F4F6',
-      }}
-    />
-    {/* Animated wave line */}
-    <Box
-      sx={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        overflow: 'hidden',
-      }}
-    >
-      <svg 
-        width="100%" 
-        height="100%" 
-        viewBox="0 0 400 200" 
-        preserveAspectRatio="none"
-        style={{ position: 'absolute', top: 0, left: 0 }}
-      >
-        <defs>
-          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#E5E7EB" stopOpacity="0" />
-            <stop offset="50%" stopColor="#D1D5DB" stopOpacity="1" />
-            <stop offset="100%" stopColor="#E5E7EB" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M0,100 Q50,60 100,80 T200,70 T300,90 T400,60"
-          fill="none"
-          stroke="url(#lineGradient)"
-          strokeWidth="3"
-          style={{
-            animation: 'drawLine 2s ease-in-out infinite',
-          }}
-        />
-        <style>
-          {`
-            @keyframes drawLine {
-              0% { stroke-dasharray: 0, 1000; stroke-dashoffset: 0; }
-              50% { stroke-dasharray: 500, 1000; stroke-dashoffset: 0; }
-              100% { stroke-dasharray: 0, 1000; stroke-dashoffset: -500; }
-            }
-          `}
-        </style>
-      </svg>
-    </Box>
-    {/* Shimmer overlay */}
-    <Box
-      sx={{
-        position: 'absolute',
-        top: 0,
-        left: '-100%',
-        width: '100%',
-        height: '100%',
-        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
-        animation: 'shimmer 2s infinite',
-        '@keyframes shimmer': {
-          '0%': { left: '-100%' },
-          '100%': { left: '100%' },
-        },
-      }}
+      sx={{ borderRadius: 2, bgcolor: '#E5E7EB' }}
+      animation="wave"
     />
   </Box>
 );
 
 /**
- * Table skeleton with animated rows
+ * Table skeleton - simple and performant
  */
 const TableSkeleton = ({ rows = 5, columns = 4 }) => (
-  <Box sx={{ height: '100%' }}>
-    {/* Table header */}
-    <Box sx={{ display: 'flex', gap: 2, mb: 2, pb: 1, borderBottom: '1px solid #F3F4F6' }}>
-      {Array.from({ length: columns }).map((_, i) => (
-        <Skeleton 
-          key={i}
-          variant="text" 
-          width={`${25 - i * 2}%`}
-          height={16}
-          sx={{ bgcolor: '#E5E7EB' }}
-        />
-      ))}
-    </Box>
+  <Box sx={{ height: '100%', p: 1 }}>
     {/* Table rows */}
     {Array.from({ length: rows }).map((_, row) => (
-      <Box key={row} sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+      <Box 
+        key={row} 
+        sx={{ 
+          display: 'flex', 
+          gap: 2, 
+          py: 1,
+          borderBottom: '1px solid #F3F4F6',
+        }}
+      >
         {Array.from({ length: columns }).map((_, col) => (
           <Skeleton 
             key={col}
-            variant="text" 
-            width={`${20 + col * 5}%`}
-            height={14}
-            sx={{ 
-              bgcolor: '#F3F4F6',
-              animation: 'pulse 1.5s ease-in-out infinite',
-              animationDelay: `${(row + col) * 0.05}s`,
-              '@keyframes pulse': {
-                '0%': { opacity: 0.6 },
-                '50%': { opacity: 1 },
-                '100%': { opacity: 0.6 },
-              },
-            }}
+            variant="text"
+            sx={{ flex: col === 0 ? 2 : 1, height: 20, bgcolor: '#E5E7EB' }}
+            animation="wave"
           />
         ))}
       </Box>
@@ -329,6 +217,22 @@ export const ContentSkeleton = ({ lines = 3 }) => (
         }}
       />
     ))}
+  </Box>
+);
+
+/**
+ * Widget content skeleton for use inside existing widget cards
+ * Simple and performant skeleton for widget content
+ */
+export const WidgetContentSkeleton = ({ variant = 'chart' }) => (
+  <Box sx={{ height: '100%', p: 1, bgcolor: '#FAFBFC' }}>
+    {variant === 'chart' ? (
+      <BarChartSkeleton />
+    ) : variant === 'line' ? (
+      <LineChartSkeleton />
+    ) : (
+      <TableSkeleton />
+    )}
   </Box>
 );
 

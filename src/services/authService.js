@@ -250,7 +250,7 @@ class AuthService {
         return { success: false, message: "No refresh token found" };
       }
 
-      const response = await fetch(`${this.ssoBaseURL}/refresh`, {
+      const response = await fetch(`${this.ssoBaseURL}/token/refresh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
