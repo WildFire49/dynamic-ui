@@ -7,19 +7,22 @@ const API_BASE_URL =
  * Dashboard Service - Handles all dashboard and widget API operations
  *
  * API Endpoints:
- * 1. GET    /user/{username}              - Get all user dashboards
- * 2. POST   /                             - Create dashboard
- * 3. PUT    /{dashboardId}                - Update dashboard
- * 4. DELETE /{dashboardId}                - Delete dashboard
- * 5. GET    /{dashboardId}/widgets        - Get dashboard widgets
- * 6. POST   /{dashboardId}/widget         - Save widget to dashboard
- * 7. PUT    /{dashboardId}/widget/{wid}   - Update widget
- * 8. DELETE /{dashboardId}/widget/{wid}   - Delete widget
- * 9. POST   /widget/move                  - Move widget between dashboards
- * 10. PUT   /{dashboardId}/widgets/reorder - Reorder widgets
- * 11. PUT   /active                       - Set active dashboard
- * 12. POST  /sync                         - Bulk sync dashboards & widgets
- * 13. GET   /health                       - Health check
+ * 1. GET    /user/{username}                          - Get all user dashboards
+ * 2. POST   /                                         - Create dashboard
+ * 3. PUT    /{dashboardId}                            - Update dashboard
+ * 4. DELETE /{dashboardId}                            - Delete dashboard
+ * 5. GET    /{dashboardId}/widgets                    - Get dashboard widgets (metadata only)
+ * 6. POST   /{dashboardId}/widget                     - Save widget to dashboard
+ * 7. PUT    /{dashboardId}/widget/{wid}               - Update widget
+ * 8. DELETE /{dashboardId}/widget/{wid}               - Delete widget
+ * 9. POST   /widget/move                              - Move widget between dashboards
+ * 10. PUT   /{dashboardId}/widgets/reorder            - Reorder widgets
+ * 11. PUT   /active                                   - Set active dashboard
+ * 12. POST  /sync                                     - Bulk sync dashboards & widgets
+ * 13. POST  /{dashboardId}/widget/{wid}/refresh       - Refresh single widget data
+ * 14. POST  /{dashboardId}/refresh                    - Refresh all dashboard widgets
+ * 15. POST  /widgets/data                             - Get widget data (single or multiple)
+ * 16. GET   /health                                   - Health check
  */
 class DashboardService {
   /**
@@ -341,24 +344,21 @@ class DashboardService {
    */
   async saveWidget(username, dashboardId, widget) {
     try {
-      // Build widget payload with all required fields
+      // Build widget payload - store SQL query, minimal data (actual data cached in Redis)
       const widgetPayload = {
         username,
         type: widget.type || "analysis_widget",
         title: widget.title,
         prompt: widget.prompt || widget.originalPrompt || widget.question,
+        sqlQuery: widget.sqlQuery || widget.sql_query || widget.query || "", // Store SQL for refresh
         width: widget.width || 12,
         height: widget.height || 400,
         viewMode: widget.viewMode || "auto",
         chartType: widget.chartType,
-        data: {
-          supportingData: widget.supportingData || widget.data?.supportingData,
-          pipelineData: widget.pipelineData || widget.data?.pipelineData,
-          dataGrid: widget.dataGrid || widget.data?.dataGrid,
-          charts: widget.charts || widget.data?.charts,
-        },
+        data: {}, // Empty - actual data is cached in Redis and fetched via refresh
         source: widget.source || "buddi_agent",
         conversationId: widget.conversationId,
+        connectionId: widget.connectionId, // Store connection for refresh
       };
 
       const response = await fetch(
@@ -622,7 +622,153 @@ class DashboardService {
   }
 
   /**
-   * 13. Health check
+   * 13. Refresh a single widget
+   * Re-executes the widget's stored SQL query and returns fresh data
+   * @param {string} dashboardId - Dashboard ID
+   * @param {string} widgetId - Widget ID
+   * @param {string} username - User's username
+   * @param {string} connectionId - Database connection ID
+   * @returns {Promise<Object>} Refreshed widget data with pipelineData, supportingData, dataGrid
+   */
+  async refreshWidget(dashboardId, widgetId, username, connectionId) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/dashboard/${dashboardId}/widget/${widgetId}/refresh`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            username,
+            connectionId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.status === 200 && data.data?.data?.success) {
+        console.log("✅ Widget refreshed:", widgetId);
+        return {
+          success: true,
+          data: data.data.data,
+        };
+      }
+
+      return {
+        success: false,
+        message:
+          data.data?.data?.error ||
+          data.data?.message ||
+          data.message ||
+          "Failed to refresh widget",
+      };
+    } catch (error) {
+      console.error("Error refreshing widget:", error);
+      return {
+        success: false,
+        message: "Network error refreshing widget",
+      };
+    }
+  }
+
+  /**
+   * 14. Refresh all widgets in a dashboard (bulk)
+   * Re-executes all widgets' stored SQL queries and returns fresh data
+   * @param {string} dashboardId - Dashboard ID
+   * @param {string} username - User's username
+   * @param {string} connectionId - Database connection ID
+   * @returns {Promise<Object>} Results with refreshedCount, failedCount, and individual results
+   */
+  async refreshAllWidgets(dashboardId, username, connectionId) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/dashboard/${dashboardId}/refresh`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            username,
+            connectionId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.status === 200) {
+        console.log("✅ Dashboard widgets refreshed:", data.data?.data);
+        return {
+          success: true,
+          data: data.data?.data || data.data,
+        };
+      }
+
+      return {
+        success: false,
+        message:
+          data.data?.message ||
+          data.message ||
+          "Failed to refresh dashboard widgets",
+      };
+    } catch (error) {
+      console.error("Error refreshing dashboard widgets:", error);
+      return {
+        success: false,
+        message: "Network error refreshing dashboard widgets",
+      };
+    }
+  }
+
+  /**
+   * 15. Get Widget Data (Single or Multiple)
+   * Fetches data for one or more widgets by executing their stored SQL queries
+   * @param {string} username - User's username
+   * @param {string} connectionId - Database connection ID
+   * @param {string[]} widgetIds - Array of widget IDs to fetch data for
+   * @returns {Promise<Object>} Results with successCount, failedCount, and individual widget data
+   */
+  async getWidgetsData(username, connectionId, widgetIds) {
+    try {
+      console.log("📊 Fetching widget data for:", widgetIds);
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/dashboard/widgets/data`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            username,
+            connectionId,
+            widgetIds,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.status === 200) {
+        console.log("✅ Widget data fetched:", data.data?.data);
+        return {
+          success: true,
+          data: data.data?.data || data.data,
+        };
+      }
+
+      return {
+        success: false,
+        message:
+          data.data?.message || data.message || "Failed to fetch widget data",
+      };
+    } catch (error) {
+      console.error("Error fetching widget data:", error);
+      return {
+        success: false,
+        message: "Network error fetching widget data",
+      };
+    }
+  }
+
+  /**
+   * 16. Health check
    * @returns {Promise<Object>} Health status
    */
   async healthCheck() {

@@ -29,7 +29,9 @@ import {
   ToggleButtonGroup,
   InputBase,
   ClickAwayListener,
-  CircularProgress
+  CircularProgress,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -54,7 +56,9 @@ import {
   FileDownload as FileDownloadIcon,
   CloudDone as CloudDoneIcon,
   CloudSync as CloudSyncIcon,
-  CloudOff as CloudOffIcon
+  CloudOff as CloudOffIcon,
+  Settings as SettingsIcon,
+  Tune as TuneIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -78,6 +82,8 @@ import AnalysisWidget from './widgets/AnalysisWidget';
 import DashboardSelector from './DashboardSelector';
 import useDashboardStore from '../store/dashboardStore';
 import { DashboardLoadingSkeleton } from './skeletons/WidgetSkeleton';
+import WidgetConfigStudio from './widgets/WidgetConfigStudio';
+import dashboardService from '../services/dashboardService';
 
 // Chart colors matching the reference UI
 const CHART_COLORS = {
@@ -129,9 +135,16 @@ const Dashboard = () => {
   const [editingTitleId, setEditingTitleId] = useState(null); // For inline title editing
   const [editingTitleValue, setEditingTitleValue] = useState('');
   const [refreshingWidgets, setRefreshingWidgets] = useState({}); // Track which widgets are refreshing
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false); // Track bulk refresh
+  const [refreshResults, setRefreshResults] = useState(null); // Store bulk refresh results
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest'); // 'newest' or 'oldest'
   const [globalViewMode, setGlobalViewMode] = useState('auto'); // 'auto', 'area', 'bar', 'table'
+  const [configStudio, setConfigStudio] = useState({ open: false, widget: null }); // Widget config studio
+  
+  // Refs to prevent duplicate API calls
+  const dataFetchInProgress = useRef(false);
+  const fetchedWidgetIds = useRef(new Set());
 
   // Helper to get title - prioritize question/query over generic titles
   const getTitle = (item) => {
@@ -278,22 +291,53 @@ const Dashboard = () => {
   // Subscribe to Zustand store changes for real-time updates
   useEffect(() => {
     const unsubscribe = useDashboardStore.subscribe(
-      (state) => {
-        const storeVisualizations = state.visualizationsByDashboard[activeDashboardId] || [];
-        setSavedVisualizations([...storeVisualizations]);
+      (state, prevState) => {
+        // Get current active dashboard ID from state (not from closure)
+        const currentDashboardId = state.activeDashboardId;
+        const storeVisualizations = state.visualizationsByDashboard[currentDashboardId] || [];
+        
+        // Only update if visualizations changed (new widgets added/removed)
+        const prevVisualizations = prevState?.visualizationsByDashboard?.[currentDashboardId] || [];
+        if (storeVisualizations.length !== prevVisualizations.length || 
+            JSON.stringify(storeVisualizations.map(v => v.id)) !== JSON.stringify(prevVisualizations.map(v => v.id))) {
+          console.log(`🔄 Store updated for dashboard "${currentDashboardId}":`, storeVisualizations.length, 'items');
+          
+          // Merge store data with any existing fetched data to preserve pipelineData
+          setSavedVisualizations(prev => {
+            // If we have existing data with pipelineData, preserve it
+            if (prev.length > 0 && prev.some(v => v.pipelineData?.length > 0)) {
+              // Merge: use store metadata but keep fetched data
+              return storeVisualizations.map(storeViz => {
+                const existingViz = prev.find(p => p.id === storeViz.id);
+                if (existingViz?.pipelineData?.length > 0) {
+                  return { ...storeViz, ...existingViz }; // Keep fetched data
+                }
+                return storeViz;
+              });
+            }
+            return [...storeVisualizations];
+          });
+        }
       }
     );
     return () => unsubscribe();
+  }, []);
+
+  // Reset fetched widget IDs when dashboard changes
+  useEffect(() => {
+    fetchedWidgetIds.current.clear();
+    dataFetchInProgress.current = false;
   }, [activeDashboardId]);
 
   // Load data from Zustand store when active dashboard changes
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
       try {
         // Get visualizations ONLY from Zustand store for active dashboard
         const freshState = useDashboardStore.getState();
         const storeVisualizations = freshState.visualizationsByDashboard[activeDashboardId] || [];
         console.log(`📊 Loading dashboard "${activeDashboardId}":`, storeVisualizations.length, 'items');
+        
         setSavedVisualizations([...storeVisualizations]);
         
         // Analyses are still from localStorage (not dashboard-specific yet)
@@ -308,7 +352,97 @@ const Dashboard = () => {
       setIsInitialLoad(false);
     };
     loadData();
-  }, [activeDashboardId, visualizationsByDashboard]);
+  }, [activeDashboardId]);
+
+  // Fetch widget data when visualizations are loaded (separate effect to handle async widget loading)
+  useEffect(() => {
+    const fetchData = async () => {
+      // Skip if no visualizations or fetch already in progress
+      if (savedVisualizations.length === 0 || dataFetchInProgress.current) {
+        return;
+      }
+
+      const connectionId = localStorage.getItem('connectionId') || 
+                          localStorage.getItem('activeConnectionId') || 
+                          process.env.NEXT_PUBLIC_CONNECTION_ID || '';
+      const username = JSON.parse(localStorage.getItem('user') || '{}').username || 
+                      localStorage.getItem('username') || 
+                      localStorage.getItem('userId') || '';
+
+      if (!username) {
+        console.log('⚠️ No username available for widget data fetch');
+        return;
+      }
+
+      // Check if any widgets need data (no pipelineData) AND haven't been fetched yet
+      const widgetsNeedingData = savedVisualizations.filter(v => 
+        !v.pipelineData?.length && 
+        !v.data?.pipelineData?.length &&
+        !fetchedWidgetIds.current.has(v.id)
+      );
+      
+      if (widgetsNeedingData.length === 0) {
+        return;
+      }
+
+      console.log(`📥 Fetching data for ${widgetsNeedingData.length} widgets:`, widgetsNeedingData.map(v => v.id));
+      dataFetchInProgress.current = true;
+      setIsRefreshingAll(true);
+      
+      // Store the current widgets to update (capture at fetch time)
+      const widgetsToUpdate = [...savedVisualizations];
+      
+      try {
+        const widgetIds = widgetsNeedingData.map(v => v.id);
+        // Mark these widgets as being fetched
+        widgetIds.forEach(id => fetchedWidgetIds.current.add(id));
+        
+        const result = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
+        
+        if (result.success && result.data?.results) {
+          console.log('📦 API Response results:', result.data.results);
+          
+          // Update widgets with fetched data using captured widgets
+          const updatedWidgets = widgetsToUpdate.map(v => {
+            const widgetResult = result.data.results.find(r => r.widgetId === v.id);
+            
+            if (widgetResult?.success && widgetResult.data) {
+              const refreshedData = widgetResult.data;
+              console.log(`📊 Widget ${v.id} updated with ${refreshedData.pipelineData?.length} rows`);
+              return {
+                ...v,
+                timestamp: new Date().toISOString(),
+                pipelineData: refreshedData.pipelineData || [],
+                supportingData: refreshedData.supportingData || refreshedData.pipelineData || [],
+                dataGrid: refreshedData.dataGrid || {
+                  gridRows: (refreshedData.pipelineData || []).map((row, idx) => ({ id: idx + 1, ...row })),
+                  gridColumns: [],
+                },
+                executionTimeMs: widgetResult.executionTimeMs,
+                rowCount: widgetResult.rowCount,
+              };
+            }
+            return v;
+          });
+          
+          console.log('📋 Setting updated visualizations:', updatedWidgets.length, 'items');
+          setSavedVisualizations(updatedWidgets);
+          console.log(`✅ Fetched data for ${result.data.successCount}/${result.data.totalRequested} widgets`);
+        } else {
+          // Remove from fetched set so they can be retried
+          widgetIds.forEach(id => fetchedWidgetIds.current.delete(id));
+          console.error('❌ Failed to fetch widget data:', result.message);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching widget data:', error);
+      } finally {
+        dataFetchInProgress.current = false;
+        setIsRefreshingAll(false);
+      }
+    };
+
+    fetchData();
+  }, [savedVisualizations]);
 
   // Note: savedVisualizations are now managed by Zustand store
   // No need to sync to localStorage as Zustand persist handles it
@@ -329,6 +463,11 @@ const Dashboard = () => {
   const allItems = useMemo(() => {
     // Combine visualizations and analyses
     let items = [...savedVisualizations, ...savedAnalyses];
+    
+    // Debug: Log items to verify data is loaded
+    if (items.length > 0) {
+      console.log('📊 Dashboard items:', items.length, 'First item data:', items[0]?.pipelineData?.length || items[0]?.data?.pipelineData?.length || 0, 'rows');
+    }
     
     // Deduplicate by ID (keep first occurrence)
     const seenIds = new Set();
@@ -426,80 +565,205 @@ const Dashboard = () => {
     setEditingTitleValue('');
   };
 
-  // Refresh widget data by calling the chat endpoint with the original prompt
+  // Get connection ID from localStorage or Zustand store
+  const getConnectionId = () => {
+    return localStorage.getItem('connectionId') || 
+           localStorage.getItem('activeConnectionId') ||
+           '';
+  };
+
+  // Get username from localStorage
+  const getUsername = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.username || localStorage.getItem('username') || '';
+  };
+
+  // Refresh a single widget using the new getWidgetsData API
   const handleRefreshWidget = async (item) => {
-    // Use originalPrompt first (immutable), fallback to question, never use title (user-editable)
-    const question = item.originalPrompt || item.question;
-    if (!question || question === 'Unknown Query') {
-      console.warn('Cannot refresh: No original prompt found for widget');
+    const username = getUsername();
+    const connectionId = getConnectionId();
+    
+    if (!connectionId) {
+      console.warn('Cannot refresh: No connection ID found. Please select a database connection.');
       return;
     }
 
     setRefreshingWidgets(prev => ({ ...prev, [item.id]: true }));
 
     try {
-      // Get auth token from localStorage
-      const token = localStorage.getItem('authToken') || localStorage.getItem('token');
-      const userId = localStorage.getItem('userId') || localStorage.getItem('user_id');
-      const roleCode = localStorage.getItem('roleCode') || 'RE-20448';
-      
-      const response = await fetch('http://localhost:8001/chat', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        body: JSON.stringify({ 
-          message: question,
-          user_id: userId,
-          roleCode: roleCode,
-        }),
-      });
+      // Use the new getWidgetsData API with single widget ID
+      const result = await dashboardService.getWidgetsData(username, connectionId, [item.id]);
 
-      if (!response.ok) throw new Error('Failed to refresh data');
+      if (result.success && result.data?.results?.[0]) {
+        const widgetResult = result.data.results[0];
+        
+        if (widgetResult.success && widgetResult.data) {
+          const refreshedData = widgetResult.data;
+          
+          const updatedItem = {
+            ...item,
+            timestamp: new Date().toISOString(),
+            pipelineData: refreshedData.pipelineData || [],
+            supportingData: refreshedData.supportingData || refreshedData.pipelineData || [],
+            dataGrid: refreshedData.dataGrid || {
+              gridRows: (refreshedData.pipelineData || []).map((row, idx) => ({ id: idx + 1, ...row })),
+              gridColumns: [],
+            },
+            executionTimeMs: widgetResult.executionTimeMs,
+            rowCount: widgetResult.rowCount,
+          };
 
-      const data = await response.json();
-      
-      // Extract data from chat response
-      const newData = data?.response?.content?.results || 
-                      data?.content?.results || 
-                      data?.results || 
-                      [];
-      
-      if (newData.length === 0) {
-        console.warn('No data returned from refresh');
-        return;
+          // Update in state
+          setSavedVisualizations(prev => 
+            prev.map(v => v.id === item.id ? updatedItem : v)
+          );
+          
+          // Update in Zustand store
+          updateVisualization(activeDashboardId, item.id, {
+            pipelineData: updatedItem.pipelineData,
+            supportingData: updatedItem.supportingData,
+            dataGrid: updatedItem.dataGrid,
+            timestamp: updatedItem.timestamp,
+          });
+
+          console.log(`✅ Widget "${item.title}" refreshed in ${widgetResult.executionTimeMs}ms, ${widgetResult.rowCount} rows`);
+        } else {
+          console.error('Failed to refresh widget:', widgetResult.error);
+        }
+      } else {
+        console.error('Failed to refresh widget:', result.message);
       }
-
-      const updatedItem = {
-        ...item,
-        timestamp: new Date().toISOString(),
-        supporting_data: newData,
-        supportingData: newData,
-        pipelineData: newData,
-        dataGrid: {
-          ...item.dataGrid,
-          gridRows: newData.map((row, idx) => ({ id: idx + 1, ...row })),
-        },
-      };
-
-      // Update in state
-      setSavedVisualizations(prev => 
-        prev.map(v => v.id === item.id ? updatedItem : v)
-      );
-      setSavedAnalyses(prev => 
-        prev.map(a => a.id === item.id ? updatedItem : a)
-      );
-
-      // Also update localStorage
-      const existing = JSON.parse(localStorage.getItem('dashboardVisualizations') || '[]');
-      const updated = existing.map(v => v.id === item.id ? updatedItem : v);
-      localStorage.setItem('dashboardVisualizations', JSON.stringify(updated));
-
     } catch (error) {
       console.error('Error refreshing widget:', error);
     } finally {
       setRefreshingWidgets(prev => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  // Fetch data for widgets using the new getWidgetsData API
+  const fetchWidgetsData = async (widgetIds) => {
+    const username = getUsername();
+    const connectionId = getConnectionId();
+    
+    if (!connectionId) {
+      console.warn('Cannot fetch widget data: No connection ID found.');
+      return null;
+    }
+
+    if (!widgetIds || widgetIds.length === 0) {
+      console.warn('No widget IDs provided for data fetch.');
+      return null;
+    }
+
+    try {
+      const result = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
+      
+      if (result.success && result.data) {
+        return result.data;
+      } else {
+        console.error('Failed to fetch widget data:', result.message);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching widget data:', error);
+      return null;
+    }
+  };
+
+  // Update widgets with fetched data
+  const updateWidgetsWithData = (results) => {
+    if (!results || !Array.isArray(results)) return;
+
+    setSavedVisualizations(prev => 
+      prev.map(v => {
+        const widgetResult = results.find(r => r.widgetId === v.id);
+        if (widgetResult?.success && widgetResult.data) {
+          const refreshedData = widgetResult.data;
+          return {
+            ...v,
+            timestamp: new Date().toISOString(),
+            pipelineData: refreshedData.pipelineData || [],
+            supportingData: refreshedData.supportingData || refreshedData.pipelineData || [],
+            dataGrid: refreshedData.dataGrid || {
+              gridRows: (refreshedData.pipelineData || []).map((row, idx) => ({ id: idx + 1, ...row })),
+              gridColumns: [],
+            },
+            executionTimeMs: widgetResult.executionTimeMs,
+            rowCount: widgetResult.rowCount,
+          };
+        }
+        return v;
+      })
+    );
+  };
+
+  // Refresh all widgets in the dashboard (bulk)
+  const handleRefreshAllWidgets = async () => {
+    const username = getUsername();
+    const connectionId = getConnectionId();
+    
+    if (!connectionId) {
+      console.warn('Cannot refresh: No connection ID found. Please select a database connection.');
+      setRefreshResults({
+        totalWidgets: savedVisualizations.length,
+        refreshedCount: 0,
+        failedCount: savedVisualizations.length,
+        error: 'No database connection selected',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    setIsRefreshingAll(true);
+    setRefreshResults(null);
+
+    try {
+      // Get all widget IDs
+      const widgetIds = savedVisualizations.map(v => v.id);
+      
+      if (widgetIds.length === 0) {
+        setIsRefreshingAll(false);
+        return;
+      }
+
+      // Use the new getWidgetsData API
+      const result = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
+
+      if (result.success && result.data) {
+        const { totalRequested, successCount, failedCount, results } = result.data;
+        
+        // Update widgets with fetched data
+        updateWidgetsWithData(results);
+
+        setRefreshResults({
+          totalWidgets: totalRequested,
+          refreshedCount: successCount,
+          failedCount: failedCount,
+          timestamp: new Date().toISOString(),
+        });
+
+        console.log(`✅ Dashboard refreshed: ${successCount}/${totalRequested} widgets updated, ${failedCount} failed`);
+      } else {
+        console.error('Failed to refresh dashboard:', result.message);
+        setRefreshResults({
+          totalWidgets: widgetIds.length,
+          refreshedCount: 0,
+          failedCount: widgetIds.length,
+          error: result.message,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing dashboard:', error);
+      setRefreshResults({
+        totalWidgets: savedVisualizations.length,
+        refreshedCount: 0,
+        failedCount: savedVisualizations.length,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
+      setIsRefreshingAll(false);
     }
   };
 
@@ -749,12 +1013,21 @@ const Dashboard = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Extract data from item
+  // Extract data from item - handles multiple data formats from API
   const getItemData = (item) => {
-    const rawData = item.supporting_data || item.supportingData || item.pipelineData || 
-                    item.data?.response?.analysis_result?.supporting_data || [];
+    // Check all possible data locations (API format, store format, legacy format)
+    const rawData = 
+      item.pipelineData ||                                    // Store transformed format
+      item.supportingData ||                                  // Store transformed format
+      item.supporting_data ||                                 // Legacy format
+      item.data?.pipelineData ||                              // Direct API format
+      item.data?.supportingData ||                            // Direct API format
+      item.data?.dataGrid?.gridRows ||                        // API dataGrid format
+      item.data?.response?.analysis_result?.supporting_data || // Chat response format
+      [];
+    
     return rawData.map((row, index) => ({
-      id: row.id || row._id || `row-${index}`,
+      id: row.id ?? row._id ?? `row-${index}`,
       ...row
     }));
   };
@@ -1247,6 +1520,9 @@ const Dashboard = () => {
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
+                <MenuItem onClick={() => { setConfigStudio({ open: true, widget: item }); handleMenuClose(); }}>
+                  <TuneIcon sx={{ fontSize: 18, mr: 1.5, color: '#3B82F6' }} /> Configure Widget
+                </MenuItem>
                 <MenuItem onClick={() => { handleStartEditTitle(item); handleMenuClose(); }}>
                   <EditIcon sx={{ fontSize: 18, mr: 1.5, color: '#6B7280' }} /> Rename
                 </MenuItem>
@@ -1542,6 +1818,65 @@ const Dashboard = () => {
             >
               {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
             </Button>
+
+            {/* Refresh All Widgets Button */}
+            <Tooltip title={isRefreshingAll ? 'Refreshing...' : 'Refresh All Widgets'} arrow>
+              <span>
+                <Button
+                  size="small"
+                  startIcon={
+                    isRefreshingAll ? (
+                      <CircularProgress size={14} sx={{ color: 'inherit' }} />
+                    ) : (
+                      <RefreshIcon sx={{ fontSize: 14 }} />
+                    )
+                  }
+                  onClick={handleRefreshAllWidgets}
+                  disabled={isRefreshingAll || allItems.length === 0}
+                  sx={{ 
+                    px: 1.5, 
+                    py: 0.5,
+                    color: isRefreshingAll ? CHART_COLORS.primary : '#6B7280',
+                    bgcolor: isRefreshingAll ? alpha(CHART_COLORS.primary, 0.1) : '#F9FAFB',
+                    border: `1px solid ${isRefreshingAll ? CHART_COLORS.primary : '#E5E7EB'}`,
+                    borderRadius: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    whiteSpace: 'nowrap',
+                    '&:hover': { 
+                      bgcolor: alpha(CHART_COLORS.primary, 0.1),
+                      borderColor: CHART_COLORS.primary,
+                    },
+                    '&.Mui-disabled': {
+                      bgcolor: '#F3F4F6',
+                      color: '#9CA3AF',
+                    }
+                  }}
+                >
+                  {isRefreshingAll ? 'Refreshing...' : 'Refresh All'}
+                </Button>
+              </span>
+            </Tooltip>
+
+            {/* Configure Widgets Button */}
+            <Tooltip title="Configure Widgets" arrow>
+              <IconButton
+                onClick={() => setConfigStudio({ open: true, widget: null })}
+                sx={{
+                  bgcolor: '#F9FAFB',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: 1.5,
+                  p: 0.75,
+                  '&:hover': { 
+                    bgcolor: alpha(CHART_COLORS.primary, 0.1),
+                    borderColor: CHART_COLORS.primary,
+                  }
+                }}
+              >
+                <TuneIcon sx={{ fontSize: 18, color: '#6B7280' }} />
+              </IconButton>
+            </Tooltip>
           </Stack>
         </Stack>
       </Box>
@@ -1641,6 +1976,70 @@ const Dashboard = () => {
           </Box>
         </DialogContent>
       </Dialog>
+
+      {/* Widget Configuration Studio */}
+      <WidgetConfigStudio
+        widgets={savedVisualizations}
+        selectedWidget={configStudio.widget}
+        isOpen={configStudio.open}
+        onClose={() => setConfigStudio({ open: false, widget: null })}
+        onWidgetSelect={(widget) => setConfigStudio({ open: true, widget })}
+        onSave={(updatedWidget) => {
+          // Update the widget with new configuration
+          const { viewMode, chartType, config } = updatedWidget;
+          
+          // Update view mode for this widget
+          if (viewMode) {
+            setWidgetViewModes(prev => ({ ...prev, [updatedWidget.id]: viewMode }));
+          }
+          
+          // Update the widget in saved visualizations
+          setSavedVisualizations(prev => 
+            prev.map(v => v.id === updatedWidget.id 
+              ? { ...v, viewMode, chartType, config, title: config?.title || v.title }
+              : v
+            )
+          );
+          
+          // Also update in Zustand store
+          updateVisualization(activeDashboardId, updatedWidget.id, {
+            viewMode,
+            chartType,
+            config,
+            title: config?.title || updatedWidget.title,
+          });
+          
+          // Close the studio
+          setConfigStudio({ open: false, widget: null });
+        }}
+      />
+
+      {/* Refresh Results Snackbar */}
+      <Snackbar
+        open={!!refreshResults}
+        autoHideDuration={5000}
+        onClose={() => setRefreshResults(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setRefreshResults(null)} 
+          severity={refreshResults?.failedCount > 0 ? 'warning' : 'success'}
+          variant="filled"
+          sx={{ 
+            minWidth: 300,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          }}
+        >
+          {refreshResults && (
+            <>
+              <strong>Dashboard Refreshed</strong>
+              <br />
+              {refreshResults.refreshedCount}/{refreshResults.totalWidgets} widgets updated
+              {refreshResults.failedCount > 0 && ` • ${refreshResults.failedCount} failed`}
+            </>
+          )}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

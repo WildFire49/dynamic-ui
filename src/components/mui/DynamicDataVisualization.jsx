@@ -2006,8 +2006,26 @@ const DynamicDataVisualization = ({
       const supportingData =
         analysisResult?.analysis_result?.supporting_data || [];
 
+      // Extract SQL query for refresh API
+      // Response structure: { response: { content: { generated_sql } } } or { content: { generated_sql } }
+      const sqlQuery = 
+        analysisResult?.response?.content?.generated_sql ||
+        analysisResult?.content?.generated_sql ||
+        analysisResult?.generated_sql ||
+        analysisResult?.sql_query ||
+        analysisResult?.sqlQuery ||
+        analysisResult?.analysis_result?.sql_query ||
+        analysisResult?.analysis_result?.generated_sql ||
+        "";
+      
+      // Get connection ID from localStorage
+      const connectionId = localStorage.getItem('connectionId') || 
+                          localStorage.getItem('activeConnectionId') || 
+                          "";
+
       console.log("💾 [SAVE DEBUG] Saving visualization data:", {
         question: analysisResult?.question,
+        sqlQuery,
         supportingDataLength: supportingData.length,
         chartData: Object.keys(chartData),
         gridRowsLength: gridRows.length,
@@ -2028,6 +2046,8 @@ const DynamicDataVisualization = ({
         timestamp: new Date().toISOString(),
         type: "pipeline",
         question: queryText,
+        sqlQuery, // Store SQL query for refresh API
+        connectionId, // Store connection for refresh API
 
         // Store supporting data with multiple property names for compatibility
         supporting_data: supportingData,
@@ -2223,10 +2243,28 @@ const DynamicDataVisualization = ({
         analysisResult?.query ||
         null;
       
-      console.log("💾 [SAVE] Query text extracted:", queryText, "from analysisResult:", analysisResult);
+      // Extract SQL query from various possible sources
+      // Response structure: { response: { content: { generated_sql } } } or { content: { generated_sql } }
+      const sqlQuery = 
+        analysisResult?.response?.content?.generated_sql ||
+        analysisResult?.content?.generated_sql ||
+        analysisResult?.generated_sql ||
+        analysisResult?.sql_query ||
+        analysisResult?.sqlQuery ||
+        analysisResult?.analysis_result?.sql_query ||
+        analysisResult?.analysis_result?.generated_sql ||
+        "";
+      
+      // Get connection ID from localStorage
+      const connectionId = localStorage.getItem('connectionId') || 
+                          localStorage.getItem('activeConnectionId') || 
+                          "";
+
+      console.log("💾 [SAVE] Query text extracted:", queryText, "SQL:", sqlQuery, "from analysisResult:", analysisResult);
 
       // Create the visualization data object
       // originalPrompt is preserved for refresh - title can be edited by user
+      // sqlQuery is stored for backend refresh - actual data cached in Redis
       const visualizationData = {
         id,
         title: queryText || `Analysis - ${new Date().toLocaleDateString()}`,
@@ -2234,6 +2272,8 @@ const DynamicDataVisualization = ({
         timestamp: new Date().toISOString(),
         type: "pipeline",
         question: queryText || "Unknown Query",
+        sqlQuery, // Store SQL query for refresh API
+        connectionId, // Store connection for refresh API
         supportingData: analysisResult?.analysis_result?.supporting_data || [],
         pipelineData: analysisResult?.analysis_result?.supporting_data || [],
         charts: {
@@ -2267,6 +2307,23 @@ const DynamicDataVisualization = ({
       const supportingData =
         analysisResult?.analysis_result?.supporting_data || [];
 
+      // Extract SQL query for refresh API
+      // Response structure: { response: { content: { generated_sql } } } or { content: { generated_sql } }
+      const sqlQuery = 
+        analysisResult?.response?.content?.generated_sql ||
+        analysisResult?.content?.generated_sql ||
+        analysisResult?.generated_sql ||
+        analysisResult?.sql_query ||
+        analysisResult?.sqlQuery ||
+        analysisResult?.analysis_result?.sql_query ||
+        analysisResult?.analysis_result?.generated_sql ||
+        "";
+      
+      // Get connection ID from localStorage
+      const connectionId = localStorage.getItem('connectionId') || 
+                          localStorage.getItem('activeConnectionId') || 
+                          "";
+
       const queryText = analysisResult?.question || "Unknown Query";
       const visualizationData = {
         id,
@@ -2277,6 +2334,8 @@ const DynamicDataVisualization = ({
         timestamp: new Date().toISOString(),
         type: "table",
         question: queryText,
+        sqlQuery, // Store SQL query for refresh API
+        connectionId, // Store connection for refresh API
 
         // Store supporting data with multiple property names for compatibility
         supporting_data: supportingData,
@@ -2321,6 +2380,23 @@ const DynamicDataVisualization = ({
       const supportingData =
         analysisResult?.analysis_result?.supporting_data || [];
 
+      // Extract SQL query for refresh API
+      // Response structure: { response: { content: { generated_sql } } } or { content: { generated_sql } }
+      const sqlQuery = 
+        analysisResult?.response?.content?.generated_sql ||
+        analysisResult?.content?.generated_sql ||
+        analysisResult?.generated_sql ||
+        analysisResult?.sql_query ||
+        analysisResult?.sqlQuery ||
+        analysisResult?.analysis_result?.sql_query ||
+        analysisResult?.analysis_result?.generated_sql ||
+        "";
+      
+      // Get connection ID from localStorage
+      const connectionId = localStorage.getItem('connectionId') || 
+                          localStorage.getItem('activeConnectionId') || 
+                          "";
+
       const charts = {};
       charts[chartType] = chartData[chartType];
 
@@ -2339,6 +2415,8 @@ const DynamicDataVisualization = ({
             ? "waterfall"
             : "pipeline",
         question: queryText,
+        sqlQuery, // Store SQL query for refresh API
+        connectionId, // Store connection for refresh API
 
         // Store supporting data with multiple property names for compatibility
         supporting_data: supportingData,

@@ -98,6 +98,10 @@ const useRetrieverStore = create(
        */
       setCurrentConnection: (connectionData) => {
         set({ currentConnection: connectionData });
+        // Also save connection ID to localStorage for dashboard widget refresh
+        if (connectionData?.id) {
+          localStorage.setItem("connectionId", connectionData.id);
+        }
       },
 
       /**

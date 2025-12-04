@@ -177,8 +177,13 @@ const useDashboardStore = create(
         try {
           console.log(`📥 Loading widgets for dashboard: ${dashboardId}`);
           const result = await dashboardService.getWidgets(user, dashboardId);
+          console.log(`📦 API Response for widgets:`, result);
 
           if (result.success && result.data?.widgets) {
+            console.log(
+              `📊 Found ${result.data.widgets.length} widgets, first widget:`,
+              result.data.widgets[0]?.title
+            );
             set((state) => {
               const newLoadedSet = new Set(state._loadedDashboards);
               newLoadedSet.add(dashboardId);
@@ -193,16 +198,24 @@ const useDashboardStore = create(
                     originalPrompt: w.prompt,
                     timestamp: w.createdAt || w.savedAt,
                     type: w.type,
-                    question: w.prompt,
-                    supportingData: w.data?.supportingData,
+                    question: w.data?.question || w.prompt,
+                    // Store SQL query and connection for refresh API
+                    sqlQuery: w.sqlQuery || w.sql_query || "",
+                    connectionId: w.connectionId || "",
+                    // Keep data at top level for easy access
+                    supportingData:
+                      w.data?.supportingData || w.data?.pipelineData,
                     pipelineData: w.data?.pipelineData,
                     charts: w.data?.charts,
                     dataGrid: w.data?.dataGrid,
+                    // Also keep full data object for components that need it
+                    data: w.data,
                     width: w.width,
                     height: w.height,
                     viewMode: w.viewMode,
                     chartType: w.chartType,
                     order: w.order,
+                    source: w.source,
                   })),
                 },
               };

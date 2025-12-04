@@ -491,9 +491,16 @@ const ChatMessage = ({ message, index, onAction }) => {
               analysisResult={{
                 analysis_result: {
                   supporting_data: queryResult.results,
+                  // Include SQL query for dashboard widget refresh
+                  generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
                 },
                 question: queryResult.natural_language_query || message.content?.natural_language_query || '',
                 natural_language_query: queryResult.natural_language_query || message.content?.natural_language_query || '',
+                // Include SQL at top level too for easier access
+                generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
+                content: {
+                  generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
+                },
               }}
               loading={false}
               isFromDashboard={false}
@@ -732,9 +739,14 @@ const ChatMessage = ({ message, index, onAction }) => {
             analysisResult={{
               analysis_result: {
                 supporting_data: message.content.data || [],
+                generated_sql: message.content.generated_sql || message.content.sql_query || '',
               },
               question: message.content.question || message.content.natural_language_query || '',
               natural_language_query: message.content.natural_language_query || message.content.question || '',
+              generated_sql: message.content.generated_sql || message.content.sql_query || '',
+              content: {
+                generated_sql: message.content.generated_sql || message.content.sql_query || '',
+              },
             }}
             loading={false}
             isFromDashboard={false}

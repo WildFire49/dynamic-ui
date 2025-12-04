@@ -542,6 +542,9 @@ const SQLQueryGenerator = React.memo(() => {
   const memoizedTransformResultsForVisualization = useMemo(() => {
     if (!result?.execution?.results) return null;
 
+    // Extract SQL query for dashboard widget refresh
+    const generatedSql = result.query?.generated_sql || result.sql || "";
+
     return {
       analysis_result: {
         supporting_data: result.execution.results,
@@ -550,11 +553,18 @@ const SQLQueryGenerator = React.memo(() => {
           query: result.query?.natural_language || "",
           execution_time: result.execution.execution_time_ms,
         },
+        generated_sql: generatedSql,
+      },
+      question: result.query?.natural_language || "",
+      natural_language_query: result.query?.natural_language || "",
+      generated_sql: generatedSql,
+      content: {
+        generated_sql: generatedSql,
       },
       metadata: {
         query_id: result.query?.query_id,
         timestamp: result.timestamp,
-        sql: result.query?.generated_sql || result.sql,
+        sql: generatedSql,
       },
     };
   }, [result]);

@@ -164,12 +164,21 @@ const DataGridComponent = ({
     );
   }
 
+  // Ensure all rows have an id
+  const rowsWithIds = useMemo(() => {
+    return processedRows.map((row, index) => ({
+      id: row.id ?? `row-${index}`,
+      ...row,
+    }));
+  }, [processedRows]);
+
   if (variant === 'clean') {
     return (
       <Box sx={{ height: '100%', width: '100%', overflow: 'auto' }}>
         <DataGrid
-          rows={processedRows}
+          rows={rowsWithIds}
           columns={processedColumns}
+          getRowId={(row) => row.id}
           initialState={{
             pagination: {
               paginationModel: { page: 0, pageSize: 10 },
@@ -320,8 +329,9 @@ const DataGridComponent = ({
         <Box sx={{ flex: 1, p: { xs: 1, sm: 2, md: 3 } }}>
           <Box sx={{ height: height, width: '100%' }}>
             <DataGrid
-              rows={processedRows}
+              rows={rowsWithIds}
               columns={processedColumns}
+              getRowId={(row) => row.id}
               initialState={{
                 pagination: {
                   paginationModel: { page: 0, pageSize: 10 },
