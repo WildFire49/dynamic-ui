@@ -10,6 +10,8 @@ import {
   UploadFile as UploadFileIcon,
   AccountTree as WorkflowIcon,
   Chat as ChatIcon,
+  Storage as StorageIcon,
+  SwapHoriz as SwapIcon,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -146,6 +148,9 @@ export default function HomePage() {
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [availableDocuments, setAvailableDocuments] = useState([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+
+  // Data source mode: 'excel' (uses document_key) or 'retriever' (uses database connection)
+  const [dataSourceMode, setDataSourceMode] = useState("retriever"); // Default to retriever (database)
 
   const [recordingTime, setRecordingTime] = useState(0);
   const [scheduledTasks, setScheduledTasks] = useState(new Map());
@@ -351,6 +356,13 @@ export default function HomePage() {
           content: {
             response: data.response,
             showGraphOptions: hasMultipleRecords, // Only show graph options if more than 1 record
+            // Include document_key from response or from selected document for Excel-based queries
+            document_key:
+              data.response?.content?.document_key ||
+              data.response?.document_key ||
+              (dataSourceMode === "excel" && selectedDocument
+                ? selectedDocument.document_key
+                : null),
           },
           conversation_id: data.conversation_id,
           isBot: true,
@@ -912,30 +924,75 @@ export default function HomePage() {
     ]
   );
 
-  // Fetch available documents
-  const fetchAvailableDocuments = useCallback(async () => {
-    setLoadingDocuments(true);
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}`,
-        {
-          headers: getAuthHeaders(),
-        }
-      );
+  // Cache ref for documents - persists across renders
+  const documentsCache = useRef({ data: null, timestamp: null });
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch documents: ${response.status}`);
+  // Fetch available documents (with optional force refresh)
+  const fetchAvailableDocuments = useCallback(
+    async (forceRefresh = false) => {
+      // Check cache first (unless force refresh)
+      const now = Date.now();
+      // Only use cache if it has data AND is not expired AND not force refresh
+      if (
+        !forceRefresh &&
+        documentsCache.current.data &&
+        documentsCache.current.data.length > 0 && // Don't cache empty results
+        documentsCache.current.timestamp &&
+        now - documentsCache.current.timestamp < CACHE_DURATION
+      ) {
+        console.log(
+          "📦 Using cached documents:",
+          documentsCache.current.data.length
+        );
+        setAvailableDocuments(documentsCache.current.data);
+        return documentsCache.current.data;
       }
 
-      const data = await response.json();
-      setAvailableDocuments(data.documents || []);
-    } catch (err) {
-      console.error("Error fetching documents:", err);
-      setAvailableDocuments([]);
-    } finally {
-      setLoadingDocuments(false);
-    }
-  }, [CONNECTION_ID]);
+      console.log("🔄 Fetching documents from API...");
+      console.log(
+        "🔗 API URL:",
+        `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}`
+      );
+      setLoadingDocuments(true);
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}`,
+          {
+            headers: getAuthHeaders(),
+          }
+        );
+
+        console.log("📡 Documents API response status:", response.status);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch documents: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("📄 Documents API response data:", data);
+        const docs = data.documents || [];
+
+        // Only cache non-empty results
+        if (docs.length > 0) {
+          documentsCache.current = { data: docs, timestamp: now };
+          console.log("🌐 Fetched and cached documents:", docs.length);
+        } else {
+          console.log("📭 No documents returned from API");
+        }
+
+        setAvailableDocuments(docs);
+        return docs;
+      } catch (err) {
+        console.error("Error fetching documents:", err);
+        setAvailableDocuments([]);
+        return [];
+      } finally {
+        setLoadingDocuments(false);
+      }
+    },
+    [CONNECTION_ID]
+  );
 
   // Handle file popover open
   const handleFilePopoverOpen = useCallback(
@@ -957,6 +1014,57 @@ export default function HomePage() {
     setFilePopoverAnchor(null);
     console.log("Selected document:", doc);
   }, []);
+
+  // State for tracking data source switch loading
+  const [switchingDataSource, setSwitchingDataSource] = useState(false);
+
+  // Handle toggling between Excel and Database modes
+  const handleToggleDataSource = useCallback(async () => {
+    if (dataSourceMode === "excel") {
+      // Switching to Database mode - just clear document
+      setDataSourceMode("retriever");
+      setSelectedDocument(null);
+    } else {
+      // Switching to Excel mode - use cached documents if available
+      setDataSourceMode("excel");
+
+      // Check if we have cached documents
+      if (
+        documentsCache.current.data &&
+        documentsCache.current.data.length > 0
+      ) {
+        console.log("📦 Using cached documents for mode switch");
+        const docs = documentsCache.current.data;
+        setAvailableDocuments(docs);
+
+        // Auto-select first in-memory document
+        const inMemoryDoc = docs.find((doc) => doc.in_memory);
+        const firstDoc = inMemoryDoc || docs[0];
+        if (firstDoc) {
+          setSelectedDocument(firstDoc);
+          console.log("Auto-selected document:", firstDoc.filename);
+        }
+      } else {
+        // No cache - need to fetch
+        setSwitchingDataSource(true);
+        try {
+          const docs = await fetchAvailableDocuments(true); // Force refresh
+
+          // Auto-select first in-memory document
+          const inMemoryDoc = docs.find((doc) => doc.in_memory);
+          const firstDoc = inMemoryDoc || docs[0];
+          if (firstDoc) {
+            setSelectedDocument(firstDoc);
+            console.log("Auto-selected document:", firstDoc.filename);
+          }
+        } catch (error) {
+          console.error("Failed to load documents:", error);
+        } finally {
+          setSwitchingDataSource(false);
+        }
+      }
+    }
+  }, [dataSourceMode, fetchAvailableDocuments]);
 
   // File upload handler
   const handleFileUpload = useCallback(
@@ -993,6 +1101,19 @@ export default function HomePage() {
 
         setChatHistory((prev) => [...prev, successMessage]);
 
+        // Refresh the documents list after successful upload
+        console.log("📄 Refreshing documents list after upload...");
+        const updatedDocs = await fetchAvailableDocuments(true); // Force refresh to get latest documents
+        console.log(
+          "📄 Documents after refresh:",
+          updatedDocs?.length || 0,
+          "documents"
+        );
+        console.log(
+          "📄 In-memory documents:",
+          updatedDocs?.filter((d) => d.in_memory)?.length || 0
+        );
+
         return response;
       } catch (error) {
         console.error("File upload error:", error);
@@ -1008,7 +1129,7 @@ export default function HomePage() {
         setIsLoading(false);
       }
     },
-    [CONNECTION_ID]
+    [CONNECTION_ID, fetchAvailableDocuments]
   );
 
   const isAnalysisQuestion = useCallback((message) => {
@@ -1101,9 +1222,11 @@ export default function HomePage() {
           user_id: userId,
           message: question,
           ...(conversationId && { conversation_id: conversationId }),
-          ...(selectedDocument && {
-            document_key: selectedDocument.document_key,
-          }),
+          // Only include document_key when in Excel mode and a document is selected
+          ...(dataSourceMode === "excel" &&
+            selectedDocument && {
+              document_key: selectedDocument.document_key,
+            }),
           ...(roleCode && { roleCode }),
         };
 
@@ -1223,9 +1346,11 @@ export default function HomePage() {
             "default_user",
           message: finalMessageText,
           ...(conversationId && { conversation_id: conversationId }),
-          ...(selectedDocument && {
-            document_key: selectedDocument.document_key,
-          }),
+          // Only include document_key when in Excel mode and a document is selected
+          ...(dataSourceMode === "excel" &&
+            selectedDocument && {
+              document_key: selectedDocument.document_key,
+            }),
           ...(roleCode && { roleCode }),
         };
 
@@ -1925,51 +2050,121 @@ export default function HomePage() {
                 }
               }}
             />
-            <Tooltip
-              title={
-                selectedDocument
-                  ? `Selected: ${selectedDocument.filename}`
-                  : "Select or Upload Document"
-              }
-              arrow
-            >
-              <IconButton
-                onClick={handleFilePopoverOpen}
-                sx={{
-                  color: selectedDocument ? "#10b981" : "#666",
-                  backgroundColor: selectedDocument
-                    ? "rgba(16, 185, 129, 0.1)"
-                    : "#f5f5f5",
-                  "&:hover": {
-                    backgroundColor: selectedDocument
-                      ? "rgba(16, 185, 129, 0.2)"
-                      : "#e0e0e0",
-                  },
-                  borderRadius: "12px",
-                  width: 50,
-                  height: 50,
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-                disabled={isLoading}
+            <Box sx={{ position: "relative" }}>
+              <Tooltip
+                title={
+                  dataSourceMode === "excel"
+                    ? selectedDocument
+                      ? `Excel: ${selectedDocument.filename}`
+                      : "Excel Mode - Click to select file"
+                    : "Database Mode - Connected to retriever"
+                }
+                arrow
               >
-                {isLoading ? (
-                  <CircularProgress size={20} />
-                ) : selectedDocument ? (
-                  <Image
-                    src="/excel.png"
-                    alt="Excel file"
-                    width={24}
-                    height={24}
-                    style={{
-                      animation: "bounce 0.6s ease-in-out",
-                    }}
-                  />
-                ) : (
-                  <DocumentIcon />
-                )}
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  onClick={(e) => {
+                    // In Excel mode, single click opens popover
+                    if (dataSourceMode === "excel") {
+                      handleFilePopoverOpen(e);
+                    }
+                  }}
+                  sx={{
+                    color:
+                      dataSourceMode === "excel"
+                        ? selectedDocument
+                          ? "#10b981"
+                          : "#217346"
+                        : "#1976d2",
+                    backgroundColor:
+                      dataSourceMode === "excel"
+                        ? selectedDocument
+                          ? "rgba(16, 185, 129, 0.1)"
+                          : "rgba(33, 115, 70, 0.1)"
+                        : "rgba(25, 118, 210, 0.1)",
+                    "&:hover": {
+                      backgroundColor:
+                        dataSourceMode === "excel"
+                          ? selectedDocument
+                            ? "rgba(16, 185, 129, 0.2)"
+                            : "rgba(33, 115, 70, 0.2)"
+                          : "rgba(25, 118, 210, 0.2)",
+                    },
+                    borderRadius: "12px",
+                    width: 50,
+                    height: 50,
+                    position: "relative",
+                    overflow: "visible",
+                    transition: "all 0.3s ease",
+                  }}
+                  disabled={isLoading || switchingDataSource}
+                >
+                  {isLoading || switchingDataSource ? (
+                    <CircularProgress size={20} />
+                  ) : dataSourceMode === "excel" ? (
+                    <Image
+                      src="/excel.png"
+                      alt="Excel mode"
+                      width={24}
+                      height={24}
+                      style={{
+                        animation: selectedDocument
+                          ? "bounce 0.6s ease-in-out"
+                          : "none",
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      src="/database.svg"
+                      alt="Database mode"
+                      width={24}
+                      height={24}
+                    />
+                  )}
+                </IconButton>
+              </Tooltip>
+
+              {/* Switch Mode Badge */}
+              <Tooltip
+                title={
+                  dataSourceMode === "excel"
+                    ? "Switch to Database"
+                    : "Switch to Excel"
+                }
+                arrow
+                placement="top"
+              >
+                <Box
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isLoading && !switchingDataSource) {
+                      handleToggleDataSource();
+                    }
+                  }}
+                  sx={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    backgroundColor:
+                      dataSourceMode === "excel" ? "#1976d2" : "#217346",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      transform: "scale(1.15)",
+                      boxShadow: "0 3px 6px rgba(0,0,0,0.3)",
+                    },
+                  }}
+                >
+                  <SwapIcon sx={{ fontSize: 12, color: "#fff" }} />
+                </Box>
+              </Tooltip>
+            </Box>
 
             {/* File Popover */}
             <Popover

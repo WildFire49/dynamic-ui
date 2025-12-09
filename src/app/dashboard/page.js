@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "../../components/auth/ProtectedRoute";
 import AppLayout from "../../components/layout/AppLayout";
 import Dashboard from "../../components/Dashboard";
+import { CircularProgress, Box } from "@mui/material";
 
-export default function DashboardPage() {
+// Separate component that uses useSearchParams
+function DashboardContent() {
   const searchParams = useSearchParams();
   const dashboardId = searchParams.get("id"); // Get dashboard ID from URL
 
@@ -25,16 +27,40 @@ export default function DashboardPage() {
   };
 
   return (
+    <AppLayout
+      selectedTab={selectedTab}
+      onTabChange={handleTabChange}
+      onLoadConversation={loadConversationHistory}
+      mode="dashboard"
+      onSelectAnalysis={handleSelectAnalysis}
+    >
+      <Dashboard
+        key={dashboardId || "default"}
+        initialDashboardId={dashboardId}
+      />
+    </AppLayout>
+  );
+}
+
+export default function DashboardPage() {
+  return (
     <ProtectedRoute>
-      <AppLayout
-        selectedTab={selectedTab}
-        onTabChange={handleTabChange}
-        onLoadConversation={loadConversationHistory}
-        mode="dashboard"
-        onSelectAnalysis={handleSelectAnalysis}
+      <Suspense
+        fallback={
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100vh",
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        }
       >
-        <Dashboard initialDashboardId={dashboardId} />
-      </AppLayout>
+        <DashboardContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

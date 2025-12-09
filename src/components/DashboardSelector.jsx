@@ -149,20 +149,19 @@ const DashboardSelector = () => {
       display: 'flex', 
       justifyContent: 'center',
       alignItems: 'center', 
-      py: 1.5,
-      px: 3,
+      py: 1,
+      px: 2,
       bgcolor: '#fff',
       borderBottom: '1px solid #E5E7EB',
+      minHeight: 52,
     }}>
-      {/* Dashboard Tabs - Centered with subtle borders */}
+      {/* Dashboard Tabs - Compact bubble style */}
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: 0,
-        bgcolor: '#F8FAFC',
-        borderRadius: 2,
-        border: '1px solid #E5E7EB',
-        p: 0.5,
+        gap: 1,
+        flexWrap: 'wrap',
+        justifyContent: 'center',
       }}>
         {dashboards.map((dashboard, index) => {
           const IconComponent = ICON_MAP[dashboard.icon] || DashboardIcon;
@@ -170,38 +169,34 @@ const DashboardSelector = () => {
           const isActive = activeDashboardId === dashboard.id;
           
           return (
-            <React.Fragment key={dashboard.id}>
+            <Tooltip key={dashboard.id} title={`${dashboard.name} • ${count} insights`} arrow>
               <Box
                 onClick={() => handleDashboardClick(dashboard.id)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 1.5,
-                  px: 2.5,
-                  py: 1.5,
-                  borderRadius: 2,
+                  gap: 1,
+                  px: 1.5,
+                  py: 0.75,
+                  borderRadius: 5,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  bgcolor: isActive ? '#fff' : 'transparent',
-                  border: isActive ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
-                  boxShadow: isActive 
-                    ? '0 2px 8px rgba(59, 130, 246, 0.15), 0 1px 3px rgba(0,0,0,0.05)' 
-                    : 'none',
+                  bgcolor: isActive ? alpha(dashboard.color, 0.1) : '#F1F5F9',
+                  border: isActive ? `1.5px solid ${dashboard.color}` : '1.5px solid transparent',
                   '&:hover': {
-                    bgcolor: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
+                    bgcolor: isActive ? alpha(dashboard.color, 0.15) : '#E2E8F0',
                   },
                 }}
               >
                 <Box
                   sx={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 2,
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: alpha(dashboard.color, isActive ? 0.12 : 0.06),
-                    transition: 'all 0.2s ease',
+                    bgcolor: alpha(dashboard.color, isActive ? 0.2 : 0.1),
                     overflow: 'hidden',
                   }}
                 >
@@ -210,40 +205,31 @@ const DashboardSelector = () => {
                       src={getDashboardAvatar(dashboard.id)} 
                       alt={dashboard.name}
                       style={{ 
-                        width: 28, 
-                        height: 28, 
+                        width: 18, 
+                        height: 18, 
                         objectFit: 'contain',
                       }} 
                     />
                   ) : (
                     <IconComponent sx={{ 
-                      fontSize: 24, 
+                      fontSize: 16, 
                       color: dashboard.color,
                     }} />
                   )}
                 </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                  <Typography
-                    sx={{
-                      fontSize: '0.95rem',
-                      fontWeight: isActive ? 600 : 500,
-                      color: isActive ? '#1F2937' : '#4B5563',
-                      whiteSpace: 'nowrap',
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {dashboard.name}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '0.75rem',
-                      color: '#9CA3AF',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {count} {count === 1 ? 'insight' : 'insights'}
-                  </Typography>
-                </Box>
+                <Typography
+                  sx={{
+                    fontSize: '0.8rem',
+                    fontWeight: isActive ? 600 : 500,
+                    color: isActive ? dashboard.color : '#4B5563',
+                    whiteSpace: 'nowrap',
+                    maxWidth: 120,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {dashboard.name}
+                </Typography>
                 
                 {/* 3-dot menu - only show on active dashboard */}
                 {isActive && (
@@ -255,39 +241,38 @@ const DashboardSelector = () => {
                       setMenuAnchorEl(e.currentTarget);
                     }}
                     sx={{
-                      p: 0.5,
-                      ml: 0.5,
-                      color: '#9CA3AF',
+                      p: 0.25,
+                      color: dashboard.color,
                       '&:hover': { 
-                        color: '#6B7280',
-                        bgcolor: 'rgba(0,0,0,0.04)',
+                        bgcolor: alpha(dashboard.color, 0.1),
                       },
                     }}
                   >
-                    <MoreVertIcon sx={{ fontSize: 18 }} />
+                    <MoreVertIcon sx={{ fontSize: 16 }} />
                   </IconButton>
                 )}
               </Box>
-            </React.Fragment>
+            </Tooltip>
           );
         })}
         
-        {/* Add Dashboard Button - inside the container */}
+        {/* Add Dashboard Button */}
         <Tooltip title="Create new dashboard">
           <IconButton
             onClick={() => setCreateDialogOpen(true)}
+            size="small"
             sx={{
               color: '#9CA3AF',
-              borderRadius: 1.5,
-              p: 1,
-              ml: 0.5,
+              bgcolor: '#F1F5F9',
+              borderRadius: 5,
+              p: 0.75,
               '&:hover': {
-                bgcolor: 'rgba(255,255,255,0.6)',
+                bgcolor: '#E2E8F0',
                 color: '#6B7280',
               },
             }}
           >
-            <AddIcon sx={{ fontSize: 20 }} />
+            <AddIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Tooltip>
       </Box>

@@ -1537,17 +1537,42 @@ const DynamicDataVisualization = ({
     const firstItem = supportingData[0];
     const columns = [];
 
+    // Common acronyms that should stay uppercase in headers
+    const ACRONYMS = ['MTD', 'LMTD', 'FTD', 'OTR', 'NPA', 'SMA', 'INR', 'ID', 'KYC', 'API', 'URL', 'PCT', 'YTD', 'QTD', 'EMI', 'ROI', 'POS', 'DPD', 'BANK', 'LACS'];
+    
     // Helper function to format field names for headers
     const formatHeaderName = (fieldName) => {
-      return fieldName
-        .replace(/_/g, " ")
-        .replace(/([A-Z])/g, " $1")
+      // First replace underscores with spaces
+      let result = fieldName.replace(/_/g, " ");
+      
+      // Only add spaces before uppercase letters if they follow lowercase letters (camelCase)
+      // This prevents "INR" from becoming "I N R"
+      result = result.replace(/([a-z])([A-Z])/g, "$1 $2");
+      
+      return result
         .trim()
         .split(" ")
-        .map(
-          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-        )
+        .filter(word => word.length > 0)
+        .map((word) => {
+          const upperWord = word.toUpperCase();
+          // Keep acronyms uppercase
+          if (ACRONYMS.includes(upperWord)) {
+            return upperWord;
+          }
+          // Regular word - capitalize first letter only
+          return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        })
         .join(" ");
+    };
+    
+    // Helper to check if a string value is actually a pure number (not mixed like "0.0 DAY")
+    const isStrictlyNumeric = (value) => {
+      if (typeof value === 'number') return true;
+      if (typeof value !== 'string') return false;
+      // Trim and check if the entire string is a valid number
+      const trimmed = value.trim();
+      // Must be purely numeric (with optional decimal point and sign)
+      return /^-?\d+(\.\d+)?$/.test(trimmed);
     };
 
     // Helper function to determine field type and create appropriate column config
@@ -1559,11 +1584,8 @@ const DynamicDataVisualization = ({
         typeof fieldValue === 'string' && 
         /^\d{4}-\d{2}-\d{2}(T|\s)/.test(fieldValue);
       
-      // Exclude date strings from numeric detection
-      const isNumeric =
-        !isDateString &&
-        (typeof fieldValue === "number" ||
-        (!isNaN(parseFloat(fieldValue)) && fieldValue !== null));
+      // Use strict numeric check to avoid treating "0.0 DAY" as numeric
+      const isNumeric = !isDateString && isStrictlyNumeric(fieldValue);
       const isPercentage =
         fieldName.toLowerCase().includes("percentage") ||
         fieldName.toLowerCase().includes("percent") ||
@@ -2259,8 +2281,18 @@ const DynamicDataVisualization = ({
       const connectionId = localStorage.getItem('connectionId') || 
                           localStorage.getItem('activeConnectionId') || 
                           "";
+      
+      // Get document key from analysisResult or metadata
+      const documentKey = analysisResult?.document_key ||
+                         analysisResult?.documentKey ||
+                         analysisResult?.metadata?.document_key ||
+                         analysisResult?.analysis_result?.document_key ||
+                         null;
+      
+      // Determine data source mode - Excel if documentKey exists, otherwise database
+      const dataSourceMode = documentKey ? 'excel' : 'database';
 
-      console.log("💾 [SAVE] Query text extracted:", queryText, "SQL:", sqlQuery, "from analysisResult:", analysisResult);
+      console.log("💾 [SAVE] Query text extracted:", queryText, "SQL:", sqlQuery, "documentKey:", documentKey, "dataSourceMode:", dataSourceMode, "from analysisResult:", analysisResult);
 
       // Create the visualization data object
       // originalPrompt is preserved for refresh - title can be edited by user
@@ -2274,6 +2306,9 @@ const DynamicDataVisualization = ({
         question: queryText || "Unknown Query",
         sqlQuery, // Store SQL query for refresh API
         connectionId, // Store connection for refresh API
+        dataSourceMode, // Track whether this is Excel or database mode
+        // Only include documentKey for Excel mode
+        ...(dataSourceMode === 'excel' && documentKey && { documentKey }),
         supportingData: analysisResult?.analysis_result?.supporting_data || [],
         pipelineData: analysisResult?.analysis_result?.supporting_data || [],
         charts: {
@@ -3423,108 +3458,45 @@ const DynamicDataVisualization = ({
           </Box>
         )}
 
-        {/* Bar Chart - Pipeline and Other Performance Data */}
+        {/* Bar Chart - Clean & Compact */}
         {chartData.barChart &&
           !chartData.rmPerformanceData &&
           chartData.barChart.data &&
           chartData.barChart.data.length > 0 && (
             <Box
               sx={{
-                flex: {
-                  xs: "1 1 100%",
-                  md: chartData.pieChart ? "0 0 calc(50% - 8px)" : "1 1 100%",
-                },
-                minWidth: 0,
-                maxWidth: {
-                  xs: "100%",
-                  md: chartData.pieChart ? "calc(50% - 8px)" : "100%",
-                },
                 width: "100%",
+                maxWidth: chartData.pieChart ? { xs: "100%", md: "50%" } : "100%",
               }}
             >
               <Card
                 sx={{
-                  height: "100%",
-                  minHeight: { xs: 400, sm: 460, md: 520 },
-                  border: "none",
-                  boxShadow:
-                    "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+                  border: "1px solid #E2E8F0",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                   borderRadius: 3,
                   overflow: "hidden",
+                  bgcolor: "#fff",
                 }}
               >
-                <CardContent
-                  sx={{
-                    p: 0,
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
+                <CardContent sx={{ p: 0 }}>
                   {chartData.barChart.isStacked ? (
                     <StackedBarChartComponent
                       data={chartData.barChart.data}
                       title={chartData.barChart.title}
-                      subtitle={
-                        dataType === "pipeline"
-                          ? "Pending cases by pipeline stage"
-                          : "Performance metrics by region"
-                      }
+                      subtitle="Performance by region"
                       stageNames={chartData.barChart.stageNames || []}
-                      height={{ xs: 300, sm: 350, md: 400 }}
+                      height={280}
                       xAxisKey="region"
-                      yAxisLabel={
-                        dataType === "pipeline" ? "Pending Cases" : "Score"
-                      }
                     />
                   ) : (
                     <BarChartComponent
                       data={chartData.barChart.data}
                       title={chartData.barChart.title}
                       subtitle="Performance metrics"
-                      height={{ xs: 300, sm: 350, md: 400 }}
-                      showLegend={true}
+                      height={280}
                     />
                   )}
 
-                  {/* Save Chart Button */}
-                  <Box
-                    sx={{
-                      p: { xs: 2, sm: 3 },
-                      pt: { xs: 1.5, sm: 2 },
-                      borderTop: "1px solid #f3f4f6",
-                      display: "flex",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {!isFromDashboard && (
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<TableChart />}
-                        onClick={() =>
-                          handleSaveChart(
-                            "barChart",
-                            chartData.barChart.title || "Bar Chart"
-                          )
-                        }
-                        sx={{
-                          textTransform: "none",
-                          backgroundColor: "#1976d2",
-                          "&:hover": {
-                            backgroundColor: "#1565c0",
-                          },
-                          borderRadius: 2,
-                          px: 3,
-                          py: 1,
-                          fontWeight: 600,
-                          fontSize: "0.875rem",
-                        }}
-                      >
-                        Save Chart
-                      </Button>
-                    )}
-                  </Box>
                 </CardContent>
               </Card>
             </Box>
@@ -4527,9 +4499,9 @@ const DynamicDataVisualization = ({
             message: `Saved to dashboard successfully!`,
             severity: "success",
           });
-          // Open dashboard in new tab after a brief delay
+          // Open dashboard in new tab with the specific dashboard ID
           setTimeout(() => {
-            const dashboardUrl = `${window.location.origin}/dashboard`;
+            const dashboardUrl = `${window.location.origin}/dashboard?id=${dashboardId}`;
             window.open(dashboardUrl, "_blank");
           }, 1000);
         }}

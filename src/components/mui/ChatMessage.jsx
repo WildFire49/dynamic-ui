@@ -510,11 +510,15 @@ const ChatMessage = ({ message, index, onAction }) => {
                   supporting_data: queryResult.results,
                   // Include SQL query for dashboard widget refresh
                   generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
+                  // Include document key for Excel-based queries
+                  document_key: queryResult.document_key || message.content?.document_key || null,
                 },
                 question: queryResult.natural_language_query || message.content?.natural_language_query || '',
                 natural_language_query: queryResult.natural_language_query || message.content?.natural_language_query || '',
                 // Include SQL at top level too for easier access
                 generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
+                // Include document key at top level for easier access
+                document_key: queryResult.document_key || message.content?.document_key || null,
                 content: {
                   generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
                 },
@@ -757,10 +761,12 @@ const ChatMessage = ({ message, index, onAction }) => {
               analysis_result: {
                 supporting_data: message.content.data || [],
                 generated_sql: message.content.generated_sql || message.content.sql_query || '',
+                document_key: message.content.document_key || null,
               },
               question: message.content.question || message.content.natural_language_query || '',
               natural_language_query: message.content.natural_language_query || message.content.question || '',
               generated_sql: message.content.generated_sql || message.content.sql_query || '',
+              document_key: message.content.document_key || null,
               content: {
                 generated_sql: message.content.generated_sql || message.content.sql_query || '',
               },

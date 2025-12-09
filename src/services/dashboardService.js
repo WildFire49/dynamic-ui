@@ -100,7 +100,7 @@ class DashboardService {
               originalPrompt: w.originalPrompt || w.prompt,
               timestamp: w.timestamp || w.createdAt || new Date().toISOString(),
               type: w.type || "analysis_widget",
-              question: w.question || w.prompt || w.title,
+              question: w.question || w.title || w.prompt,
               supportingData: w.supportingData,
               pipelineData: w.pipelineData,
               charts: w.charts,
@@ -344,22 +344,33 @@ class DashboardService {
    */
   async saveWidget(username, dashboardId, widget) {
     try {
+      // Only include documentKey when explicitly in Excel mode
+      // dataSourceMode === 'excel' indicates Excel mode
+      // dataSourceMode === 'database' or no dataSourceMode indicates database mode
+      const isExcelMode =
+        widget.dataSourceMode === "excel" || widget.source === "excel";
+
       // Build widget payload - store SQL query, minimal data (actual data cached in Redis)
       const widgetPayload = {
         username,
         type: widget.type || "analysis_widget",
         title: widget.title,
         prompt: widget.prompt || widget.originalPrompt || widget.question,
-        sqlQuery: widget.sqlQuery || widget.sql_query || widget.query || "", // Store SQL for refresh
+        sqlQuery: widget.sqlQuery || widget.sql_query || widget.query || "",
         width: widget.width || 12,
         height: widget.height || 400,
         viewMode: widget.viewMode || "auto",
         chartType: widget.chartType,
-        data: {}, // Empty - actual data is cached in Redis and fetched via refresh
+        data: {},
         source: widget.source || "buddi_agent",
         conversationId: widget.conversationId,
-        connectionId: widget.connectionId, // Store connection for refresh
+        connectionId: widget.connectionId,
       };
+
+      // Only add documentKey for Excel mode queries
+      if (isExcelMode && (widget.documentKey || widget.document_key)) {
+        widgetPayload.documentKey = widget.documentKey || widget.document_key;
+      }
 
       const response = await fetch(
         `${API_BASE_URL}/api/v1/dashboard/${dashboardId}/widget`,

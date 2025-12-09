@@ -23,11 +23,55 @@ const DEFAULT_DASHBOARDS = [
 ];
 
 /**
+ * Helper to check if a string is a UUID
+ */
+const isUUID = (str) => {
+  if (!str || typeof str !== "string") return false;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
+
+/**
  * Get username from localStorage
+ * Priority: username > user.username > userId (fallback only)
  */
 const getUsername = () => {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("username") || localStorage.getItem("userId");
+
+  // First try direct username - but validate it's not a UUID
+  const username = localStorage.getItem("username");
+  if (username && !isUUID(username)) {
+    console.log(
+      "📛 getUsername (store): using localStorage.username:",
+      username
+    );
+    return username;
+  }
+
+  // Then try user object
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user.username && !isUUID(user.username)) {
+      console.log(
+        "📛 getUsername (store): using user.username:",
+        user.username
+      );
+      return user.username;
+    }
+  } catch (e) {
+    // Ignore parse errors
+  }
+
+  // Fallback to userId only if it looks like a username (not a UUID)
+  const userId = localStorage.getItem("userId");
+  if (userId && !isUUID(userId)) {
+    console.log("📛 getUsername (store): using userId:", userId);
+    return userId;
+  }
+
+  console.warn("📛 getUsername (store): No valid username found!");
+  return null;
 };
 
 const useDashboardStore = create(
@@ -94,7 +138,18 @@ const useDashboardStore = create(
        * Called on app init or when user logs in
        */
       loadFromServer: async (username) => {
-        const user = username || getUsername();
+        console.log(`📛 loadFromServer called with username: "${username}"`);
+
+        // Validate username is not a UUID
+        let user = username;
+        if (!user || isUUID(user)) {
+          console.log(
+            `📛 Username "${user}" is invalid/UUID, getting from localStorage`
+          );
+          user = getUsername();
+        }
+
+        console.log(`📛 Final user for loadFromServer: "${user}"`);
         if (!user) {
           console.warn("No username available for loading dashboards");
           return { success: false, message: "No username" };
@@ -163,8 +218,26 @@ const useDashboardStore = create(
         dashboardId,
         forceReload = false
       ) => {
-        const user = username || getUsername();
-        if (!user || !dashboardId) return;
+        console.log(
+          `📛 loadWidgetsForDashboard called with username: "${username}", dashboardId: "${dashboardId}"`
+        );
+
+        // Validate username is not a UUID (could be dashboard ID passed by mistake)
+        let user = username;
+        if (!user || isUUID(user)) {
+          console.log(
+            `📛 Username "${user}" is invalid/UUID, getting from localStorage`
+          );
+          user = getUsername();
+        }
+
+        console.log(`📛 Final user for API call: "${user}"`);
+        if (!user || !dashboardId) {
+          console.warn(
+            `📛 Cannot load widgets: user="${user}", dashboardId="${dashboardId}"`
+          );
+          return;
+        }
 
         const state = get();
 
@@ -182,41 +255,52 @@ const useDashboardStore = create(
           if (result.success && result.data?.widgets) {
             console.log(
               `📊 Found ${result.data.widgets.length} widgets, first widget:`,
-              result.data.widgets[0]?.title
+              result.data.widgets[0]?.title,
+              "Widget ID fields:",
+              {
+                id: result.data.widgets[0]?.id,
+                widgetId: result.data.widgets[0]?.widgetId,
+                _id: result.data.widgets[0]?._id,
+              }
             );
             set((state) => {
               const newLoadedSet = new Set(state._loadedDashboards);
               newLoadedSet.add(dashboardId);
 
+              // Filter out widgets without valid IDs and map to store format
+              const validWidgets = result.data.widgets
+                .filter((w) => w.id || w.widgetId || w._id)
+                .map((w) => ({
+                  id: w.id || w.widgetId || w._id,
+                  title: w.title,
+                  originalPrompt: w.prompt,
+                  timestamp: w.createdAt || w.savedAt,
+                  type: w.type,
+                  question: w.data?.question || w.title || w.prompt,
+                  // Store SQL query and connection for refresh API
+                  sqlQuery: w.sqlQuery || w.sql_query || "",
+                  connectionId: w.connectionId || "",
+                  // Keep data at top level for easy access
+                  supportingData:
+                    w.data?.supportingData || w.data?.pipelineData,
+                  pipelineData: w.data?.pipelineData,
+                  charts: w.data?.charts,
+                  dataGrid: w.data?.dataGrid,
+                  // Also keep full data object for components that need it
+                  data: w.data,
+                  width: w.width,
+                  height: w.height,
+                  viewMode: w.viewMode,
+                  chartType: w.chartType,
+                  order: w.order,
+                  source: w.source,
+                }));
+
               return {
                 _loadedDashboards: newLoadedSet,
                 visualizationsByDashboard: {
                   ...state.visualizationsByDashboard,
-                  [dashboardId]: result.data.widgets.map((w) => ({
-                    id: w.id,
-                    title: w.title,
-                    originalPrompt: w.prompt,
-                    timestamp: w.createdAt || w.savedAt,
-                    type: w.type,
-                    question: w.data?.question || w.prompt,
-                    // Store SQL query and connection for refresh API
-                    sqlQuery: w.sqlQuery || w.sql_query || "",
-                    connectionId: w.connectionId || "",
-                    // Keep data at top level for easy access
-                    supportingData:
-                      w.data?.supportingData || w.data?.pipelineData,
-                    pipelineData: w.data?.pipelineData,
-                    charts: w.data?.charts,
-                    dataGrid: w.data?.dataGrid,
-                    // Also keep full data object for components that need it
-                    data: w.data,
-                    width: w.width,
-                    height: w.height,
-                    viewMode: w.viewMode,
-                    chartType: w.chartType,
-                    order: w.order,
-                    source: w.source,
-                  })),
+                  [dashboardId]: validWidgets,
                 },
               };
             });

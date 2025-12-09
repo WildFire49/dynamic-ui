@@ -113,7 +113,7 @@ export const dataAnalysisApi = {
    */
   deleteDocument: async (connectionId, documentKey) => {
     const response = await fetch(
-      `${BASE_URL}/api/v1/data-analysis/documents/${connectionId}/${documentKey}`,
+      `${BASE_URL}/api/v1pa${connectionId}/${documentKey}`,
       {
         method: "DELETE",
         headers: getAuthHeaders(),

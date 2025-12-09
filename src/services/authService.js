@@ -46,6 +46,15 @@ class AuthService {
     this.productCode = defaultProduct?.code;
   }
 
+  // Check if a string is a UUID (contains hyphens in UUID format)
+  isUUID(str) {
+    if (!str || typeof str !== "string") return false;
+    // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  }
+
   // Get available product codes for dropdown
   getProductCodes() {
     return this.productCodes;
@@ -198,8 +207,12 @@ class AuthService {
         // Store user info
         localStorage.setItem("userInfo", JSON.stringify(userData));
         if (userData.userId) localStorage.setItem("userId", userData.userId);
-        if (userData.username)
+
+        // Only update username if it's a valid username (not a UUID)
+        // UUIDs contain hyphens and are 36 characters long
+        if (userData.username && !this.isUUID(userData.username)) {
           localStorage.setItem("username", userData.username);
+        }
 
         // Store roles array
         if (userData.roles && userData.roles.length > 0) {
@@ -400,9 +413,16 @@ class AuthService {
   }
 
   // Get username from localStorage
+  // Returns null if the stored value is a UUID (invalid username)
   getUsername() {
     if (!this.isClient()) return null;
-    return localStorage.getItem("username");
+    const username = localStorage.getItem("username");
+    // Don't return UUID as username
+    if (username && this.isUUID(username)) {
+      console.warn("Username in localStorage is a UUID, this is invalid");
+      return null;
+    }
+    return username;
   }
 
   // Helper function to check if we're on the client side
@@ -520,8 +540,39 @@ class AuthService {
     if (!this.isClient()) return false;
     return !!localStorage.getItem("refreshToken");
   }
+
+  // Clean up invalid username (UUID) from localStorage
+  // Call this on app initialization to fix corrupted data
+  cleanupInvalidUsername() {
+    if (!this.isClient()) return;
+    const username = localStorage.getItem("username");
+    if (username && this.isUUID(username)) {
+      console.warn(
+        "Removing invalid UUID username from localStorage:",
+        username
+      );
+      localStorage.removeItem("username");
+
+      // Try to get username from userInfo if available
+      try {
+        const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
+        if (userInfo.username && !this.isUUID(userInfo.username)) {
+          localStorage.setItem("username", userInfo.username);
+          console.log("Restored username from userInfo:", userInfo.username);
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }
 }
 
 // Export singleton instance
 const authService = new AuthService();
+
+// Run cleanup on module load (client-side only)
+if (typeof window !== "undefined") {
+  authService.cleanupInvalidUsername();
+}
+
 export default authService;

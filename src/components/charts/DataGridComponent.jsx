@@ -9,6 +9,34 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import { TableChart, FileDownload } from '@mui/icons-material';
 
+// Common acronyms that should stay uppercase in headers
+const ACRONYMS = ['MTD', 'LMTD', 'FTD', 'OTR', 'NPA', 'SMA', 'INR', 'ID', 'KYC', 'API', 'URL', 'PCT', 'YTD', 'QTD', 'EMI', 'ROI', 'POS', 'DPD', 'BANK', 'LACS'];
+
+// Format column header with proper casing
+const formatHeaderName = (key) => {
+  // First replace underscores with spaces
+  let result = key.replace(/_/g, ' ');
+  
+  // Only add spaces before uppercase letters if they follow lowercase letters (camelCase)
+  // This prevents "INR" from becoming "I N R"
+  result = result.replace(/([a-z])([A-Z])/g, '$1 $2');
+  
+  return result
+    .trim()
+    .split(' ')
+    .filter(word => word.length > 0)
+    .map(word => {
+      const upperWord = word.toUpperCase();
+      // Keep acronyms uppercase
+      if (ACRONYMS.includes(upperWord)) {
+        return upperWord;
+      }
+      // Regular word - capitalize first letter only
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+};
+
 const DataGridComponent = ({ 
   rows = [], 
   columns = [], 
@@ -33,11 +61,7 @@ const DataGridComponent = ({
       const firstItem = data[0];
       const generatedColumns = Object.keys(firstItem).map((key, index) => ({
         field: key,
-        headerName: key
-          .replace(/_/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' '),
+        headerName: formatHeaderName(key),
         width: 140,
         flex: 1,
         minWidth: 120,
@@ -106,7 +130,7 @@ const DataGridComponent = ({
         const firstItem = rows[0];
         finalColumns = Object.keys(firstItem).filter(key => key !== 'id').map((key) => ({
             field: key,
-            headerName: key.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '),
+            headerName: formatHeaderName(key),
             flex: 1,
             minWidth: 140,
             width: 180,
@@ -174,7 +198,18 @@ const DataGridComponent = ({
 
   if (variant === 'clean') {
     return (
-      <Box sx={{ height: '100%', width: '100%', overflow: 'auto' }}>
+      <Box sx={{ 
+        height: '100%', 
+        width: '100%', 
+        overflow: 'auto',
+        // Hide scrollbar but allow scrolling
+        '&::-webkit-scrollbar': { width: 6, height: 6 },
+        '&::-webkit-scrollbar-track': { background: 'transparent' },
+        '&::-webkit-scrollbar-thumb': { background: '#E2E8F0', borderRadius: 3 },
+        '&::-webkit-scrollbar-thumb:hover': { background: '#CBD5E1' },
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#E2E8F0 transparent',
+      }}>
         <DataGrid
           rows={rowsWithIds}
           columns={processedColumns}
@@ -186,53 +221,79 @@ const DataGridComponent = ({
           }}
           pageSizeOptions={[5, 10, 25, 50, 100]}
           disableSelectionOnClick
-          density="standard" // Use standard density for better readability
+          density="comfortable"
           sx={{
             border: 'none',
             fontSize: '0.875rem',
+            '& .MuiDataGrid-main': {
+              overflow: 'auto',
+            },
             '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #E5E7EB',
+              borderBottom: '1px solid #E2E8F0',
+              borderRight: '1px solid #E2E8F0',
               fontSize: '0.875rem',
-              padding: '10px 12px',
-              color: '#374151',
+              padding: '12px 14px',
+              color: '#1E293B',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             },
             '& .MuiDataGrid-row': {
+              '&:nth-of-type(even)': {
+                backgroundColor: '#FAFBFC',
+              },
               '&:hover': {
-                backgroundColor: '#F9FAFB',
+                backgroundColor: '#F1F5F9',
               },
             },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#F8FAFC',
-              borderBottom: '2px solid #E5E7EB',
-              minHeight: '44px !important',
+              backgroundColor: '#F1F5F9',
+              borderBottom: '2px solid #E2E8F0',
+              minHeight: '52px !important',
+              maxHeight: '52px !important',
             },
             '& .MuiDataGrid-columnHeader': {
-              padding: '10px 12px',
+              padding: '12px 14px',
+              borderRight: '1px solid #E2E8F0',
+              '&:last-child': {
+                borderRight: 'none',
+              },
             },
             '& .MuiDataGrid-columnHeaderTitleContainer': {
               justifyContent: 'center',
+              overflow: 'hidden',
             },
             '& .MuiDataGrid-columnHeaderTitle': {
-              fontWeight: 600,
-              fontSize: '0.75rem',
-              color: '#6B7280',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              color: '#1E293B',
+              letterSpacing: '0.01em',
               textTransform: 'uppercase',
-              letterSpacing: '0.03em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             },
             '& .MuiDataGrid-footerContainer': {
-              borderTop: '1px solid #E5E7EB',
+              borderTop: '1px solid #E2E8F0',
               minHeight: '44px !important',
-              backgroundColor: '#FAFAFA',
+              backgroundColor: '#FAFBFC',
             },
             '& .MuiTablePagination-root': {
               fontSize: '0.8125rem',
-              color: '#6B7280',
+              color: '#64748B',
             },
             '& .MuiDataGrid-virtualScroller': {
               minHeight: 180,
+              // Subtle scrollbar
+              '&::-webkit-scrollbar': { width: 6, height: 6 },
+              '&::-webkit-scrollbar-track': { background: 'transparent' },
+              '&::-webkit-scrollbar-thumb': { background: '#E2E8F0', borderRadius: 3 },
+              '&::-webkit-scrollbar-thumb:hover': { background: '#CBD5E1' },
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#E2E8F0 transparent',
             },
           }}
         />
@@ -340,25 +401,68 @@ const DataGridComponent = ({
               pageSizeOptions={[10, 25, 50, 100]}
               disableSelectionOnClick
               sx={{
+                border: 'none',
+                '& .MuiDataGrid-main': {
+                  overflow: 'auto',
+                },
                 '& .MuiDataGrid-cell': {
-                  borderBottom: '1px solid #f0f0f0',
+                  borderBottom: '1px solid #E2E8F0',
+                  borderRight: '1px solid #E2E8F0',
                   fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                  padding: { xs: '8px', sm: '12px' }
+                  padding: { xs: '10px', sm: '12px' },
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                },
+                '& .MuiDataGrid-row': {
+                  '&:nth-of-type(even)': {
+                    backgroundColor: '#FAFBFC',
+                  },
+                  '&:hover': {
+                    backgroundColor: '#F1F5F9',
+                  },
                 },
                 '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#f8fafc',
-                  fontWeight: 600,
-                  fontSize: { xs: '0.8125rem', sm: '0.875rem' }
+                  backgroundColor: '#F1F5F9',
+                  borderBottom: '2px solid #E2E8F0',
+                  fontWeight: 700,
+                  fontSize: { xs: '0.8rem', sm: '0.85rem' },
+                  minHeight: '52px !important',
+                  maxHeight: '52px !important',
+                },
+                '& .MuiDataGrid-columnHeader': {
+                  borderRight: '1px solid #E2E8F0',
+                  padding: '12px 14px',
+                  '&:last-child': {
+                    borderRight: 'none',
+                  },
+                },
+                '& .MuiDataGrid-columnHeaderTitleContainer': {
+                  overflow: 'hidden',
                 },
                 '& .MuiDataGrid-columnHeaderTitle': {
-                  fontWeight: 600,
-                  overflow: 'visible',
+                  fontWeight: 700,
+                  color: '#1E293B',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                   lineHeight: '1.2',
-                  whiteSpace: 'normal'
+                  letterSpacing: '0.01em',
+                  textTransform: 'uppercase',
                 },
                 '& .MuiDataGrid-footerContainer': {
-                  minHeight: '52px',
-                  backgroundColor: '#fafafa'
+                  minHeight: '44px',
+                  backgroundColor: '#FAFBFC',
+                  borderTop: '1px solid #E2E8F0',
+                },
+                '& .MuiDataGrid-virtualScroller': {
+                  // Subtle scrollbar
+                  '&::-webkit-scrollbar': { width: 6, height: 6 },
+                  '&::-webkit-scrollbar-track': { background: 'transparent' },
+                  '&::-webkit-scrollbar-thumb': { background: '#E2E8F0', borderRadius: 3 },
+                  '&::-webkit-scrollbar-thumb:hover': { background: '#CBD5E1' },
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#E2E8F0 transparent',
                 },
                 '& .MuiDataGrid-root': {
                   border: 'none'

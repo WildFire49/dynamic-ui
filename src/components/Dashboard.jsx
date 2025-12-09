@@ -32,7 +32,10 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
-  Skeleton
+  Skeleton,
+  Badge,
+  Zoom,
+  Grow
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -59,7 +62,14 @@ import {
   CloudSync as CloudSyncIcon,
   CloudOff as CloudOffIcon,
   Settings as SettingsIcon,
-  Tune as TuneIcon
+  Tune as TuneIcon,
+  Chat as ChatIcon,
+  Send as SendIcon,
+  SmartToy as SmartToyIcon,
+  Message as MessageIcon,
+  PieChartOutline as PieChartIcon,
+  AreaChart as AreaChartIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -86,20 +96,38 @@ import { DashboardLoadingSkeleton, WidgetContentSkeleton } from './skeletons/Wid
 import WidgetConfigStudio from './widgets/WidgetConfigStudio';
 import dashboardService from '../services/dashboardService';
 
-// Chart colors matching the reference UI
+// Color palette - distinct colors for multi-series charts
 const CHART_COLORS = {
-  primary: '#3B82F6',
+  primary: '#3B82F6',      // Blue
   primaryLight: '#93C5FD',
-  primaryGradient: ['#3B82F6', '#60A5FA'],
-  secondary: '#10B981',
-  tertiary: '#F59E0B',
-  quaternary: '#EF4444',
+  primaryGradient: ['#3B82F6', '#2563EB'],
+  secondary: '#10B981',    // Emerald Green
+  tertiary: '#F59E0B',     // Amber/Orange
+  quaternary: '#EF4444',   // Red
+  fifth: '#8B5CF6',        // Purple
+  sixth: '#EC4899',        // Pink
+  cyan: '#06B6D4',         // Cyan
+  teal: '#0D9488',         // Teal
+  orange: '#F97316',       // Orange
   area: {
     stroke: '#3B82F6',
     fill: 'url(#areaGradient)'
   },
   bar: '#3B82F6'
 };
+
+// Distinct bar colors for multi-series
+const BAR_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
+
+// Widget accent colors - using theme primary/secondary blue gradient
+const WIDGET_ACCENTS = [
+  { gradient: 'linear-gradient(135deg, #0078d7 0%, #2f8fef 100%)', light: '#EBF5FF', border: '#B3D7FF', icon: '#0078d7' },  // Primary Blue
+  { gradient: 'linear-gradient(135deg, #0078d7 0%, #2f8fef 100%)', light: '#EBF5FF', border: '#B3D7FF', icon: '#0078d7' },  // Primary Blue
+  { gradient: 'linear-gradient(135deg, #0078d7 0%, #2f8fef 100%)', light: '#EBF5FF', border: '#B3D7FF', icon: '#0078d7' },  // Primary Blue
+  { gradient: 'linear-gradient(135deg, #0078d7 0%, #2f8fef 100%)', light: '#EBF5FF', border: '#B3D7FF', icon: '#0078d7' },  // Primary Blue
+  { gradient: 'linear-gradient(135deg, #0078d7 0%, #2f8fef 100%)', light: '#EBF5FF', border: '#B3D7FF', icon: '#0078d7' },  // Primary Blue
+  { gradient: 'linear-gradient(135deg, #0078d7 0%, #2f8fef 100%)', light: '#EBF5FF', border: '#B3D7FF', icon: '#0078d7' },  // Primary Blue
+];
 
 const Dashboard = ({ initialDashboardId }) => {
   const theme = useTheme();
@@ -124,6 +152,7 @@ const Dashboard = ({ initialDashboardId }) => {
   const [savedVisualizations, setSavedVisualizations] = useState([]);
   const [savedAnalyses, setSavedAnalyses] = useState([]);
   const [fullscreenView, setFullscreenView] = useState({ open: false, item: null });
+  const [fullscreenViewMode, setFullscreenViewMode] = useState('table'); // table, bar, pie, area
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [widgetOrder, setWidgetOrder] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -141,32 +170,106 @@ const Dashboard = ({ initialDashboardId }) => {
   const [refreshResults, setRefreshResults] = useState(null); // Store bulk refresh results
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest'); // 'newest' or 'oldest'
-  const [globalViewMode, setGlobalViewMode] = useState('auto'); // 'auto', 'area', 'bar', 'table'
+  const [globalViewMode, setGlobalViewMode] = useState('table'); // 'table', 'auto', 'area', 'bar' - default to table
   const [configStudio, setConfigStudio] = useState({ open: false, widget: null }); // Widget config studio
   const [loadingWidgets, setLoadingWidgets] = useState(new Set()); // Track widgets currently loading data
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false); // Chat drawer state
+  const [chatInput, setChatInput] = useState(''); // Chat input value
+  const [chatMessages, setChatMessages] = useState([]); // Chat messages
+  const [isChatLoading, setIsChatLoading] = useState(false); // Chat loading state
+  const [draggedWidgetForChat, setDraggedWidgetForChat] = useState(null); // Widget being dragged to chat
+  const [chatDropZoneActive, setChatDropZoneActive] = useState(false); // Drop zone highlight
+  const [attachedWidget, setAttachedWidget] = useState(null); // Widget attached to chat input
   
   // Refs to prevent duplicate API calls
   const dataFetchInProgress = useRef(false);
   const fetchedWidgetIds = useRef(new Set());
   const initialFetchDone = useRef(false); // Prevent duplicate initial fetch
+  const draggedWidgetRef = useRef(null); // Store dragged widget for chat drop
+  
+  // Helper to check if a string is a UUID
+  const isUUID = (str) => {
+    if (!str || typeof str !== 'string') return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
+  // Get connection ID from localStorage, env, or Zustand store
+  const getConnectionId = () => {
+    return localStorage.getItem('connectionId') || 
+           localStorage.getItem('activeConnectionId') ||
+           process.env.NEXT_PUBLIC_CONNECTION_ID ||
+           '';
+  };
+
+  // Get username from localStorage
+  // Priority: username > user.username > userId (only if not UUID)
+  const getUsername = () => {
+    // First try direct username
+    const username = localStorage.getItem('username');
+    if (username && !isUUID(username)) return username;
+    
+    // Then try user object
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.username && !isUUID(user.username)) return user.username;
+    } catch (e) {
+      // Ignore parse errors
+    }
+    
+    // Fallback to userId only if it doesn't look like a UUID
+    const userId = localStorage.getItem('userId');
+    if (userId && !isUUID(userId)) {
+      return userId;
+    }
+    
+    return '';
+  };
   
   // Cache for widget data per dashboard - persists across tab switches
   const widgetDataCache = useRef(new Map()); // Map<dashboardId, Map<widgetId, data>>
 
-  // Helper to get title - prioritize question/query over generic titles
+  // Helper to format title to proper Title Case
+  const toTitleCase = (str) => {
+    if (!str) return str;
+    // Words that should remain lowercase (unless first word)
+    const minorWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'by', 'of', 'in', 'with', 'vs'];
+    
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map((word, index) => {
+        // Always capitalize first word, or if not a minor word
+        if (index === 0 || !minorWords.includes(word)) {
+          return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+      })
+      .join(' ');
+  };
+
+  // Helper to get title - prioritize title over prompt/question
   const getTitle = (item) => {
-    // Check for natural language query first (most descriptive)
-    if (item.question && !item.question.startsWith('Analysis -') && item.question !== 'Unknown Query') {
-      return item.question;
-    }
-    // Check title but skip generic ones
+    let title = '';
+    // Check title first (most user-friendly)
     if (item.title && !item.title.startsWith('Analysis -') && item.title !== 'Unknown Query') {
-      return item.title;
+      title = item.title;
     }
-    // Fallback to any available question/title
-    if (item.question) return item.question;
-    if (item.title) return item.title;
-    return 'Analysis Result';
+    // Fallback to question/prompt if no good title
+    else if (item.question && !item.question.startsWith('Analysis -') && item.question !== 'Unknown Query') {
+      title = item.question;
+    }
+    // Last resort fallbacks
+    else if (item.title) {
+      title = item.title;
+    } else if (item.question) {
+      title = item.question;
+    } else {
+      title = 'Analysis Result';
+    }
+    
+    // Apply title case formatting
+    return toTitleCase(title);
   };
 
   // Detect best visualization type from data
@@ -289,21 +392,29 @@ const Dashboard = ({ initialDashboardId }) => {
 
   // Load dashboards from API on mount and immediately fetch widget data
   useEffect(() => {
-    // Prevent duplicate initialization
-    if (initialFetchDone.current) return;
+    // Reset refs at the start of each mount cycle
+    const mountId = Date.now();
+    console.log('🔄 Dashboard effect running, mountId:', mountId);
+    
+    // Check if already initialized in this render cycle
+    if (initialFetchDone.current) {
+      console.log('⏭️ Skipping - already initialized');
+      return;
+    }
     initialFetchDone.current = true;
+    dataFetchInProgress.current = true; // Set early to prevent other effects from fetching
     
     const initializeDashboard = async () => {
-      const username = JSON.parse(localStorage.getItem('user') || '{}').username || 
-                      localStorage.getItem('username') || 
-                      localStorage.getItem('userId') || '';
-      const connectionId = localStorage.getItem('connectionId') || 
-                          localStorage.getItem('activeConnectionId') || 
-                          process.env.NEXT_PUBLIC_CONNECTION_ID || '';
+      // Use the getUsername helper to avoid UUID being used as username
+      const username = getUsername();
+      const connectionId = getConnectionId();
+      
+      console.log('🚀 Dashboard init - username:', username, 'connectionId:', connectionId);
       
       if (username) {
         // Try to load from server first
         const result = await loadFromServer(username);
+        console.log('📦 Server load result:', result.success, 'dashboards:', result.dashboards?.length || 0);
         
         if (result.success) {
           // If initialDashboardId is provided (from URL), switch to that dashboard
@@ -316,27 +427,40 @@ const Dashboard = ({ initialDashboardId }) => {
             activeId = useDashboardStore.getState().activeDashboardId;
           }
           
+          // Wait a tick for store to update, then get fresh state
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           // Immediately fetch widget data after loading widgets
           const freshState = useDashboardStore.getState();
           const widgets = freshState.visualizationsByDashboard[activeId] || [];
           
-          if (widgets.length > 0 && connectionId) {
+          console.log(`📊 All dashboards in store:`, Object.keys(freshState.visualizationsByDashboard));
+          console.log(`📊 Widgets for "${activeId}":`, widgets.map(w => ({ id: w.id, title: w.title })));
+          
+          console.log(`📊 Active dashboard "${activeId}" has ${widgets.length} widgets`);
+          
+          // Fetch data even if connectionId is empty - the API will handle it
+          if (widgets.length > 0) {
             const widgetIds = widgets.map(w => w.id);
-            console.log(`📥 Immediately fetching data for ${widgetIds.length} widgets`);
+            console.log(`📥 Fetching data for ${widgetIds.length} widgets, connectionId: ${connectionId || 'EMPTY'}`);
             
-            // Mark all widgets as loading and prevent other effects from fetching
-            dataFetchInProgress.current = true;
+            // Mark all widgets as loading (dataFetchInProgress already set at effect start)
             setLoadingWidgets(new Set(widgetIds));
             setSavedVisualizations([...widgets]);
             
             // Fetch data immediately
             try {
               const dataResult = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
+              console.log('📦 Widget data API response:', JSON.stringify(dataResult, null, 2));
               
               if (dataResult.success && dataResult.data?.results) {
+                let successCount = 0;
                 const updatedWidgets = widgets.map(w => {
                   const widgetResult = dataResult.data.results.find(r => r.widgetId === w.id);
+                  console.log(`🔍 Widget ${w.id} result:`, widgetResult?.success, 'hasData:', !!widgetResult?.data);
+                  
                   if (widgetResult?.success && widgetResult.data) {
+                    successCount++;
                     const widgetData = {
                       timestamp: new Date().toISOString(),
                       pipelineData: widgetResult.data.pipelineData || [],
@@ -354,7 +478,9 @@ const Dashboard = ({ initialDashboardId }) => {
                 
                 setSavedVisualizations(updatedWidgets);
                 widgetIds.forEach(id => fetchedWidgetIds.current.add(id));
-                console.log(`✅ Fetched and cached data for ${dataResult.data.successCount}/${dataResult.data.totalRequested} widgets`);
+                console.log(`✅ Fetched and cached data for ${successCount}/${widgetIds.length} widgets`);
+              } else {
+                console.log('⚠️ No results in API response:', dataResult);
               }
             } catch (error) {
               console.error('❌ Error fetching widget data:', error);
@@ -364,6 +490,7 @@ const Dashboard = ({ initialDashboardId }) => {
             }
           } else {
             setSavedVisualizations([...widgets]);
+            dataFetchInProgress.current = false; // No widgets to fetch, reset flag
           }
         } else {
           console.log('📦 Server load failed, using local data');
@@ -372,6 +499,7 @@ const Dashboard = ({ initialDashboardId }) => {
             migrateFromLocalStorage();
             localStorage.setItem('dashboardMigrated', 'true');
           }
+          dataFetchInProgress.current = false; // Server load failed, reset flag
         }
       } else {
         // No user, just migrate local data
@@ -380,17 +508,31 @@ const Dashboard = ({ initialDashboardId }) => {
           migrateFromLocalStorage();
           localStorage.setItem('dashboardMigrated', 'true');
         }
+        dataFetchInProgress.current = false; // No user, reset flag
       }
       setIsInitialLoad(false);
     };
 
     initializeDashboard();
+    
+    // Cleanup - reset ref on unmount so next mount will initialize
+    return () => {
+      console.log('🔄 Dashboard unmounting - resetting initialFetchDone');
+      initialFetchDone.current = false;
+      dataFetchInProgress.current = false;
+    };
   }, []);
 
   // Subscribe to Zustand store changes for real-time updates
+  // Only active AFTER initial load is complete to prevent race conditions
   useEffect(() => {
     const unsubscribe = useDashboardStore.subscribe(
       (state, prevState) => {
+        // Skip during initial load - initializeDashboard handles everything
+        if (!initialFetchDone.current || dataFetchInProgress.current) {
+          return;
+        }
+        
         // Get current active dashboard ID from state (not from closure)
         const currentDashboardId = state.activeDashboardId;
         const storeVisualizations = state.visualizationsByDashboard[currentDashboardId] || [];
@@ -399,7 +541,7 @@ const Dashboard = ({ initialDashboardId }) => {
         const prevVisualizations = prevState?.visualizationsByDashboard?.[currentDashboardId] || [];
         if (storeVisualizations.length !== prevVisualizations.length || 
             JSON.stringify(storeVisualizations.map(v => v.id)) !== JSON.stringify(prevVisualizations.map(v => v.id))) {
-          console.log(`🔄 Store updated for dashboard "${currentDashboardId}":`, storeVisualizations.length, 'items');
+          console.log(`🔄 Store updated for dashboard "${currentDashboardId}":`, storeVisualizations.length, 'items (post-init)');
           
           // Merge store data with any existing fetched data to preserve pipelineData
           setSavedVisualizations(prev => {
@@ -442,13 +584,13 @@ const Dashboard = ({ initialDashboardId }) => {
       if (hasCachedData) {
         console.log(`📦 Using cached data for dashboard "${activeDashboardId}"`);
         setLoadingWidgets(new Set());
-      } else if (storeVisualizations.length > 0 && !dataFetchInProgress.current) {
+      } else if (storeVisualizations.length > 0) {
         // No cached data - mark all widgets as loading so skeleton shows
+        // This ensures skeleton shows while API is fetching data
         const widgetIds = storeVisualizations.map(v => v.id);
         setLoadingWidgets(new Set(widgetIds));
-      } else {
-        setLoadingWidgets(new Set());
       }
+      // Don't clear loadingWidgets if there are no visualizations yet - let the fetch complete
       
       setSavedVisualizations([...visualizationsWithCache]);
       
@@ -466,9 +608,18 @@ const Dashboard = ({ initialDashboardId }) => {
   // Fetch widget data when switching dashboards (not for initial load - that's handled by initializeDashboard)
   // This effect only runs when activeDashboardId changes AFTER initial load
   const prevDashboardId = useRef(activeDashboardId);
+  const fetchingDashboardId = useRef(null); // Track which dashboard is currently fetching
+  
   useEffect(() => {
     // Skip if this is the initial load (initializeDashboard handles it)
     if (!initialFetchDone.current) {
+      prevDashboardId.current = activeDashboardId;
+      return;
+    }
+    
+    // Skip if initial data fetch is still in progress
+    if (dataFetchInProgress.current) {
+      console.log('⏭️ Skipping dashboard switch fetch - initial fetch in progress');
       prevDashboardId.current = activeDashboardId;
       return;
     }
@@ -481,12 +632,28 @@ const Dashboard = ({ initialDashboardId }) => {
     prevDashboardId.current = activeDashboardId;
     
     const fetchDataForNewDashboard = async () => {
+      // Wait a bit for widgets to load from store if needed
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Double-check that initial fetch isn't still running
+      if (dataFetchInProgress.current) {
+        console.log('⏭️ Skipping - data fetch still in progress');
+        return;
+      }
+      
       // Get widgets directly from store to avoid stale state
       const freshState = useDashboardStore.getState();
       const storeWidgets = freshState.visualizationsByDashboard[activeDashboardId] || [];
       
-      if (storeWidgets.length === 0 || dataFetchInProgress.current) {
-        console.log(`⏭️ Skipping fetch: ${storeWidgets.length} widgets, fetchInProgress: ${dataFetchInProgress.current}`);
+      // Skip only if no widgets AND not because they're still loading
+      if (storeWidgets.length === 0) {
+        console.log(`⏭️ Skipping fetch: no widgets for dashboard ${activeDashboardId}`);
+        return;
+      }
+      
+      // If another dashboard is fetching, that's OK - we can fetch for this one
+      if (fetchingDashboardId.current === activeDashboardId) {
+        console.log(`⏭️ Already fetching for dashboard ${activeDashboardId}`);
         return;
       }
 
@@ -510,13 +677,19 @@ const Dashboard = ({ initialDashboardId }) => {
       }
 
       console.log(`📥 Fetching data for ${widgetsNeedingData.length} widgets (dashboard switch)`);
-      dataFetchInProgress.current = true;
+      fetchingDashboardId.current = activeDashboardId;
       
       const widgetIds = widgetsNeedingData.map(v => v.id);
       setLoadingWidgets(new Set(widgetIds));
       
       try {
         const result = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
+        
+        // Only update if we're still on the same dashboard
+        if (fetchingDashboardId.current !== activeDashboardId) {
+          console.log(`⏭️ Dashboard changed during fetch, skipping update`);
+          return;
+        }
         
         if (result.success && result.data?.results) {
           // Apply cache to widgets with fetched data
@@ -546,7 +719,9 @@ const Dashboard = ({ initialDashboardId }) => {
       } catch (error) {
         console.error('❌ Error fetching widget data:', error);
       } finally {
-        dataFetchInProgress.current = false;
+        if (fetchingDashboardId.current === activeDashboardId) {
+          fetchingDashboardId.current = null;
+        }
         setLoadingWidgets(new Set());
       }
     };
@@ -571,8 +746,8 @@ const Dashboard = ({ initialDashboardId }) => {
 
   // Prepare, filter and sort items
   const allItems = useMemo(() => {
-    // Combine visualizations and analyses
-    let items = [...savedVisualizations, ...savedAnalyses];
+    // Combine visualizations and analyses, filtering out any undefined/null items
+    let items = [...savedVisualizations, ...savedAnalyses].filter(item => item && item.id);
     
     // Deduplicate by ID (keep first occurrence)
     const seenIds = new Set();
@@ -638,11 +813,38 @@ const Dashboard = ({ initialDashboardId }) => {
   }, [allItems.length, isInitialLoad]);
 
   // Handlers
-  const handleDeleteVisualization = (id) => {
+  const handleDeleteVisualization = async (id) => {
+    // Validate widget ID before proceeding
+    if (!id) {
+      console.error('❌ Cannot delete widget: ID is undefined');
+      return;
+    }
+    
+    const username = getUsername();
+    
+    // Optimistically update UI first
     setSavedVisualizations(prev => prev.filter(item => item.id !== id));
     setSavedAnalyses(prev => prev.filter(item => item.id !== id));
     setWidgetOrder(prev => prev.filter(wId => wId !== id));
     setAnchorEl(null);
+    
+    // Call API to delete from server
+    if (username && activeDashboardId) {
+      try {
+        console.log('🗑️ Deleting widget:', { id, dashboardId: activeDashboardId, username });
+        const result = await dashboardService.deleteWidget(username, activeDashboardId, id);
+        if (result.success) {
+          console.log('✅ Widget deleted from server:', id);
+          // Also remove from store
+          removeVisualization(id);
+        } else {
+          console.error('❌ Failed to delete widget from server:', result.message);
+          // Could optionally restore the widget here if API fails
+        }
+      } catch (error) {
+        console.error('❌ Error deleting widget:', error);
+      }
+    }
   };
 
   const handleEditTitle = (id, newTitle) => {
@@ -668,19 +870,6 @@ const Dashboard = ({ initialDashboardId }) => {
   const handleCancelInlineEdit = () => {
     setEditingTitleId(null);
     setEditingTitleValue('');
-  };
-
-  // Get connection ID from localStorage or Zustand store
-  const getConnectionId = () => {
-    return localStorage.getItem('connectionId') || 
-           localStorage.getItem('activeConnectionId') ||
-           '';
-  };
-
-  // Get username from localStorage
-  const getUsername = () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return user.username || localStorage.getItem('username') || '';
   };
 
   // Refresh a single widget using the new getWidgetsData API
@@ -745,6 +934,181 @@ const Dashboard = ({ initialDashboardId }) => {
     }
   };
 
+  // Edit dashboard using natural language prompt
+  const handleDashboardEdit = async (prompt) => {
+    const username = getUsername();
+    const connectionId = getConnectionId();
+    
+    if (!activeDashboardId) {
+      return { success: false, message: 'No dashboard selected' };
+    }
+    
+    if (!connectionId) {
+      return { success: false, message: 'No database connection found. Please select a connection first.' };
+    }
+
+    setIsChatLoading(true);
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}/api/v1/dashboard/edit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dashboardId: activeDashboardId,
+          prompt: prompt,
+          connectionId: connectionId,
+          username: username,
+        }),
+      });
+
+      const responseData = await response.json();
+      
+      // Handle the nested response structure: { status, data: { message, data: { ... } } }
+      const isSuccess = response.ok && (responseData.status === 200 || responseData.data?.success);
+      const resultData = responseData.data?.data || responseData.data || responseData;
+      
+      if (isSuccess && resultData.success) {
+        // Build response message based on actions taken
+        let actionSummary = [];
+        const actions = resultData.actions || [];
+        
+        // Count actions by type
+        const addedActions = actions.filter(a => a.action === 'add' && a.success);
+        const removedActions = actions.filter(a => a.action === 'remove' && a.success);
+        const updatedActions = actions.filter(a => a.action === 'update' && a.success);
+        
+        if (addedActions.length > 0) {
+          const titles = addedActions.map(a => `"${a.title}"`).join(', ');
+          actionSummary.push(`Added: ${titles}`);
+        }
+        if (removedActions.length > 0) {
+          actionSummary.push(`Removed ${removedActions.length} widget(s)`);
+        }
+        if (updatedActions.length > 0) {
+          const titles = updatedActions.map(a => `"${a.title}"`).join(', ');
+          actionSummary.push(`Updated: ${titles}`);
+        }
+
+        // Get newly added widget IDs to fetch their data
+        const newWidgetIds = resultData.addedWidgets?.map(w => w.id) || addedActions.map(a => a.widgetId);
+        
+        // Reload dashboard data after edit to get updated widget list
+        // Note: loadFromServer expects username as first param
+        await loadFromServer(username);
+        
+        // Switch to the active dashboard to reload its widgets
+        await setActiveDashboard(activeDashboardId);
+        
+        // Wait for store to update
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Get fresh widgets from store after reload
+        const freshState = useDashboardStore.getState();
+        const storeWidgets = freshState.visualizationsByDashboard[activeDashboardId] || [];
+        console.log('📊 Store widgets after reload:', storeWidgets.length);
+        
+        // Fetch data for ALL widgets (new + existing) to ensure data is populated
+        const allWidgetIds = storeWidgets.map(w => w.id);
+        if (allWidgetIds.length > 0) {
+          // Wait for backend to process and generate widget data (1.5s delay)
+          console.log('⏳ Waiting for backend to process widget data...');
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          console.log('Fetching data for all widgets:', allWidgetIds);
+          const widgetData = await fetchWidgetsData(allWidgetIds);
+          console.log('📦 Widget data response:', widgetData);
+          
+          if (widgetData?.results) {
+            // Merge store widgets with fetched data
+            const mergedWidgets = storeWidgets.map(w => {
+              const fetchedData = widgetData.results.find(r => r.widgetId === w.id);
+              if (fetchedData?.success && fetchedData.data) {
+                console.log(`✅ Merging data for widget ${w.id}:`, fetchedData.data.pipelineData?.length, 'rows');
+                return {
+                  ...w,
+                  timestamp: new Date().toISOString(),
+                  pipelineData: fetchedData.data.pipelineData || [],
+                  supportingData: fetchedData.data.supportingData || fetchedData.data.pipelineData || [],
+                  dataGrid: fetchedData.data.dataGrid,
+                  executionTimeMs: fetchedData.executionTimeMs,
+                  rowCount: fetchedData.rowCount,
+                };
+              }
+              return w;
+            });
+            
+            // Update local state with merged widgets
+            setSavedVisualizations(mergedWidgets);
+            console.log('✅ Updated savedVisualizations with', mergedWidgets.length, 'widgets');
+          }
+        }
+        
+        return { 
+          success: true, 
+          message: actionSummary.length > 0 
+            ? actionSummary.join('\n') 
+            : resultData.message || 'Dashboard updated successfully!',
+          actions: actions,
+          addedWidgets: resultData.addedWidgets
+        };
+      } else {
+        // Check for action-level errors
+        const failedActions = resultData.actions?.filter(a => !a.success) || [];
+        const errorMessage = failedActions.length > 0 
+          ? failedActions.map(a => a.error).join(', ')
+          : resultData.message || responseData.message || 'Failed to edit dashboard';
+        
+        return { 
+          success: false, 
+          message: errorMessage
+        };
+      }
+    } catch (error) {
+      console.error('Error editing dashboard:', error);
+      return { 
+        success: false, 
+        message: 'Failed to connect to the server. Please try again.' 
+      };
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  // Handle chat message submission
+  const handleChatSubmit = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+    
+    const userMessage = chatInput.trim();
+    const widgetContext = attachedWidget ? { widgetId: attachedWidget.id, widgetTitle: attachedWidget.title } : null;
+    
+    setChatInput('');
+    setAttachedWidget(null); // Clear attached widget after sending
+    
+    // Add user message to chat (with widget reference if attached)
+    setChatMessages(prev => [...prev, { 
+      role: 'user', 
+      content: userMessage,
+      widgetRef: widgetContext,
+    }]);
+    
+    // Call the dashboard edit API with widget context
+    const messageWithContext = widgetContext 
+      ? `[Widget: ${widgetContext.widgetTitle}] ${userMessage}`
+      : userMessage;
+    const result = await handleDashboardEdit(messageWithContext);
+    
+    // Add AI response
+    setChatMessages(prev => [...prev, { 
+      role: 'assistant', 
+      content: result.success 
+        ? `✓ ${result.message}` 
+        : `Sorry, I couldn't complete that request. ${result.message}`,
+      success: result.success
+    }]);
+  };
+
   // Fetch data for widgets using the new getWidgetsData API
   const fetchWidgetsData = async (widgetIds) => {
     const username = getUsername();
@@ -802,20 +1166,13 @@ const Dashboard = ({ initialDashboardId }) => {
     );
   };
 
-  // Refresh all widgets in the dashboard (bulk)
+  // Refresh all widgets - fetch fresh data from API
   const handleRefreshAllWidgets = async () => {
     const username = getUsername();
     const connectionId = getConnectionId();
     
-    if (!connectionId) {
-      console.warn('Cannot refresh: No connection ID found. Please select a database connection.');
-      setRefreshResults({
-        totalWidgets: savedVisualizations.length,
-        refreshedCount: 0,
-        failedCount: savedVisualizations.length,
-        error: 'No database connection selected',
-        timestamp: new Date().toISOString(),
-      });
+    if (!username) {
+      console.warn('Cannot refresh: No username found');
       return;
     }
 
@@ -823,7 +1180,6 @@ const Dashboard = ({ initialDashboardId }) => {
     setRefreshResults(null);
 
     try {
-      // Get all widget IDs
       const widgetIds = savedVisualizations.map(v => v.id);
       
       if (widgetIds.length === 0) {
@@ -831,25 +1187,42 @@ const Dashboard = ({ initialDashboardId }) => {
         return;
       }
 
-      // Use the new getWidgetsData API
+      // Call the data API to get fresh widget data
       const result = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
 
       if (result.success && result.data) {
-        const { totalRequested, successCount, failedCount, results } = result.data;
+        const results = result.data.results || [];
+        let successCount = 0;
+        let failedCount = 0;
         
-        // Update widgets with fetched data
-        updateWidgetsWithData(results);
+        // Update widgets with fresh data
+        setSavedVisualizations(prev => prev.map(widget => {
+          const widgetResult = results.find(r => r.widgetId === widget.id);
+          if (widgetResult?.success && widgetResult.data) {
+            successCount++;
+            // Update cache
+            setCachedData(activeDashboardId, widget.id, widgetResult.data);
+            return {
+              ...widget,
+              pipelineData: widgetResult.data.pipelineData || widgetResult.data.results || [],
+              supportingData: widgetResult.data.supportingData || widgetResult.data.pipelineData || [],
+              lastRefreshed: new Date().toISOString(),
+            };
+          }
+          failedCount++;
+          return widget;
+        }));
 
         setRefreshResults({
-          totalWidgets: totalRequested,
+          totalWidgets: widgetIds.length,
           refreshedCount: successCount,
           failedCount: failedCount,
           timestamp: new Date().toISOString(),
         });
 
-        console.log(`✅ Dashboard refreshed: ${successCount}/${totalRequested} widgets updated, ${failedCount} failed`);
+        console.log(`✅ Refreshed ${successCount}/${widgetIds.length} widgets`);
       } else {
-        console.error('Failed to refresh dashboard:', result.message);
+        console.error('Failed to refresh:', result.message);
         setRefreshResults({
           totalWidgets: widgetIds.length,
           refreshedCount: 0,
@@ -859,7 +1232,7 @@ const Dashboard = ({ initialDashboardId }) => {
         });
       }
     } catch (error) {
-      console.error('Error refreshing dashboard:', error);
+      console.error('Error refreshing:', error);
       setRefreshResults({
         totalWidgets: savedVisualizations.length,
         refreshedCount: 0,
@@ -891,11 +1264,23 @@ const Dashboard = ({ initialDashboardId }) => {
 
   const handleDragStart = (e, index) => {
     const item = allItems[index];
+    const widgetInfo = { id: item.id, title: item.title || item.question || 'Widget' };
+    console.log('🚀 Drag started for widget:', widgetInfo.title);
+    
     setDraggedItem(item);
     setDraggedIndex(index);
     setDragOverIndex(index);
+    setDraggedWidgetForChat(item); // Track for chat drop (state)
+    draggedWidgetRef.current = widgetInfo; // Also store in ref for reliable access
+    
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", item.id);
+    e.dataTransfer.setData("application/widget", JSON.stringify(widgetInfo));
+    
+    // Open chat panel when dragging starts so user can drop into it
+    if (!chatDrawerOpen) {
+      setChatDrawerOpen(true);
+    }
   };
 
   const handleDragOver = (e, index) => {
@@ -938,6 +1323,7 @@ const Dashboard = ({ initialDashboardId }) => {
   };
 
   const handleDragEnd = (e) => {
+    console.log('🏁 Drag end event');
     // If dropped on valid target, handleDrop already handled it
     // This handles dropping outside valid targets
     if (draggedItem && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
@@ -948,9 +1334,82 @@ const Dashboard = ({ initialDashboardId }) => {
       setWidgetOrder(newItems.map(item => item.id));
     }
     
+    // Reset all drag states
     setDraggedItem(null);
     setDraggedIndex(null);
     setDragOverIndex(null);
+    setDraggedWidgetForChat(null);
+    draggedWidgetRef.current = null;
+    setChatDropZoneActive(false);
+  };
+  
+  // Handle drop on chat area
+  const handleChatDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🎯 Chat drop event triggered');
+    console.log('📦 draggedWidgetForChat (state):', draggedWidgetForChat);
+    console.log('📦 draggedWidgetRef (ref):', draggedWidgetRef.current);
+    
+    setChatDropZoneActive(false);
+    
+    // Use ref first (more reliable), fallback to state
+    const widgetToAttach = draggedWidgetRef.current || draggedWidgetForChat;
+    
+    // Reset drag states
+    setDraggedItem(null);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    setDraggedWidgetForChat(null);
+    draggedWidgetRef.current = null;
+    
+    if (widgetToAttach) {
+      // Attach widget to chat input
+      const attached = {
+        id: widgetToAttach.id,
+        title: widgetToAttach.title || widgetToAttach.question || 'Widget',
+      };
+      setAttachedWidget(attached);
+      console.log('✅ Widget attached to chat:', attached.title);
+    } else {
+      console.log('⚠️ No widget to attach - trying dataTransfer');
+      // Try to get from dataTransfer as last resort
+      try {
+        const widgetData = e.dataTransfer.getData("application/widget");
+        if (widgetData) {
+          const parsed = JSON.parse(widgetData);
+          setAttachedWidget(parsed);
+          console.log('✅ Widget attached from dataTransfer:', parsed.title);
+        }
+      } catch (err) {
+        console.log('❌ Could not parse widget data from dataTransfer');
+      }
+    }
+  };
+  
+  // Handle drag over chat area
+  const handleChatDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedWidgetForChat) {
+      if (!chatDropZoneActive) {
+        console.log('🔵 Chat drag over - activating drop zone');
+      }
+      setChatDropZoneActive(true);
+      e.dataTransfer.dropEffect = "copy";
+    }
+  };
+  
+  // Handle drag leave chat area
+  const handleChatDragLeave = (e) => {
+    e.preventDefault();
+    // Only deactivate if leaving the chat area entirely
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setChatDropZoneActive(false);
+    }
   };
   
   // Get visual order of items during drag (for rendering)
@@ -972,8 +1431,9 @@ const Dashboard = ({ initialDashboardId }) => {
   const resizeRef = useRef(null);
   const rafRef = useRef(null);
   const lastHeightRef = useRef(null);
+  // Width resizing removed - using simple 2-column grid layout
 
-  const handleResizeStart = (e, itemId, currentWidth, currentHeight) => {
+  const handleResizeStart = (e, itemId, currentHeight) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -981,7 +1441,6 @@ const Dashboard = ({ initialDashboardId }) => {
     resizeRef.current = {
       id: itemId,
       startY: e.clientY,
-      startWidth: currentWidth,
       startHeight: currentHeight,
     };
     lastHeightRef.current = currentHeight;
@@ -1005,17 +1464,15 @@ const Dashboard = ({ initialDashboardId }) => {
     rafRef.current = requestAnimationFrame(() => {
       if (!resizeRef.current) return;
       
-      const { id, startY, startHeight, startWidth } = resizeRef.current;
+      const { id, startY, startHeight } = resizeRef.current;
+      const element = document.getElementById(`widget-${id}`);
+      if (!element) return;
+      
       const deltaY = e.clientY - startY;
       const newHeight = Math.max(200, Math.min(800, startHeight + deltaY));
       
-      // Skip if height hasn't changed (optimization)
-      if (lastHeightRef.current === newHeight) return;
-      lastHeightRef.current = newHeight;
-      
-      // Direct DOM manipulation for instant visual feedback
-      const element = document.getElementById(`widget-${id}`);
-      if (element) {
+      if (lastHeightRef.current !== newHeight) {
+        lastHeightRef.current = newHeight;
         element.style.height = `${newHeight}px`;
       }
     });
@@ -1027,16 +1484,19 @@ const Dashboard = ({ initialDashboardId }) => {
     }
     
     // Commit final height to React state
-    if (resizeRef.current && lastHeightRef.current) {
-      const { id, startWidth } = resizeRef.current;
-      const finalHeight = lastHeightRef.current;
+    if (resizeRef.current) {
+      const { id, startHeight } = resizeRef.current;
+      const finalHeight = lastHeightRef.current || startHeight;
+      
+      // Clear inline style - React will handle via state
+      const element = document.getElementById(`widget-${id}`);
+      if (element) {
+        element.style.height = '';
+      }
       
       setWidgetSizes(prev => ({
         ...prev,
-        [id]: { 
-          width: prev[id]?.width || startWidth,
-          height: finalHeight 
-        }
+        [id]: { height: finalHeight }
       }));
     }
     
@@ -1064,14 +1524,11 @@ const Dashboard = ({ initialDashboardId }) => {
     }
   }, [resizing, handleResizeMove, handleResizeEnd]);
 
-  // Get widget size with defaults
-  const getWidgetSize = (itemId, isFullWidth) => {
+  // Get widget height with defaults
+  const getWidgetHeight = (itemId, data) => {
     const saved = widgetSizes[itemId];
-    if (saved) return saved;
-    return { 
-      width: isFullWidth ? '100%' : 'auto',
-      height: 400 // Default height
-    };
+    if (saved?.height) return saved.height;
+    return 380; // Default height for all widgets - enough for 3 records
   };
 
   const handleMenuOpen = (event, id) => {
@@ -1158,13 +1615,16 @@ const Dashboard = ({ initialDashboardId }) => {
     }
 
     return (
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+      <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
           <defs>
-            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.3}/>
-              <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0}/>
-            </linearGradient>
+            {valueKeys.map((key, idx) => (
+              <linearGradient key={`gradient-${idx}`} id={`areaGradient-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={BAR_COLORS[idx % BAR_COLORS.length]} stopOpacity={0.3}/>
+                <stop offset="95%" stopColor={BAR_COLORS[idx % BAR_COLORS.length]} stopOpacity={0}/>
+              </linearGradient>
+            ))}
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
           <XAxis 
@@ -1188,19 +1648,148 @@ const Dashboard = ({ initialDashboardId }) => {
             }}
             formatter={(value, name) => [formatValue(value, name), name]}
           />
+          <Legend 
+            verticalAlign="top" 
+            height={36}
+            formatter={(value) => <span style={{ color: '#374151', fontSize: '0.875rem', fontWeight: 500 }}>{value.replace(/_/g, ' ')}</span>}
+          />
           {valueKeys.map((key, idx) => (
             <Area
               key={key}
               type="monotone"
               dataKey={key}
-              stroke={idx === 0 ? CHART_COLORS.primary : CHART_COLORS.secondary}
-              fill={idx === 0 ? 'url(#areaGradient)' : 'transparent'}
+              stroke={BAR_COLORS[idx % BAR_COLORS.length]}
+              fill={`url(#areaGradient-${idx})`}
               strokeWidth={2}
-              dot={{ r: 4, fill: '#fff', stroke: idx === 0 ? CHART_COLORS.primary : CHART_COLORS.secondary, strokeWidth: 2 }}
-              activeDot={{ r: 6, fill: idx === 0 ? CHART_COLORS.primary : CHART_COLORS.secondary }}
+              dot={{ r: 4, fill: '#fff', stroke: BAR_COLORS[idx % BAR_COLORS.length], strokeWidth: 2 }}
+              activeDot={{ r: 6, fill: BAR_COLORS[idx % BAR_COLORS.length] }}
+              isAnimationActive={false}
             />
           ))}
         </AreaChart>
+        </ResponsiveContainer>
+      </Box>
+    );
+  };
+
+  // Render Line Chart
+  const renderLineChart = (data) => {
+    const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
+    const labelKey = keys.find(k => 
+      k.toLowerCase().includes('month') || 
+      k.toLowerCase().includes('date') || 
+      k.toLowerCase().includes('period') ||
+      k.toLowerCase().includes('bank') ||
+      k.toLowerCase().includes('name') ||
+      typeof data[0]?.[k] === 'string'
+    ) || keys[0];
+    let valueKeys = keys.filter(k => k !== labelKey && typeof data[0]?.[k] === 'number');
+
+    if (valueKeys.length === 0) {
+      return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Typography color="text.secondary">No numeric data for line chart</Typography></Box>;
+    }
+
+    return (
+      <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+            <XAxis 
+              dataKey={labelKey} 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: '#6B7280' }}
+            />
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tickFormatter={(val) => formatValue(val, valueKeys[0])}
+            />
+            <RechartsTooltip 
+              contentStyle={{ 
+                backgroundColor: '#fff', 
+                border: '1px solid #E5E7EB', 
+                borderRadius: 8,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              }}
+              formatter={(value, name) => [formatValue(value, name), name.replace(/_/g, ' ')]}
+            />
+            <Legend 
+              verticalAlign="top" 
+              height={36}
+              formatter={(value) => <span style={{ color: '#374151', fontSize: '0.875rem', fontWeight: 500 }}>{value.replace(/_/g, ' ')}</span>}
+            />
+            {valueKeys.map((key, idx) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                stroke={BAR_COLORS[idx % BAR_COLORS.length]}
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: '#fff', stroke: BAR_COLORS[idx % BAR_COLORS.length], strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: BAR_COLORS[idx % BAR_COLORS.length] }}
+                isAnimationActive={false}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </Box>
+    );
+  };
+
+  // Pie Chart Colors - use same distinct colors as bar charts
+  const PIE_COLORS = BAR_COLORS;
+
+  // Render Pie Chart
+  const renderPieChart = (data) => {
+    const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
+    const labelKey = keys.find(k => typeof data[0]?.[k] === 'string') || keys[0];
+    const valueKey = keys.find(k => k !== labelKey && typeof data[0]?.[k] === 'number');
+
+    if (!valueKey) {
+      return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Typography color="text.secondary">No numeric data for pie chart</Typography></Box>;
+    }
+
+    const pieData = data.map((row, idx) => ({
+      name: row[labelKey] || `Item ${idx + 1}`,
+      value: parseFloat(row[valueKey]) || 0
+    })).filter(d => d.value > 0);
+
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={pieData}
+            cx="50%"
+            cy="50%"
+            innerRadius="40%"
+            outerRadius="70%"
+            paddingAngle={2}
+            dataKey="value"
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+            labelLine={{ stroke: '#6B7280', strokeWidth: 1 }}
+            isAnimationActive={false}
+          >
+            {pieData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+            ))}
+          </Pie>
+          <RechartsTooltip 
+            contentStyle={{ 
+              backgroundColor: '#fff', 
+              border: '1px solid #E5E7EB', 
+              borderRadius: 8,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}
+            formatter={(value) => [formatValue(value, valueKey), valueKey.replace(/_/g, ' ')]}
+          />
+          <Legend 
+            verticalAlign="bottom" 
+            height={36}
+            formatter={(value) => <span style={{ color: '#374151', fontSize: '0.875rem' }}>{value}</span>}
+          />
+        </PieChart>
       </ResponsiveContainer>
     );
   };
@@ -1252,13 +1841,19 @@ const Dashboard = ({ initialDashboardId }) => {
             formatter={(value, name) => [formatValue(value, name), name]}
             cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
           />
+          <Legend 
+            verticalAlign="top" 
+            height={36}
+            formatter={(value) => <span style={{ color: '#374151', fontSize: '0.875rem', fontWeight: 500 }}>{value.replace(/_/g, ' ')}</span>}
+          />
           {valueKeys.map((key, idx) => (
             <Bar
               key={key}
               dataKey={key}
-              fill={idx === 0 ? CHART_COLORS.primary : CHART_COLORS.secondary}
+              fill={BAR_COLORS[idx % BAR_COLORS.length]}
               radius={[4, 4, 0, 0]}
               maxBarSize={50}
+              isAnimationActive={false}
             />
           ))}
         </BarChart>
@@ -1266,56 +1861,169 @@ const Dashboard = ({ initialDashboardId }) => {
     );
   };
 
-  // Render Table - with centered single-column support
-  const renderTable = (data) => {
-    const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
+  // Single Record Card Component - beautiful centered display for single row data
+  const renderSingleRecordCard = (data) => {
+    const record = data[0];
+    const keys = Object.keys(record).filter(k => k !== 'id' && !k.startsWith('_'));
+    const numFields = keys.length;
     
-    // For single-column single-row data, show a nice centered display
-    if (data.length === 1 && keys.length === 1) {
+    // Format label from key
+    const formatLabel = (key) => {
+      return key
+        .replace(/_/g, ' ')
+        .replace(/([A-Z])/g, ' $1')
+        .trim();
+    };
+    
+    // Format value based on type - Indian number format with full numbers
+    const formatDisplayValue = (value, key) => {
+      if (value === null || value === undefined) return '-';
+      
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        // Percentage values
+        if (key.toLowerCase().includes('percent') || key.toLowerCase().includes('rate')) {
+          return `${numValue.toFixed(3)}%`;
+        }
+        // Format with Indian locale (lakhs, crores) - show full number with up to 3 decimals
+        const hasDecimals = numValue % 1 !== 0;
+        return numValue.toLocaleString('en-IN', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: hasDecimals ? 3 : 0,
+        });
+      }
+      
+      return String(value);
+    };
+    
+    // Single value - show large centered metric
+    if (numFields === 1) {
       const key = keys[0];
-      const value = data[0][key];
-      const isNumeric = typeof value === 'number' || !isNaN(parseFloat(value));
+      const value = record[key];
+      const displayValue = formatDisplayValue(value, key);
       
       return (
         <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          height: '100%',
-          width: '100%',
-          background: `linear-gradient(135deg, ${alpha(CHART_COLORS.primary, 0.03)} 0%, ${alpha(CHART_COLORS.secondary, 0.03)} 100%)`,
+          height: '100%', 
+          width: '100%', 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
         }}>
-          <Box sx={{ 
-            textAlign: 'center', 
-            py: 4,
-            px: 6,
-          }}>
-            <Typography 
-              sx={{ 
-                color: '#6B7280', 
-                fontWeight: 600,
-                letterSpacing: 2,
-                fontSize: '0.75rem',
-                textTransform: 'uppercase',
-                mb: 2,
-              }}
-            >
-              {key.replace(/_/g, ' ')}
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography sx={{ 
+              color: '#64748b', 
+              fontSize: '0.8rem', 
+              fontWeight: 600, 
+              textTransform: 'uppercase',
+              letterSpacing: 1.5,
+              mb: 1.5,
+            }}>
+              {formatLabel(key)}
             </Typography>
-            <Typography 
-              sx={{ 
-                fontWeight: 700, 
-                color: CHART_COLORS.primary,
-                fontSize: '2.75rem',
-                lineHeight: 1,
-              }}
-            >
-              {isNumeric ? formatValue(parseFloat(value), key) : value}
+            <Typography sx={{ 
+              color: '#1e293b', 
+              fontSize: '3rem', 
+              fontWeight: 700,
+              lineHeight: 1,
+            }}>
+              {displayValue}
             </Typography>
           </Box>
         </Box>
       );
+    }
+    
+    // Grid columns based on field count
+    const getGridCols = () => {
+      if (numFields === 2) return 2;
+      if (numFields === 3) return 3;
+      if (numFields === 4) return 4;
+      if (numFields <= 6) return 3;
+      return 4;
+    };
+    
+    const gridCols = getGridCols();
+    
+    return (
+      <Box sx={{ 
+        height: '100%', 
+        width: '100%', 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 3,
+        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+      }}>
+        <Box sx={{ 
+          display: 'grid',
+          gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
+          gap: 3,
+          width: '100%',
+          maxWidth: numFields <= 4 ? '100%' : '100%',
+        }}>
+          {keys.map((key, index) => {
+            const value = record[key];
+            const isNumeric = typeof value === 'number' || !isNaN(parseFloat(value));
+            const displayValue = formatDisplayValue(value, key);
+            
+            return (
+              <Box
+                key={key}
+                sx={{
+                  textAlign: 'center',
+                  py: 2.5,
+                  px: 2,
+                  bgcolor: '#fff',
+                  borderRadius: 2,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <Typography
+                  component="div"
+                  sx={{
+                    color: '#64748b',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                    mb: 1,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {formatLabel(key)}
+                </Typography>
+                <Tooltip title={String(value)} arrow placement="top">
+                  <Typography
+                    component="div"
+                    sx={{
+                      color: '#1e293b',
+                      fontSize: isNumeric ? '1.5rem' : '1rem',
+                      fontWeight: 700,
+                      lineHeight: 1.2,
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {displayValue}
+                  </Typography>
+                </Tooltip>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    );
+  };
+
+  // Render Table - with beautiful single record card support
+  const renderTable = (data) => {
+    const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
+    
+    // For single-row data, show beautiful metric cards
+    if (data.length === 1) {
+      return renderSingleRecordCard(data);
     }
     
     return (
@@ -1355,12 +2063,14 @@ const Dashboard = ({ initialDashboardId }) => {
 
     const data = getItemData(item);
     
-    // Show skeleton while loading data
-    if (loadingWidgets.has(item.id)) {
-      return <WidgetContentSkeleton variant="chart" />;
-    }
+    // Show skeleton while loading data OR if widget has no data and we're still fetching
+    const isLoading = loadingWidgets.has(item.id) || loadingWidgets.size > 0 || isInitialLoad || dataFetchInProgress.current;
     
     if (data.length === 0) {
+      // If any widgets are loading or initial load, show skeleton instead of "no data"
+      if (isLoading) {
+        return <WidgetContentSkeleton variant="chart" />;
+      }
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
           <Typography variant="body2">No data available</Typography>
@@ -1374,10 +2084,13 @@ const Dashboard = ({ initialDashboardId }) => {
 
     switch (currentMode) {
       case 'area':
-        // For 'Charts' mode - use area chart for time series, bar for others
-        return detectedType === 'area' ? renderAreaChart(data) : renderBarChart(data);
+        return renderAreaChart(data);
+      case 'line':
+        return renderLineChart(data);
       case 'bar':
         return renderBarChart(data);
+      case 'pie':
+        return renderPieChart(data);
       case 'table':
         return renderTable(data);
       default:
@@ -1396,16 +2109,16 @@ const Dashboard = ({ initialDashboardId }) => {
       ? globalViewMode 
       : (widgetViewModes[item.id] || detectedType);
     const recordCount = data.length;
-    const widgetSize = getWidgetSize(item.id, isFullWidth);
+    const widgetHeight = getWidgetHeight(item.id, data);
+    
+    // Get accent color for this widget
+    const accent = WIDGET_ACCENTS[index % WIDGET_ACCENTS.length];
     
     return (
-      <Fade 
+      <Grow 
         in 
-        timeout={200 + (index * 50)} 
+        timeout={300 + (index * 100)} 
         key={item._uniqueKey || `${item.id}-${index}`}
-        style={{ 
-          gridColumn: isFullWidth ? '1 / -1' : 'auto'
-        }}
       >
         <Paper
           id={`widget-${item.id}`}
@@ -1417,8 +2130,8 @@ const Dashboard = ({ initialDashboardId }) => {
           onDrop={(e) => handleDrop(e, index)}
           onDragEnd={handleDragEnd}
           sx={{
-            height: widgetSize.height,
-            minHeight: 200,
+            height: widgetHeight,
+            minHeight: 280,
             maxHeight: 800,
             display: 'flex',
             flexDirection: 'column',
@@ -1426,48 +2139,52 @@ const Dashboard = ({ initialDashboardId }) => {
               ? '2px solid #3B82F6' 
               : resizing?.id === item.id
                 ? '2px solid #10B981'
-                : '1px solid #E5E7EB',
-            borderRadius: 3,
+                : '1px solid #E2E8F0',
+            borderRadius: '12px',
             bgcolor: '#fff',
             overflow: 'hidden',
             cursor: draggedItem ? 'grabbing' : 'grab',
             boxShadow: draggedItem?.id === item.id 
-              ? '0 8px 24px rgba(59, 130, 246, 0.25)' 
-              : '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',
+              ? '0 12px 32px rgba(59, 130, 246, 0.25)' 
+              : '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
             transform: draggedItem?.id === item.id 
-              ? 'scale(1.02)' 
-              : 'translateZ(0)', // GPU acceleration
-            transition: resizing?.id === item.id ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease',
+              ? 'scale(1.02) translateY(-4px)' 
+              : 'translateZ(0)',
+            transition: resizing?.id === item.id ? 'none' : 'all 0.2s ease',
             zIndex: draggedItem?.id === item.id ? 10 : 1,
             position: 'relative',
             willChange: resizing?.id === item.id ? 'height' : 'auto',
             contain: 'layout style',
             '&:hover': {
-              boxShadow: draggedItem ? undefined : '0 4px 16px rgba(0,0,0,0.08)',
+              boxShadow: draggedItem ? undefined : '0 4px 12px rgba(0,0,0,0.08)',
+              borderColor: '#CBD5E1',
             },
             '&:active': {
               cursor: 'grabbing'
             },
-            // Show resize handle on hover (bottom edge)
             '&:hover .resize-handle': {
               opacity: 0.6,
             },
             '&:hover .resize-handle:hover': {
               opacity: 1,
+            },
+            '&:hover .widget-actions': {
+              opacity: 1,
             }
           }}
         >
-            {/* Widget Header */}
+            {/* Widget Header - Blue Gradient */}
             <Box sx={{
               px: 2,
-              py: 1,
+              py: 1.25,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              borderBottom: '1px solid #E5E7EB',
-              flexShrink: 0
+              background: accent.gradient,
+              borderRadius: '12px 12px 0 0',
+              flexShrink: 0,
             }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
                 {editingTitleId === item.id ? (
                   <ClickAwayListener onClickAway={handleSaveInlineTitle}>
                     <InputBase
@@ -1481,111 +2198,81 @@ const Dashboard = ({ initialDashboardId }) => {
                       }}
                       sx={{
                         fontWeight: 600,
-                        color: '#111827',
-                        fontSize: '0.95rem',
+                        color: '#fff',
+                        fontSize: '0.875rem',
                         lineHeight: 1.4,
                         px: 1,
                         py: 0.25,
                         borderRadius: 1,
-                        bgcolor: '#F3F4F6',
-                        border: '1px solid #3B82F6',
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                        border: '1px solid rgba(255,255,255,0.4)',
+                        width: '100%',
                         '& input': {
                           padding: 0,
+                          color: '#fff',
+                          '&::placeholder': {
+                            color: 'rgba(255,255,255,0.7)',
+                          }
                         }
                       }}
+                      placeholder="Enter widget title..."
                     />
                   </ClickAwayListener>
                 ) : (
-                  <Typography 
-                    variant="subtitle1" 
-                    noWrap 
-                    draggable={false}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStartEditTitle(item);
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onDragStart={(e) => e.preventDefault()}
-                    sx={{ 
-                      fontWeight: 600, 
-                      color: '#111827',
-                      fontSize: '0.95rem',
-                      lineHeight: 1.4,
-                      cursor: 'text',
-                      px: 1,
-                      py: 0.25,
-                      borderRadius: 1,
-                      userSelect: 'none',
-                      '&:hover': {
-                        bgcolor: '#F3F4F6',
-                      }
-                    }}
-                  >
-                    {getTitle(item)}
-                  </Typography>
+                  <Tooltip title="Click to rename" arrow placement="top">
+                    <Typography 
+                      variant="subtitle1" 
+                      draggable={false}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEditTitle(item);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onDragStart={(e) => e.preventDefault()}
+                      sx={{ 
+                        fontWeight: 600, 
+                        color: '#fff',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.4,
+                        cursor: 'text',
+                        px: 0.5,
+                        py: 0.25,
+                        borderRadius: 1,
+                        userSelect: 'none',
+                        wordBreak: 'break-word',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                        '&:hover': {
+                          bgcolor: 'rgba(255,255,255,0.15)',
+                        }
+                      }}
+                    >
+                      {getTitle(item)}
+                    </Typography>
+                  </Tooltip>
                 )}
               </Box>
 
-              <Stack direction="row" spacing={0.5} alignItems="center">
-                {/* View Mode Toggle - only show when global is 'auto' */}
-                {item.type !== 'analysis_widget' && data.length > 0 && globalViewMode === 'auto' && (
-                  <ToggleButtonGroup
-                    value={currentViewMode}
-                    exclusive
-                    onChange={(e, val) => handleViewModeChange(item.id, val)}
-                    size="small"
-                    sx={{
-                      '& .MuiToggleButton-root': {
-                        border: 'none',
-                        borderRadius: 1,
-                        px: 1,
-                        py: 0.5,
-                        color: '#9CA3AF',
-                        '&.Mui-selected': {
-                          bgcolor: alpha(CHART_COLORS.primary, 0.1),
-                          color: CHART_COLORS.primary,
-                        },
-                        '&:hover': {
-                          bgcolor: alpha(CHART_COLORS.primary, 0.05),
-                        }
-                      }
-                    }}
-                  >
-                    <ToggleButton value="area">
-                      <Tooltip title="Area Chart"><ShowChartIcon sx={{ fontSize: 18 }} /></Tooltip>
-                    </ToggleButton>
-                    <ToggleButton value="bar">
-                      <Tooltip title="Bar Chart"><BarChartIcon sx={{ fontSize: 18 }} /></Tooltip>
-                    </ToggleButton>
-                    <ToggleButton value="table">
-                      <Tooltip title="Table"><TableChartIcon sx={{ fontSize: 18 }} /></Tooltip>
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                )}
-
-                {/* Download CSV Button */}
-                <Tooltip title="Download as CSV">
-                  <IconButton 
-                    size="small" 
-                    onClick={() => handleDownloadCSV(item)}
-                    sx={{ 
-                      color: '#9CA3AF', 
-                      '&:hover': { color: CHART_COLORS.secondary },
-                    }}
-                  >
-                    <FileDownloadIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Tooltip>
-
-                {/* Refresh Button */}
-                <Tooltip title={`Refresh • ${formatLastUpdated(item.timestamp)}`}>
+              {/* Clean Action Buttons */}
+              <Stack 
+                direction="row" 
+                spacing={0.25} 
+                alignItems="center"
+                className="widget-actions"
+                sx={{ opacity: { xs: 1, md: 0.9 }, transition: 'opacity 0.2s' }}
+              >
+                {/* Refresh - Primary Action */}
+                <Tooltip title="Refresh data" arrow placement="top">
                   <IconButton 
                     size="small" 
                     onClick={() => handleRefreshWidget(item)}
                     disabled={refreshingWidgets[item.id]}
                     sx={{ 
-                      color: refreshingWidgets[item.id] ? CHART_COLORS.primary : '#9CA3AF', 
-                      '&:hover': { color: CHART_COLORS.primary },
+                      color: '#fff', 
+                      width: 28,
+                      height: 28,
+                      '&:hover': { 
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                      },
                       animation: refreshingWidgets[item.id] ? 'spin 1s linear infinite' : 'none',
                       '@keyframes spin': {
                         '0%': { transform: 'rotate(0deg)' },
@@ -1593,28 +2280,48 @@ const Dashboard = ({ initialDashboardId }) => {
                       },
                     }}
                   >
-                    <RefreshIcon sx={{ fontSize: 18 }} />
+                    <RefreshIcon sx={{ fontSize: 16 }} />
                   </IconButton>
                 </Tooltip>
 
-                <IconButton 
-                  size="small" 
-                  onClick={() => setFullscreenView({ open: true, item })} 
-                  sx={{ color: '#9CA3AF', '&:hover': { color: '#6B7280' } }}
-                >
-                  <FullscreenIcon sx={{ fontSize: 18 }} />
-                </IconButton>
+                {/* Fullscreen - Expand View */}
+                <Tooltip title="Expand view" arrow placement="top">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => setFullscreenView({ open: true, item })} 
+                    sx={{ 
+                      color: '#fff',
+                      width: 28,
+                      height: 28,
+                      '&:hover': { 
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                      }
+                    }}
+                  >
+                    <FullscreenIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
                 
-                <IconButton 
-                  size="small" 
-                  onClick={(e) => handleMenuOpen(e, item.id)}
-                  sx={{ color: '#9CA3AF', '&:hover': { color: '#6B7280' } }}
-                >
-                  <MoreVertIcon sx={{ fontSize: 20 }} />
-                </IconButton>
+                {/* More Options */}
+                <Tooltip title="More options" arrow placement="top">
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => handleMenuOpen(e, item.id)}
+                    sx={{ 
+                      color: '#fff',
+                      width: 28,
+                      height: 28,
+                      '&:hover': { 
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                      }
+                    }}
+                  >
+                    <MoreVertIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
               </Stack>
 
-              {/* Context Menu */}
+              {/* Context Menu - Clean & Organized */}
               <Menu
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl) && activeMenuId === item.id}
@@ -1622,24 +2329,45 @@ const Dashboard = ({ initialDashboardId }) => {
                 PaperProps={{
                   elevation: 0,
                   sx: {
-                    border: '1px solid #E5E7EB',
-                    borderRadius: 2,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 3,
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
                     mt: 1,
+                    minWidth: 200,
+                    py: 1,
                   },
                 }}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
-                <MenuItem onClick={() => { setConfigStudio({ open: true, widget: item }); handleMenuClose(); }}>
-                  <TuneIcon sx={{ fontSize: 18, mr: 1.5, color: '#3B82F6' }} /> Configure Widget
+                <MenuItem 
+                  onClick={() => { handleDownloadCSV(item); handleMenuClose(); }}
+                  sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#F0FDF4' } }}
+                >
+                  <FileDownloadIcon sx={{ fontSize: 20, mr: 2, color: '#22C55E' }} /> 
+                  <Typography variant="body2" fontWeight={500}>Download CSV</Typography>
                 </MenuItem>
-                <MenuItem onClick={() => { handleStartEditTitle(item); handleMenuClose(); }}>
-                  <EditIcon sx={{ fontSize: 18, mr: 1.5, color: '#6B7280' }} /> Rename
+                <MenuItem 
+                  onClick={() => { handleStartEditTitle(item); handleMenuClose(); }}
+                  sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#FEF3C7' } }}
+                >
+                  <EditIcon sx={{ fontSize: 20, mr: 2, color: '#F59E0B' }} /> 
+                  <Typography variant="body2" fontWeight={500}>Rename</Typography>
                 </MenuItem>
-                <Divider />
-                <MenuItem onClick={() => { handleDeleteVisualization(item.id); handleMenuClose(); }} sx={{ color: '#EF4444' }}>
-                  <DeleteIcon sx={{ fontSize: 18, mr: 1.5 }} /> Delete
+                <MenuItem 
+                  onClick={() => { setConfigStudio({ open: true, widget: item }); handleMenuClose(); }}
+                  sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#EEF2FF' } }}
+                >
+                  <TuneIcon sx={{ fontSize: 20, mr: 2, color: '#6366F1' }} /> 
+                  <Typography variant="body2" fontWeight={500}>Configure</Typography>
+                </MenuItem>
+                <Divider sx={{ my: 1 }} />
+                <MenuItem 
+                  onClick={() => { handleDeleteVisualization(item.id); handleMenuClose(); }} 
+                  sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#FEF2F2' } }}
+                >
+                  <DeleteIcon sx={{ fontSize: 20, mr: 2, color: '#EF4444' }} /> 
+                  <Typography variant="body2" fontWeight={500} color="#EF4444">Delete</Typography>
                 </MenuItem>
               </Menu>
             </Box>
@@ -1652,6 +2380,9 @@ const Dashboard = ({ initialDashboardId }) => {
               flexDirection: 'column',
               overflow: 'hidden',
               minHeight: 150,
+              contain: 'content',
+              willChange: 'contents',
+              transform: 'translateZ(0)',
               '& > *': {
                 flex: 1,
                 minHeight: 0,
@@ -1660,38 +2391,46 @@ const Dashboard = ({ initialDashboardId }) => {
               {renderVisualization(item, currentViewMode)}
             </Box>
 
-            {/* Widget Footer - Record Count & Last Updated */}
+            {/* Widget Footer - Clean Status Bar */}
             {item.type !== 'analysis_widget' && (
               <Box sx={{ 
-                px: 2, 
-                py: 0.75, 
-                borderTop: '1px solid #E5E7EB',
+                px: 2.5, 
+                py: 1, 
+                borderTop: '1px solid #E2E8F0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                bgcolor: '#FAFAFA',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
                 flexShrink: 0,
               }}>
-                <Typography variant="caption" sx={{ color: '#6B7280', fontSize: '0.7rem' }}>
-                  {recordCount > 0 ? `${recordCount} records` : 'No data'}
-                </Typography>
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <AccessTimeIcon sx={{ fontSize: 12, color: '#9CA3AF' }} />
-                  <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: '0.7rem' }}>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Box sx={{ 
+                    width: 6, 
+                    height: 6, 
+                    borderRadius: '50%', 
+                    bgcolor: recordCount > 0 ? '#22C55E' : '#94A3B8',
+                  }} />
+                  <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 500 }}>
+                    {recordCount > 0 ? `${recordCount.toLocaleString()} records` : 'No data'}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ flexShrink: 0 }}>
+                  <AccessTimeIcon sx={{ fontSize: 12, color: '#94A3B8' }} />
+                  <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 500, whiteSpace: 'nowrap' }}>
                     {formatLastUpdated(item.timestamp)}
                   </Typography>
                 </Stack>
               </Box>
             )}
             
-            {/* Resize Handle - Bottom edge (vertical resize only) */}
+            {/* Resize Handle - Bottom edge (height resize only) */}
             <Box
               className="resize-handle"
               onMouseDown={(e) => {
                 const element = document.getElementById(`widget-${item.id}`);
                 if (element) {
                   const rect = element.getBoundingClientRect();
-                  handleResizeStart(e, item.id, rect.width, rect.height);
+                  handleResizeStart(e, item.id, rect.height);
                 }
               }}
               sx={{
@@ -1701,7 +2440,7 @@ const Dashboard = ({ initialDashboardId }) => {
                 transform: 'translateX(-50%)',
                 width: 60,
                 height: 8,
-                cursor: 'ns-resize', // Vertical resize cursor
+                cursor: 'ns-resize',
                 opacity: 0,
                 transition: 'opacity 0.2s',
                 display: 'flex',
@@ -1722,23 +2461,45 @@ const Dashboard = ({ initialDashboardId }) => {
               }}
             />
           </Paper>
-        </Fade>
+        </Grow>
     );
   };
 
 
   return (
-    <Box sx={{ bgcolor: '#F3F4F6', minHeight: '100vh' }}>
-      {/* Dashboard Selector Tabs */}
-      <DashboardSelector />
+    <Box sx={{ 
+      display: 'flex',
+      minHeight: '100vh',
+      bgcolor: '#F5F7FA',
+      position: 'relative',
+    }}>
+      {/* Main Dashboard Content - Adjusts when chat opens */}
+      <Box sx={{ 
+        flex: 1,
+        transition: 'margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        marginRight: chatDrawerOpen ? '420px' : 0,
+        minWidth: 0,
+        overflowX: 'hidden',
+        overflowY: 'auto',                 
+        height: '100vh',
+        // Hide scrollbar but keep scroll functionality
+        '&::-webkit-scrollbar': {
+          width: 0,
+          background: 'transparent',
+        },
+        scrollbarWidth: 'none', // Firefox
+        msOverflowStyle: 'none', // IE/Edge
+      }}>
+        {/* Dashboard Selector Tabs */}
+        <DashboardSelector />
       
-      {/* Toolbar - Single row with all controls */}
+      {/* Toolbar - Clean Header */}
       <Box 
         sx={{ 
-          bgcolor: '#fff', 
-          borderBottom: '1px solid #E5E7EB',
+          bgcolor: '#fff',
+          borderBottom: '1px solid #E2E8F0',
           px: 3,
-          py: 1.5,
+          py: 2,
         }}
       >
         <Stack 
@@ -1747,247 +2508,279 @@ const Dashboard = ({ initialDashboardId }) => {
           justifyContent="space-between"
           spacing={3}
         >
-          {/* Left - Avatar & Personalized Message */}
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Box
-              component="img"
-              src="/ai-chatbot.png"
-              alt="MiFiX"
+          {/* Left - Search */}
+          <Stack direction="row" alignItems="center" spacing={2} sx={{ flex: 1 }}>
+            {/* Search Field - Matching Toolbar Style */}
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
               sx={{
-                width: 36,
-                height: 36,
-                borderRadius: '16px',
-                objectFit: 'contain',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                bgcolor: '#F8FAFC',
+                borderRadius: 3,
+                p: 0.75,
+                border: '1px solid #E2E8F0',
               }}
-            />
-            <Typography sx={{ 
-              fontWeight: 500, 
-              color: '#374151', 
-              fontSize: '0.9rem',
-              whiteSpace: 'nowrap',
-            }}>
-              {allItems.length > 0 
-                ? <>MiFiX.ai has saved <Box component="span" sx={{ fontWeight: 600, color: '#111827' }}>{allItems.length}</Box> visualization{allItems.length !== 1 ? 's' : ''} for you</>
-                : `MiFiX.ai is ready to create visualizations for you`}
-            </Typography>
-            {lastGlobalUpdate && allItems.length > 0 && (
-              <Typography sx={{ color: '#9CA3AF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                • Updated {formatLastUpdated(lastGlobalUpdate)}
-              </Typography>
-            )}
-            {/* Sync Status Indicator */}
-            {isSyncing ? (
-              <Tooltip title="Syncing to cloud...">
-                <Chip
-                  icon={<CloudSyncIcon sx={{ fontSize: 14 }} />}
-                  label="Syncing"
-                  size="small"
-                  sx={{ 
-                    bgcolor: alpha('#3B82F6', 0.1), 
-                    color: '#3B82F6',
-                    fontSize: '0.7rem',
-                    height: 24,
-                    '& .MuiChip-icon': { color: '#3B82F6' }
+            >
+              {/* Search Icon Box */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  px: 1.5,
+                  py: 0.75,
+                  borderRadius: 2,
+                  bgcolor: searchQuery ? '#0078d7' : '#fff',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <SearchIcon sx={{ 
+                  fontSize: 16, 
+                  color: searchQuery ? '#fff' : '#64748B',
+                  transition: 'color 0.2s ease',
+                }} />
+              </Box>
+              
+              {/* Search Input */}
+              <InputBase
+                placeholder={`Search ${allItems.length} widget${allItems.length !== 1 ? 's' : ''}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ 
+                  flex: 1,
+                  minWidth: 180,
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
+                  color: '#1E293B',
+                  '& input::placeholder': { color: '#94A3B8', opacity: 1, fontWeight: 400 }
+                }}
+              />
+              
+              {/* Widget Count Badge */}
+              {!searchQuery && allItems.length > 0 && (
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  px: 1.5,
+                  py: 0.75,
+                  borderRadius: 2,
+                  bgcolor: '#fff',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                }}>
+                  <GridViewIcon sx={{ fontSize: 14, color: '#0078d7' }} />
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#0078d7' }}>
+                    {allItems.length}
+                  </Typography>
+                </Box>
+              )}
+              
+              {/* Clear Button */}
+              {searchQuery && (
+                <Box
+                  onClick={() => setSearchQuery('')}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    px: 1,
+                    py: 0.75,
+                    borderRadius: 2,
+                    bgcolor: '#FEE2E2',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': { bgcolor: '#FECACA' },
                   }}
-                />
-              </Tooltip>
-            ) : lastSyncedAt ? (
-              <Tooltip title={`Last synced: ${new Date(lastSyncedAt).toLocaleString()}`}>
-                <Chip
-                  icon={<CloudDoneIcon sx={{ fontSize: 14 }} />}
-                  label="Synced"
-                  size="small"
-                  sx={{ 
-                    bgcolor: alpha('#10B981', 0.1), 
-                    color: '#10B981',
-                    fontSize: '0.7rem',
-                    height: 24,
-                    '& .MuiChip-icon': { color: '#10B981' }
-                  }}
-                />
-              </Tooltip>
-            ) : null}
-            {allItems.length > 0 && (
-              <Tooltip title="Sync to cloud">
-                <IconButton
-                  size="small"
-                  onClick={async () => {
-                    const username = localStorage.getItem('username') || localStorage.getItem('userId');
-                    if (username) {
-                      await syncToServer(username);
-                    }
-                  }}
-                  disabled={isSyncing}
-                  sx={{ color: '#9CA3AF', p: 0.5, '&:hover': { color: '#374151' } }}
                 >
-                  <RefreshIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
+                  <CloseIcon sx={{ fontSize: 14, color: '#EF4444' }} />
+                </Box>
+              )}
+            </Stack>
+            
+            {/* Sync Status Group - Matching Toolbar Style */}
+            {allItems.length > 0 && (
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1}
+                sx={{
+                  bgcolor: '#F8FAFC',
+                  borderRadius: 3,
+                  p: 0.75,
+                  border: '1px solid #E2E8F0',
+                }}
+              >
+                {/* Sync Status */}
+                {isSyncing ? (
+                  <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    px: 1.5,
+                    py: 0.75,
+                    borderRadius: 2,
+                    bgcolor: alpha('#0D9488', 0.1),
+                  }}>
+                    <CloudSyncIcon sx={{ fontSize: 14, color: '#0D9488' }} />
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 500, color: '#0D9488', whiteSpace: 'nowrap' }}>
+                      Syncing
+                    </Typography>
+                  </Box>
+                ) : lastSyncedAt ? (
+                  <Tooltip title={`Last synced: ${new Date(lastSyncedAt).toLocaleString()}`}>
+                    <Box sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.75,
+                      px: 1.5,
+                      py: 0.75,
+                      borderRadius: 2,
+                      bgcolor: '#fff',
+                      border: '1px solid #E2E8F0',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                    }}>
+                      <CloudDoneIcon sx={{ fontSize: 14, color: '#10B981' }} />
+                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 500, color: '#10B981', whiteSpace: 'nowrap' }}>
+                        Synced
+                      </Typography>
+                    </Box>
+                  </Tooltip>
+                ) : null}
+
+                {/* Last Updated - Combined with time */}
+                {lastGlobalUpdate && (
+                  <Typography sx={{ 
+                    fontSize: '0.8rem', 
+                    fontWeight: 500, 
+                    color: '#64748B',
+                    whiteSpace: 'nowrap',
+                    px: 1,
+                  }}>
+                    {formatLastUpdated(lastGlobalUpdate)}
+                  </Typography>
+                )}
+
+                {/* Divider */}
+                <Box sx={{ width: 1, height: 24, bgcolor: '#E2E8F0' }} />
+
+                {/* Refresh Button */}
+                <Tooltip title={isRefreshingAll ? "Refreshing..." : "Refresh all widgets"} arrow>
+                  <Box
+                    onClick={!isRefreshingAll ? handleRefreshAllWidgets : undefined}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      px: 1,
+                      py: 0.75,
+                      borderRadius: 2,
+                      cursor: isRefreshingAll ? 'default' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      bgcolor: 'transparent',
+                      color: '#0D9488',
+                      '&:hover': {
+                        bgcolor: isRefreshingAll ? 'transparent' : '#F0FDFA',
+                      },
+                    }}
+                  >
+                    <RefreshIcon sx={{ 
+                      fontSize: 16,
+                      animation: isRefreshingAll ? 'spin 1s linear infinite' : 'none',
+                      '@keyframes spin': {
+                        '0%': { transform: 'rotate(0deg)' },
+                        '100%': { transform: 'rotate(360deg)' },
+                      },
+                    }} />
+                  </Box>
+                </Tooltip>
+              </Stack>
             )}
           </Stack>
 
-          {/* Center - Search */}
-          <Paper
-            elevation={0}
+          {/* Center - View Controls */}
+          <Stack 
+            direction="row" 
+            spacing={1} 
+            alignItems="center"
             sx={{
-              display: 'flex',
-              alignItems: 'center',
-              border: '1px solid #E5E7EB',
-              borderRadius: 2,
-              px: 1.5,
-              py: 0.5,
-              width: 280,
-              bgcolor: '#F9FAFB',
-              transition: 'all 0.2s',
-              '&:focus-within': {
-                borderColor: CHART_COLORS.primary,
-                bgcolor: '#fff',
-                boxShadow: `0 0 0 2px ${alpha(CHART_COLORS.primary, 0.1)}`,
-              }
+              bgcolor: '#F8FAFC',
+              borderRadius: 3,
+              p: 0.75,
+              border: '1px solid #E2E8F0',
             }}
           >
-            <SearchIcon sx={{ color: '#9CA3AF', fontSize: 16, mr: 1 }} />
-            <InputBase
-              placeholder="Search visualizations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ 
-                flex: 1, 
-                fontSize: '0.8rem',
-                '& input::placeholder': { color: '#9CA3AF', opacity: 1 }
-              }}
-            />
-            {searchQuery && (
-              <IconButton size="small" onClick={() => setSearchQuery('')} sx={{ p: 0.25 }}>
-                <CloseIcon sx={{ fontSize: 14, color: '#9CA3AF' }} />
-              </IconButton>
-            )}
-          </Paper>
-
-          {/* Right - View Controls */}
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            {/* View Mode Toggle */}
-            <ToggleButtonGroup
-              value={globalViewMode}
-              exclusive
-              onChange={(e, newMode) => newMode && setGlobalViewMode(newMode)}
-              size="small"
-              sx={{
-                bgcolor: '#F9FAFB',
-                border: '1px solid #E5E7EB',
-                borderRadius: 1.5,
-                '& .MuiToggleButton-root': {
-                  border: 'none',
-                  color: '#6B7280',
+            {/* View Mode Buttons - Individual Pills */}
+            {[
+              { value: 'auto', icon: <GridViewIcon sx={{ fontSize: 16 }} />, label: 'Auto' },
+              { value: 'table', icon: <TableChartIcon sx={{ fontSize: 16 }} />, label: 'Table' },
+              { value: 'bar', icon: <BarChartIcon sx={{ fontSize: 16 }} />, label: 'Bar' },
+              { value: 'area', icon: <AreaChartIcon sx={{ fontSize: 16 }} />, label: 'Line' },
+              { value: 'pie', icon: <PieChartIcon sx={{ fontSize: 16 }} />, label: 'Pie' },
+            ].map((item) => (
+              <Box
+                key={item.value}
+                onClick={() => setGlobalViewMode(item.value)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
                   px: 1.5,
-                  py: 0.5,
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  '&.Mui-selected': {
-                    bgcolor: CHART_COLORS.primary,
-                    color: '#fff',
-                    '&:hover': { bgcolor: CHART_COLORS.primary },
+                  py: 0.75,
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  bgcolor: globalViewMode === item.value ? '#fff' : 'transparent',
+                  color: globalViewMode === item.value ? '#0078d7' : '#64748B',
+                  boxShadow: globalViewMode === item.value ? '0 2px 4px rgba(0,0,0,0.08)' : 'none',
+                  border: globalViewMode === item.value ? '1px solid #E2E8F0' : '1px solid transparent',
+                  '&:hover': {
+                    bgcolor: globalViewMode === item.value ? '#fff' : '#F1F5F9',
+                    color: globalViewMode === item.value ? '#0078d7' : '#475569',
                   },
-                  '&:hover': { bgcolor: alpha(CHART_COLORS.primary, 0.08) },
+                }}
+              >
+                {item.icon}
+                <Typography sx={{ 
+                  fontSize: '0.8rem', 
+                  fontWeight: globalViewMode === item.value ? 600 : 500,
+                }}>
+                  {item.label}
+                </Typography>
+              </Box>
+            ))}
+
+            {/* Divider */}
+            <Box sx={{ width: 1, height: 24, bgcolor: '#E2E8F0', mx: 0.5 }} />
+
+            {/* Sort Button */}
+            <Box
+              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+                px: 1.5,
+                py: 0.75,
+                borderRadius: 2,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                bgcolor: 'transparent',
+                color: '#64748B',
+                '&:hover': {
+                  bgcolor: '#F1F5F9',
+                  color: '#475569',
                 },
               }}
             >
-              <ToggleButton value="auto">
-                <GridViewIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                Auto
-              </ToggleButton>
-              <ToggleButton value="area">
-                <ShowChartIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                Charts
-              </ToggleButton>
-              <ToggleButton value="table">
-                <TableChartIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                Tables
-              </ToggleButton>
-            </ToggleButtonGroup>
-
-            {/* Sort */}
-            <Button
-              size="small"
-              startIcon={<SortIcon sx={{ fontSize: 14 }} />}
-              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-              sx={{ 
-                px: 1.5, 
-                py: 0.5,
-                color: '#6B7280',
-                bgcolor: '#F9FAFB',
-                border: '1px solid #E5E7EB',
-                borderRadius: 1.5,
-                textTransform: 'none',
-                fontWeight: 500,
-                fontSize: '0.75rem',
-                whiteSpace: 'nowrap',
-                '&:hover': { bgcolor: '#F3F4F6' }
-              }}
-            >
-              {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
-            </Button>
-
-            {/* Refresh All Widgets Button */}
-            <Tooltip title={isRefreshingAll ? 'Refreshing...' : 'Refresh All Widgets'} arrow>
-              <span>
-                <Button
-                  size="small"
-                  startIcon={
-                    isRefreshingAll ? (
-                      <CircularProgress size={14} sx={{ color: 'inherit' }} />
-                    ) : (
-                      <RefreshIcon sx={{ fontSize: 14 }} />
-                    )
-                  }
-                  onClick={handleRefreshAllWidgets}
-                  disabled={isRefreshingAll || allItems.length === 0}
-                  sx={{ 
-                    px: 1.5, 
-                    py: 0.5,
-                    color: isRefreshingAll ? CHART_COLORS.primary : '#6B7280',
-                    bgcolor: isRefreshingAll ? alpha(CHART_COLORS.primary, 0.1) : '#F9FAFB',
-                    border: `1px solid ${isRefreshingAll ? CHART_COLORS.primary : '#E5E7EB'}`,
-                    borderRadius: 1.5,
-                    textTransform: 'none',
-                    fontWeight: 500,
-                    fontSize: '0.75rem',
-                    whiteSpace: 'nowrap',
-                    '&:hover': { 
-                      bgcolor: alpha(CHART_COLORS.primary, 0.1),
-                      borderColor: CHART_COLORS.primary,
-                    },
-                    '&.Mui-disabled': {
-                      bgcolor: '#F3F4F6',
-                      color: '#9CA3AF',
-                    }
-                  }}
-                >
-                  {isRefreshingAll ? 'Refreshing...' : 'Refresh All'}
-                </Button>
-              </span>
-            </Tooltip>
-
-            {/* Configure Widgets Button */}
-            <Tooltip title="Configure Widgets" arrow>
-              <IconButton
-                onClick={() => setConfigStudio({ open: true, widget: null })}
-                sx={{
-                  bgcolor: '#F9FAFB',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: 1.5,
-                  p: 0.75,
-                  '&:hover': { 
-                    bgcolor: alpha(CHART_COLORS.primary, 0.1),
-                    borderColor: CHART_COLORS.primary,
-                  }
-                }}
-              >
-                <TuneIcon sx={{ fontSize: 18, color: '#6B7280' }} />
-              </IconButton>
-            </Tooltip>
+              <SortIcon sx={{ fontSize: 16 }} />
+              <Typography sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
+              </Typography>
+            </Box>
           </Stack>
         </Stack>
       </Box>
@@ -2001,12 +2794,14 @@ const Dashboard = ({ initialDashboardId }) => {
         ) : (
           <Box 
             sx={{ 
-              columnCount: { xs: 1, sm: 2, lg: 2 },
-              columnGap: 2.5,
-              '& > *': {
-                breakInside: 'avoid',
-                marginBottom: 2.5,
-              }
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, 1fr)',
+                lg: 'repeat(2, 1fr)',
+              },
+              gap: 2.5,
+              alignItems: 'start',
             }}
           >
             {displayItems.map((item, index) => {
@@ -2021,16 +2816,14 @@ const Dashboard = ({ initialDashboardId }) => {
       {/* Fullscreen View */}
       <Dialog 
         open={fullscreenView.open} 
-        onClose={() => setFullscreenView({ open: false, item: null })}
-        maxWidth="xl"
-        fullWidth
+        onClose={() => { setFullscreenView({ open: false, item: null }); setFullscreenViewMode('table'); }}
+        maxWidth={false}
+        fullScreen
         PaperProps={{
           elevation: 0,
           sx: {
-            borderRadius: 2,
-            height: 'calc(100vh - 64px)',
-            m: 4,
-            border: '1px solid #E5E7EB'
+            borderRadius: 0,
+            bgcolor: '#F8FAFC',
           }
         }}
         TransitionComponent={Slide}
@@ -2039,31 +2832,120 @@ const Dashboard = ({ initialDashboardId }) => {
         <DialogTitle 
           component="div"
           sx={{ 
-            px: 3,
+            px: 4,
             py: 2, 
-            borderBottom: '1px solid #E5E7EB',
+            borderBottom: '1px solid #E2E8F0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            bgcolor: '#fff'
+            background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+            color: '#fff',
           }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
-            {fullscreenView.item?.title || fullscreenView.item?.question}
-          </Typography>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, color: '#fff', mb: 0.5 }}>
+              {fullscreenView.item ? getTitle(fullscreenView.item) : ''}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+              {fullscreenView.item?.supportingData?.length || fullscreenView.item?.pipelineData?.length || 0} records
+            </Typography>
+          </Box>
+          
+          {/* View Mode Toggles */}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mr: 3 }}>
+            <ToggleButtonGroup
+              value={fullscreenViewMode}
+              exclusive
+              onChange={(e, newMode) => newMode && setFullscreenViewMode(newMode)}
+              size="small"
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.15)',
+                '& .MuiToggleButton-root': {
+                  color: 'rgba(255,255,255,0.7)',
+                  border: 'none',
+                  px: 2,
+                  py: 0.75,
+                  '&.Mui-selected': {
+                    bgcolor: 'rgba(255,255,255,0.25)',
+                    color: '#fff',
+                  },
+                  '&:hover': {
+                    bgcolor: 'rgba(255,255,255,0.2)',
+                  }
+                }
+              }}
+            >
+              <ToggleButton value="table">
+                <Tooltip title="Table View" arrow>
+                  <TableChartIcon sx={{ fontSize: 20 }} />
+                </Tooltip>
+              </ToggleButton>
+              <ToggleButton value="bar">
+                <Tooltip title="Bar Chart" arrow>
+                  <BarChartIcon sx={{ fontSize: 20 }} />
+                </Tooltip>
+              </ToggleButton>
+              <ToggleButton value="line">
+                <Tooltip title="Line Chart" arrow>
+                  <ShowChartIcon sx={{ fontSize: 20 }} />
+                </Tooltip>
+              </ToggleButton>
+              <ToggleButton value="area">
+                <Tooltip title="Area Chart" arrow>
+                  <AreaChartIcon sx={{ fontSize: 20 }} />
+                </Tooltip>
+              </ToggleButton>
+              <ToggleButton value="pie">
+                <Tooltip title="Pie Chart" arrow>
+                  <PieChartIcon sx={{ fontSize: 20 }} />
+                </Tooltip>
+              </ToggleButton>
+            </ToggleButtonGroup>
+            
+            {/* Download Button */}
+            <Tooltip title="Download CSV" arrow>
+              <IconButton
+                onClick={() => fullscreenView.item && handleDownloadCSV(fullscreenView.item)}
+                sx={{
+                  color: '#fff',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                }}
+              >
+                <DownloadIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+          
           <IconButton 
-            onClick={() => setFullscreenView({ open: false, item: null })}
-            sx={{ color: '#6B7280' }}
+            onClick={() => { setFullscreenView({ open: false, item: null }); setFullscreenViewMode('table'); }}
+            sx={{ 
+              color: '#fff',
+              bgcolor: 'rgba(255,255,255,0.15)',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+            }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: 3, bgcolor: '#F9FAFB' }}>
-          <Box sx={{ height: '100%' }}>
-            {fullscreenView.item && renderVisualization(
-              fullscreenView.item, 
-              widgetViewModes[fullscreenView.item.id]
-            )}
+        <DialogContent sx={{ p: 3, bgcolor: '#F8FAFC', height: 'calc(100vh - 80px)', overflow: 'auto' }}>
+          <Box sx={{ 
+            height: '100%', 
+            minHeight: 600,
+            bgcolor: '#fff', 
+            borderRadius: 2, 
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <Box sx={{ flex: 1, p: 2, overflow: 'auto' }}>
+              {fullscreenView.item && renderVisualization(
+                fullscreenView.item, 
+                fullscreenViewMode
+              )}
+            </Box>
           </Box>
         </DialogContent>
       </Dialog>
@@ -2131,6 +3013,572 @@ const Dashboard = ({ initialDashboardId }) => {
           )}
         </Alert>
       </Snackbar>
+
+      {/* Floating Chat Button - AI Chatbot Icon */}
+      <Zoom in={!chatDrawerOpen}>
+        <Box
+          onClick={() => setChatDrawerOpen(true)}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            width: 60,
+            height: 60,
+            borderRadius: '50%',
+            bgcolor: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 20px rgba(59, 130, 246, 0.35)',
+            transition: 'all 0.3s ease',
+            zIndex: 1000,
+            border: '2px solid #3B82F6',
+            overflow: 'hidden',
+            '&:hover': {
+              transform: 'scale(1.1)',
+              boxShadow: '0 6px 28px rgba(59, 130, 246, 0.45)',
+            },
+          }}
+        >
+          <Box
+            component="img"
+            src="/ai-chatbot.png"
+            alt="MiFiX Assistant"
+            sx={{ 
+              width: 54, 
+              height: 54,
+              objectFit: 'cover',
+            }}
+          />
+        </Box>
+      </Zoom>
+      </Box>
+
+      {/* Chat Panel - Fixed position with slide animation */}
+      <Box
+        onDragOver={handleChatDragOver}
+        onDragLeave={handleChatDragLeave}
+        onDrop={handleChatDrop}
+        sx={{
+          width: chatDrawerOpen ? 420 : 0,
+          flexShrink: 0,
+          height: '100vh',
+          maxHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bgcolor: chatDropZoneActive ? '#EFF6FF' : '#fff',
+          boxShadow: chatDrawerOpen ? '-4px 0 16px rgba(0,0,0,0.08)' : 'none',
+          transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          overflow: 'hidden',
+          zIndex: 1200,
+          borderLeft: chatDrawerOpen ? '1px solid #E2E8F0' : 'none',
+          border: chatDropZoneActive ? '3px dashed #3B82F6' : 'none',
+        }}
+      >
+        {chatDrawerOpen && (
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: '100%',
+            maxHeight: '100vh',
+            width: 420,
+          }}>
+            {/* Chat Header - Blue theme */}
+            <Box sx={{
+              bgcolor: '#3B82F6',
+              p: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0,
+            }}>
+              <Stack direction="row" alignItems="center" spacing={1.5}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    bgcolor: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src="/ai-chatbot.png"
+                    alt="MiFiX"
+                    sx={{ width: 28, height: 28 }}
+                  />
+                </Box>
+                <Box>
+                  <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem' }}>
+                    MiFiX Assistant
+                  </Typography>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>
+                    Ask me anything about your data
+                  </Typography>
+                </Box>
+              </Stack>
+              <IconButton onClick={() => setChatDrawerOpen(false)} sx={{ color: '#fff' }}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
+
+            {/* Chat Content Area - Also accepts widget drops */}
+            <Box 
+              onDragOver={handleChatDragOver}
+              onDragLeave={handleChatDragLeave}
+              onDrop={handleChatDrop}
+              sx={{ 
+                flex: 1, 
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                bgcolor: chatDropZoneActive ? '#DBEAFE' : '#F8FAFC',
+                minHeight: 0,
+                transition: 'background-color 0.2s',
+                position: 'relative',
+              }}>
+              {/* Drop Overlay when dragging widget */}
+              {chatDropZoneActive && (
+                <Box sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'rgba(219, 234, 254, 0.95)',
+                  zIndex: 10,
+                  borderRadius: 2,
+                }}>
+                  <Box sx={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '50%',
+                    bgcolor: '#3B82F6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 2,
+                    animation: 'bounce 1s infinite',
+                    '@keyframes bounce': {
+                      '0%, 100%': { transform: 'translateY(0)' },
+                      '50%': { transform: 'translateY(-10px)' },
+                    },
+                  }}>
+                    <GridViewIcon sx={{ fontSize: 32, color: '#fff' }} />
+                  </Box>
+                  <Typography sx={{ color: '#1E40AF', fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
+                    Drop widget here
+                  </Typography>
+                  <Typography sx={{ color: '#3B82F6', fontSize: '0.85rem' }}>
+                    to attach and ask questions about it
+                  </Typography>
+                </Box>
+              )}
+              
+              {/* Welcome Section - Compact */}
+              <Box sx={{ 
+                textAlign: 'center', 
+                pt: 2, 
+                pb: 1.5,
+                px: 3,
+                background: 'linear-gradient(180deg, #EFF6FF 0%, #F8FAFC 100%)',
+              }}>
+                <Box sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '50%',
+                  bgcolor: '#DBEAFE',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mx: 'auto',
+                  mb: 1,
+                  border: '2px solid #BFDBFE',
+                }}>
+                  <Box
+                    component="img"
+                    src="/ai-chatbot.png"
+                    alt="MiFiX"
+                    sx={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                </Box>
+                <Typography sx={{ 
+                  color: '#3B82F6', 
+                  fontWeight: 700, 
+                  fontSize: '1.1rem',
+                  mb: 0.25,
+                }}>
+                  Welcome to MiFiX.ai
+                </Typography>
+                <Typography sx={{ 
+                  color: '#6B7280', 
+                  fontSize: '0.75rem', 
+                  lineHeight: 1.4,
+                }}>
+                  I can help you edit your dashboard. Ask me anything!
+                </Typography>
+              </Box>
+
+              {/* AI Message Bubble */}
+              <Box sx={{ px: 3, pb: 1.5 }}>
+                <Box sx={{
+                  bgcolor: '#fff',
+                  borderRadius: 2,
+                  p: 1.25,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 1,
+                }}>
+                  <Box sx={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    bgcolor: '#EFF6FF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <Box
+                      component="img"
+                      src="/ai-chatbot.png"
+                      alt="MiFiX"
+                      sx={{ width: 16, height: 16 }}
+                    />
+                  </Box>
+                  <Typography sx={{ color: '#374151', fontSize: '0.8rem', lineHeight: 1.4 }}>
+                    Hello! Try asking me to add, remove, or update widgets!
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Quick Actions */}
+              <Box sx={{ px: 3, pb: 2 }}>
+                <Typography sx={{ 
+                  color: '#9CA3AF', 
+                  fontSize: '0.65rem', 
+                  fontWeight: 600, 
+                  mb: 1, 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.05em' 
+                }}>
+                  Quick Actions
+                </Typography>
+                <Stack spacing={0.75}>
+                  {[
+                    { label: 'Add a new chart widget', icon: <BarChartIcon sx={{ fontSize: 16 }} />, color: '#3B82F6', prompt: 'Add a new widget showing today\'s performance metrics' },
+                    { label: 'Show top performers', icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#10B981', prompt: 'Add a widget showing top performing regions' },
+                    { label: 'Compare data', icon: <GridViewIcon sx={{ fontSize: 16 }} />, color: '#3B82F6', prompt: 'Add a widget comparing monthly vs weekly data' },
+                    { label: 'Remove a widget', icon: <DeleteIcon sx={{ fontSize: 16 }} />, color: '#6B7280', prompt: 'Remove the oldest widget from this dashboard' },
+                  ].map((action, i) => (
+                    <Box
+                      key={i}
+                      onClick={() => setChatInput(action.prompt)}
+                      sx={{
+                        bgcolor: '#fff',
+                        borderRadius: 1.5,
+                        py: 1,
+                        px: 1.5,
+                        border: '1px solid #E5E7EB',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        '&:hover': {
+                          borderColor: '#3B82F6',
+                          bgcolor: '#EFF6FF',
+                        }
+                      }}
+                    >
+                      <Box sx={{ color: action.color }}>
+                        {action.icon}
+                      </Box>
+                      <Typography sx={{ fontSize: '0.8rem', color: '#374151', fontWeight: 500 }}>
+                        {action.label}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+
+              {/* Chat Messages */}
+              {chatMessages.length > 0 && (
+                <Box sx={{ px: 3, pb: 2 }}>
+                  {chatMessages.map((msg, i) => (
+                    <Box key={i} sx={{ mb: 1.5 }}>
+                      {/* Widget Reference Card for user messages */}
+                      {msg.role === 'user' && msg.widgetRef && (
+                        <Box sx={{
+                          bgcolor: '#1E293B',
+                          borderRadius: '10px 10px 0 0',
+                          p: 1,
+                          ml: 'auto',
+                          maxWidth: '90%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                        }}>
+                          <GridViewIcon sx={{ fontSize: 14, color: '#3B82F6' }} />
+                          <Typography sx={{ color: '#94A3B8', fontSize: '0.7rem' }}>
+                            {msg.widgetRef.widgetTitle}
+                          </Typography>
+                        </Box>
+                      )}
+                      <Box sx={{
+                        bgcolor: msg.role === 'user' ? '#3B82F6' : (msg.success === false ? '#FEF2F2' : '#fff'),
+                        color: msg.role === 'user' ? '#fff' : (msg.success === false ? '#991B1B' : '#374151'),
+                        borderRadius: msg.role === 'user' && msg.widgetRef ? '0 0 10px 10px' : 2.5,
+                        p: 1.5,
+                        ml: msg.role === 'user' ? 'auto' : 0,
+                        mr: msg.role === 'user' ? 0 : 'auto',
+                        maxWidth: '90%',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                        border: msg.success === false ? '1px solid #FECACA' : 'none',
+                      }}>
+                        <Typography sx={{ fontSize: '0.85rem' }}>{msg.content}</Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                  
+                  {/* Loading indicator */}
+                  {isChatLoading && (
+                    <Box sx={{
+                      bgcolor: '#fff',
+                      borderRadius: 2.5,
+                      p: 1.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    }}>
+                      <CircularProgress size={14} sx={{ color: '#3B82F6' }} />
+                      <Typography sx={{ fontSize: '0.85rem', color: '#6B7280' }}>
+                        Processing your request...
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </Box>
+
+            {/* Chat Input - Fixed at bottom */}
+            <Box sx={{
+              p: 2,
+              borderTop: '1px solid #E5E7EB',
+              bgcolor: chatDropZoneActive ? '#DBEAFE' : '#fff',
+              flexShrink: 0,
+              marginTop: 'auto',
+              transition: 'background-color 0.2s',
+            }}>
+              {/* Drop Zone Indicator */}
+              {chatDropZoneActive && (
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  py: 1.5,
+                  mb: 1.5,
+                  borderRadius: 2,
+                  border: '2px dashed #3B82F6',
+                  bgcolor: '#EFF6FF',
+                }}>
+                  <GridViewIcon sx={{ fontSize: 20, color: '#3B82F6' }} />
+                  <Typography sx={{ color: '#1E40AF', fontSize: '0.85rem', fontWeight: 600 }}>
+                    Release to attach widget
+                  </Typography>
+                </Box>
+              )}
+              
+              {/* Attached Widget Card - Prominent indicator */}
+              {attachedWidget && !chatDropZoneActive && (
+                <Box sx={{
+                  mb: 1.5,
+                  p: 1.5,
+                  bgcolor: '#1E293B',
+                  borderRadius: 2,
+                  border: '1px solid #334155',
+                  animation: 'slideIn 0.3s ease-out',
+                  '@keyframes slideIn': {
+                    '0%': { opacity: 0, transform: 'translateY(10px)' },
+                    '100%': { opacity: 1, transform: 'translateY(0)' },
+                  },
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 1,
+                      bgcolor: '#3B82F6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <GridViewIcon sx={{ fontSize: 16, color: '#fff' }} />
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ 
+                        color: '#94A3B8', 
+                        fontSize: '0.65rem', 
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>
+                        Widget Attached
+                      </Typography>
+                      <Typography sx={{ 
+                        color: '#F1F5F9', 
+                        fontSize: '0.85rem', 
+                        fontWeight: 500,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {attachedWidget.title}
+                      </Typography>
+                    </Box>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => setAttachedWidget(null)}
+                      sx={{ 
+                        p: 0.5, 
+                        color: '#64748B', 
+                        '&:hover': { color: '#F1F5F9', bgcolor: 'rgba(255,255,255,0.1)' } 
+                      }}
+                    >
+                      <CloseIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Box>
+                  <Stack direction="row" spacing={0.75}>
+                    <Chip
+                      size="small"
+                      icon={<EditIcon sx={{ fontSize: 12 }} />}
+                      label="Edit"
+                      onClick={() => setChatInput(`Edit this widget to `)}
+                      sx={{
+                        bgcolor: 'rgba(59, 130, 246, 0.2)',
+                        color: '#60A5FA',
+                        fontSize: '0.7rem',
+                        height: 24,
+                        '& .MuiChip-icon': { color: '#60A5FA' },
+                        '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.3)' },
+                      }}
+                    />
+                    <Chip
+                      size="small"
+                      icon={<DeleteIcon sx={{ fontSize: 12 }} />}
+                      label="Delete"
+                      onClick={() => setChatInput(`Delete this widget`)}
+                      sx={{
+                        bgcolor: 'rgba(239, 68, 68, 0.2)',
+                        color: '#F87171',
+                        fontSize: '0.7rem',
+                        height: 24,
+                        '& .MuiChip-icon': { color: '#F87171' },
+                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.3)' },
+                      }}
+                    />
+                    <Chip
+                      size="small"
+                      icon={<RefreshIcon sx={{ fontSize: 12 }} />}
+                      label="Refresh"
+                      onClick={() => setChatInput(`Refresh this widget's data`)}
+                      sx={{
+                        bgcolor: 'rgba(16, 185, 129, 0.2)',
+                        color: '#34D399',
+                        fontSize: '0.7rem',
+                        height: 24,
+                        '& .MuiChip-icon': { color: '#34D399' },
+                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.3)' },
+                      }}
+                    />
+                  </Stack>
+                </Box>
+              )}
+              
+              <Paper
+                elevation={0}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: 2.5,
+                  px: 1.5,
+                  py: 1,
+                  transition: 'all 0.2s',
+                  '&:focus-within': {
+                    borderColor: '#3B82F6',
+                    boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.1)',
+                  }
+                }}
+              >
+                <InputBase
+                  placeholder={attachedWidget ? `What would you like to do with "${attachedWidget.title}"?` : "Ask me to edit your dashboard..."}
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  disabled={isChatLoading}
+                  multiline
+                  maxRows={4}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleChatSubmit();
+                    }
+                  }}
+                  sx={{ 
+                    flex: 1, 
+                    fontSize: '0.85rem',
+                    '& textarea::placeholder': { color: '#9CA3AF' },
+                    '& .MuiInputBase-input': {
+                      overflow: 'auto',
+                    }
+                  }}
+                />
+                <IconButton 
+                  onClick={handleChatSubmit}
+                  disabled={!chatInput.trim() || isChatLoading}
+                  sx={{ 
+                    bgcolor: chatInput.trim() && !isChatLoading ? '#3B82F6' : '#E5E7EB',
+                    color: chatInput.trim() && !isChatLoading ? '#fff' : '#9CA3AF',
+                    ml: 1,
+                    width: 36,
+                    height: 36,
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: chatInput.trim() && !isChatLoading ? '#2563EB' : '#E5E7EB',
+                    },
+                    '&.Mui-disabled': {
+                      bgcolor: '#E5E7EB',
+                      color: '#9CA3AF',
+                    }
+                  }}
+                >
+                  {isChatLoading ? (
+                    <CircularProgress size={18} sx={{ color: '#9CA3AF' }} />
+                  ) : (
+                    <SendIcon sx={{ fontSize: 18 }} />
+                  )}
+                </IconButton>
+              </Paper>
+              <Typography sx={{ color: '#9CA3AF', fontSize: '0.65rem', mt: 0.75, textAlign: 'center' }}>
+                Press Enter to send
+              </Typography>
+            </Box>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 };

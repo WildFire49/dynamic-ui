@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toZonedTime, format } from "date-fns-tz";
 import {
   Drawer,
@@ -128,6 +128,9 @@ const Sidebar = ({
   const [conversationContainer, setConversationContainer] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [navigationMessage, setNavigationMessage] = useState("");
+  
+  // Ref to prevent duplicate API calls (React Strict Mode)
+  const initialFetchDone = useRef(false);
 
   // Analyses state (for dashboard mode)
   const [analyses, setAnalyses] = useState([]);
@@ -265,12 +268,41 @@ const Sidebar = ({
   };
 
   useEffect(() => {
+    // Prevent duplicate calls from React Strict Mode
+    if (initialFetchDone.current) {
+      console.log('🔄 Sidebar: Skipping duplicate fetch (already done)');
+      return;
+    }
+    initialFetchDone.current = true;
+    
+    console.log('📡 Sidebar: Initial fetch, mode:', mode);
+    
     if (mode === "dashboard") {
       loadAnalyses(1, false);
     } else {
       fetchConversations(1, false);
     }
-  }, [mode, activeDashboardId, visualizationsByDashboard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
+  // Separate effect for mode changes (after initial load)
+  const prevMode = useRef(mode);
+  useEffect(() => {
+    // Skip initial render
+    if (prevMode.current === mode) {
+      return;
+    }
+    prevMode.current = mode;
+    
+    console.log('🔀 Sidebar: Mode changed to:', mode);
+    
+    if (mode === "dashboard") {
+      loadAnalyses(1, false);
+    } else {
+      fetchConversations(1, false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const handleMenuClick = (item) => {
     // Handle navigation for specific items

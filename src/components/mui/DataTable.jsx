@@ -72,9 +72,29 @@ const DataTable = ({ data, title, sx, ...props }) => {
 
   // Format column headers for better display
   const formatColumnHeader = (key) => {
-    return key
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    // Common acronyms that should stay uppercase
+    const acronyms = ['MTD', 'LMTD', 'FTD', 'OTR', 'NPA', 'SMA', 'INR', 'ID', 'KYC', 'API', 'URL', 'PCT', 'YTD', 'QTD', 'BANK', 'LACS'];
+    
+    // First replace underscores with spaces
+    let result = key.replace(/_/g, ' ');
+    
+    // Only add spaces before uppercase letters if they follow lowercase letters (camelCase)
+    // This prevents "INR" from becoming "I N R"
+    result = result.replace(/([a-z])([A-Z])/g, '$1 $2');
+    
+    return result
+      .trim()
+      .split(' ')
+      .filter(word => word.length > 0)
+      .map(word => {
+        const upperWord = word.toUpperCase();
+        // Keep acronyms uppercase
+        if (acronyms.includes(upperWord)) {
+          return upperWord;
+        }
+        // Regular word - capitalize first letter
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
       .join(' ');
   };
 

@@ -1,264 +1,175 @@
 import React from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography
-} from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import {
   BarChart,
   Bar,
   ResponsiveContainer,
   Tooltip,
-  Legend,
   CartesianGrid,
   XAxis,
   YAxis,
   Cell
 } from 'recharts';
 
-// Helper function to generate colors for stages
-const getStageColor = (index, total) => {
-  const stageColors = [
-    '#8b5cf6', // Purple
-    '#06b6d4', // Cyan  
-    '#10b981', // Emerald
-    '#f59e0b', // Amber
-    '#ef4444', // Red
-    '#ec4899', // Pink
-    '#6366f1', // Indigo
-    '#84cc16', // Lime
-    '#f97316', // Orange
-    '#14b8a6'  // Teal
-  ];
-  return stageColors[index % stageColors.length];
+// Modern color palette
+const COLORS = {
+  primary: '#6366F1',
+  secondary: '#8B5CF6',
+  accent: '#06B6D4',
+  success: '#10B981',
+  warning: '#F59E0B',
+  bars: ['#6366F1', '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EC4899', '#14B8A6', '#F97316']
+};
+
+const getBarColor = (index) => COLORS.bars[index % COLORS.bars.length];
+
+// Custom tooltip
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <Box sx={{
+        bgcolor: '#fff',
+        border: '1px solid #E2E8F0',
+        borderRadius: 2,
+        p: 1.5,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        minWidth: 120,
+      }}>
+        <Typography sx={{ fontSize: '0.75rem', color: '#64748B', mb: 0.5 }}>
+          {label}
+        </Typography>
+        <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A' }}>
+          {payload[0].value?.toLocaleString()}
+        </Typography>
+      </Box>
+    );
+  }
+  return null;
 };
 
 const BarChartComponent = ({ 
   data, 
   title, 
   subtitle,
-  height = 400,
+  height = 280,
   isStacked = false,
   stageNames = [],
   dataType = 'default',
   xAxisKey = 'name',
   yAxisLabel = 'Value',
-  showLegend = true,
-  isTargetVsAchievement = false
 }) => {
   if (!data || data.length === 0) {
     return (
-      <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-        No data available for bar chart
-      </Typography>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: 200,
+        color: '#94A3B8'
+      }}>
+        <Typography>No data available</Typography>
+      </Box>
     );
   }
 
-  return (
-    <Card sx={{ 
-      height: '100%', 
-      minHeight: height + 200,
-      border: 'none',
-      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-      borderRadius: 3,
-      overflow: 'hidden'
-    }}>
-      <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{ 
-          p: 3, 
-          pb: 2,
-          borderBottom: '1px solid #f3f4f6',
-          flexShrink: 0
-        }}>
-          <Typography variant="h6" sx={{ 
-            fontWeight: 600,
-            color: '#1a1a1a',
-            fontSize: '1.125rem',
-            letterSpacing: '-0.025em'
-          }}>
-            {title}
-          </Typography>
-          {subtitle && (
-            <Typography variant="body2" sx={{ 
-              color: '#6b7280',
-              mt: 0.5,
-              fontSize: '0.875rem'
-            }}>
-              {subtitle}
-            </Typography>
-          )}
-        </Box>
+  // Calculate bar size based on data length
+  const barSize = data.length <= 4 ? 40 : data.length <= 8 ? 30 : 20;
 
-        {/* Bar Chart */}
-        <Box sx={{ flex: 1, p: 3 }}>
-          <Box sx={{ width: '100%', height: height }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={data}
-                margin={{ top: 10, right: 10, left: 10, bottom: isStacked ? 120 : 100 }}
+  return (
+    <Box sx={{ width: '100%', height: '100%' }}>
+      {/* Compact Header */}
+      <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+        <Typography sx={{ 
+          fontWeight: 600,
+          color: '#0F172A',
+          fontSize: '0.95rem',
+          lineHeight: 1.3
+        }}>
+          {title}
+        </Typography>
+        {subtitle && (
+          <Typography sx={{ 
+            color: '#64748B',
+            fontSize: '0.75rem',
+            mt: 0.25
+          }}>
+            {subtitle}
+          </Typography>
+        )}
+      </Box>
+
+      {/* Chart */}
+      <Box sx={{ width: '100%', height: height, px: 1 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            margin={{ top: 10, right: 20, left: 0, bottom: 40 }}
+            barCategoryGap="20%"
+          >
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke="#F1F5F9"
+              vertical={false}
+            />
+            <XAxis 
+              dataKey={xAxisKey}
+              axisLine={false}
+              tickLine={false}
+              tick={{ 
+                fontSize: 11, 
+                fill: '#64748B',
+                fontWeight: 500
+              }}
+              dy={8}
+              interval={0}
+              angle={data.length > 6 ? -45 : 0}
+              textAnchor={data.length > 6 ? "end" : "middle"}
+              height={data.length > 6 ? 60 : 30}
+            />
+            <YAxis 
+              axisLine={false}
+              tickLine={false}
+              tick={{ 
+                fontSize: 11, 
+                fill: '#94A3B8'
+              }}
+              width={45}
+              tickFormatter={(value) => {
+                if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                return value;
+              }}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }} />
+            
+            {isStacked && stageNames.length > 0 ? (
+              stageNames.map((stageName, index) => (
+                <Bar 
+                  key={stageName}
+                  dataKey={stageName}
+                  stackId="stack"
+                  fill={getBarColor(index)}
+                  radius={index === stageNames.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                />
+              ))
+            ) : (
+              <Bar 
+                dataKey="value" 
+                radius={[6, 6, 0, 0]}
+                barSize={barSize}
               >
-                <CartesianGrid 
-                  strokeDasharray="3 3" 
-                  stroke="#f3f4f6"
-                  strokeWidth={0.5}
-                />
-                <XAxis 
-                  dataKey={xAxisKey}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={(props) => {
-                    const { x, y, payload } = props;
-                    return (
-                      <g transform={`translate(${x},${y})`}>
-                        <text 
-                          x={0} 
-                          y={0} 
-                          dy={16} 
-                          textAnchor="end" 
-                          fill="#6b7280" 
-                          transform="rotate(-45)"
-                          style={{ fontSize: '11px', fontWeight: 500 }}
-                        >
-                          {payload.value.length > 15 ? `${payload.value.substring(0, 12)}...` : payload.value}
-                        </text>
-                      </g>
-                    );
-                  }}
-                  height={90} // Increased height for rotated labels
-                  interval={0}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ 
-                    fontSize: 11, 
-                    fill: '#6b7280',
-                    fontWeight: 500
-                  }}
-                  label={{ 
-                    value: yAxisLabel, 
-                    angle: -90, 
-                    position: 'insideLeft',
-                    style: { textAnchor: 'middle', fill: '#6b7280', fontSize: '12px' }
-                  }}
-                />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    fontSize: '12px'
-                  }}
-                  formatter={(value, name) => [
-                    dataType === 'pipeline' ? `${value} cases` : value.toLocaleString(),
-                    dataType === 'pipeline' ? (isStacked ? name : 'Pending Cases') : 'Value'
-                  ]}
-                  labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '0.25rem' }}
-                />
-                
-                {isStacked && dataType === 'pipeline' ? 
-                  // Render stacked bars for multi-region pipeline data
-                  stageNames.map((stageName, index) => (
-                    <Bar 
-                      key={stageName}
-                      dataKey={stageName}
-                      stackId="pipeline"
-                      fill={getStageColor(index, stageNames.length)}
-                      radius={index === stageNames.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                    />
-                  ))
-                  :
-                  // Single bar for simple data
-                  <Bar 
-                    dataKey="value" 
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={60}
-                  >
-                    {data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill || getStageColor(index, data.length)} />
-                    ))}
-                  </Bar>
-                }
-                
-                {showLegend && isStacked && (
-                  <Legend 
-                    wrapperStyle={{ paddingTop: '20px' }}
-                    iconType="rect"
-                  />
-                )}
-              </BarChart>
-            </ResponsiveContainer>
-          </Box>
-          
-          {/* Aesthetic Scrollable Legend for non-stacked charts */}
-          {!isTargetVsAchievement && !isStacked && (
-            <Box sx={{ 
-              mt: 4,
-              pt: 2,
-              borderTop: '1px solid #f3f4f6',
-              maxHeight: '120px',
-              overflowY: 'auto',
-              '&::-webkit-scrollbar': { width: '4px' },
-              '&::-webkit-scrollbar-thumb': { backgroundColor: '#e0e0e0', borderRadius: '4px' }
-            }}>
-              <Typography variant="caption" sx={{ 
-                fontWeight: 600,
-                color: '#9ca3af',
-                mb: 1,
-                display: 'block',
-                textTransform: 'uppercase',
-                fontSize: '0.7rem'
-              }}>
-                {dataType === 'pipeline' ? 'Pipeline Stages' : 'Legend'}
-              </Typography>
-              <Box sx={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: 1
-              }}>
                 {data.map((entry, index) => (
-                  <Box key={index} sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 1,
-                    p: 0.75,
-                    borderRadius: 1,
-                    '&:hover': { backgroundColor: '#f9fafb' }
-                  }}>
-                    <Box sx={{ 
-                      width: 8, 
-                      height: 8, 
-                      borderRadius: '50%', 
-                      backgroundColor: entry.fill || getStageColor(index, data.length),
-                      flexShrink: 0
-                    }} />
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography variant="caption" noWrap sx={{ 
-                        color: '#374151',
-                        fontWeight: 500,
-                        display: 'block',
-                        lineHeight: 1.2
-                      }}>
-                        {entry.name || entry[xAxisKey]}
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: '#6b7280', 
-                        fontSize: '0.7rem'
-                      }}>
-                        {entry.value?.toLocaleString()}
-                      </Typography>
-                    </Box>
-                  </Box>
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.fill || getBarColor(index)} 
+                  />
                 ))}
-              </Box>
-            </Box>
-          )}
-        </Box>
-      </CardContent>
-    </Card>
+              </Bar>
+            )}
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
+    </Box>
   );
 };
 
