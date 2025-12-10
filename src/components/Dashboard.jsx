@@ -69,7 +69,8 @@ import {
   Message as MessageIcon,
   PieChartOutline as PieChartIcon,
   AreaChart as AreaChartIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -935,7 +936,7 @@ const Dashboard = ({ initialDashboardId }) => {
   };
 
   // Edit dashboard using natural language prompt
-  const handleDashboardEdit = async (prompt) => {
+  const handleDashboardEdit = async (prompt, widgetId = null) => {
     const username = getUsername();
     const connectionId = getConnectionId();
     
@@ -950,17 +951,24 @@ const Dashboard = ({ initialDashboardId }) => {
     setIsChatLoading(true);
     
     try {
+      const payload = {
+        dashboardId: activeDashboardId,
+        prompt: prompt,
+        connectionId: connectionId,
+        username: username,
+      };
+
+      // Add widgetId if provided (for context-aware edits)
+      if (widgetId) {
+        payload.widgetId = widgetId;
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}/api/v1/dashboard/edit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          dashboardId: activeDashboardId,
-          prompt: prompt,
-          connectionId: connectionId,
-          username: username,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const responseData = await response.json();
@@ -980,14 +988,22 @@ const Dashboard = ({ initialDashboardId }) => {
         const updatedActions = actions.filter(a => a.action === 'update' && a.success);
         
         if (addedActions.length > 0) {
-          const titles = addedActions.map(a => `"${a.title}"`).join(', ');
+          const titles = addedActions.map(a => {
+            const addedWidget = resultData.addedWidgets?.find(w => w.id === a.widgetId);
+            const title = a.title || addedWidget?.title || 'New Widget';
+            return `"${title}"`;
+          }).join(', ');
           actionSummary.push(`Added: ${titles}`);
         }
         if (removedActions.length > 0) {
           actionSummary.push(`Removed ${removedActions.length} widget(s)`);
         }
         if (updatedActions.length > 0) {
-          const titles = updatedActions.map(a => `"${a.title}"`).join(', ');
+          const titles = updatedActions.map(a => {
+            const updatedWidget = resultData.updatedWidgets?.find(w => w.id === a.widgetId);
+            const title = a.title || updatedWidget?.title || 'Widget';
+            return `"${title}"`;
+          }).join(', ');
           actionSummary.push(`Updated: ${titles}`);
         }
 
@@ -1093,11 +1109,11 @@ const Dashboard = ({ initialDashboardId }) => {
       widgetRef: widgetContext,
     }]);
     
-    // Call the dashboard edit API with widget context
-    const messageWithContext = widgetContext 
-      ? `[Widget: ${widgetContext.widgetTitle}] ${userMessage}`
-      : userMessage;
-    const result = await handleDashboardEdit(messageWithContext);
+    // Call the dashboard edit API with widget context if available
+    const result = await handleDashboardEdit(
+      userMessage, 
+      widgetContext?.widgetId
+    );
     
     // Add AI response
     setChatMessages(prev => [...prev, { 
@@ -1264,20 +1280,34 @@ const Dashboard = ({ initialDashboardId }) => {
 
   const handleDragStart = (e, index) => {
     const item = allItems[index];
-    const widgetInfo = { id: item.id, title: item.title || item.question || 'Widget' };
-    console.log('🚀 Drag started for widget:', widgetInfo.title);
+    if (!item) return;
+
+    const widgetInfo = { 
+      id: item.id, 
+      title: item.title || item.question || 'Widget' 
+    };
     
+    console.log('🚀 Drag started:', widgetInfo.title);
+    
+    // Set dashboard drag state
     setDraggedItem(item);
     setDraggedIndex(index);
     setDragOverIndex(index);
-    setDraggedWidgetForChat(item); // Track for chat drop (state)
-    draggedWidgetRef.current = widgetInfo; // Also store in ref for reliable access
     
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", item.id);
-    e.dataTransfer.setData("application/widget", JSON.stringify(widgetInfo));
+    // Set chat drag state
+    setDraggedWidgetForChat(widgetInfo);
+    draggedWidgetRef.current = widgetInfo;
     
-    // Open chat panel when dragging starts so user can drop into it
+    // Set DataTransfer for robust cross-target dragging
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "copyMove";
+      e.dataTransfer.setData("text/plain", item.id);
+      e.dataTransfer.setData("application/widget", JSON.stringify(widgetInfo));
+      
+      // Set a custom drag image if needed, or stick to default
+    }
+    
+    // Open chat panel automatically
     if (!chatDrawerOpen) {
       setChatDrawerOpen(true);
     }
@@ -1293,7 +1323,6 @@ const Dashboard = ({ initialDashboardId }) => {
   };
 
   const handleDragLeave = (e) => {
-    // Don't reset on leave - keep the current position
     e.preventDefault();
   };
 
@@ -1342,73 +1371,70 @@ const Dashboard = ({ initialDashboardId }) => {
     draggedWidgetRef.current = null;
     setChatDropZoneActive(false);
   };
-  
-  // Handle drop on chat area
-  const handleChatDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('🎯 Chat drop event triggered');
-    console.log('📦 draggedWidgetForChat (state):', draggedWidgetForChat);
-    console.log('📦 draggedWidgetRef (ref):', draggedWidgetRef.current);
-    
-    setChatDropZoneActive(false);
-    
-    // Use ref first (more reliable), fallback to state
-    const widgetToAttach = draggedWidgetRef.current || draggedWidgetForChat;
-    
-    // Reset drag states
-    setDraggedItem(null);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-    setDraggedWidgetForChat(null);
-    draggedWidgetRef.current = null;
-    
-    if (widgetToAttach) {
-      // Attach widget to chat input
-      const attached = {
-        id: widgetToAttach.id,
-        title: widgetToAttach.title || widgetToAttach.question || 'Widget',
-      };
-      setAttachedWidget(attached);
-      console.log('✅ Widget attached to chat:', attached.title);
-    } else {
-      console.log('⚠️ No widget to attach - trying dataTransfer');
-      // Try to get from dataTransfer as last resort
-      try {
-        const widgetData = e.dataTransfer.getData("application/widget");
-        if (widgetData) {
-          const parsed = JSON.parse(widgetData);
-          setAttachedWidget(parsed);
-          console.log('✅ Widget attached from dataTransfer:', parsed.title);
-        }
-      } catch (err) {
-        console.log('❌ Could not parse widget data from dataTransfer');
-      }
-    }
-  };
-  
-  // Handle drag over chat area
+
+  // Chat Drag Handlers
   const handleChatDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (draggedWidgetForChat) {
-      if (!chatDropZoneActive) {
-        console.log('🔵 Chat drag over - activating drop zone');
-      }
-      setChatDropZoneActive(true);
+    
+    // Always allow dropping if we have a widget dragged
+    if (draggedWidgetRef.current || e.dataTransfer.types.includes('application/widget')) {
       e.dataTransfer.dropEffect = "copy";
+      if (!chatDropZoneActive) {
+        console.log('🔵 Chat zone active');
+        setChatDropZoneActive(true);
+      }
     }
   };
-  
-  // Handle drag leave chat area
+
   const handleChatDragLeave = (e) => {
     e.preventDefault();
-    // Only deactivate if leaving the chat area entirely
+    e.stopPropagation();
+    
+    // Only deactivate if leaving the chat container
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+    
+    // Check if mouse is actually outside the element
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
       setChatDropZoneActive(false);
+    }
+  };
+
+  const handleChatDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🎯 Chat drop');
+    
+    setChatDropZoneActive(false);
+    
+    let widgetData = null;
+    
+    // 1. Try ref (internal drag)
+    if (draggedWidgetRef.current) {
+      widgetData = draggedWidgetRef.current;
+    } 
+    // 2. Try DataTransfer (fallback)
+    else {
+      try {
+        const json = e.dataTransfer.getData("application/widget");
+        if (json) widgetData = JSON.parse(json);
+      } catch (err) {
+        console.error('❌ Drop parse error:', err);
+      }
+    }
+
+    if (widgetData) {
+      console.log('✅ Attached widget:', widgetData.title);
+      setAttachedWidget(widgetData);
+      
+      // Reset dashboard drag state since we handled the drop
+      setDraggedItem(null);
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      setDraggedWidgetForChat(null);
+      draggedWidgetRef.current = null;
     }
   };
   
@@ -2804,7 +2830,7 @@ const Dashboard = ({ initialDashboardId }) => {
               alignItems: 'start',
             }}
           >
-            {displayItems.map((item, index) => {
+            {displayItems.filter(item => item && item.id).map((item, index) => {
               // Ensure unique key by combining id with index
               const uniqueItem = { ...item, _uniqueKey: `${item.id}-${index}` };
               return renderVisualizationCard(uniqueItem, index);
@@ -3138,32 +3164,30 @@ const Dashboard = ({ initialDashboardId }) => {
                 overflowX: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
-                bgcolor: chatDropZoneActive ? '#DBEAFE' : '#F8FAFC',
+                bgcolor: chatDropZoneActive ? '#EFF6FF' : '#F8FAFC',
                 minHeight: 0,
-                transition: 'background-color 0.2s',
+                transition: 'all 0.2s ease',
                 position: 'relative',
+                border: chatDropZoneActive ? '2px dashed #3B82F6' : '2px solid transparent',
+                m: chatDropZoneActive ? 1.5 : 0,
+                borderRadius: chatDropZoneActive ? 3 : 0,
               }}>
-              {/* Drop Overlay when dragging widget */}
+              
+              {/* Drop Zone Visual Feedback */}
               {chatDropZoneActive && (
                 <Box sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  bgcolor: 'rgba(219, 234, 254, 0.95)',
-                  zIndex: 10,
-                  borderRadius: 2,
+                  py: 4,
+                  pointerEvents: 'none',
                 }}>
                   <Box sx={{
                     width: 64,
                     height: 64,
                     borderRadius: '50%',
-                    bgcolor: '#3B82F6',
+                    bgcolor: '#DBEAFE',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -3174,17 +3198,17 @@ const Dashboard = ({ initialDashboardId }) => {
                       '50%': { transform: 'translateY(-10px)' },
                     },
                   }}>
-                    <GridViewIcon sx={{ fontSize: 32, color: '#fff' }} />
+                    <GridViewIcon sx={{ fontSize: 32, color: '#3B82F6' }} />
                   </Box>
                   <Typography sx={{ color: '#1E40AF', fontWeight: 700, fontSize: '1.1rem', mb: 0.5 }}>
                     Drop widget here
                   </Typography>
                   <Typography sx={{ color: '#3B82F6', fontSize: '0.85rem' }}>
-                    to attach and ask questions about it
+                    to attach context to your question
                   </Typography>
                 </Box>
               )}
-              
+
               {/* Welcome Section - Compact */}
               <Box sx={{ 
                 textAlign: 'center', 
@@ -3321,25 +3345,49 @@ const Dashboard = ({ initialDashboardId }) => {
                       {/* Widget Reference Card for user messages */}
                       {msg.role === 'user' && msg.widgetRef && (
                         <Box sx={{
-                          bgcolor: '#1E293B',
-                          borderRadius: '10px 10px 0 0',
-                          p: 1,
+                          bgcolor: '#EFF6FF',
+                          borderRadius: '12px 12px 0 0',
+                          p: 1.5,
                           ml: 'auto',
                           maxWidth: '90%',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 1,
+                          gap: 1.5,
+                          border: '1px solid #BFDBFE',
+                          borderBottom: 'none',
                         }}>
-                          <GridViewIcon sx={{ fontSize: 14, color: '#3B82F6' }} />
-                          <Typography sx={{ color: '#94A3B8', fontSize: '0.7rem' }}>
-                            {msg.widgetRef.widgetTitle}
-                          </Typography>
+                          <Box sx={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 1,
+                            bgcolor: '#DBEAFE',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                            <GridViewIcon sx={{ fontSize: 14, color: '#2563EB' }} />
+                          </Box>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography sx={{ color: '#64748B', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', lineHeight: 1 }}>
+                              Context
+                            </Typography>
+                            <Typography sx={{ 
+                              color: '#1E40AF', 
+                              fontSize: '0.8rem', 
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {msg.widgetRef.widgetTitle}
+                            </Typography>
+                          </Box>
                         </Box>
                       )}
                       <Box sx={{
                         bgcolor: msg.role === 'user' ? '#3B82F6' : (msg.success === false ? '#FEF2F2' : '#fff'),
                         color: msg.role === 'user' ? '#fff' : (msg.success === false ? '#991B1B' : '#374151'),
-                        borderRadius: msg.role === 'user' && msg.widgetRef ? '0 0 10px 10px' : 2.5,
+                        borderRadius: msg.role === 'user' && msg.widgetRef ? '0 0 12px 12px' : 2.5,
                         p: 1.5,
                         ml: msg.role === 'user' ? 'auto' : 0,
                         mr: msg.role === 'user' ? 0 : 'auto',
@@ -3402,46 +3450,49 @@ const Dashboard = ({ initialDashboardId }) => {
                 </Box>
               )}
               
-              {/* Attached Widget Card - Prominent indicator */}
+              {/* Attached Widget Card - Prominent Success Indicator */}
               {attachedWidget && !chatDropZoneActive && (
                 <Box sx={{
                   mb: 1.5,
-                  p: 1.5,
-                  bgcolor: '#1E293B',
-                  borderRadius: 2,
-                  border: '1px solid #334155',
+                  p: 2,
+                  background: 'linear-gradient(135deg, #0078d7 0%, #2f8fef 100%)',
+                  borderRadius: 3,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  boxShadow: '0 4px 12px rgba(0, 120, 215, 0.3)',
                   animation: 'slideIn 0.3s ease-out',
                   '@keyframes slideIn': {
-                    '0%': { opacity: 0, transform: 'translateY(10px)' },
-                    '100%': { opacity: 1, transform: 'translateY(0)' },
+                    '0%': { opacity: 0, transform: 'translateY(10px) scale(0.98)' },
+                    '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
                   },
                 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  {/* Success Header */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
                     <Box sx={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 1,
-                      bgcolor: '#3B82F6',
+                      width: 36,
+                      height: 36,
+                      borderRadius: 2,
+                      bgcolor: 'rgba(255,255,255,0.2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}>
-                      <GridViewIcon sx={{ fontSize: 16, color: '#fff' }} />
+                      <CheckCircleIcon sx={{ fontSize: 22, color: '#fff' }} />
                     </Box>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography sx={{ 
-                        color: '#94A3B8', 
-                        fontSize: '0.65rem', 
+                        color: 'rgba(255,255,255,0.85)', 
+                        fontSize: '0.7rem', 
                         fontWeight: 600,
                         textTransform: 'uppercase',
                         letterSpacing: '0.5px',
+                        mb: 0.25,
                       }}>
-                        Widget Attached
+                        Widget Context Added
                       </Typography>
                       <Typography sx={{ 
-                        color: '#F1F5F9', 
-                        fontSize: '0.85rem', 
-                        fontWeight: 500,
+                        color: '#fff', 
+                        fontSize: '0.95rem', 
+                        fontWeight: 600,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -3453,41 +3504,56 @@ const Dashboard = ({ initialDashboardId }) => {
                       size="small" 
                       onClick={() => setAttachedWidget(null)}
                       sx={{ 
-                        p: 0.5, 
-                        color: '#64748B', 
-                        '&:hover': { color: '#F1F5F9', bgcolor: 'rgba(255,255,255,0.1)' } 
+                        p: 0.75, 
+                        color: 'rgba(255,255,255,0.7)', 
+                        bgcolor: 'rgba(255,255,255,0.1)',
+                        '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.2)' } 
                       }}
                     >
-                      <CloseIcon sx={{ fontSize: 18 }} />
+                      <CloseIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Box>
-                  <Stack direction="row" spacing={0.75}>
+                  
+                  {/* Helper Text */}
+                  <Typography sx={{ 
+                    color: 'rgba(255,255,255,0.9)', 
+                    fontSize: '0.8rem',
+                    mb: 1.5,
+                    lineHeight: 1.4,
+                  }}>
+                    You can now edit this widget without specifying its title. Just describe what changes you want.
+                  </Typography>
+                  
+                  {/* Quick Action Chips */}
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                     <Chip
                       size="small"
                       icon={<EditIcon sx={{ fontSize: 12 }} />}
-                      label="Edit"
-                      onClick={() => setChatInput(`Edit this widget to `)}
+                      label="Edit data"
+                      onClick={() => setChatInput(`Change this widget to show `)}
                       sx={{
-                        bgcolor: 'rgba(59, 130, 246, 0.2)',
-                        color: '#60A5FA',
-                        fontSize: '0.7rem',
-                        height: 24,
-                        '& .MuiChip-icon': { color: '#60A5FA' },
-                        '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.3)' },
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                        color: '#fff',
+                        fontSize: '0.75rem',
+                        height: 28,
+                        fontWeight: 500,
+                        '& .MuiChip-icon': { color: '#fff' },
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
                       }}
                     />
                     <Chip
                       size="small"
-                      icon={<DeleteIcon sx={{ fontSize: 12 }} />}
-                      label="Delete"
-                      onClick={() => setChatInput(`Delete this widget`)}
+                      icon={<TableChartIcon sx={{ fontSize: 12 }} />}
+                      label="Change view"
+                      onClick={() => setChatInput(`Change this widget to a `)}
                       sx={{
-                        bgcolor: 'rgba(239, 68, 68, 0.2)',
-                        color: '#F87171',
-                        fontSize: '0.7rem',
-                        height: 24,
-                        '& .MuiChip-icon': { color: '#F87171' },
-                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.3)' },
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                        color: '#fff',
+                        fontSize: '0.75rem',
+                        height: 28,
+                        fontWeight: 500,
+                        '& .MuiChip-icon': { color: '#fff' },
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
                       }}
                     />
                     <Chip
@@ -3496,12 +3562,28 @@ const Dashboard = ({ initialDashboardId }) => {
                       label="Refresh"
                       onClick={() => setChatInput(`Refresh this widget's data`)}
                       sx={{
-                        bgcolor: 'rgba(16, 185, 129, 0.2)',
-                        color: '#34D399',
-                        fontSize: '0.7rem',
-                        height: 24,
-                        '& .MuiChip-icon': { color: '#34D399' },
-                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.3)' },
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                        color: '#fff',
+                        fontSize: '0.75rem',
+                        height: 28,
+                        fontWeight: 500,
+                        '& .MuiChip-icon': { color: '#fff' },
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+                      }}
+                    />
+                    <Chip
+                      size="small"
+                      icon={<DeleteIcon sx={{ fontSize: 12 }} />}
+                      label="Delete"
+                      onClick={() => setChatInput(`Delete this widget`)}
+                      sx={{
+                        bgcolor: 'rgba(239, 68, 68, 0.3)',
+                        color: '#fff',
+                        fontSize: '0.75rem',
+                        height: 28,
+                        fontWeight: 500,
+                        '& .MuiChip-icon': { color: '#fff' },
+                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.5)' },
                       }}
                     />
                   </Stack>
