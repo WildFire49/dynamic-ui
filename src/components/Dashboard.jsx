@@ -1908,14 +1908,13 @@ const Dashboard = ({ initialDashboardId }) => {
       const numValue = parseFloat(value);
       if (!isNaN(numValue)) {
         // Percentage values
-        if (key.toLowerCase().includes('percent') || key.toLowerCase().includes('rate')) {
-          return `${numValue.toFixed(3)}%`;
+        if (key.toLowerCase().includes('percent') || key.toLowerCase().includes('rate') || key.toLowerCase().includes('achievement')) {
+          return `${numValue.toFixed(2)}%`;
         }
-        // Format with Indian locale (lakhs, crores) - show full number with up to 3 decimals
-        const hasDecimals = numValue % 1 !== 0;
+        // Format with Indian locale (lakhs, crores) - limit to 2 decimals for cleaner display
         return numValue.toLocaleString('en-IN', {
           minimumFractionDigits: 0,
-          maximumFractionDigits: hasDecimals ? 3 : 0,
+          maximumFractionDigits: 2,
         });
       }
       
@@ -1970,7 +1969,35 @@ const Dashboard = ({ initialDashboardId }) => {
       return 4;
     };
     
-    const gridCols = getGridCols();
+    // Compact number formatter for large values
+    const formatCompactValue = (value, key) => {
+      if (value === null || value === undefined) return '-';
+      
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        // Percentage values
+        if (key.toLowerCase().includes('percent') || key.toLowerCase().includes('rate') || key.toLowerCase().includes('achievement')) {
+          return `${numValue.toFixed(2)}%`;
+        }
+        // For very large numbers, use compact notation (Cr, L)
+        if (Math.abs(numValue) >= 10000000) {
+          return `${(numValue / 10000000).toFixed(2)} Cr`;
+        }
+        if (Math.abs(numValue) >= 100000) {
+          return `${(numValue / 100000).toFixed(2)} L`;
+        }
+        // Regular formatting
+        return numValue.toLocaleString('en-IN', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        });
+      }
+      
+      return String(value);
+    };
+    
+    // Always use 2 columns for symmetry
+    const gridCols = 2;
     
     return (
       <Box sx={{ 
@@ -1979,57 +2006,69 @@ const Dashboard = ({ initialDashboardId }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        p: 3,
+        p: 1.5,
         background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
       }}>
         <Box sx={{ 
           display: 'grid',
           gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
-          gap: 3,
+          gap: 1.5,
           width: '100%',
-          maxWidth: numFields <= 4 ? '100%' : '100%',
+          height: '100%',
         }}>
           {keys.map((key, index) => {
             const value = record[key];
             const isNumeric = typeof value === 'number' || !isNaN(parseFloat(value));
-            const displayValue = formatDisplayValue(value, key);
+            const displayValue = formatCompactValue(value, key);
+            const isPercentage = key.toLowerCase().includes('percent') || key.toLowerCase().includes('rate') || key.toLowerCase().includes('achievement');
             
             return (
               <Box
                 key={key}
                 sx={{
                   textAlign: 'center',
-                  py: 2.5,
-                  px: 2,
+                  py: 1.5,
+                  px: 1,
                   bgcolor: '#fff',
                   borderRadius: 2,
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                   border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
                 }}
               >
-                <Typography
-                  component="div"
-                  sx={{
-                    color: '#64748b',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    mb: 1,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {formatLabel(key)}
-                </Typography>
-                <Tooltip title={String(value)} arrow placement="top">
+                <Tooltip title={formatLabel(key)} arrow placement="top">
                   <Typography
                     component="div"
                     sx={{
-                      color: '#1e293b',
-                      fontSize: isNumeric ? '1.5rem' : '1rem',
-                      fontWeight: 700,
+                      color: '#64748b',
+                      fontSize: '0.6rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                      mb: 0.5,
                       lineHeight: 1.2,
-                      wordBreak: 'break-word',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    {formatLabel(key)}
+                  </Typography>
+                </Tooltip>
+                <Tooltip title={String(value)} arrow placement="bottom">
+                  <Typography
+                    component="div"
+                    sx={{
+                      color: isPercentage ? '#059669' : '#1e293b',
+                      fontSize: isNumeric ? '1.25rem' : '0.95rem',
+                      fontWeight: 700,
+                      lineHeight: 1.1,
+                      whiteSpace: 'nowrap',
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
                     {displayValue}

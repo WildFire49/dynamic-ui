@@ -59,30 +59,30 @@ const DataGridComponent = ({
       // Generate columns from the first data item
       // ... (existing column generation logic) ...
       const firstItem = data[0];
-      const generatedColumns = Object.keys(firstItem).map((key, index) => ({
-        field: key,
-        headerName: formatHeaderName(key),
-        width: 140,
-        flex: 1,
-        minWidth: 120,
-        renderCell: (params) => {
-          const value = params.value;
-          
-          // Handle null/undefined
-          if (value === null || value === undefined) {
-            return '—';
-          }
-          
-          // Handle numbers with proper formatting
-          if (typeof value === 'number') {
-            // Check if it's likely a currency or large number
-            if (Math.abs(value) >= 1000) {
-              return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+      const generatedColumns = Object.keys(firstItem).map((key, index) => {
+        const isNumber = typeof firstItem[key] === 'number';
+        return {
+          field: key,
+          headerName: formatHeaderName(key),
+          width: 140,
+          flex: 1,
+          minWidth: 120,
+          align: isNumber ? 'right' : 'left',
+          headerAlign: isNumber ? 'right' : 'left',
+          renderCell: (params) => {
+            const value = params.value;
+            
+            // Handle null/undefined
+            if (value === null || value === undefined) {
+              return '—';
             }
-            return value.toLocaleString();
-          }
-          
-          // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
+            
+            // Handle numbers with proper formatting
+            if (typeof value === 'number') {
+              return value.toLocaleString('en-US', { maximumFractionDigits: 6 });
+            }
+            
+            // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
           if (typeof value === 'string') {
             // Check for ISO date format or date-like strings
             const isoDatePattern = /^\d{4}-\d{2}-\d{2}T/;
@@ -115,7 +115,8 @@ const DataGridComponent = ({
           
           return value;
         }
-      }));
+      };
+    });
       
       // Generate rows with IDs
       const generatedRows = data.map((item, index) => ({
@@ -234,12 +235,13 @@ const DataGridComponent = ({
               fontSize: '0.875rem',
               padding: '12px 14px',
               color: '#1E293B',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+            },
+            '& .MuiDataGrid-cell[data-field]': {
+              display: 'flex',
+              alignItems: 'center',
             },
             '& .MuiDataGrid-row': {
               '&:nth-of-type(even)': {
@@ -263,7 +265,6 @@ const DataGridComponent = ({
               },
             },
             '& .MuiDataGrid-columnHeaderTitleContainer': {
-              justifyContent: 'center',
               overflow: 'hidden',
             },
             '& .MuiDataGrid-columnHeaderTitle': {
