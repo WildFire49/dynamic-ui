@@ -61,6 +61,9 @@ import {
   DynamicForm as FormIcon,
   SatelliteAlt as EventIcon,
   VerifiedUser as VerifiedUserIcon,
+  IntegrationInstructions as ApiIcon,
+  Devices as UiIcon,
+  FindInPage as InspectorIcon,
 } from "@mui/icons-material";
 import { embeddingsApi } from "@/lib/api/embeddingsApi";
 import RouteGuard from "../../components/auth/RouteGuard";
@@ -203,6 +206,36 @@ const AGENT_TYPES = [
     color: "#4db6ac",
     gradient: "linear-gradient(135deg, #26a69a 0%, #4db6ac 100%)",
     stats: "NLP",
+  },
+  {
+    id: "api_integrator",
+    title: "API Integrator",
+    description: "Connect and manage\nIntegrations",
+    subtitle: "API Manager",
+    icon: ApiIcon,
+    color: "#FF5722",
+    gradient: "linear-gradient(135deg, #FF5722 0%, #F4511E 100%)",
+    stats: "Seamless",
+  },
+  {
+    id: "ui_generator",
+    title: "UI Generator",
+    description: "Dynamic UI for\nMobile & Web",
+    subtitle: "UI Builder",
+    icon: UiIcon,
+    color: "#00BCD4",
+    gradient: "linear-gradient(135deg, #00BCD4 0%, #00ACC1 100%)",
+    stats: "Responsive",
+  },
+  {
+    id: "inspector",
+    title: "Inspector",
+    description: "Monitor health &\nDetect issues",
+    subtitle: "System Monitor",
+    icon: InspectorIcon,
+    color: "#607D8B",
+    gradient: "linear-gradient(135deg, #607D8B 0%, #546E7A 100%)",
+    stats: "Real-time",
   },
 ];
 
@@ -727,22 +760,73 @@ export default function ConfiguratorPage() {
                   Intelligent Agent Orchestration
                 </Typography>
 
+                <Stack
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={{ xs: 2, md: 4 }}
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{ mb: 5 }}
+                >
+                  {[
+                    {
+                      text: "Self-evolving AI Brain",
+                      icon: (
+                        <PsychologyIcon
+                          sx={{ fontSize: 28, color: "#64b5f6" }}
+                        />
+                      ),
+                    },
+                    {
+                      text: "Autonomous Orchestration",
+                      icon: (
+                        <RocketIcon sx={{ fontSize: 28, color: "#ba68c8" }} />
+                      ),
+                    },
+                    {
+                      text: "Specialized Agents",
+                      icon: (
+                        <WorkflowIcon sx={{ fontSize: 28, color: "#4db6ac" }} />
+                      ),
+                    },
+                  ].map((item, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
+                        opacity: 0.9,
+                      }}
+                    >
+                      {item.icon}
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          color: "#e2e8f0",
+                          fontWeight: 500,
+                          fontSize: "1.1rem",
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {item.text}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+
                 <Typography
-                  variant="h6"
+                  variant="body1"
                   sx={{
-                    color: "white",
+                    color: "#94a3b8",
                     mb: 4,
                     maxWidth: 600,
                     mx: "auto",
-                    lineHeight: 1.6,
-                    fontSize: { xs: "1rem", md: "1.25rem" },
-                    opacity: 0.85,
-                    textShadow: "0 1px 4px rgba(0,0,0,0.6)",
+                    textAlign: "center",
+                    fontSize: "1.1rem",
                   }}
                 >
-                  Transform your business with AI-powered agents that think,
-                  learn, and adapt. Experience the future of intelligent
-                  automation.
+                  Experience true adaptive intelligence where the system learns,
+                  adapts, and executes complex business tasks autonomously.
                 </Typography>
 
                 <Stack

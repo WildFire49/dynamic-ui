@@ -592,7 +592,7 @@ const SQLExecutor = () => {
       {/* Results Section */}
       {(result || error || executionStats) && (
         <Fade in timeout={500}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: 3, pb: 3 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: 3, pb: 6 }}>
             {/* Stats Cards */}
             {executionStats && !error && (
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -719,23 +719,14 @@ const SQLExecutor = () => {
 
             {/* Results Grid */}
             {result && (
-              <Paper
-                elevation={0}
-                sx={{
-                  height: 450,
-                  borderRadius: 3,
-                  overflow: "hidden",
-                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  bgcolor: "white",
-                }}
-              >
+              <Box sx={{ width: "100%", minHeight: 500, mb: 4 }}>
                 <EnhancedDataGrid
                   title="Query Results"
                   data={result}
-                  height={450}
+                  height={500}
                   hideHeader={false}
                 />
-              </Paper>
+              </Box>
             )}
           </Box>
         </Fade>

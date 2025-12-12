@@ -60,10 +60,18 @@ const DataGridComponent = ({
       // ... (existing column generation logic) ...
       const firstItem = data[0];
       const generatedColumns = Object.keys(firstItem).map((key, index) => {
-        const isNumber = typeof firstItem[key] === 'number';
+        const val = firstItem[key];
+        const isNumber = typeof val === 'number' || (typeof val === 'string' && !isNaN(Number(val)) && !isNaN(parseFloat(val)));
+        const headerName = formatHeaderName(key);
+        // Check if column is a percentage column
+        const isPercentageColumn = key.toLowerCase().includes('percent') || 
+                                   key.toLowerCase().includes('achievement') || 
+                                   key.toLowerCase().includes('rate') ||
+                                   key.includes('%');
+        
         return {
           field: key,
-          headerName: formatHeaderName(key),
+          headerName: headerName,
           width: 140,
           flex: 1,
           minWidth: 120,
@@ -77,9 +85,29 @@ const DataGridComponent = ({
               return '—';
             }
             
+            // Try to parse string numbers
+            let numValue = value;
+            let isValidNumber = typeof value === 'number';
+            
+            if (typeof value === 'string') {
+              // Check if it's a valid number string (and not a date string)
+              const parsed = Number(value);
+              if (!isNaN(parsed) && !isNaN(parseFloat(value)) && value.trim() !== '') {
+                // Avoid formatting IDs or codes that might start with 0
+                if (!key.toLowerCase().endsWith('id') && !key.toLowerCase().includes('code')) {
+                  numValue = parsed;
+                  isValidNumber = true;
+                }
+              }
+            }
+            
             // Handle numbers with proper formatting
-            if (typeof value === 'number') {
-              return value.toLocaleString('en-US', { maximumFractionDigits: 6 });
+            if (isValidNumber) {
+              // Add % symbol for percentage columns
+              if (isPercentageColumn) {
+                return `${numValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`;
+              }
+              return numValue.toLocaleString('en-IN', { maximumFractionDigits: 6 });
             }
             
             // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")

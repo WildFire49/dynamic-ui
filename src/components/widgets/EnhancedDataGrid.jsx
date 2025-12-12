@@ -643,8 +643,7 @@ const EnhancedDataGrid = ({
         <Grow in={mounted} timeout={1200} style={{ transformOrigin: 'center top' }}>
           <Box sx={{ 
             height: isMobile ? Math.min(height, 400) : height,
-            width: '100%',
-            overflow: 'hidden'
+            width: '100%'
           }}>
             <DataGrid
               rows={rows}
