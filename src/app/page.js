@@ -10,7 +10,7 @@ import {
   Chat as ChatIcon,
   Storage as StorageIcon,
   SwapHoriz as SwapIcon,
-  InsertDriveFile as InsertDriveFileIcon,
+  TableChart as TableChartIcon,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -2329,33 +2329,13 @@ export default function HomePage() {
                           }}
                         >
                           <ListItemIcon>
-                            <InsertDriveFileIcon sx={{ color: "#667eea" }} />
+                            <TableChartIcon sx={{ color: "#217346" }} />
                           </ListItemIcon>
                           <ListItemText
                             primary={
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                }}
-                              >
-                                <Typography
-                                  variant="body2"
-                                  noWrap
-                                  sx={{ flex: 1 }}
-                                >
-                                  {doc.original_filename || doc.filename}
-                                </Typography>
-                                {doc.is_in_duckdb_cache && (
-                                  <Chip
-                                    label="Ready"
-                                    size="small"
-                                    color="success"
-                                    sx={{ height: 20, fontSize: "0.7rem" }}
-                                  />
-                                )}
-                              </Box>
+                              <Typography variant="body2" noWrap>
+                                {doc.original_filename || doc.filename}
+                              </Typography>
                             }
                             secondary={
                               <Typography
@@ -2364,8 +2344,6 @@ export default function HomePage() {
                               >
                                 {doc.shape
                                   ? `${doc.shape[0]} rows × ${doc.shape[1]} cols`
-                                  : doc.is_in_duckdb_cache
-                                  ? "Cached in DuckDB"
                                   : `${(doc.file_size / 1024).toFixed(1)} KB`}
                               </Typography>
                             }
