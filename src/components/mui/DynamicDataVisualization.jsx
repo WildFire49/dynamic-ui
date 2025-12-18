@@ -3034,6 +3034,62 @@ const DynamicDataVisualization = ({
                   // Chart colors
                   const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
+                  // Special case: Single row with multiple numeric columns (e.g., count queries)
+                  // Transform to bar chart where each column becomes a bar
+                  if (numericColumns.length > 1 && gridRows.length === 1 && !labelColumn) {
+                    const singleRow = gridRows[0];
+                    const chartData = numericColumns.map((col, idx) => ({
+                      name: col.headerName || col.field.replace(/_/g, ' '),
+                      value: parseFloat(singleRow[col.field]) || 0,
+                      fill: CHART_COLORS[idx % CHART_COLORS.length]
+                    }));
+
+                    return (
+                      <Box>
+                        <ResponsiveContainer width="100%" height={350}>
+                          <BarChart
+                            data={chartData}
+                            margin={{ top: 10, right: 30, left: 10, bottom: 60 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                            <XAxis 
+                              dataKey="name" 
+                              tick={{ fontSize: 11, fill: '#6B7280' }}
+                              axisLine={{ stroke: '#E5E7EB' }}
+                              tickLine={false}
+                              angle={-45}
+                              textAnchor="end"
+                              height={60}
+                            />
+                            <YAxis 
+                              tick={{ fontSize: 11, fill: '#6B7280' }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickFormatter={formatValue}
+                            />
+                            <RechartsTooltip
+                              contentStyle={{
+                                backgroundColor: '#fff',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: 8,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                              }}
+                              formatter={(value) => [formatValue(value), 'Count']}
+                            />
+                            <Bar 
+                              dataKey="value" 
+                              radius={[4, 4, 0, 0]}
+                            >
+                              {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </Box>
+                    );
+                  }
+
                   if (numericColumns.length > 0 && labelColumn) {
                     // Prepare chart data
                     const chartData = gridRows.map((row, index) => {

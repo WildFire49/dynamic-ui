@@ -4,14 +4,13 @@ import TypingIndicator from "@/components/mui/TypingIndicator";
 import {
   Description as DocumentIcon,
   Menu as MenuIcon,
-  CloudDone as CloudDoneIcon,
-  CloudOff as CloudOffIcon,
   Add as AddIcon,
   UploadFile as UploadFileIcon,
   AccountTree as WorkflowIcon,
   Chat as ChatIcon,
   Storage as StorageIcon,
   SwapHoriz as SwapIcon,
+  InsertDriveFile as InsertDriveFileIcon,
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -950,18 +949,16 @@ export default function HomePage() {
       }
 
       console.log("🔄 Fetching documents from API...");
-      console.log(
-        "🔗 API URL:",
-        `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}`
-      );
+      const userId = getUserId();
+      const apiUrl = `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}?user_id=${encodeURIComponent(
+        userId
+      )}`;
+      console.log("🔗 API URL:", apiUrl);
       setLoadingDocuments(true);
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/v1/data-analysis/documents/${CONNECTION_ID}`,
-          {
-            headers: getAuthHeaders(),
-          }
-        );
+        const response = await fetch(apiUrl, {
+          headers: getAuthHeaders(),
+        });
 
         console.log("📡 Documents API response status:", response.status);
 
@@ -991,7 +988,7 @@ export default function HomePage() {
         setLoadingDocuments(false);
       }
     },
-    [CONNECTION_ID]
+    [CONNECTION_ID, getUserId]
   );
 
   // Handle file popover open
@@ -1071,9 +1068,11 @@ export default function HomePage() {
     async (file) => {
       try {
         setIsLoading(true);
+        const userId = getUserId();
         const response = await dataAnalysisApi.uploadDocument(
           CONNECTION_ID,
           file,
+          userId,
           "Document uploaded via chat"
         );
 
@@ -1129,7 +1128,7 @@ export default function HomePage() {
         setIsLoading(false);
       }
     },
-    [CONNECTION_ID, fetchAvailableDocuments]
+    [CONNECTION_ID, fetchAvailableDocuments, getUserId]
   );
 
   const isAnalysisQuestion = useCallback((message) => {
@@ -1704,7 +1703,7 @@ export default function HomePage() {
   }, [eventPollingInterval]);
 
   // Load username from localStorage on component mount
-  // Sync currentUserId with auth user changes
+  // Sync currentUserId with auth user changes and reset state when user changes
   useEffect(() => {
     // Only run on client side
     if (typeof window === "undefined") return;
@@ -1725,12 +1724,75 @@ export default function HomePage() {
       console.log("✅ Initial mount - setting currentUserId:", newUserId);
       setCurrentUserId(newUserId);
     }
-    // Only update if the ID has actually changed
+    // User has changed - reset all chat state and caches
     else if (newUserId && newUserId !== currentUserId) {
-      console.log("✅ Updating currentUserId:", currentUserId, "→", newUserId);
+      console.log(
+        "🔄 User changed - resetting chat state:",
+        currentUserId,
+        "→",
+        newUserId
+      );
+
+      // Reset chat state
+      setChatHistory([]);
+      setConversationId(null);
+      setSessionId(null);
+      setInputMessage("");
+      setInputValue("");
+      setCurrentResponseData(null);
+      setPendingMessage("");
+      setIsTyping(false);
+      setIsLoading(false);
+
+      // Reset document state
+      setUploadedDocuments([]);
+      setSelectedDocument(null);
+      setAvailableDocuments([]);
+      documentsCache.current = { data: null, timestamp: null };
+
+      // Reset workflow state
+      resetWorkflow();
+      setWorkflowMode(false);
+
+      // Reset PDF state
+      setPdfUrls([]);
+      setShowPdfPopup(false);
+      setPdfPopupOpen(false);
+      setPdfPopupData(null);
+
+      // Update user ID
       setCurrentUserId(newUserId);
+
+      console.log("✅ Chat state reset for new user:", newUserId);
     }
-  }, [user]); // Only depend on user, getUserId is now stable
+  }, [user, currentUserId, getUserId, resetWorkflow]); // Include all dependencies
+
+  // Fetch documents on page mount and auto-select first document in excel mode
+  useEffect(() => {
+    const loadInitialDocuments = async () => {
+      // Only run on client side and when user is available
+      if (typeof window === "undefined" || !currentUserId) return;
+
+      console.log("📄 Loading initial documents for user:", currentUserId);
+      try {
+        const docs = await fetchAvailableDocuments(true);
+
+        // Auto-select first document if in excel mode and documents exist
+        if (docs && docs.length > 0 && dataSourceMode === "excel") {
+          const firstDoc = docs[0];
+          setSelectedDocument(firstDoc);
+          console.log(
+            "📄 Auto-selected first document:",
+            firstDoc.document_key
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load initial documents:", error);
+      }
+    };
+
+    loadInitialDocuments();
+  }, [currentUserId]); // Re-run when user changes
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -2055,7 +2117,11 @@ export default function HomePage() {
                 title={
                   dataSourceMode === "excel"
                     ? selectedDocument
-                      ? `Excel: ${selectedDocument.filename}`
+                      ? `Excel: ${
+                          selectedDocument.original_filename ||
+                          selectedDocument.filename ||
+                          selectedDocument.document_key
+                        }`
                       : "Excel Mode - Click to select file"
                     : "Database Mode - Connected to retriever"
                 }
@@ -2235,84 +2301,78 @@ export default function HomePage() {
                     </ListItemButton>
                   </ListItem>
 
-                  {/* Available Documents - Only show in_memory documents */}
-                  {availableDocuments.filter((doc) => doc.in_memory).length ===
-                  0 ? (
+                  {/* Available Documents - Show all documents (is_in_duckdb_cache from API) */}
+                  {availableDocuments.length === 0 ? (
                     <Box sx={{ p: 3, textAlign: "center" }}>
                       <Typography variant="body2" color="text.secondary">
-                        No documents loaded in memory
+                        No documents available
                       </Typography>
                     </Box>
                   ) : (
-                    availableDocuments
-                      .filter((doc) => doc.in_memory)
-                      .map((doc) => (
-                        <ListItem key={doc.document_key} disablePadding>
-                          <ListItemButton
-                            onClick={() => handleSelectDocumentFromPopover(doc)}
-                            selected={
-                              selectedDocument?.document_key ===
-                              doc.document_key
-                            }
-                            sx={{
-                              py: 1.5,
-                              borderBottom: 1,
-                              borderColor: "divider",
-                              "&.Mui-selected": {
-                                bgcolor: "rgba(16, 185, 129, 0.08)",
-                                "&:hover": {
-                                  bgcolor: "rgba(16, 185, 129, 0.12)",
-                                },
+                    availableDocuments.map((doc) => (
+                      <ListItem key={doc.document_key} disablePadding>
+                        <ListItemButton
+                          onClick={() => handleSelectDocumentFromPopover(doc)}
+                          selected={
+                            selectedDocument?.document_key === doc.document_key
+                          }
+                          sx={{
+                            py: 1.5,
+                            borderBottom: 1,
+                            borderColor: "divider",
+                            "&.Mui-selected": {
+                              bgcolor: "rgba(16, 185, 129, 0.08)",
+                              "&:hover": {
+                                bgcolor: "rgba(16, 185, 129, 0.12)",
                               },
-                            }}
-                          >
-                            <ListItemIcon>
-                              {doc.in_memory ? (
-                                <CloudDoneIcon sx={{ color: "#10b981" }} />
-                              ) : (
-                                <CloudOffIcon color="disabled" />
-                              )}
-                            </ListItemIcon>
-                            <ListItemText
-                              primary={
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 1,
-                                  }}
-                                >
-                                  <Typography
-                                    variant="body2"
-                                    noWrap
-                                    sx={{ flex: 1 }}
-                                  >
-                                    {doc.filename}
-                                  </Typography>
-                                  {doc.in_memory && (
-                                    <Chip
-                                      label="Ready"
-                                      size="small"
-                                      color="success"
-                                      sx={{ height: 20, fontSize: "0.7rem" }}
-                                    />
-                                  )}
-                                </Box>
-                              }
-                              secondary={
+                            },
+                          }}
+                        >
+                          <ListItemIcon>
+                            <InsertDriveFileIcon sx={{ color: "#667eea" }} />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
                                 <Typography
-                                  variant="caption"
-                                  color="text.secondary"
+                                  variant="body2"
+                                  noWrap
+                                  sx={{ flex: 1 }}
                                 >
-                                  {doc.shape
-                                    ? `${doc.shape[0]} rows × ${doc.shape[1]} cols`
-                                    : "Not loaded"}
+                                  {doc.original_filename || doc.filename}
                                 </Typography>
-                              }
-                            />
-                          </ListItemButton>
-                        </ListItem>
-                      ))
+                                {doc.is_in_duckdb_cache && (
+                                  <Chip
+                                    label="Ready"
+                                    size="small"
+                                    color="success"
+                                    sx={{ height: 20, fontSize: "0.7rem" }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                            secondary={
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {doc.shape
+                                  ? `${doc.shape[0]} rows × ${doc.shape[1]} cols`
+                                  : doc.is_in_duckdb_cache
+                                  ? "Cached in DuckDB"
+                                  : `${(doc.file_size / 1024).toFixed(1)} KB`}
+                              </Typography>
+                            }
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                    ))
                   )}
                 </List>
               )}

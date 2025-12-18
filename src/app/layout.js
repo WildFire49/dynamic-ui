@@ -9,7 +9,7 @@ import ThemeCustomizer from "@/components/theme/ThemeCustomizer";
 
 export const metadata = {
   title: "MiFiX.ai",
-  description: "A dynamic UI generated with Material-UI",
+  description: "Enterprise Grade AI Platform",
   icons: {
     icon: [
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
