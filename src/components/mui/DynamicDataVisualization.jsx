@@ -869,6 +869,12 @@ const DynamicDataVisualization = ({
       totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
     const activeRMs = allRMs.filter((rm) => rm.achievement > 0).length;
 
+    // Return null if no actual performers to display
+    if (topPerformers.length === 0 && lowPerformers.length === 0) {
+      console.log("🎯 [DEBUG] No performers found, returning null");
+      return null;
+    }
+
     return {
       allRMs,
       topPerformers,
@@ -3261,10 +3267,12 @@ const DynamicDataVisualization = ({
           px: { xs: 0.5, sm: 0 },
         }}
       >
-        {/* Interactive RM Performance Selection - Show when we have RM performance data and not showing saved chart */}
-        {chartData.rmPerformanceData && !savedRMPerformanceComparisonChart && (
+        {/* Interactive RM Performance Selection - Show when we have RM performance data with actual performers and not showing saved chart */}
+        {/* {chartData.rmPerformanceData && 
+         chartData.rmPerformanceData.allRMs?.length > 0 && 
+         (chartData.rmPerformanceData.topPerformers?.length > 0 || chartData.rmPerformanceData.lowPerformers?.length > 0) &&
+         !savedRMPerformanceComparisonChart && (
           <Box sx={{ width: "100%" }}>
-            <RMPerformanceOverview chartData={chartData} />
             <RMPerformanceComparison
               analysisResult={analysisResult}
               selectedRMs={selectedRMs}
@@ -3512,7 +3520,7 @@ const DynamicDataVisualization = ({
               }}
             />
           </Box>
-        )}
+        )} */}
 
         {/* Bar Chart - Clean & Compact */}
         {chartData.barChart &&
