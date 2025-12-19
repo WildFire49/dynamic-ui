@@ -1,6 +1,13 @@
 "use client";
-import ConfirmationDialog from "@/components/mui/ConfirmationDialog";
-import TypingIndicator from "@/components/mui/TypingIndicator";
+import dynamic from "next/dynamic";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  memo,
+} from "react";
 import {
   Description as DocumentIcon,
   Menu as MenuIcon,
@@ -31,23 +38,43 @@ import {
   ListItemText,
   Divider,
 } from "@mui/material";
-import Sidebar from "../components/Sidebar";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
-import ChatMessage, { StellarThinking } from "../components/mui/ChatMessage";
+import { keyframes } from "@emotion/react";
+
+// Critical components - load immediately
+import Sidebar from "../components/Sidebar";
+import { StellarThinking } from "../components/mui/ChatMessage";
 import ChatSkeleton from "../components/mui/ChatSkeleton";
 import InputWithRecording from "../components/mui/InputWithRecording";
-import PDFNotificationPopup from "../components/mui/PDFNotificationPopup";
-import { generateAudioFileName, uploadAudioFile } from "../lib/audioUpload";
-import { API_BASE_URL, CHAT_ENDPOINT } from "../lib/config";
-import { dataAnalysisApi } from "../lib/api/dataAnalysisApi";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 import { useAuth } from "../contexts/AuthContext";
 import UserMenu from "../components/auth/UserMenu";
 import authService from "../services/authService";
+import { API_BASE_URL, CHAT_ENDPOINT } from "../lib/config";
+
+// Dynamic imports - lazy load heavy components
+const ChatMessage = dynamic(
+  () => import("../components/mui/ChatMessage").then((mod) => mod.default),
+  { ssr: false }
+);
+const ConfirmationDialog = dynamic(
+  () => import("@/components/mui/ConfirmationDialog"),
+  { ssr: false }
+);
+const PDFNotificationPopup = dynamic(
+  () => import("../components/mui/PDFNotificationPopup"),
+  { ssr: false }
+);
+const TypingIndicator = dynamic(
+  () => import("../components/mui/TypingIndicator"),
+  { ssr: false }
+);
+
+// Lazy load non-critical utilities
+import { generateAudioFileName, uploadAudioFile } from "../lib/audioUpload";
+import { dataAnalysisApi } from "../lib/api/dataAnalysisApi";
 import workflowService from "../services/workflowService";
 import { useWorkflowHandler } from "../hooks/useWorkflowHandler";
-import { keyframes } from "@emotion/react";
 import {
   getFormSchemaByKeyword,
   getFormSchemaById,
@@ -73,6 +100,43 @@ const floatAnimation = keyframes`
     transform: translateY(-10px);
   }
 `;
+
+// Memoized Chat Message Item - prevents re-render of all messages when one changes
+const MemoizedChatMessage = memo(
+  ({ message, index, onAction }) => {
+    const messageKey = message.timestamp
+      ? `message-${message.timestamp}-${index}`
+      : message.content?.response?.question
+      ? `message-${message.content.response.question.replace(
+          /[^a-zA-Z0-9]/g,
+          ""
+        )}-${index}`
+      : message.content?.text
+      ? `message-${message.content.text
+          .substring(0, 20)
+          .replace(/[^a-zA-Z0-9]/g, "")}-${index}`
+      : `message-stable-${index}`;
+
+    return (
+      <ChatMessage
+        key={messageKey}
+        message={message}
+        index={index}
+        onAction={onAction}
+      />
+    );
+  },
+  (prevProps, nextProps) => {
+    // Only re-render if message content actually changed
+    return (
+      prevProps.message.timestamp === nextProps.message.timestamp &&
+      prevProps.index === nextProps.index &&
+      prevProps.message.type === nextProps.message.type
+    );
+  }
+);
+
+MemoizedChatMessage.displayName = "MemoizedChatMessage";
 
 /**
  * Get authentication headers with bearer token
@@ -2117,30 +2181,14 @@ export default function HomePage() {
             ) : isLoadingConversation ? (
               <ChatSkeleton />
             ) : (
-              chatHistory.map((message, index) => {
-                // Generate a stable unique key based on content and timestamp
-                const messageKey = message.timestamp
-                  ? `message-${message.timestamp}-${index}`
-                  : message.content?.response?.question
-                  ? `message-${message.content.response.question.replace(
-                      /[^a-zA-Z0-9]/g,
-                      ""
-                    )}-${index}`
-                  : message.content?.text
-                  ? `message-${message.content.text
-                      .substring(0, 20)
-                      .replace(/[^a-zA-Z0-9]/g, "")}-${index}`
-                  : `message-stable-${index}`; // Use stable fallback instead of Date.now()
-
-                return (
-                  <ChatMessage
-                    key={messageKey}
-                    message={message}
-                    index={index}
-                    onAction={handleAction}
-                  />
-                );
-              })
+              chatHistory.map((message, index) => (
+                <MemoizedChatMessage
+                  key={message.timestamp || `msg-${index}`}
+                  message={message}
+                  index={index}
+                  onAction={handleAction}
+                />
+              ))
             )}
             {isTyping && (
               <Box

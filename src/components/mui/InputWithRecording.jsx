@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
   Box,
   TextField,
@@ -19,6 +19,16 @@ import {
   SmartToy as BotIcon
 } from '@mui/icons-material';
 
+// Animated placeholder texts
+const PLACEHOLDER_TEXTS = [
+  "Type your message...",
+  "Ask about disbursements...",
+  "Show me collection otr...",
+  "Create a dashboard...",
+  "What's the bank-wise performance?",
+  "Upload an Excel file to analyze...",
+];
+
 const InputWithRecording = React.memo(({
   inputValue,
   onInputChange,
@@ -35,6 +45,37 @@ const InputWithRecording = React.memo(({
   isTyping,
   placeholder
 }) => {
+  // Animated placeholder state
+  const [isFocused, setIsFocused] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const intervalRef = useRef(null);
+
+  // Cycle through placeholder texts when not focused
+  useEffect(() => {
+    if (!isFocused && !inputValue) {
+      intervalRef.current = setInterval(() => {
+        setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDER_TEXTS.length);
+      }, 3000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isFocused, inputValue]);
+
+  // Get current placeholder text
+  const currentPlaceholder = useMemo(() => {
+    if (isFocused || inputValue) {
+      return "Type your message...";
+    }
+    return PLACEHOLDER_TEXTS[placeholderIndex];
+  }, [isFocused, inputValue, placeholderIndex]);
+
   // Memoize expensive calculations
   const formatTime = useCallback((seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -319,10 +360,12 @@ const InputWithRecording = React.memo(({
         {/* Text Input - No border, clean look */}
         <TextField
           variant="standard"
-          placeholder={placeholder || "Type your message..."}
+          placeholder={currentPlaceholder}
           value={inputValue}
           onChange={onInputChange}
           onKeyPress={onKeyPress}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           disabled={isTyping}
           multiline
           maxRows={4}
