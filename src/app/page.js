@@ -837,6 +837,36 @@ export default function HomePage() {
     async (action, componentId, data = {}) => {
       console.log("UI Action triggered:", { action, componentId, data });
 
+      // Handle send_prompt action - send prompt to chat API (from welcome card)
+      if (action?.type === "send_prompt" && action.prompt) {
+        // Add user message to chat
+        const userMessage = {
+          type: "user",
+          content: { text: action.prompt },
+          timestamp: new Date().toISOString(),
+        };
+        setChatHistory((prev) => [...prev, userMessage]);
+
+        // Send to chat API
+        const roleCode = authService.getRoleCode();
+        const requestBody = {
+          user_id:
+            currentUserId ||
+            getUserId() ||
+            authService.getUsername() ||
+            "default_user",
+          message: action.prompt,
+          ...(conversationId && { conversation_id: conversationId }),
+          ...(dataSourceMode === "excel" &&
+            selectedDocument && {
+              document_key: selectedDocument.document_key,
+            }),
+          ...(roleCode && { roleCode }),
+        };
+        await callChatApi(requestBody);
+        return;
+      }
+
       // Handle form_continue action - load next form
       if (action?.type === "form_continue") {
         const nextSchema = getFormSchemaById(action.nextFormId);
@@ -920,6 +950,9 @@ export default function HomePage() {
       currentUserId,
       sessionId,
       handleWorkflowFormSubmit,
+      dataSourceMode,
+      getUserId,
+      selectedDocument,
     ]
   );
 
@@ -1289,6 +1322,51 @@ export default function HomePage() {
     // No auto-send when entering workflow mode - user types "Hi" manually
   }, [workflowMode, resetWorkflow]);
 
+  // Check if message is a greeting
+  const isGreeting = useCallback((message) => {
+    const greetings = [
+      "hello",
+      "hi",
+      "hey",
+      "hola",
+      "namaste",
+      "good morning",
+      "good afternoon",
+      "good evening",
+    ];
+    const lowerMessage = message.toLowerCase().trim();
+    return greetings.some(
+      (g) =>
+        lowerMessage === g ||
+        lowerMessage.startsWith(g + " ") ||
+        lowerMessage.startsWith(g + "!")
+    );
+  }, []);
+
+  // Handle greeting with single welcome card
+  const handleGreetingResponse = useCallback(() => {
+    setIsTyping(true);
+
+    // Single welcome message with prompts - shows every time user greets
+    setTimeout(() => {
+      const welcomeMessage = {
+        type: "welcome_intro",
+        content: {
+          prompts: [
+            "Show me total target and collected amount by region",
+            "Create a dashboard showing bank-wise collections and RM performance this month",
+            "What is the bank-wise collection summary?",
+            "Build a dashboard showing disbursement vs target",
+          ],
+        },
+        isBot: true,
+        timestamp: new Date().toISOString(),
+      };
+      setChatHistory((prev) => [...prev, welcomeMessage]);
+      setIsTyping(false);
+    }, 600);
+  }, []);
+
   const handleSendMessage = useCallback(
     async (messageText = null, audioFileUrl = null, audioKey = null) => {
       const finalMessageText = String(messageText || inputValue || "");
@@ -1299,9 +1377,16 @@ export default function HomePage() {
         const userMessage = {
           type: "user",
           content: { text: finalMessageText },
-          timestamp: new Date().toISOString(), // Add timestamp for unique keys
+          timestamp: new Date().toISOString(),
         };
         setChatHistory((prev) => [...prev, userMessage]);
+
+        // Check if this is a greeting - show animated intro instead of API call
+        if (isGreeting(finalMessageText)) {
+          setInputValue("");
+          handleGreetingResponse();
+          return;
+        }
 
         // Check if this triggers a dynamic form
         const formSchema = getFormSchemaByKeyword(finalMessageText);
@@ -1371,6 +1456,9 @@ export default function HomePage() {
       workflowMode,
       handleWorkflowMessage,
       getUserId,
+      dataSourceMode,
+      isGreeting,
+      handleGreetingResponse,
     ]
   );
 

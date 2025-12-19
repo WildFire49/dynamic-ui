@@ -33,6 +33,7 @@ import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
 import { getFormSchemaByKeyword } from "../dynamic-form/sampleFormSchemas";
 import { PhoneNumberDetector, HardcodedPhoneWidget } from "./PhoneWidget";
 import DashboardGeneratedResponse from "./DashboardGeneratedResponse";
+import WelcomeIntroCard from "./WelcomeIntroCard";
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -846,6 +847,22 @@ const ChatMessage = ({ message, index, onAction }) => {
               </Box>
             </CardContent>
           </Card>
+        </Box>
+      );
+    }
+
+    // Handle welcome intro messages (greeting response)
+    if (message.type === "welcome_intro") {
+      return (
+        <Box sx={{ width: "100%", maxWidth: 400 }}>
+          <WelcomeIntroCard 
+            content={message.content} 
+            onPromptClick={(prompt) => {
+              if (onAction) {
+                onAction({ type: "send_prompt", prompt });
+              }
+            }}
+          />
         </Box>
       );
     }
