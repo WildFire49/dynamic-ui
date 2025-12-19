@@ -1239,195 +1239,195 @@ const DynamicDataVisualization = ({
     let branchChart = null;
 
     // Always create branch chart if we have supporting data with branch names and scores
-    if (supportingData.length > 0) {
-      // Check if data contains branch information
-      const branchField = Object.keys(firstItem).find(
-        (key) => key.toLowerCase().includes("branch") && firstItem[key]
-      );
+    // if (supportingData.length > 0) {
+    //   // Check if data contains branch information
+    //   const branchField = Object.keys(firstItem).find(
+    //     (key) => key.toLowerCase().includes("branch") && firstItem[key]
+    //   );
 
-      console.log(
-        "Branch field found:",
-        branchField,
-        "Score field:",
-        scoreField
-      );
+    //   console.log(
+    //     "Branch field found:",
+    //     branchField,
+    //     "Score field:",
+    //     scoreField
+    //   );
 
-      const hasValidBranchData = supportingData.some(
-        (item) =>
-          item &&
-          branchField &&
-          item[branchField] &&
-          scoreField &&
-          (typeof item[scoreField] === "number" ||
-            !isNaN(parseFloat(item[scoreField])))
-      );
+    //   const hasValidBranchData = supportingData.some(
+    //     (item) =>
+    //       item &&
+    //       branchField &&
+    //       item[branchField] &&
+    //       scoreField &&
+    //       (typeof item[scoreField] === "number" ||
+    //         !isNaN(parseFloat(item[scoreField])))
+    //   );
 
-      if (hasValidBranchData) {
-        // Extract threshold and operation from the question dynamically
-        const question = analysisResult?.question || "";
-        const fieldLabel = scoreField
-          .replace(/_/g, " ")
-          .replace(/([A-Z])/g, " $1")
-          .trim()
-          .toLowerCase();
+    //   if (hasValidBranchData) {
+    //     // Extract threshold and operation from the question dynamically
+    //     const question = analysisResult?.question || "";
+    //     const fieldLabel = scoreField
+    //       .replace(/_/g, " ")
+    //       .replace(/([A-Z])/g, " $1")
+    //       .trim()
+    //       .toLowerCase();
 
-        // Check for different query patterns (more flexible to handle any field)
-        const lessThanMatch =
-          question.match(
-            new RegExp(`${fieldLabel}\s*less than\s*(-?\d+\.?\d*)`, "i")
-          ) ||
-          question.match(/less than\s*(-?\d+\.?\d*)/i) ||
-          question.match(/[<≤]\s*(-?\d+\.?\d*)/i) ||
-          question.match(/(-?\d+\.?\d*)\s*or\s*less/i);
+    //     // Check for different query patterns (more flexible to handle any field)
+    //     const lessThanMatch =
+    //       question.match(
+    //         new RegExp(`${fieldLabel}\s*less than\s*(-?\d+\.?\d*)`, "i")
+    //       ) ||
+    //       question.match(/less than\s*(-?\d+\.?\d*)/i) ||
+    //       question.match(/[<≤]\s*(-?\d+\.?\d*)/i) ||
+    //       question.match(/(-?\d+\.?\d*)\s*or\s*less/i);
 
-        const moreThanMatch =
-          question.match(
-            new RegExp(`${fieldLabel}\s*more than\s*(-?\d+\.?\d*)`, "i")
-          ) ||
-          question.match(/more than\s*(-?\d+\.?\d*)/i) ||
-          question.match(/greater than\s*(-?\d+\.?\d*)/i) ||
-          question.match(/[>≥]\s*(-?\d+\.?\d*)/i);
+    //     const moreThanMatch =
+    //       question.match(
+    //         new RegExp(`${fieldLabel}\s*more than\s*(-?\d+\.?\d*)`, "i")
+    //       ) ||
+    //       question.match(/more than\s*(-?\d+\.?\d*)/i) ||
+    //       question.match(/greater than\s*(-?\d+\.?\d*)/i) ||
+    //       question.match(/[>≥]\s*(-?\d+\.?\d*)/i);
 
-        let threshold, operator, titlePrefix;
+    //     let threshold, operator, titlePrefix;
 
-        if (moreThanMatch) {
-          threshold = parseFloat(moreThanMatch[1]);
-          operator =
-            question.includes("more than") || question.includes(">")
-              ? ">"
-              : "≥";
-          titlePrefix = scoreField.toLowerCase().includes("percentage")
-            ? "High Performing Branches"
-            : "Better Performing Branches";
-        } else if (lessThanMatch) {
-          threshold = parseFloat(lessThanMatch[1]);
-          operator =
-            question.includes("less than") || question.includes("<")
-              ? "<"
-              : "≤";
-          titlePrefix = scoreField.toLowerCase().includes("percentage")
-            ? "Low Performing Branches"
-            : "Worst Performing Branches";
-        } else {
-          // Default based on data analysis and field type
-          const validScores = supportingData
-            .map((item) => parseFloat(item[scoreField]))
-            .filter((score) => !isNaN(score));
+    //     if (moreThanMatch) {
+    //       threshold = parseFloat(moreThanMatch[1]);
+    //       operator =
+    //         question.includes("more than") || question.includes(">")
+    //           ? ">"
+    //           : "≥";
+    //       titlePrefix = scoreField.toLowerCase().includes("percentage")
+    //         ? "High Performing Branches"
+    //         : "Better Performing Branches";
+    //     } else if (lessThanMatch) {
+    //       threshold = parseFloat(lessThanMatch[1]);
+    //       operator =
+    //         question.includes("less than") || question.includes("<")
+    //           ? "<"
+    //           : "≤";
+    //       titlePrefix = scoreField.toLowerCase().includes("percentage")
+    //         ? "Low Performing Branches"
+    //         : "Worst Performing Branches";
+    //     } else {
+    //       // Default based on data analysis and field type
+    //       const validScores = supportingData
+    //         .map((item) => parseFloat(item[scoreField]))
+    //         .filter((score) => !isNaN(score));
 
-          if (validScores.length === 0) {
-            threshold = 0;
-            operator = "≥";
-            titlePrefix = "All Branches";
-          } else {
-            const avgScore =
-              validScores.reduce((sum, score) => sum + score, 0) /
-              validScores.length;
+    //       if (validScores.length === 0) {
+    //         threshold = 0;
+    //         operator = "≥";
+    //         titlePrefix = "All Branches";
+    //       } else {
+    //         const avgScore =
+    //           validScores.reduce((sum, score) => sum + score, 0) /
+    //           validScores.length;
 
-            if (scoreField.toLowerCase().includes("percentage")) {
-              // For percentages, show branches with data (not null)
-              threshold = 0;
-              operator = "≥";
-              titlePrefix = "Branches with Collection Data";
-            } else {
-              threshold = avgScore > 0 ? 0 : -0.6;
-              operator = avgScore > 0 ? ">" : "≤";
-              titlePrefix =
-                avgScore > 0
-                  ? "Better Performing Branches"
-                  : "Worst Performing Branches";
-            }
-          }
-        }
+    //         if (scoreField.toLowerCase().includes("percentage")) {
+    //           // For percentages, show branches with data (not null)
+    //           threshold = 0;
+    //           operator = "≥";
+    //           titlePrefix = "Branches with Collection Data";
+    //         } else {
+    //           threshold = avgScore > 0 ? 0 : -0.6;
+    //           operator = avgScore > 0 ? ">" : "≤";
+    //           titlePrefix =
+    //             avgScore > 0
+    //               ? "Better Performing Branches"
+    //               : "Worst Performing Branches";
+    //         }
+    //       }
+    //     }
 
-        // Process all branches from supporting data (they're already filtered by the API)
-        const branchData = supportingData
-          .filter((item) => {
-            // Filter out null/undefined values for percentage fields
-            if (scoreField.toLowerCase().includes("percentage")) {
-              return (
-                item[branchField] &&
-                item[scoreField] !== null &&
-                item[scoreField] !== undefined &&
-                !isNaN(parseFloat(item[scoreField]))
-              );
-            }
-            return (
-              item[branchField] &&
-              (typeof item[scoreField] === "number" ||
-                !isNaN(parseFloat(item[scoreField])))
-            );
-          })
-          .map((item) => ({
-            name:
-              item[branchField].length > 12
-                ? item[branchField].substring(0, 12) + "..."
-                : item[branchField],
-            branch:
-              item[branchField].length > 12
-                ? item[branchField].substring(0, 12) + "..."
-                : item[branchField],
-            fullName: item[branchField],
-            value: Number(parseFloat(item[scoreField]).toFixed(2)), // Primary field for BarChartComponent
-            score: Number(parseFloat(item[scoreField]).toFixed(2)),
-            region: (item.Region || "Unknown").trim(),
-            state: item.State || "Unknown",
-            // Dynamic coloring based on field type and value
-            fill: scoreField.toLowerCase().includes("percentage")
-              ? // For percentages: red (0-20%), orange (20-40%), yellow (40-60%), light green (60-80%), green (80-100%)
-                parseFloat(item[scoreField]) >= 80
-                ? colors.success
-                : parseFloat(item[scoreField]) >= 60
-                ? "#22c55e"
-                : parseFloat(item[scoreField]) >= 40
-                ? colors.warning
-                : parseFloat(item[scoreField]) >= 20
-                ? colors.error
-                : colors.critical
-              : // For scores: use original logic
-              parseFloat(item[scoreField]) === -1.0
-              ? colors.critical
-              : parseFloat(item[scoreField]) >= -0.9 &&
-                parseFloat(item[scoreField]) < -0.8
-              ? colors.error
-              : parseFloat(item[scoreField]) >= -0.7 &&
-                parseFloat(item[scoreField]) < -0.5
-              ? colors.warning
-              : parseFloat(item[scoreField]) >= -0.5
-              ? colors.success
-              : colors.primary,
-          }));
+    //     // Process all branches from supporting data (they're already filtered by the API)
+    //     const branchData = supportingData
+    //       .filter((item) => {
+    //         // Filter out null/undefined values for percentage fields
+    //         if (scoreField.toLowerCase().includes("percentage")) {
+    //           return (
+    //             item[branchField] &&
+    //             item[scoreField] !== null &&
+    //             item[scoreField] !== undefined &&
+    //             !isNaN(parseFloat(item[scoreField]))
+    //           );
+    //         }
+    //         return (
+    //           item[branchField] &&
+    //           (typeof item[scoreField] === "number" ||
+    //             !isNaN(parseFloat(item[scoreField])))
+    //         );
+    //       })
+    //       .map((item) => ({
+    //         name:
+    //           item[branchField].length > 12
+    //             ? item[branchField].substring(0, 12) + "..."
+    //             : item[branchField],
+    //         branch:
+    //           item[branchField].length > 12
+    //             ? item[branchField].substring(0, 12) + "..."
+    //             : item[branchField],
+    //         fullName: item[branchField],
+    //         value: Number(parseFloat(item[scoreField]).toFixed(2)), // Primary field for BarChartComponent
+    //         score: Number(parseFloat(item[scoreField]).toFixed(2)),
+    //         region: (item.Region || "Unknown").trim(),
+    //         state: item.State || "Unknown",
+    //         // Dynamic coloring based on field type and value
+    //         fill: scoreField.toLowerCase().includes("percentage")
+    //           ? // For percentages: red (0-20%), orange (20-40%), yellow (40-60%), light green (60-80%), green (80-100%)
+    //             parseFloat(item[scoreField]) >= 80
+    //             ? colors.success
+    //             : parseFloat(item[scoreField]) >= 60
+    //             ? "#22c55e"
+    //             : parseFloat(item[scoreField]) >= 40
+    //             ? colors.warning
+    //             : parseFloat(item[scoreField]) >= 20
+    //             ? colors.error
+    //             : colors.critical
+    //           : // For scores: use original logic
+    //           parseFloat(item[scoreField]) === -1.0
+    //           ? colors.critical
+    //           : parseFloat(item[scoreField]) >= -0.9 &&
+    //             parseFloat(item[scoreField]) < -0.8
+    //           ? colors.error
+    //           : parseFloat(item[scoreField]) >= -0.7 &&
+    //             parseFloat(item[scoreField]) < -0.5
+    //           ? colors.warning
+    //           : parseFloat(item[scoreField]) >= -0.5
+    //           ? colors.success
+    //           : colors.primary,
+    //       }));
 
-        // Sort branches based on query intent and field type
-        const sortedBranches =
-          moreThanMatch || scoreField.toLowerCase().includes("percentage")
-            ? branchData.sort((a, b) => b.score - a.score) // Best first for "more than" or percentages
-            : branchData.sort((a, b) => a.score - b.score); // Worst first for "less than" or scores
+    //     // Sort branches based on query intent and field type
+    //     const sortedBranches =
+    //       moreThanMatch || scoreField.toLowerCase().includes("percentage")
+    //         ? branchData.sort((a, b) => b.score - a.score) // Best first for "more than" or percentages
+    //         : branchData.sort((a, b) => a.score - b.score); // Worst first for "less than" or scores
 
-        const limitedBranches = sortedBranches.slice(0, 25); // Show top 25 branches
+    //     const limitedBranches = sortedBranches.slice(0, 25); // Show top 25 branches
 
-        if (limitedBranches.length > 0) {
-          console.log("Branch chart data processed:", {
-            totalBranches: supportingData.length,
-            filteredBranches: limitedBranches.length,
-            sampleData: limitedBranches.slice(0, 3),
-            threshold,
-            titlePrefix,
-          });
+    //     if (limitedBranches.length > 0) {
+    //       console.log("Branch chart data processed:", {
+    //         totalBranches: supportingData.length,
+    //         filteredBranches: limitedBranches.length,
+    //         sampleData: limitedBranches.slice(0, 3),
+    //         threshold,
+    //         titlePrefix,
+    //       });
 
-          const fieldDisplayName = scoreField
-            .replace(/_/g, " ")
-            .replace(/([A-Z])/g, " $1")
-            .trim();
-          branchChart = {
-            title: `${titlePrefix} (${fieldDisplayName} ${operator} ${Math.abs(
-              threshold
-            )})`,
-            data: limitedBranches,
-            totalCount: supportingData.length,
-          };
-        }
-      }
-    }
+    //       const fieldDisplayName = scoreField
+    //         .replace(/_/g, " ")
+    //         .replace(/([A-Z])/g, " $1")
+    //         .trim();
+    //       branchChart = {
+    //         title: `${titlePrefix} (${fieldDisplayName} ${operator} ${Math.abs(
+    //           threshold
+    //         )})`,
+    //         data: limitedBranches,
+    //         totalCount: supportingData.length,
+    //       };
+    //     }
+    //   }
+    // }
 
     return { pieChart, barChart, branchChart, waterfallChart: null };
   }, [

@@ -17,6 +17,7 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Collapse,
 } from "@mui/material";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
@@ -27,7 +28,9 @@ import {
   Storage as StorageIcon,
   Error as ErrorIcon,
   KeyboardArrowDown as ArrowDownIcon,
-  DragIndicator as DragIcon,
+  KeyboardArrowUp as ArrowUpIcon,
+  Code as CodeIcon,
+  FileDownload as DownloadIcon,
 } from "@mui/icons-material";
 import Editor from "@monaco-editor/react";
 import EnhancedDataGrid from "@/components/widgets/EnhancedDataGrid";
@@ -46,13 +49,10 @@ const SQLExecutor = () => {
   const [executionStats, setExecutionStats] = useState(null);
   const [schemaMetadata, setSchemaMetadata] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [editorHeight, setEditorHeight] = useState(380);
-  const [isDragging, setIsDragging] = useState(false);
+  const [editorCollapsed, setEditorCollapsed] = useState(false);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const fetchedConnectionRef = useRef(null);
-  const dragStartY = useRef(0);
-  const dragStartHeight = useRef(0);
 
   const handleOpenMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -74,41 +74,44 @@ const SQLExecutor = () => {
     console.log('📊 SQL Executor - Current execution source from store:', executionSource);
   }, []);
 
-  // Handle drag resize
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    dragStartY.current = e.clientY;
-    dragStartHeight.current = editorHeight;
-    e.preventDefault();
-  };
-
+  // Auto-collapse editor when results are shown
   React.useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!isDragging) return;
-      
-      const deltaY = e.clientY - dragStartY.current;
-      const newHeight = Math.min(Math.max(dragStartHeight.current + deltaY, 300), 800);
-      setEditorHeight(newHeight);
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'ns-resize';
-      document.body.style.userSelect = 'none';
+    if (result && !editorCollapsed) {
+      setEditorCollapsed(true);
     }
+  }, [result]);
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [isDragging]);
+  // Download results as CSV
+  const handleDownloadCSV = useCallback(() => {
+    if (!result || result.length === 0) return;
+    
+    const headers = Object.keys(result[0]);
+    const csvContent = [
+      headers.join(','),
+      ...result.map(row =>
+        headers.map(header => {
+          const value = row[header];
+          if (value === null || value === undefined) return '';
+          const stringValue = String(value);
+          return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')
+            ? `"${stringValue.replace(/"/g, '""')}"`
+            : stringValue;
+        }).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `query_results_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showSuccess('Results downloaded as CSV');
+  }, [result, showSuccess]);
 
   // Fetch schema metadata for autocomplete
   React.useEffect(() => {
@@ -328,15 +331,15 @@ const SQLExecutor = () => {
   };
 
   return (
-    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Header Section - Fixed */}
-      <Box sx={{ flexShrink: 0, p: 3, pb: 2 }}>
+      <Box sx={{ flexShrink: 0, px: 3, pt: 2, pb: 1 }}>
         <Typography
           variant="h5"
           sx={{
             fontWeight: 700,
-            color: "#00bcd4", // Cyan color for light mode
-            mb: 1,
+            color: "#00bcd4",
+            mb: 0.5,
           }}
         >
           SQL Executor
@@ -346,354 +349,272 @@ const SQLExecutor = () => {
         </Typography>
       </Box>
 
-      {/* Scrollable Content Area */}
-      <Box sx={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
-        {/* Editor Section - Resizable Height */}
+      {/* Main Content Area */}
+      <Box sx={{ 
+        flex: 1, 
+        overflow: "auto", 
+        display: "flex", 
+        flexDirection: "column",
+        px: 3,
+        pb: 3,
+        gap: 2,
+      }}>
+        {/* Collapsible Editor Section */}
         <Paper
-        elevation={0}
-        sx={{
-          mx: 3,
-          mb: 2,
-          flexShrink: 0,
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
-          bgcolor: "#ffffff",
-          height: editorHeight, // Dynamic resizable height
-          transition: isDragging ? 'none' : 'height 0.2s ease-out',
-        }}
-      >
-        {/* Editor Toolbar - Light Mode */}
-        <Box
+          elevation={0}
           sx={{
-            px: 2,
-            py: 1.5,
-            bgcolor: "#f8f9fa",
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            flexShrink: 0,
+            borderRadius: 2,
+            border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+            overflow: "hidden",
+            bgcolor: "#ffffff",
           }}
         >
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Chip
-              icon={<StorageIcon sx={{ fontSize: 16 }} />}
-              label={currentConnection?.connection_name || "Database"}
-              size="small"
+          {/* Editor Header - Always Visible */}
+          <Box
+            sx={{
+              px: 2,
+              py: 1,
+              bgcolor: "#f8f9fa",
+              borderBottom: editorCollapsed ? "none" : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+            }}
+            onClick={() => setEditorCollapsed(!editorCollapsed)}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <IconButton 
+                size="small" 
+                sx={{ 
+                  p: 0.5,
+                  bgcolor: alpha("#00bcd4", 0.1),
+                  color: "#00bcd4",
+                }}
+              >
+                <CodeIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <Typography variant="subtitle2" fontWeight={600} color="text.primary">
+                SQL Editor
+              </Typography>
+              {editorCollapsed && query && (
+                <Chip 
+                  label={`${query.split('\n').length} lines`} 
+                  size="small" 
+                  sx={{ 
+                    height: 20, 
+                    fontSize: '0.7rem',
+                    bgcolor: alpha("#00bcd4", 0.1),
+                    color: "#00bcd4",
+                  }} 
+                />
+              )}
+            </Stack>
+            
+            <Stack direction="row" spacing={1} alignItems="center" onClick={(e) => e.stopPropagation()}>
+              <Chip
+                icon={<StorageIcon sx={{ fontSize: 14 }} />}
+                label={currentConnection?.connection_name || "Database"}
+                size="small"
+                sx={{
+                  height: 24,
+                  bgcolor: "#e3f2fd",
+                  color: "#1976d2",
+                  "& .MuiChip-icon": { color: "#1976d2" },
+                  fontWeight: 600,
+                  fontSize: "0.7rem",
+                }}
+              />
+              <Chip
+                icon={<PlayIcon sx={{ fontSize: 14 }} />}
+                label={executionSource === 'duckdb' ? 'DuckDB' : 'PostgreSQL'}
+                deleteIcon={<ArrowDownIcon sx={{ fontSize: 16 }} />}
+                onDelete={handleOpenMenu}
+                onClick={handleOpenMenu}
+                size="small"
+                sx={{
+                  height: 24,
+                  bgcolor: executionSource === 'duckdb' ? "#f3e5f5" : "#fff3e0",
+                  color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00",
+                  "& .MuiChip-icon": { color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00" },
+                  "& .MuiChip-deleteIcon": { color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00" },
+                  fontWeight: 600,
+                  fontSize: "0.7rem",
+                  cursor: "pointer",
+                }}
+              />
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleCloseMenu}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                PaperProps={{ sx: { mt: 1, minWidth: 200 } }}
+              >
+                <MenuItem 
+                  onClick={() => handleChangeExecutionSource('duckdb')}
+                  selected={executionSource === 'duckdb'}
+                >
+                  <ListItemIcon><PlayIcon sx={{ color: '#9c27b0' }} /></ListItemIcon>
+                  <ListItemText primary="DuckDB" secondary="Faster execution" />
+                  {executionSource === 'duckdb' && <CheckCircleIcon sx={{ color: '#9c27b0', ml: 1 }} />}
+                </MenuItem>
+                <MenuItem 
+                  onClick={() => handleChangeExecutionSource('postgres')}
+                  selected={executionSource === 'postgres'}
+                >
+                  <ListItemIcon><PlayIcon sx={{ color: '#f57c00' }} /></ListItemIcon>
+                  <ListItemText primary="PostgreSQL" secondary="Direct execution" />
+                  {executionSource === 'postgres' && <CheckCircleIcon sx={{ color: '#f57c00', ml: 1 }} />}
+                </MenuItem>
+              </Menu>
+              <Tooltip title="Copy Query">
+                <IconButton size="small" onClick={handleCopy} sx={{ color: "text.secondary" }}>
+                  <CopyIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Clear">
+                <IconButton size="small" onClick={handleClear} sx={{ color: "text.secondary" }}>
+                  <ClearIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+              <IconButton 
+                size="small" 
+                onClick={(e) => { e.stopPropagation(); setEditorCollapsed(!editorCollapsed); }}
+                sx={{ color: "text.secondary" }}
+              >
+                {editorCollapsed ? <ArrowDownIcon /> : <ArrowUpIcon />}
+              </IconButton>
+            </Stack>
+          </Box>
+
+          {/* Collapsible Editor Content */}
+          <Collapse in={!editorCollapsed}>
+            <Box sx={{ height: 250, width: "100%" }}>
+              <Editor
+                height="100%"
+                defaultLanguage="sql"
+                value={query}
+                onChange={(value) => setQuery(value || "")}
+                onMount={handleEditorDidMount}
+                theme="light"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  fontFamily: "'Fira Code', monospace",
+                  lineNumbers: "on",
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  padding: { top: 12, bottom: 12 },
+                  scrollbar: {
+                    vertical: "visible",
+                    horizontal: "visible",
+                    verticalScrollbarSize: 8,
+                    horizontalScrollbarSize: 8,
+                  },
+                }}
+              />
+            </Box>
+            
+            {/* Actions Bar */}
+            <Box
               sx={{
-                bgcolor: "#e3f2fd",
-                color: "#1976d2",
-                "& .MuiChip-icon": { color: "#1976d2" },
-                fontWeight: 600,
-                border: "none",
-              }}
-            />
-            <Chip
-              icon={<PlayIcon sx={{ fontSize: 16 }} />}
-              label={`Executing on: ${executionSource === 'duckdb' ? 'DuckDB' : 'PostgreSQL'}`}
-              deleteIcon={<ArrowDownIcon sx={{ fontSize: 18 }} />}
-              onDelete={handleOpenMenu}
-              onClick={handleOpenMenu}
-              size="small"
-              sx={{
-                bgcolor: executionSource === 'duckdb' ? "#f3e5f5" : "#fff3e0",
-                color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00",
-                "& .MuiChip-icon": { color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00" },
-                "& .MuiChip-deleteIcon": { color: executionSource === 'duckdb' ? "#9c27b0" : "#f57c00" },
-                fontWeight: 600,
-                border: "none",
-                cursor: "pointer",
-                "&:hover": {
-                  bgcolor: executionSource === 'duckdb' ? "#e1bee7" : "#ffe0b2",
-                },
-              }}
-            />
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleCloseMenu}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left',
-              }}
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
-              PaperProps={{
-                sx: {
-                  mt: 1,
-                  minWidth: 200,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                }
+                p: 1.5,
+                bgcolor: "#f8f9fa",
+                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              <MenuItem 
-                onClick={() => handleChangeExecutionSource('duckdb')}
-                selected={executionSource === 'duckdb'}
+              <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                Press <Chip label="Cmd + Enter" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 600, bgcolor: '#e0e0e0' }} /> to execute
+              </Typography>
+              <Button
+                id="execute-query-btn"
+                variant="contained"
+                size="small"
+                startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <PlayIcon />}
+                onClick={handleExecute}
+                disabled={!query.trim() || loading}
                 sx={{
-                  bgcolor: executionSource === 'duckdb' ? '#f3e5f5' : 'transparent',
-                  '&:hover': {
-                    bgcolor: '#f3e5f5',
-                  },
+                  bgcolor: "#00bcd4",
+                  "&:hover": { bgcolor: "#00acc1" },
+                  textTransform: "none",
+                  fontWeight: 600,
+                  px: 2,
+                  borderRadius: 1.5,
+                  fontSize: "0.8rem",
                 }}
               >
-                <ListItemIcon>
-                  <PlayIcon sx={{ color: '#9c27b0' }} />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="DuckDB" 
-                  secondary="Faster for Query Execution (default)"
-                  primaryTypographyProps={{ fontWeight: executionSource === 'duckdb' ? 600 : 400 }}
-                />
-                {executionSource === 'duckdb' && <CheckCircleIcon sx={{ color: '#9c27b0', ml: 1 }} />}
-              </MenuItem>
-              <MenuItem 
-                onClick={() => handleChangeExecutionSource('postgres')}
-                selected={executionSource === 'postgres'}
-                sx={{
-                  bgcolor: executionSource === 'postgres' ? '#fff3e0' : 'transparent',
-                  '&:hover': {
-                    bgcolor: '#fff3e0',
-                  },
-                }}
-              >
-                <ListItemIcon>
-                  <PlayIcon sx={{ color: '#f57c00' }} />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="PostgreSQL" 
-                  secondary="Direct database execution"
-                  primaryTypographyProps={{ fontWeight: executionSource === 'postgres' ? 600 : 400 }}
-                />
-                {executionSource === 'postgres' && <CheckCircleIcon sx={{ color: '#f57c00', ml: 1 }} />}
-              </MenuItem>
-            </Menu>
-          </Stack>
+                {loading ? "Executing..." : "Execute"}
+              </Button>
+            </Box>
+          </Collapse>
+        </Paper>
 
-          <Stack direction="row" spacing={1}>
-            <Tooltip title="Copy Query">
-              <IconButton size="small" onClick={handleCopy} sx={{ color: "text.secondary" }}>
-                <CopyIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Clear">
-              <IconButton size="small" onClick={handleClear} sx={{ color: "text.secondary" }}>
-                <ClearIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        </Box>
-
-        {/* Monaco Editor - Light Mode */}
-        <Box sx={{ flex: 1, width: "100%", py: 1, overflow: "hidden" }}>
-          <Editor
-            height="100%"
-            defaultLanguage="sql"
-            value={query}
-            onChange={(value) => setQuery(value || "")}
-            onMount={handleEditorDidMount}
-            theme="light"
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              fontFamily: "'Fira Code', monospace",
-              lineNumbers: "on",
-              roundedSelection: false,
-              scrollBeyondLastLine: false,
-              readOnly: false,
-              automaticLayout: true,
-              padding: { top: 16, bottom: 16 },
-              overviewRulerLanes: 0,
-              hideCursorInOverviewRuler: true,
-              scrollbar: {
-                vertical: "visible",
-                horizontal: "visible",
-                verticalScrollbarSize: 10,
-                horizontalScrollbarSize: 10,
-              },
-            }}
-          />
-        </Box>
-
-        {/* Actions Bar - Light Mode */}
-        <Box
-          sx={{
-            p: 2,
-            flexShrink: 0,
-            bgcolor: "#f8f9fa",
-            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-             <Typography variant="caption" component="div" sx={{ color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
-                Press <Chip label="Cmd + Enter" size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600, bgcolor: '#e0e0e0' }} /> to execute
-             </Typography>
-          </Box>
-          <Button
-            id="execute-query-btn"
-            variant="contained"
-            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PlayIcon />}
-            onClick={handleExecute}
-            disabled={!query.trim() || loading}
-            sx={{
-              bgcolor: "#00bcd4",
-              "&:hover": { bgcolor: "#00acc1" },
-              textTransform: "none",
-              fontWeight: 600,
-              px: 3,
-              borderRadius: 2,
-              boxShadow: "0 2px 8px rgba(0,188,212,0.3)",
-              color: "white"
-            }}
-          >
-            {loading ? "Executing..." : "Execute Query"}
-          </Button>
-        </Box>
-
-        {/* Drag Handle for Resizing */}
-        <Box
-          onMouseDown={handleMouseDown}
-          sx={{
-            height: 6,
-            width: "100%",
-            bgcolor: isDragging ? alpha(theme.palette.primary.main, 0.2) : "transparent",
-            cursor: "ns-resize",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background-color 0.2s",
-            borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            "&:hover": {
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-            },
-            "&:active": {
-              bgcolor: alpha(theme.palette.primary.main, 0.2),
-            },
-          }}
-        >
-          <DragIcon 
-            sx={{ 
-              fontSize: 16, 
-              color: isDragging ? "primary.main" : "text.disabled",
-              transform: "rotate(90deg)",
-              transition: "color 0.2s",
-            }} 
-          />
-        </Box>
-      </Paper>
-
-      {/* Results Section */}
-      {(result || error || executionStats) && (
-        <Fade in timeout={500}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: 3, pb: 6 }}>
-            {/* Stats Cards */}
+        {/* Results Section */}
+        {(result || error || executionStats) && (
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+            {/* Stats Row */}
             {executionStats && !error && (
-              <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                <Paper
+              <Stack 
+                direction="row" 
+                spacing={1.5}
+                sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}
+              >
+                <Chip
+                  icon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
+                  label="Success"
+                  size="small"
                   sx={{
-                    p: 2,
-                    flex: 1,
-                    bgcolor: "#f0fdf4", // Light green
-                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-                    borderRadius: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 2,
+                    bgcolor: "#e8f5e9",
+                    color: "#2e7d32",
+                    fontWeight: 600,
+                    "& .MuiChip-icon": { color: "#2e7d32" },
                   }}
-                >
-                  <Box
-                    sx={{
-                      p: 1,
-                      bgcolor: "#4caf50",
-                      borderRadius: "50%",
-                      color: "white",
-                      display: "flex",
-                    }}
-                  >
-                    <CheckCircleIcon fontSize="small" />
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                      STATUS
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={700} color="success.main">
-                      Success
-                    </Typography>
-                  </Box>
-                </Paper>
-
-                <Paper
+                />
+                <Chip
+                  icon={<StorageIcon sx={{ fontSize: 16 }} />}
+                  label={`${executionStats.rowCount} rows`}
+                  size="small"
                   sx={{
-                    p: 2,
-                    flex: 1,
-                    bgcolor: "#e3f2fd", // Light blue
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                    borderRadius: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 2,
+                    bgcolor: "#e3f2fd",
+                    color: "#1565c0",
+                    fontWeight: 600,
+                    "& .MuiChip-icon": { color: "#1565c0" },
                   }}
-                >
-                  <Box
-                    sx={{
-                      p: 1,
-                      bgcolor: "#2196f3",
-                      borderRadius: "50%",
-                      color: "white",
-                      display: "flex",
-                    }}
-                  >
-                    <StorageIcon fontSize="small" />
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                      ROWS RETURNED
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={700} color="primary.main">
-                      {executionStats.rowCount}
-                    </Typography>
-                  </Box>
-                </Paper>
-
-                <Paper
+                />
+                <Chip
+                  icon={<SpeedIcon sx={{ fontSize: 16 }} />}
+                  label={`${executionStats.executionTime} ms`}
+                  size="small"
                   sx={{
-                    p: 2,
-                    flex: 1,
-                    bgcolor: "#fff3e0", // Light orange
-                    border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
-                    borderRadius: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 2,
+                    bgcolor: "#fff3e0",
+                    color: "#e65100",
+                    fontWeight: 600,
+                    "& .MuiChip-icon": { color: "#e65100" },
                   }}
-                >
-                  <Box
-                    sx={{
-                      p: 1,
-                      bgcolor: "#ff9800",
-                      borderRadius: "50%",
-                      color: "white",
-                      display: "flex",
-                    }}
-                  >
-                    <SpeedIcon fontSize="small" />
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                      EXECUTION TIME
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={700} color="warning.main">
-                      {executionStats.executionTime} ms
-                    </Typography>
-                  </Box>
-                </Paper>
+                />
+                {result && result.length > 0 && (
+                  <Tooltip title="Download as CSV">
+                    <Chip
+                      icon={<DownloadIcon sx={{ fontSize: 16 }} />}
+                      label="Download CSV"
+                      size="small"
+                      onClick={handleDownloadCSV}
+                      sx={{
+                        bgcolor: "#f3e5f5",
+                        color: "#7b1fa2",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        "& .MuiChip-icon": { color: "#7b1fa2" },
+                        "&:hover": { bgcolor: "#e1bee7" },
+                      }}
+                    />
+                  </Tooltip>
+                )}
               </Stack>
             )}
 
@@ -704,33 +625,80 @@ const SQLExecutor = () => {
                 icon={<ErrorIcon fontSize="inherit" />}
                 sx={{
                   borderRadius: 2,
-                  bgcolor: "#ffebee",
-                  border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                  mb: 2,
                 }}
               >
                 <Typography variant="subtitle2" fontWeight={700}>
                   Execution Failed
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 0.5, fontFamily: "monospace" }}>
+                <Typography variant="body2" sx={{ mt: 0.5, fontFamily: "monospace", fontSize: "0.8rem" }}>
                   {error}
                 </Typography>
               </Alert>
             )}
 
-            {/* Results Grid */}
+            {/* Results Grid - Takes remaining space */}
             {result && (
-              <Box sx={{ width: "100%", minHeight: 500, mb: 4 }}>
-                <EnhancedDataGrid
-                  title="Query Results"
-                  data={result}
-                  height={500}
-                  hideHeader={false}
-                />
-              </Box>
+              <Paper
+                elevation={0}
+                sx={{ 
+                  flex: 1,
+                  minHeight: 300,
+                  display: "flex",
+                  flexDirection: "column",
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.15)}`,
+                  overflow: "hidden",
+                }}
+              >
+                {/* Results Header */}
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    bgcolor: "#f8f9fa",
+                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <StorageIcon sx={{ fontSize: 18, color: "#00bcd4" }} />
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      Query Results
+                    </Typography>
+                    <Chip 
+                      label={`${result.length} records`} 
+                      size="small" 
+                      sx={{ 
+                        height: 20, 
+                        fontSize: '0.7rem',
+                        bgcolor: alpha("#00bcd4", 0.1),
+                        color: "#00bcd4",
+                      }} 
+                    />
+                  </Stack>
+                  <Tooltip title="Download as CSV">
+                    <IconButton size="small" onClick={handleDownloadCSV} sx={{ color: "#7b1fa2" }}>
+                      <DownloadIcon sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                
+                {/* DataGrid Container */}
+                <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+                  <EnhancedDataGrid
+                    title=""
+                    data={result}
+                    height="100%"
+                    hideHeader={true}
+                  />
+                </Box>
+              </Paper>
             )}
           </Box>
-        </Fade>
-      )}
+        )}
       </Box>
     </Box>
   );

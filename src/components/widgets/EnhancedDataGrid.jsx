@@ -500,6 +500,12 @@ const EnhancedDataGrid = ({
           animation: `${slideIn} 0.8s ease-out`,
           animationDelay: `${index * 0.1}s`,
           animationFillMode: 'both',
+          // Flex layout support for responsive containers
+          display: 'flex',
+          flexDirection: 'column',
+          height: height === '100%' ? '100%' : 'auto',
+          minHeight: 0,
+          minWidth: 0,
           '&::before': {
             content: '""',
             position: 'absolute',
@@ -520,7 +526,8 @@ const EnhancedDataGrid = ({
             background: `linear-gradient(135deg, 
               ${alpha(theme.palette.primary.main, 0.05)} 0%, 
               ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            flexShrink: 0, // Prevent header from shrinking
           }}>
             <Stack 
               direction={isMobile ? "column" : "row"} 
@@ -640,10 +647,17 @@ const EnhancedDataGrid = ({
         )}
 
         {/* Data Grid */}
-        <Grow in={mounted} timeout={1200} style={{ transformOrigin: 'center top' }}>
+        <Grow in={mounted} timeout={1200} style={{ transformOrigin: 'center top', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <Box sx={{ 
-            height: isMobile ? Math.min(height, 400) : height,
-            width: '100%'
+            height: height === '100%' ? '100%' : (isMobile ? Math.min(height, 400) : height),
+            width: '100%',
+            overflow: 'auto',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: height === '100%' ? 1 : 'none',
+            minHeight: 0,
+            minWidth: 0,
           }}>
             <DataGrid
               rows={rows}
@@ -673,8 +687,14 @@ const EnhancedDataGrid = ({
               sx={{
                 border: 'none',
                 width: '100%',
+                height: '100%',
+                flex: 1,
+                minWidth: 0,
                 '& .MuiDataGrid-main': {
-                  borderRadius: 0
+                  borderRadius: 0,
+                  overflow: 'auto',
+                  minWidth: 0,
+                  flex: 1,
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   background: `linear-gradient(135deg, 
@@ -683,7 +703,10 @@ const EnhancedDataGrid = ({
                   borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
                   fontSize: isMobile ? '0.75rem' : '0.875rem',
                   fontWeight: 700,
-                  minHeight: isMobile ? '48px !important' : '56px !important'
+                  minHeight: isMobile ? '48px !important' : '56px !important',
+                },
+                '& .MuiDataGrid-columnHeadersInner': {
+                  minWidth: 'fit-content',
                 },
                 '& .wrapped-header .MuiDataGrid-columnHeaderTitle': {
                   whiteSpace: 'normal !important',
@@ -721,21 +744,51 @@ const EnhancedDataGrid = ({
                   }
                 },
                 '& .MuiDataGrid-virtualScroller': {
-                  overflowX: 'auto'
+                  overflow: 'auto !important',
+                  overflowX: 'auto !important',
+                  overflowY: 'auto !important',
+                  minWidth: 0,
+                },
+                '& .MuiDataGrid-virtualScrollerContent': {
+                  minWidth: 'fit-content',
+                },
+                '& .MuiDataGrid-virtualScrollerRenderZone': {
+                  minWidth: 'fit-content',
                 },
                 '& .MuiDataGrid-footerContainer': {
                   background: alpha(theme.palette.background.default, 0.5),
-                  borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                  borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  minHeight: '52px',
+                  flexShrink: 0,
                 },
                 '& .MuiTablePagination-root': {
                   color: theme.palette.text.secondary,
-                  fontSize: isMobile ? '0.75rem' : '0.875rem'
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  overflow: 'hidden',
+                },
+                '& .MuiTablePagination-toolbar': {
+                  flexWrap: isMobile ? 'wrap' : 'nowrap',
+                  justifyContent: isMobile ? 'center' : 'flex-end',
+                  gap: isMobile ? 0.5 : 0,
+                  minHeight: isMobile ? 'auto' : '52px',
+                  padding: isMobile ? '8px 4px' : '0 8px',
                 },
                 '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-                  fontSize: isMobile ? '0.75rem' : '0.875rem'
+                  fontSize: isMobile ? '0.7rem' : '0.875rem',
+                  margin: isMobile ? '0 4px' : '0 8px',
+                },
+                '& .MuiTablePagination-select': {
+                  fontSize: isMobile ? '0.7rem' : '0.875rem',
+                },
+                '& .MuiTablePagination-actions': {
+                  marginLeft: isMobile ? '4px' : '20px',
+                  '& .MuiIconButton-root': {
+                    padding: isMobile ? '4px' : '8px',
+                  },
                 },
                 '& .MuiCheckbox-root': {
                   color: alpha(theme.palette.primary.main, 0.6),
+                  padding: isMobile ? '4px' : '9px',
                   '&.Mui-checked': {
                     color: theme.palette.primary.main
                   }
