@@ -2300,27 +2300,47 @@ export default function HomePage() {
                   }}
                   disabled={isLoading || switchingDataSource}
                 >
-                  {isLoading || switchingDataSource ? (
-                    <CircularProgress size={20} />
-                  ) : dataSourceMode === "excel" ? (
-                    <Image
-                      src="/excel.png"
-                      alt="Excel mode"
-                      width={24}
-                      height={24}
-                      style={{
-                        animation: selectedDocument
+                  {/* Preload both images - hidden but loaded */}
+                  <Image
+                    src="/excel.png"
+                    alt=""
+                    width={24}
+                    height={24}
+                    priority
+                    style={{
+                      position: "absolute",
+                      opacity:
+                        dataSourceMode === "excel" &&
+                        !isLoading &&
+                        !switchingDataSource
+                          ? 1
+                          : 0,
+                      transition: "opacity 0.15s ease",
+                      animation:
+                        selectedDocument && dataSourceMode === "excel"
                           ? "bounce 0.6s ease-in-out"
                           : "none",
-                      }}
-                    />
-                  ) : (
-                    <Image
-                      src="/database.svg"
-                      alt="Database mode"
-                      width={24}
-                      height={24}
-                    />
+                    }}
+                  />
+                  <Image
+                    src="/database.svg"
+                    alt=""
+                    width={24}
+                    height={24}
+                    priority
+                    style={{
+                      position: "absolute",
+                      opacity:
+                        dataSourceMode !== "excel" &&
+                        !isLoading &&
+                        !switchingDataSource
+                          ? 1
+                          : 0,
+                      transition: "opacity 0.15s ease",
+                    }}
+                  />
+                  {(isLoading || switchingDataSource) && (
+                    <CircularProgress size={20} />
                   )}
                 </IconButton>
               </Tooltip>
