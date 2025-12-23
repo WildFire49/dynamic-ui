@@ -70,7 +70,8 @@ import {
   PieChartOutline as PieChartIcon,
   AreaChart as AreaChartIcon,
   Download as DownloadIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Image as ImageIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -848,11 +849,27 @@ const Dashboard = ({ initialDashboardId }) => {
     }
   };
 
-  const handleEditTitle = (id, newTitle) => {
+  const handleEditTitle = async (id, newTitle) => {
     if (!newTitle?.trim()) return;
+    
+    const username = getUsername();
+    const dashboardId = activeDashboardId;
+    
+    // Update locally first for immediate feedback
     setSavedVisualizations(prev => prev.map(item => item.id === id ? { ...item, title: newTitle, question: newTitle } : item));
     setSavedAnalyses(prev => prev.map(item => item.id === id ? { ...item, title: newTitle, question: newTitle } : item));
-    setEditingTitleId(null);
+    
+    // Call API to persist the change
+    try {
+      const result = await dashboardService.updateWidget(username, dashboardId, id, { title: newTitle });
+      if (result.success) {
+        console.log('✅ Widget title updated successfully');
+      } else {
+        console.error('Failed to update widget title:', result.message);
+      }
+    } catch (error) {
+      console.error('Error updating widget title:', error);
+    }
   };
 
   // Inline title editing handlers
@@ -1370,6 +1387,9 @@ const Dashboard = ({ initialDashboardId }) => {
     setDraggedWidgetForChat(null);
     draggedWidgetRef.current = null;
     setChatDropZoneActive(false);
+    
+    // Don't open config studio after drag
+    // setConfigStudio({ open: false, widget: null });
   };
 
   // Chat Drag Handlers
@@ -2083,7 +2103,7 @@ const Dashboard = ({ initialDashboardId }) => {
   };
 
   // Render Table - with beautiful single record card support
-  const renderTable = (data) => {
+  const renderTable = (data, isFullscreen = false) => {
     const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
     
     // For single-row data, show beautiful metric cards
@@ -2101,13 +2121,14 @@ const Dashboard = ({ initialDashboardId }) => {
           autoGenerateColumns={true}
           showSaveButton={false}
           variant="clean"
+          useInfiniteScroll={isFullscreen}
         />
       </Box>
     );
   };
 
   // Main visualization renderer
-  const renderVisualization = (item, viewMode) => {
+  const renderVisualization = (item, viewMode, isFullscreen = false) => {
     // Analysis Widget
     if (item.type === 'analysis_widget') {
       const analysisData = item.data || {
@@ -2157,10 +2178,10 @@ const Dashboard = ({ initialDashboardId }) => {
       case 'pie':
         return renderPieChart(data);
       case 'table':
-        return renderTable(data);
+        return renderTable(data, isFullscreen);
       default:
         return detectedType === 'area' ? renderAreaChart(data) : 
-               detectedType === 'bar' ? renderBarChart(data) : renderTable(data);
+               detectedType === 'bar' ? renderBarChart(data) : renderTable(data, isFullscreen);
     }
   };
 
@@ -2967,7 +2988,7 @@ const Dashboard = ({ initialDashboardId }) => {
               </ToggleButton>
             </ToggleButtonGroup>
             
-            {/* Download Button */}
+            {/* Download Buttons */}
             <Tooltip title="Download CSV" arrow>
               <IconButton
                 onClick={() => fullscreenView.item && handleDownloadCSV(fullscreenView.item)}
@@ -2980,6 +3001,34 @@ const Dashboard = ({ initialDashboardId }) => {
                 <DownloadIcon sx={{ fontSize: 20 }} />
               </IconButton>
             </Tooltip>
+            
+            {/* Download Chart as Image */}
+            {fullscreenViewMode !== 'table' && (
+              <Tooltip title="Download Chart as PNG" arrow>
+                <IconButton
+                  onClick={() => {
+                    const chartElement = document.querySelector('.recharts-wrapper');
+                    if (chartElement) {
+                      import('html2canvas').then(html2canvas => {
+                        html2canvas.default(chartElement).then(canvas => {
+                          const link = document.createElement('a');
+                          link.download = `${fullscreenView.item?.title || 'chart'}_${new Date().toISOString().split('T')[0]}.png`;
+                          link.href = canvas.toDataURL();
+                          link.click();
+                        });
+                      });
+                    }
+                  }}
+                  sx={{
+                    color: '#fff',
+                    bgcolor: 'rgba(255,255,255,0.15)',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                  }}
+                >
+                  <ImageIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
           
           <IconButton 
@@ -3008,7 +3057,8 @@ const Dashboard = ({ initialDashboardId }) => {
             <Box sx={{ flex: 1, p: 2, overflow: 'auto' }}>
               {fullscreenView.item && renderVisualization(
                 fullscreenView.item, 
-                fullscreenViewMode
+                fullscreenViewMode,
+                true
               )}
             </Box>
           </Box>

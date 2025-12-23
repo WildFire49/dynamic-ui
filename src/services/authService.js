@@ -78,6 +78,21 @@ class AuthService {
     return localStorage.getItem("selectedProductCode") || this.productCode;
   }
 
+  // Get product code for API calls
+  getProductCode() {
+    return this.getCurrentProductCode();
+  }
+
+  // Get client ID for API calls
+  getClientId() {
+    return this.clientId;
+  }
+
+  // Get secret key for API calls
+  getSecretKey() {
+    return this.secretKey;
+  }
+
   // Login API call
   async login(username, password, productCode = null) {
     // If product code provided, set it
@@ -495,17 +510,63 @@ class AuthService {
     }
   }
 
-  // Logout
-  logout() {
-    if (!this.isClient()) return;
+  // Logout with SSO API call
+  async logout() {
+    if (!this.isClient()) return { success: false };
 
-    // Clear ALL localStorage data to ensure clean state for new login
-    localStorage.clear();
+    try {
+      const accessToken = this.getAccessToken();
+      const refreshToken = this.getRefreshToken();
+      const productCode = this.getProductCode();
+      const clientId = this.getClientId();
+      const secretKey = this.getSecretKey();
 
-    // Also clear sessionStorage
-    sessionStorage.clear();
+      // Call SSO logout API if we have the necessary credentials
+      if (accessToken && refreshToken && productCode && clientId && secretKey) {
+        const ssoBaseUrl =
+          process.env.NEXT_PUBLIC_SSO_BASE_URL ||
+          "https://ams-uat.mifix.io/idp/sso";
 
-    console.log("✅ Logged out - all local data cleared");
+        try {
+          const response = await fetch(`${ssoBaseUrl}/logout`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              clientId: clientId,
+              secretKey: secretKey,
+              productCode: productCode,
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              refresh_token: refreshToken,
+            }),
+          });
+
+          if (!response.ok) {
+            console.warn("SSO logout API failed, proceeding with local logout");
+          } else {
+            console.log("✅ SSO logout successful");
+          }
+        } catch (error) {
+          console.warn("SSO logout API error:", error.message);
+        }
+      }
+
+      // Clear ALL localStorage data to ensure clean state for new login
+      localStorage.clear();
+
+      // Also clear sessionStorage
+      sessionStorage.clear();
+
+      console.log("✅ Logged out - all local data cleared");
+      return { success: true };
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still clear local data even if API call fails
+      localStorage.clear();
+      sessionStorage.clear();
+      return { success: false, error: error.message };
+    }
   }
 
   // Check if user is authenticated

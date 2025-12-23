@@ -47,7 +47,8 @@ const DataGridComponent = ({
   height = 400,
   data = null, // New prop for dynamic data
   autoGenerateColumns = true, // New prop to auto-generate columns
-  variant = "card" // 'card' | 'clean'
+  variant = "card", // 'card' | 'clean'
+  useInfiniteScroll = false // New prop for infinite scroll
 }) => {
   // Generate columns and rows dynamically if data is provided
   const { processedRows, processedColumns } = useMemo(() => {
@@ -245,12 +246,14 @@ const DataGridComponent = ({
           getRowId={(row) => row.id}
           initialState={{
             pagination: {
-              paginationModel: { page: 0, pageSize: 10 },
+              paginationModel: { page: 0, pageSize: useInfiniteScroll ? 100 : 10 },
             },
           }}
-          pageSizeOptions={[5, 10, 25, 50, 100]}
+          pageSizeOptions={useInfiniteScroll ? [100, 500, 1000] : [10, 25, 50, 100]}
           disableSelectionOnClick
           density="comfortable"
+          hideFooterPagination={useInfiniteScroll}
+          scrollbarSize={10}
           sx={{
             border: 'none',
             fontSize: '0.875rem',
@@ -260,12 +263,14 @@ const DataGridComponent = ({
             '& .MuiDataGrid-cell': {
               borderBottom: '1px solid #E2E8F0',
               borderRight: '1px solid #E2E8F0',
-              fontSize: '0.875rem',
-              padding: '12px 14px',
+              fontSize: '0.9rem',
+              padding: '16px',
               color: '#1E293B',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              fontWeight: 500,
+              minHeight: '56px',
             },
             '& .MuiDataGrid-cell[data-field]': {
               display: 'flex',
@@ -276,20 +281,27 @@ const DataGridComponent = ({
                 backgroundColor: '#FAFBFC',
               },
               '&:hover': {
-                backgroundColor: '#F1F5F9',
+                backgroundColor: '#EEF2FF',
+                transform: 'scale(1.001)',
+                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.08)',
+                transition: 'all 0.2s ease',
               },
             },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#F1F5F9',
+              backgroundColor: '#F8FAFC',
               borderBottom: '2px solid #E2E8F0',
-              minHeight: '52px !important',
-              maxHeight: '52px !important',
+              minHeight: '56px !important',
+              maxHeight: '56px !important',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
             },
             '& .MuiDataGrid-columnHeader': {
-              padding: '12px 14px',
+              padding: '14px 16px',
               borderRight: '1px solid #E2E8F0',
               '&:last-child': {
                 borderRight: 'none',
+              },
+              '&:focus': {
+                outline: 'none',
               },
             },
             '& .MuiDataGrid-columnHeaderTitleContainer': {
@@ -297,9 +309,9 @@ const DataGridComponent = ({
             },
             '& .MuiDataGrid-columnHeaderTitle': {
               fontWeight: 700,
-              fontSize: '0.85rem',
+              fontSize: '0.9rem',
               color: '#1E293B',
-              letterSpacing: '0.01em',
+              letterSpacing: '0.02em',
               textTransform: 'uppercase',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

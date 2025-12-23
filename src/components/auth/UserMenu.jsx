@@ -48,9 +48,9 @@ const UserMenu = () => {
     router.push('/change-password');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     handleClose();
-    logout();
+    await logout();
   };
 
   if (!user) return null;
