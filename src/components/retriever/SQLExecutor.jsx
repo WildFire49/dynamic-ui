@@ -18,6 +18,10 @@ import {
   ListItemIcon,
   ListItemText,
   Collapse,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Slider,
 } from "@mui/material";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
@@ -31,6 +35,10 @@ import {
   KeyboardArrowUp as ArrowUpIcon,
   Code as CodeIcon,
   FileDownload as DownloadIcon,
+  Fullscreen as FullscreenIcon,
+  FullscreenExit as FullscreenExitIcon,
+  Height as HeightIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import Editor from "@monaco-editor/react";
 import EnhancedDataGrid from "@/components/widgets/EnhancedDataGrid";
@@ -50,6 +58,9 @@ const SQLExecutor = () => {
   const [schemaMetadata, setSchemaMetadata] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [editorCollapsed, setEditorCollapsed] = useState(false);
+  const [editorHeight, setEditorHeight] = useState(250);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showHeightSlider, setShowHeightSlider] = useState(false);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const fetchedConnectionRef = useRef(null);
@@ -479,6 +490,24 @@ const SQLExecutor = () => {
                   <ClearIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               </Tooltip>
+              <Tooltip title="Adjust Height">
+                <IconButton 
+                  size="small" 
+                  onClick={(e) => { e.stopPropagation(); setShowHeightSlider(!showHeightSlider); }}
+                  sx={{ color: "text.secondary" }}
+                >
+                  <HeightIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Fullscreen">
+                <IconButton 
+                  size="small" 
+                  onClick={(e) => { e.stopPropagation(); setIsFullscreen(true); }}
+                  sx={{ color: "text.secondary" }}
+                >
+                  <FullscreenIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
               <IconButton 
                 size="small" 
                 onClick={(e) => { e.stopPropagation(); setEditorCollapsed(!editorCollapsed); }}
@@ -491,7 +520,26 @@ const SQLExecutor = () => {
 
           {/* Collapsible Editor Content */}
           <Collapse in={!editorCollapsed}>
-            <Box sx={{ height: 250, width: "100%" }}>
+            {/* Height Slider */}
+            {showHeightSlider && (
+              <Box sx={{ px: 2, py: 1.5, bgcolor: "#f8f9fa", borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Typography variant="caption" color="text.secondary" sx={{ minWidth: 80 }}>
+                    Height: {editorHeight}px
+                  </Typography>
+                  <Slider
+                    value={editorHeight}
+                    onChange={(e, value) => setEditorHeight(value)}
+                    min={150}
+                    max={800}
+                    step={50}
+                    valueLabelDisplay="auto"
+                    sx={{ flex: 1 }}
+                  />
+                </Stack>
+              </Box>
+            )}
+            <Box sx={{ height: editorHeight, width: "100%" }}>
               <Editor
                 height="100%"
                 defaultLanguage="sql"
@@ -700,6 +748,128 @@ const SQLExecutor = () => {
           </Box>
         )}
       </Box>
+
+      {/* Fullscreen Editor Dialog */}
+      <Dialog
+        open={isFullscreen}
+        onClose={() => setIsFullscreen(false)}
+        maxWidth={false}
+        fullScreen
+        PaperProps={{
+          elevation: 0,
+          sx: {
+            borderRadius: 0,
+            bgcolor: '#F8FAFC',
+          }
+        }}
+      >
+        <DialogTitle
+          component="div"
+          sx={{
+            px: 4,
+            py: 2,
+            borderBottom: '1px solid #E2E8F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'linear-gradient(135deg, #00bcd4 0%, #0097a7 100%)',
+            color: '#fff',
+          }}
+        >
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, color: '#fff', mb: 0.5 }}>
+              SQL Editor - Fullscreen
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+              {currentConnection?.connection_name || "Database"} • {executionSource === 'duckdb' ? 'DuckDB' : 'PostgreSQL'}
+            </Typography>
+          </Box>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Tooltip title="Copy Query">
+              <IconButton
+                onClick={handleCopy}
+                sx={{
+                  color: '#fff',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                }}
+              >
+                <CopyIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Clear">
+              <IconButton
+                onClick={handleClear}
+                sx={{
+                  color: '#fff',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                }}
+              >
+                <ClearIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+            <Button
+              variant="contained"
+              startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <PlayIcon />}
+              onClick={handleExecute}
+              disabled={!query.trim() || loading}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.9)',
+                color: '#00bcd4',
+                '&:hover': { bgcolor: '#fff' },
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+              }}
+            >
+              Execute Query
+            </Button>
+            <IconButton
+              onClick={() => setIsFullscreen(false)}
+              sx={{
+                color: '#fff',
+                bgcolor: 'rgba(255,255,255,0.15)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, bgcolor: '#F8FAFC', height: 'calc(100vh - 80px)', overflow: 'hidden' }}>
+          <Box sx={{
+            height: '100%',
+            bgcolor: '#fff',
+            border: '1px solid #E2E8F0',
+            overflow: 'hidden',
+          }}>
+            <Editor
+              height="100%"
+              defaultLanguage="sql"
+              value={query}
+              onChange={(value) => setQuery(value || "")}
+              theme="light"
+              options={{
+                minimap: { enabled: true },
+                fontSize: 14,
+                fontFamily: "'Fira Code', monospace",
+                lineNumbers: "on",
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                padding: { top: 16, bottom: 16 },
+                scrollbar: {
+                  vertical: "visible",
+                  horizontal: "visible",
+                  verticalScrollbarSize: 10,
+                  horizontalScrollbarSize: 10,
+                },
+              }}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

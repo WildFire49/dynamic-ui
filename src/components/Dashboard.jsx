@@ -1324,10 +1324,7 @@ const Dashboard = ({ initialDashboardId }) => {
       // Set a custom drag image if needed, or stick to default
     }
     
-    // Open chat panel automatically
-    if (!chatDrawerOpen) {
-      setChatDrawerOpen(true);
-    }
+    // DON'T auto-open chat panel - only open when dragging towards right edge
   };
 
   const handleDragOver = (e, index) => {
@@ -1343,7 +1340,7 @@ const Dashboard = ({ initialDashboardId }) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e, dropIndex) => {
+  const handleDrop = async (e, dropIndex) => {
     e.preventDefault();
     
     if (!draggedItem || draggedIndex === null) return;
@@ -1359,8 +1356,34 @@ const Dashboard = ({ initialDashboardId }) => {
     const [removed] = newItems.splice(draggedIndex, 1);
     newItems.splice(dropIndex, 0, removed);
     
-    // Update widget order
-    setWidgetOrder(newItems.map(item => item.id));
+    // Update widget order in state
+    const newOrder = newItems.map(item => item.id);
+    setWidgetOrder(newOrder);
+    
+    // Persist to backend API
+    const username = getUsername();
+    if (username && activeDashboardId) {
+      try {
+        const widgetOrderPayload = newOrder.map((widgetId, index) => ({
+          widgetId,
+          order: index
+        }));
+        
+        const result = await dashboardService.reorderWidgets(
+          username,
+          activeDashboardId,
+          widgetOrderPayload
+        );
+        
+        if (result.success) {
+          console.log('✅ Widget order persisted to backend');
+        } else {
+          console.error('❌ Failed to persist widget order:', result.message);
+        }
+      } catch (error) {
+        console.error('❌ Error persisting widget order:', error);
+      }
+    }
     
     // Reset drag state
     setDraggedItem(null);
@@ -1368,7 +1391,7 @@ const Dashboard = ({ initialDashboardId }) => {
     setDragOverIndex(null);
   };
 
-  const handleDragEnd = (e) => {
+  const handleDragEnd = async (e) => {
     console.log('🏁 Drag end event');
     // If dropped on valid target, handleDrop already handled it
     // This handles dropping outside valid targets
@@ -1377,7 +1400,34 @@ const Dashboard = ({ initialDashboardId }) => {
       const newItems = [...allItems];
       const [removed] = newItems.splice(draggedIndex, 1);
       newItems.splice(dragOverIndex, 0, removed);
-      setWidgetOrder(newItems.map(item => item.id));
+      
+      const newOrder = newItems.map(item => item.id);
+      setWidgetOrder(newOrder);
+      
+      // Persist to backend API
+      const username = getUsername();
+      if (username && activeDashboardId) {
+        try {
+          const widgetOrderPayload = newOrder.map((widgetId, index) => ({
+            widgetId,
+            order: index
+          }));
+          
+          const result = await dashboardService.reorderWidgets(
+            username,
+            activeDashboardId,
+            widgetOrderPayload
+          );
+          
+          if (result.success) {
+            console.log('✅ Widget order persisted to backend');
+          } else {
+            console.error('❌ Failed to persist widget order:', result.message);
+          }
+        } catch (error) {
+          console.error('❌ Error persisting widget order:', error);
+        }
+      }
     }
     
     // Reset all drag states
@@ -1395,7 +1445,6 @@ const Dashboard = ({ initialDashboardId }) => {
   // Chat Drag Handlers
   const handleChatDragOver = (e) => {
     e.preventDefault();
-    e.stopPropagation();
     
     // Always allow dropping if we have a widget dragged
     if (draggedWidgetRef.current || e.dataTransfer.types.includes('application/widget')) {
@@ -3133,6 +3182,14 @@ const Dashboard = ({ initialDashboardId }) => {
       <Zoom in={!chatDrawerOpen}>
         <Box
           onClick={() => setChatDrawerOpen(true)}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (draggedWidgetRef.current) {
+              console.log('🎯 Dragging over chat bubble, opening drawer');
+              setChatDrawerOpen(true);
+            }
+          }}
           sx={{
             position: 'fixed',
             bottom: 24,
