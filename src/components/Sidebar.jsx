@@ -36,6 +36,7 @@ import {
   CreditCard as CreditIcon,
   Chat as ChatIcon,
   People as CustomersIcon,
+  People as PeopleIcon,
   Assessment as IncentiveIcon,
   Close as CloseIcon,
   Build as ConfiguratorIcon,
@@ -59,6 +60,7 @@ import useDashboardStore from "../store/dashboardStore";
 const ICON_MAP = {
   ChatIcon: ChatIcon,
   DashboardIcon: DashboardIcon,
+  PeopleIcon: PeopleIcon,
   ConfiguratorIcon: ConfiguratorIcon,
   AccessControlIcon: AccessControlIcon,
   SettingsIcon: SettingsIcon,
@@ -324,6 +326,11 @@ const Sidebar = ({
       setIsNavigating(true);
       setNavigationMessage("Loading Configurator...");
       router.push("/configurator");
+    } else if (item.id === "leads") {
+      // Navigate to Internal CPH (leads) page
+      setIsNavigating(true);
+      setNavigationMessage("Loading Internal CPH...");
+      router.push("/leads");
     } else {
       // For other items, use the callback
       onTabChange(item.id);

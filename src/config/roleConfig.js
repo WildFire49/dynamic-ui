@@ -7,8 +7,9 @@
 export const ROLES = {
   SUPER_ADMIN: "RE-20448",
   RECON_USER: "RE-20612",
-  RECON_CONFIGURATOR: "RE-20920",
+  MIS: "RE-20920",
   ADMIN_CONFIGURATOR: "RE-20769",
+  PRODUCT_LEAD: "RE-231875",
 };
 
 // ============================
@@ -16,8 +17,9 @@ export const ROLES = {
 // ============================
 export const ROLE_CATEGORIES = {
   ADMIN_ROLES: [ROLES.SUPER_ADMIN],
-  USER_ROLES: [ROLES.RECON_USER, ROLES.RECON_CONFIGURATOR],
-  CONFIGURATOR_ROLES: [ROLES.SUPER_ADMIN, ROLES.RECON_CONFIGURATOR],
+  USER_ROLES: [ROLES.RECON_USER, ROLES.MIS],
+  CONFIGURATOR_ROLES: [ROLES.SUPER_ADMIN],
+  LEAD_ROLES: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
   ALL_ROLES: Object.values(ROLES),
 };
 
@@ -36,9 +38,15 @@ export const ROUTE_ACCESS = {
 
   // Specific route permissions
   ROUTE_PERMISSIONS: {
-    chat: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.RECON_CONFIGURATOR],
-    dashboard: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.RECON_CONFIGURATOR],
-    configurator: [ROLES.SUPER_ADMIN, ROLES.ADMIN_CONFIGURATOR], // Admin and Configurator only
+    chat: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD],
+    dashboard: [
+      ROLES.SUPER_ADMIN,
+      ROLES.RECON_USER,
+      ROLES.MIS,
+      ROLES.PRODUCT_LEAD,
+    ],
+    leads: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD], // Internal CPH - Super Admin and Product Lead only
+    configurator: [ROLES.SUPER_ADMIN], // Super Admin only
     accessControl: [ROLES.SUPER_ADMIN], // Admin only
     settings: [ROLES.SUPER_ADMIN], // Admin only
     userManagement: [ROLES.SUPER_ADMIN], // Admin only
@@ -53,21 +61,28 @@ export const MENU_ITEMS = [
     id: "chat",
     label: "Chat",
     icon: "ChatIcon",
-    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.RECON_CONFIGURATOR],
+    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD],
     path: "/",
   },
   {
     id: "dashboard",
     label: "Dashboard",
     icon: "DashboardIcon",
-    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.RECON_CONFIGURATOR],
+    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD],
     path: "/dashboard",
+  },
+  {
+    id: "leads",
+    label: "Internal CPH",
+    icon: "PeopleIcon",
+    roles: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
+    path: "/leads",
   },
   {
     id: "configurator",
     label: "Configurator",
     icon: "ConfiguratorIcon",
-    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_CONFIGURATOR],
+    roles: [ROLES.SUPER_ADMIN],
     path: "/configurator",
   },
   {
@@ -92,8 +107,9 @@ export const MENU_ITEMS = [
 export const ROLE_DISPLAY_NAMES = {
   [ROLES.SUPER_ADMIN]: "Super Admin",
   [ROLES.RECON_USER]: "Recon User",
-  [ROLES.RECON_CONFIGURATOR]: "Recon Configurator", // Display as "Recon User" instead of "Recon Configurator"
-  [ROLES.ADMIN_CONFIGURATOR]: "Admin Configurator", // Display as "Recon User" instead of "Recon Configurator"
+  [ROLES.MIS]: "MIS",
+  [ROLES.ADMIN_CONFIGURATOR]: "Admin Configurator",
+  [ROLES.PRODUCT_LEAD]: "Product Lead",
 };
 
 // ============================
