@@ -2161,7 +2161,7 @@ const Dashboard = ({ initialDashboardId }) => {
     }
     
     return (
-      <Box sx={{ height: '100%', width: '100%' }}>
+      <Box sx={{ height: '100%', width: '100%', minWidth: 0, minHeight: 200, display: 'flex', flexDirection: 'column' }}>
         <DataGridComponent
           rows={data}
           columns={[]}
@@ -2638,13 +2638,14 @@ const Dashboard = ({ initialDashboardId }) => {
         }}
       >
         <Stack 
-          direction="row" 
-          alignItems="center" 
+          direction={{ xs: 'column', sm: 'row' }}
+          alignItems={{ xs: 'stretch', sm: 'center' }}
           justifyContent="space-between"
-          spacing={3}
+          spacing={{ xs: 1.5, sm: 3 }}
+          sx={{ flexWrap: 'wrap' }}
         >
           {/* Left - Search */}
-          <Stack direction="row" alignItems="center" spacing={2} sx={{ flex: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={2} sx={{ flex: { xs: 'none', sm: 1 }, width: { xs: '100%', sm: 'auto' } }}>
             {/* Search Field - Matching Toolbar Style */}
             <Stack
               direction="row"
@@ -2655,6 +2656,8 @@ const Dashboard = ({ initialDashboardId }) => {
                 borderRadius: 3,
                 p: 0.75,
                 border: '1px solid #E2E8F0',
+                flex: 1,
+                minWidth: 0,
               }}
             >
               {/* Search Icon Box */}
@@ -2686,7 +2689,7 @@ const Dashboard = ({ initialDashboardId }) => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 sx={{ 
                   flex: 1,
-                  minWidth: 180,
+                  minWidth: { xs: 80, sm: 180 },
                   fontSize: '0.8rem',
                   fontWeight: 500,
                   color: '#1E293B',
@@ -2741,37 +2744,41 @@ const Dashboard = ({ initialDashboardId }) => {
               <Stack
                 direction="row"
                 alignItems="center"
-                spacing={1}
+                spacing={{ xs: 0.5, sm: 1 }}
                 sx={{
                   bgcolor: '#F8FAFC',
                   borderRadius: 3,
                   p: 0.75,
                   border: '1px solid #E2E8F0',
+                  flexShrink: 0,
+                  overflow: 'hidden',
                 }}
               >
                 {/* Sync Status */}
                 {isSyncing ? (
-                  <Box sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.75,
-                    px: 1.5,
-                    py: 0.75,
-                    borderRadius: 2,
-                    bgcolor: alpha('#0D9488', 0.1),
-                  }}>
-                    <CloudSyncIcon sx={{ fontSize: 14, color: '#0D9488' }} />
-                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 500, color: '#0D9488', whiteSpace: 'nowrap' }}>
-                      Syncing
-                    </Typography>
-                  </Box>
+                  <Tooltip title="Syncing...">
+                    <Box sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.75,
+                      px: { xs: 0.75, sm: 1.5 },
+                      py: 0.75,
+                      borderRadius: 2,
+                      bgcolor: alpha('#0D9488', 0.1),
+                    }}>
+                      <CloudSyncIcon sx={{ fontSize: 14, color: '#0D9488' }} />
+                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 500, color: '#0D9488', whiteSpace: 'nowrap', display: { xs: 'none', sm: 'block' } }}>
+                        Syncing
+                      </Typography>
+                    </Box>
+                  </Tooltip>
                 ) : lastSyncedAt ? (
                   <Tooltip title={`Last synced: ${new Date(lastSyncedAt).toLocaleString()}`}>
                     <Box sx={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: 0.75,
-                      px: 1.5,
+                      px: { xs: 0.75, sm: 1.5 },
                       py: 0.75,
                       borderRadius: 2,
                       bgcolor: '#fff',
@@ -2779,14 +2786,14 @@ const Dashboard = ({ initialDashboardId }) => {
                       boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
                     }}>
                       <CloudDoneIcon sx={{ fontSize: 14, color: '#10B981' }} />
-                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 500, color: '#10B981', whiteSpace: 'nowrap' }}>
+                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 500, color: '#10B981', whiteSpace: 'nowrap', display: { xs: 'none', sm: 'block' } }}>
                         Synced
                       </Typography>
                     </Box>
                   </Tooltip>
                 ) : null}
 
-                {/* Last Updated - Combined with time */}
+                {/* Last Updated - Combined with time - Hidden on mobile */}
                 {lastGlobalUpdate && (
                   <Typography sx={{ 
                     fontSize: '0.8rem', 
@@ -2794,6 +2801,7 @@ const Dashboard = ({ initialDashboardId }) => {
                     color: '#64748B',
                     whiteSpace: 'nowrap',
                     px: 1,
+                    display: { xs: 'none', md: 'block' },
                   }}>
                     {formatLastUpdated(lastGlobalUpdate)}
                   </Typography>
@@ -2967,27 +2975,43 @@ const Dashboard = ({ initialDashboardId }) => {
         <DialogTitle 
           component="div"
           sx={{ 
-            px: 4,
-            py: 2, 
+            px: { xs: 2, sm: 4 },
+            py: { xs: 1.5, sm: 2 }, 
             borderBottom: '1px solid #E2E8F0',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: { xs: 'flex-start', sm: 'center' },
             justifyContent: 'space-between',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1, sm: 0 },
             background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
             color: '#fff',
           }}
         >
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, color: '#fff', mb: 0.5 }}>
+          <Box sx={{ flex: 1, minWidth: 0, maxWidth: { xs: '100%', sm: '40%' } }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 600, 
+                color: '#fff', 
+                mb: 0.25,
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                lineHeight: 1.3,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: { xs: 2, sm: 1 },
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
               {fullscreenView.item ? getTitle(fullscreenView.item) : ''}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontSize: { xs: '0.7rem', sm: '0.8rem' } }}>
               {fullscreenView.item?.supportingData?.length || fullscreenView.item?.pipelineData?.length || 0} records
             </Typography>
           </Box>
           
           {/* View Mode Toggles */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mr: 3 }}>
+          <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} alignItems="center" sx={{ mr: { xs: 1, sm: 3 } }}>
             <ToggleButtonGroup
               value={fullscreenViewMode}
               exclusive
@@ -2998,8 +3022,9 @@ const Dashboard = ({ initialDashboardId }) => {
                 '& .MuiToggleButton-root': {
                   color: 'rgba(255,255,255,0.7)',
                   border: 'none',
-                  px: 2,
-                  py: 0.75,
+                  px: { xs: 1, sm: 2 },
+                  py: { xs: 0.5, sm: 0.75 },
+                  minWidth: { xs: 36, sm: 44 },
                   '&.Mui-selected': {
                     bgcolor: 'rgba(255,255,255,0.25)',
                     color: '#fff',
@@ -3012,38 +3037,39 @@ const Dashboard = ({ initialDashboardId }) => {
             >
               <ToggleButton value="table">
                 <Tooltip title="Table View" arrow>
-                  <TableChartIcon sx={{ fontSize: 20 }} />
+                  <TableChartIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
                 </Tooltip>
               </ToggleButton>
               <ToggleButton value="bar">
                 <Tooltip title="Bar Chart" arrow>
-                  <BarChartIcon sx={{ fontSize: 20 }} />
+                  <BarChartIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
                 </Tooltip>
               </ToggleButton>
               <ToggleButton value="line">
                 <Tooltip title="Line Chart" arrow>
-                  <ShowChartIcon sx={{ fontSize: 20 }} />
+                  <ShowChartIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
                 </Tooltip>
               </ToggleButton>
               <ToggleButton value="area">
                 <Tooltip title="Area Chart" arrow>
-                  <AreaChartIcon sx={{ fontSize: 20 }} />
+                  <AreaChartIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
                 </Tooltip>
               </ToggleButton>
               <ToggleButton value="pie">
                 <Tooltip title="Pie Chart" arrow>
-                  <PieChartIcon sx={{ fontSize: 20 }} />
+                  <PieChartIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
                 </Tooltip>
               </ToggleButton>
             </ToggleButtonGroup>
             
-            {/* Download Buttons */}
+            {/* Download Buttons - Hidden on mobile */}
             <Tooltip title="Download CSV" arrow>
               <IconButton
                 onClick={() => fullscreenView.item && handleDownloadCSV(fullscreenView.item)}
                 sx={{
                   color: '#fff',
                   bgcolor: 'rgba(255,255,255,0.15)',
+                  display: { xs: 'none', sm: 'flex' },
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
                 }}
               >
@@ -3071,6 +3097,7 @@ const Dashboard = ({ initialDashboardId }) => {
                   sx={{
                     color: '#fff',
                     bgcolor: 'rgba(255,255,255,0.15)',
+                    display: { xs: 'none', sm: 'flex' },
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
                   }}
                 >
@@ -3085,13 +3112,14 @@ const Dashboard = ({ initialDashboardId }) => {
             sx={{ 
               color: '#fff',
               bgcolor: 'rgba(255,255,255,0.15)',
+              p: { xs: 0.75, sm: 1 },
               '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
             }}
           >
-            <CloseIcon />
+            <CloseIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: 3, bgcolor: '#F8FAFC', height: 'calc(100vh - 80px)', overflow: 'auto' }}>
+        <DialogContent sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: '#F8FAFC', height: { xs: 'calc(100vh - 120px)', sm: 'calc(100vh - 80px)' }, overflow: 'auto' }}>
           <Box sx={{ 
             height: '100%', 
             minHeight: 600,

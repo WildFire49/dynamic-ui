@@ -47,6 +47,8 @@ export const ROUTE_ACCESS = {
     ],
     leads: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD], // Internal CPH - Super Admin and Product Lead only
     configurator: [ROLES.SUPER_ADMIN], // Super Admin only
+    productConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
+    creConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
     accessControl: [ROLES.SUPER_ADMIN], // Admin only
     settings: [ROLES.SUPER_ADMIN], // Admin only
     userManagement: [ROLES.SUPER_ADMIN], // Admin only
@@ -59,8 +61,9 @@ export const ROUTE_ACCESS = {
 export const MENU_ITEMS = [
   {
     id: "chat",
-    label: "Chat",
+    label: "MiFiX.ai Chat",
     icon: "ChatIcon",
+    color: "#2196f3",
     roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD],
     path: "/",
   },
@@ -68,6 +71,7 @@ export const MENU_ITEMS = [
     id: "dashboard",
     label: "Dashboard",
     icon: "DashboardIcon",
+    color: "#2196f3",
     roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD],
     path: "/dashboard",
   },
@@ -75,6 +79,7 @@ export const MENU_ITEMS = [
     id: "leads",
     label: "Internal CPH",
     icon: "PeopleIcon",
+    color: "#9c27b0",
     roles: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
     path: "/leads",
   },
@@ -82,22 +87,33 @@ export const MENU_ITEMS = [
     id: "configurator",
     label: "Configurator",
     icon: "ConfiguratorIcon",
+    color: "#1976d2",
     roles: [ROLES.SUPER_ADMIN],
     path: "/configurator",
+  },
+  {
+    id: "productConfigurator",
+    label: "Product Configurator",
+    icon: "CategoryIcon",
+    color: "#ff9800",
+    roles: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
+    path: "/product-configurator",
+  },
+  {
+    id: "creConfigurator",
+    label: "CRE Configurator",
+    icon: "SettingsIcon",
+    color: "#4caf50",
+    roles: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
+    path: "/configurator/cre",
   },
   {
     id: "accessControl",
     label: "Access Control",
     icon: "AccessControlIcon",
+    color: "#f44336",
     roles: [ROLES.SUPER_ADMIN],
     path: "/access-control",
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: "SettingsIcon",
-    roles: [ROLES.SUPER_ADMIN],
-    path: "/settings",
   },
 ];
 

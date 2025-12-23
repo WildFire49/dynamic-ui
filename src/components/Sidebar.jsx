@@ -47,6 +47,8 @@ import {
   Storage as DataIcon,
   Psychology as AIIcon,
   AccountTree as GraphIcon,
+  Category as CategoryIcon,
+  ArrowForward as ArrowIcon,
 } from "@mui/icons-material";
 // import NewStreetLogo from '../../public/assets/NewStreetLogo'; // Replaced with MiFiX logo
 import MiFixLogoLight from "../../public/assets/MiFixLogoLight";
@@ -65,6 +67,7 @@ const ICON_MAP = {
   AccessControlIcon: AccessControlIcon,
   SettingsIcon: SettingsIcon,
   BuildIcon: BuildIcon,
+  CategoryIcon: CategoryIcon,
   DataIcon: DataIcon,
   AIIcon: AIIcon,
   GraphIcon: GraphIcon,
@@ -153,6 +156,26 @@ const Sidebar = ({
     } catch (error) {
       console.error("Date formatting error:", error);
       return "Invalid date";
+    }
+  };
+
+  // Helper function to format time as "X mins/hours ago"
+  const formatTimeAgo = (dateString) => {
+    try {
+      const date = new Date(dateString.endsWith("Z") ? dateString : dateString + "Z");
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+      return formatToIST(dateString);
+    } catch (error) {
+      return "—";
     }
   };
 
@@ -309,13 +332,15 @@ const Sidebar = ({
   const handleMenuClick = (item) => {
     // Handle navigation for specific items
     if (item.id === "dashboard") {
-      // Show loader and open dashboard in new tab
+      // Navigate to dashboard page
       setIsNavigating(true);
-      setNavigationMessage("Opening Dashboard...");
-      setTimeout(() => {
-        window.open("/dashboard", "_blank");
-        setIsNavigating(false);
-      }, 500);
+      setNavigationMessage("Loading Dashboard...");
+      router.push("/dashboard");
+    } else if (item.id === "chat") {
+      // Navigate to chat page (base route)
+      setIsNavigating(true);
+      setNavigationMessage("Loading Chat...");
+      router.push("/");
     } else if (item.id === "chat" && mode === "dashboard") {
       // Navigate to chat page from dashboard
       setIsNavigating(true);
@@ -331,6 +356,21 @@ const Sidebar = ({
       setIsNavigating(true);
       setNavigationMessage("Loading Internal CPH...");
       router.push("/leads");
+    } else if (item.id === "productConfigurator") {
+      // Navigate to Product Configurator page
+      setIsNavigating(true);
+      setNavigationMessage("Loading Product Configurator...");
+      router.push("/product-configurator");
+    } else if (item.id === "creConfigurator") {
+      // Navigate to CRE Configurator page
+      setIsNavigating(true);
+      setNavigationMessage("Loading CRE Configurator...");
+      router.push("/configurator/cre");
+    } else if (item.id === "accessControl") {
+      // Navigate to Access Control page
+      setIsNavigating(true);
+      setNavigationMessage("Loading Access Control...");
+      router.push("/access-control");
     } else {
       // For other items, use the callback
       onTabChange(item.id);
@@ -343,8 +383,9 @@ const Sidebar = ({
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        pb: 2,
+        pb: 4,
         overflow: "auto",
+        backgroundColor: "#fafbfc",
       }}
     >
       {/* Header */}
@@ -381,21 +422,34 @@ const Sidebar = ({
               boxShadow: "0 4px 16px rgba(47, 143, 239, 0.1)",
             }}
           >
-            <MiFixLogoLight width={60} height={22} />
+            <Image
+              src="/Mifix-ai.png"
+              alt="MiFiX AI"
+              width={89}
+              height={89}
+              style={{ objectFit: "cover" }}
+            />
           </Box>
-          <Typography
+          {/* <Typography
             variant="h6"
             sx={{
               fontWeight: 600,
               textAlign: "center",
-              marginBottom: 1,
+              marginBottom: 0.5,
+              color: "#1a1a1a",
             }}
           >
-            {/* <div style={{ textAlign: 'center' }}>
-              <svg width="120" height="40" viewBox="0 0 120 40">
-                <text x="60" y="25" fontSize="24" fontWeight="bold" textAnchor="middle">MiFiX.ai</text>
-              </svg>
-            </div> */}
+            MiFiX AI
+          </Typography> */}
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#000000FF",
+              fontSize: "0.95rem",
+              fontWeight:"700"
+            }}
+          >
+            MiFiX.ai
           </Typography>
         </Box>
       </Box>
@@ -403,19 +457,43 @@ const Sidebar = ({
       <Divider />
 
       {/* Menu Items */}
-      <Box sx={{ flex: 1, py: 2 }}>
-        <List>
+      <Box sx={{ mt: 4, px: 3 }}>
+        <Box sx={{ mb: 1.5 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: 600, color: "text.primary", fontSize: "0.9rem" }}
+          >
+            Quick Links
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: "text.secondary", fontSize: "0.75rem" }}
+          >
+            Navigate to different sections
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             const isSelected = selectedTab === item.id;
 
             return (
-              <ListItem
+              <Paper
                 key={item.id}
-                disablePadding
+                elevation={isSelected ? 2 : 0}
+                onClick={() => handleMenuClick(item)}
                 sx={{
-                  px: 2,
-                  mb: 0.5,
+                  width: "100%",
+                  p: 1.5,
+                  border: `1px solid ${isSelected ? item.color : "#e2e8f0"}`,
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  backgroundColor: isSelected ? `${item.color}08` : "#ffffff",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   animation: `slideInLeft 0.3s ease-out ${index * 0.1}s both`,
                   "@keyframes slideInLeft": {
                     "0%": {
@@ -427,52 +505,52 @@ const Sidebar = ({
                       transform: "translateX(0)",
                     },
                   },
+                  "&:hover": {
+                    backgroundColor: isSelected ? `${item.color}15` : "#f8fafc",
+                    borderColor: item.color,
+                    transform: "translateX(2px)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  },
                 }}
               >
-                <ListItemButton
-                  selected={isSelected}
-                  onClick={() => handleMenuClick(item)}
-                  sx={{
-                    borderRadius: 2,
-                    minHeight: 48,
-                    backgroundColor: isSelected ? "#b5c8de" : "transparent",
-                    "&:hover": {
-                      backgroundColor: isSelected
-                        ? "#b5c8de"
-                        : "rgba(181, 200, 222, 0.1)",
-                    },
-                    "&.Mui-selected": {
-                      backgroundColor: "#b5c8de",
-                      "&:hover": {
-                        backgroundColor: "#b5c8de",
-                      },
-                    },
-                  }}
-                >
-                  <ListItemIcon
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
                     sx={{
-                      color: isSelected ? "#00468e" : "#666666",
-                      minWidth: 40,
+                      width: 32,
+                      height: 32,
+                      borderRadius: 1.5,
+                      bgcolor: `${item.color}15`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    <Icon />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item.label}
+                    <Icon sx={{ color: item.color, fontSize: 16 }} />
+                  </Box>
+                  <Typography
+                    variant="body2"
                     sx={{
-                      "& .MuiListItemText-primary": {
-                        fontSize: "0.9rem",
-                        fontWeight: isSelected ? 600 : 400,
-                        color: isSelected ? "#00468e" : "#1a1a1a",
-                      },
+                      fontWeight: isSelected ? 600 : 500,
+                      color: "text.primary",
+                      fontSize: "0.85rem",
                     }}
-                  />
-                </ListItemButton>
-              </ListItem>
+                  >
+                    {item.label}
+                  </Typography>
+                </Box>
+                <ArrowIcon
+                  sx={{
+                    fontSize: 16,
+                    color: isSelected ? item.color : "#64748b",
+                  }}
+                />
+              </Paper>
             );
           })}
-        </List>
+        </Box>
       </Box>
+
+      <Box sx={{ mb: 2 }} />
 
       <Divider />
 
@@ -840,7 +918,7 @@ const Sidebar = ({
                               textOverflow: "ellipsis",
                             }}
                           >
-                            Conversation {index + 1}
+                            {conversation.title || `Conversation ${index + 1}`}
                           </Typography>
                           <Typography
                             variant="caption"
@@ -853,7 +931,7 @@ const Sidebar = ({
                               mt: 0.5,
                             }}
                           >
-                            {formatToIST(conversation.updated_at)}
+                            {formatTimeAgo(conversation.updated_at)}
                           </Typography>
                         </Box>
                       </Box>

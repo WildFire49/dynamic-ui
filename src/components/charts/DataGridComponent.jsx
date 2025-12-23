@@ -230,8 +230,12 @@ const DataGridComponent = ({
     return (
       <Box sx={{ 
         height: '100%', 
-        width: '100%', 
+        width: '100%',
+        minWidth: 0,
+        minHeight: 200,
         overflow: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
         // Hide scrollbar but allow scrolling
         '&::-webkit-scrollbar': { width: 6, height: 6 },
         '&::-webkit-scrollbar-track': { background: 'transparent' },
@@ -256,21 +260,21 @@ const DataGridComponent = ({
           scrollbarSize={10}
           sx={{
             border: 'none',
-            fontSize: '0.875rem',
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
             '& .MuiDataGrid-main': {
               overflow: 'auto',
             },
             '& .MuiDataGrid-cell': {
               borderBottom: '1px solid #E2E8F0',
               borderRight: '1px solid #E2E8F0',
-              fontSize: '0.9rem',
-              padding: '16px',
+              fontSize: { xs: '0.75rem', sm: '0.85rem' },
+              padding: { xs: '8px 10px', sm: '12px 16px' },
               color: '#1E293B',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
               fontWeight: 500,
-              minHeight: '56px',
+              minHeight: { xs: '44px', sm: '52px' },
             },
             '& .MuiDataGrid-cell[data-field]': {
               display: 'flex',
@@ -290,12 +294,12 @@ const DataGridComponent = ({
             '& .MuiDataGrid-columnHeaders': {
               backgroundColor: '#F8FAFC',
               borderBottom: '2px solid #E2E8F0',
-              minHeight: '56px !important',
-              maxHeight: '56px !important',
+              minHeight: { xs: '44px !important', sm: '52px !important' },
+              maxHeight: { xs: '44px !important', sm: '52px !important' },
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
             },
             '& .MuiDataGrid-columnHeader': {
-              padding: '14px 16px',
+              padding: { xs: '8px 10px', sm: '12px 16px' },
               borderRight: '1px solid #E2E8F0',
               '&:last-child': {
                 borderRight: 'none',
@@ -309,7 +313,7 @@ const DataGridComponent = ({
             },
             '& .MuiDataGrid-columnHeaderTitle': {
               fontWeight: 700,
-              fontSize: '0.9rem',
+              fontSize: { xs: '0.7rem', sm: '0.85rem' },
               color: '#1E293B',
               letterSpacing: '0.02em',
               textTransform: 'uppercase',

@@ -150,18 +150,21 @@ const DashboardSelector = () => {
       justifyContent: 'center',
       alignItems: 'center', 
       py: 1,
-      px: 2,
+      px: { xs: 1.5, sm: 2 },
       bgcolor: '#fff',
       borderBottom: '1px solid #E5E7EB',
-      minHeight: 52,
+      minHeight: { xs: 'auto', sm: 52 },
     }}>
-      {/* Dashboard Tabs - Compact bubble style */}
+      {/* Dashboard Tabs - Flexbox row on desktop, Grid 2-column on mobile */}
       <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
+        display: { xs: 'grid', sm: 'flex' },
+        gridTemplateColumns: { xs: 'repeat(2, 1fr)' },
+        flexDirection: { sm: 'row' },
+        flexWrap: { sm: 'wrap' },
         gap: 1,
-        flexWrap: 'wrap',
         justifyContent: 'center',
+        alignItems: 'center',
+        width: { xs: '100%', sm: 'auto' },
       }}>
         {dashboards.map((dashboard, index) => {
           const IconComponent = ICON_MAP[dashboard.icon] || DashboardIcon;
@@ -183,6 +186,8 @@ const DashboardSelector = () => {
                   transition: 'all 0.2s ease',
                   bgcolor: isActive ? alpha(dashboard.color, 0.1) : '#F1F5F9',
                   border: isActive ? `1.5px solid ${dashboard.color}` : '1.5px solid transparent',
+                  width: { xs: '100%', sm: 'auto' },
+                  justifyContent: { xs: 'flex-start', sm: 'center' },
                   '&:hover': {
                     bgcolor: isActive ? alpha(dashboard.color, 0.15) : '#E2E8F0',
                   },
