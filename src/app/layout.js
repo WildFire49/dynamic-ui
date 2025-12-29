@@ -20,10 +20,18 @@ export const metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>
+      <body suppressHydrationWarning style={{ overscrollBehavior: "none" }}>
         <EmotionRegistry>
           <MuiThemeProvider>
             <SnackbarProvider>

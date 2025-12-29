@@ -370,10 +370,16 @@ const InputWithRecording = React.memo(({
           multiline
           maxRows={4}
           minRows={1}
+          inputProps={{
+            enterKeyHint: 'send',
+            autoComplete: 'off',
+            autoCorrect: 'off',
+            spellCheck: 'false',
+          }}
           sx={{
             flex: 1,
             '& .MuiInput-root': {
-              fontSize: { xs: '15px', sm: '15px' },
+              fontSize: '16px',
               lineHeight: 1.5,
               fontWeight: 400,
               '&:before, &:after': {
@@ -382,10 +388,11 @@ const InputWithRecording = React.memo(({
             },
             '& .MuiInputBase-input': {
               padding: { xs: '10px 0', sm: '12px 0' },
+              fontSize: '16px',
               '&::placeholder': {
                 color: '#9e9e9e',
                 opacity: 1,
-                fontSize: { xs: '15px', sm: '15px' }
+                fontSize: '16px'
               }
             }
           }}

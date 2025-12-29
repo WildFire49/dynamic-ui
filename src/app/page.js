@@ -1946,9 +1946,36 @@ export default function HomePage() {
     loadInitialDocuments();
   }, [currentUserId]); // Re-run when user changes
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  };
+  const scrollToBottom = useCallback((immediate = false) => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({
+        behavior: immediate ? "auto" : "smooth",
+        block: "end",
+      });
+    }
+  }, []);
+
+  // Handle visual viewport resize (keyboard open/close)
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+
+    const handleViewportResize = () => {
+      // When keyboard opens, scroll to bottom
+      const viewportHeight = window.visualViewport.height;
+      const windowHeight = window.innerHeight;
+
+      // If viewport is smaller than window, keyboard is likely open
+      if (viewportHeight < windowHeight * 0.8) {
+        // Small delay to let keyboard fully open
+        setTimeout(() => scrollToBottom(true), 100);
+      }
+    };
+
+    window.visualViewport.addEventListener("resize", handleViewportResize);
+    return () => {
+      window.visualViewport.removeEventListener("resize", handleViewportResize);
+    };
+  }, [scrollToBottom]);
 
   useEffect(() => {
     // Only auto-scroll for new messages, not when loading conversation history
@@ -2007,7 +2034,7 @@ export default function HomePage() {
         }
       }
     }
-  }, [chatHistory]);
+  }, [chatHistory, scrollToBottom]);
 
   // Only render chat content when selectedTab is 'chat'
   const renderMainContent = () => {
@@ -2207,18 +2234,20 @@ export default function HomePage() {
           <div ref={chatEndRef} />
         </Box>
         <Box
+          className="chat-input-container"
           sx={{
             p: { xs: 1.5, sm: 2 },
+            pb: { xs: 2, sm: 2 },
             backgroundColor: "#ffffff",
             borderTop: "1px solid #e9ecef",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             overflow: "hidden",
-            flexShrink: 0, // Prevent shrinking
-            position: "sticky", // Make it sticky
+            flexShrink: 0,
+            position: "sticky",
             bottom: 0,
-            zIndex: 10, // Ensure it's above other content
+            zIndex: 10,
             width: "100%",
           }}
         >
