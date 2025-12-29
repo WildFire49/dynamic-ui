@@ -459,8 +459,10 @@ const SummaryCardsPanel = ({
                 sm: 'repeat(2, 1fr)',
                 md: 'repeat(3, 1fr)',
                 lg: 'repeat(3, 1fr)',
+                xl: 'repeat(4, 1fr)',
               },
-              gap: { xs: 1.5, sm: 2 },
+              gap: { xs: 2, sm: 3 },
+              pb: 2,
             }}
           >
             {sortedCards.map((card, index) => (
@@ -517,76 +519,56 @@ const SummaryCardsPanel = ({
   }
 
   return (
-    <Box
-      sx={{
-        bgcolor: '#FFFFFF',
-        borderRadius: { xs: 2, sm: 3 },
-        border: '1px solid #E2E8F0',
-        overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-      }}
-    >
+    <Box sx={{ width: '100%' }}>
       <Box
         onClick={() => setExpanded(!expanded)}
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: { xs: 2, sm: 2.5 },
-          py: { xs: 1.5, sm: 2 },
-          background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
-          borderBottom: expanded ? '1px solid #E2E8F0' : 'none',
+          mb: 2,
           cursor: 'pointer',
-          transition: 'background 0.2s ease',
-          '&:hover': { background: 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)' },
+          userSelect: 'none',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box
             sx={{
-              width: { xs: 36, sm: 40 },
-              height: { xs: 36, sm: 40 },
-              borderRadius: 2,
-              background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
             }}
           >
-            <AutoAwesomeIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: '#FFFFFF' }} />
+            <AutoAwesomeIcon sx={{ fontSize: 16, color: '#FFFFFF' }} />
           </Box>
           <Box>
-            <Typography sx={{ fontSize: { xs: '0.85rem', sm: '0.95rem' }, fontWeight: 600, color: '#1E293B' }}>
-              Widgets
+            <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#1E293B', letterSpacing: '-0.01em' }}>
+              Insights & Widgets
             </Typography>
-            <Typography sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, color: '#64748B' }}>
-              {cards.length > 0 ? `${cards.length} available` : 'Generate widgets from your data'}
+            <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>
+              {cards.length > 0 ? `${cards.length} items available` : 'AI-generated insights'}
             </Typography>
           </Box>
         </Box>
-        <Box
-          sx={{
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            bgcolor: expanded ? '#E2E8F0' : 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease',
+        <IconButton 
+          size="small" 
+          sx={{ 
+            bgcolor: expanded ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+            color: expanded ? '#3B82F6' : '#64748B',
+            '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.15)' }
           }}
         >
-          {expanded ? (
-            <ExpandLessIcon sx={{ fontSize: 20, color: '#475569' }} />
-          ) : (
-            <ExpandMoreIcon sx={{ fontSize: 20, color: '#64748B' }} />
-          )}
-        </Box>
+          {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
       </Box>
 
       <Collapse in={expanded}>
-        <Box sx={{ p: { xs: 2, sm: 2.5 }, bgcolor: '#FAFBFC' }}>
+        <Box>
           {loading ? (
             renderSkeletons()
           ) : showPending ? (
@@ -599,10 +581,13 @@ const SummaryCardsPanel = ({
           {error && (
             <Typography
               sx={{
-                fontSize: '0.75rem',
+                fontSize: '0.85rem',
                 color: '#EF4444',
                 textAlign: 'center',
                 mt: 2,
+                bgcolor: '#FEF2F2',
+                py: 1,
+                borderRadius: 2,
               }}
             >
               {error}
