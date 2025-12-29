@@ -89,6 +89,9 @@ const useDashboardStore = create(
         rm: [],
       },
 
+      // Summary cards organized by dashboard ID
+      summaryCardsByDashboard: {},
+
       // Loading and error states
       isLoading: false,
       isSyncing: false,
@@ -263,6 +266,10 @@ const useDashboardStore = create(
                 _id: result.data.widgets[0]?._id,
               }
             );
+
+            // Extract summary cards from the response
+            const summaryCards = result.data.summary_cards || [];
+
             set((state) => {
               const newLoadedSet = new Set(state._loadedDashboards);
               newLoadedSet.add(dashboardId);
@@ -301,6 +308,10 @@ const useDashboardStore = create(
                 visualizationsByDashboard: {
                   ...state.visualizationsByDashboard,
                   [dashboardId]: validWidgets,
+                },
+                summaryCardsByDashboard: {
+                  ...state.summaryCardsByDashboard,
+                  [dashboardId]: summaryCards,
                 },
               };
             });

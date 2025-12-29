@@ -97,6 +97,7 @@ import useDashboardStore from '../store/dashboardStore';
 import { DashboardLoadingSkeleton, WidgetContentSkeleton } from './skeletons/WidgetSkeleton';
 import WidgetConfigStudio from './widgets/WidgetConfigStudio';
 import dashboardService from '../services/dashboardService';
+import SummaryCardsPanel from './dashboard/SummaryCardsPanel';
 
 // Color palette - distinct colors for multi-series charts
 const CHART_COLORS = {
@@ -138,6 +139,7 @@ const Dashboard = ({ initialDashboardId }) => {
   const {
     activeDashboardId,
     visualizationsByDashboard,
+    summaryCardsByDashboard,
     getActiveDashboard,
     addVisualization,
     removeVisualization,
@@ -149,10 +151,14 @@ const Dashboard = ({ initialDashboardId }) => {
     isSyncing,
     lastSyncedAt,
     setActiveDashboard,
+    loadWidgetsForDashboard,
   } = useDashboardStore();
 
   const [savedVisualizations, setSavedVisualizations] = useState([]);
   const [savedAnalyses, setSavedAnalyses] = useState([]);
+  
+  // Get summary cards from store for the active dashboard
+  const summaryCards = summaryCardsByDashboard?.[activeDashboardId] || [];
   const [fullscreenView, setFullscreenView] = useState({ open: false, item: null });
   const [fullscreenViewMode, setFullscreenViewMode] = useState('table'); // table, bar, pie, area
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -182,6 +188,8 @@ const Dashboard = ({ initialDashboardId }) => {
   const [draggedWidgetForChat, setDraggedWidgetForChat] = useState(null); // Widget being dragged to chat
   const [chatDropZoneActive, setChatDropZoneActive] = useState(false); // Drop zone highlight
   const [attachedWidget, setAttachedWidget] = useState(null); // Widget attached to chat input
+  const [widgetCreationMode, setWidgetCreationMode] = useState(null); // { mode: 'create' | 'edit', card: cardObject } - for card-based widget creation
+  const [outputType, setOutputType] = useState('widget'); // 'widget', 'card', or 'both' - for dashboard edit API
   
   // Refs to prevent duplicate API calls
   const dataFetchInProgress = useRef(false);
@@ -201,6 +209,13 @@ const Dashboard = ({ initialDashboardId }) => {
     return localStorage.getItem('connectionId') || 
            localStorage.getItem('activeConnectionId') ||
            process.env.NEXT_PUBLIC_CONNECTION_ID ||
+           '';
+  };
+
+  // Get document key from localStorage (for Excel/CSV file queries)
+  const getDocumentKey = () => {
+    return localStorage.getItem('documentKey') || 
+           localStorage.getItem('activeDocumentKey') ||
            '';
   };
 
@@ -890,6 +905,26 @@ const Dashboard = ({ initialDashboardId }) => {
     setEditingTitleValue('');
   };
 
+  // Create summary card from question - opens drawer with empty input
+  const handleCreateWidgetFromCard = (card) => {
+    console.log('🎯 Opening drawer to create from card:', { cardId: card.id });
+    
+    // Set the mode and open drawer with empty input
+    setWidgetCreationMode({ mode: 'create', card });
+    setChatInput('');
+    setChatDrawerOpen(true);
+  };
+
+  // Edit summary card - opens drawer with edit mode
+  const handleEditCardInDrawer = (card) => {
+    console.log('✏️ Opening drawer to edit card:', { cardId: card.id });
+    
+    // Set the mode and open drawer with empty input
+    setWidgetCreationMode({ mode: 'edit', card });
+    setChatInput('');
+    setChatDrawerOpen(true);
+  };
+
   // Refresh a single widget using the new getWidgetsData API
   const handleRefreshWidget = async (item) => {
     const username = getUsername();
@@ -953,9 +988,10 @@ const Dashboard = ({ initialDashboardId }) => {
   };
 
   // Edit dashboard using natural language prompt
-  const handleDashboardEdit = async (prompt, widgetId = null) => {
+  const handleDashboardEdit = async (prompt, widgetId = null, options = {}) => {
     const username = getUsername();
     const connectionId = getConnectionId();
+    const documentKey = getDocumentKey();
     
     if (!activeDashboardId) {
       return { success: false, message: 'No dashboard selected' };
@@ -973,11 +1009,18 @@ const Dashboard = ({ initialDashboardId }) => {
         prompt: prompt,
         connectionId: connectionId,
         username: username,
+        outputType: options.outputType || outputType, // Use passed option or state
+        autoApproveCard: true,
       };
 
       // Add widgetId if provided (for context-aware edits)
       if (widgetId) {
         payload.widgetId = widgetId;
+      }
+      
+      // Add documentKey if available (for Excel/CSV queries)
+      if (documentKey) {
+        payload.documentKey = documentKey;
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}/api/v1/dashboard/edit`, {
@@ -1115,6 +1158,7 @@ const Dashboard = ({ initialDashboardId }) => {
     
     const userMessage = chatInput.trim();
     const widgetContext = attachedWidget ? { widgetId: attachedWidget.id, widgetTitle: attachedWidget.title } : null;
+    const creationMode = widgetCreationMode;
     
     setChatInput('');
     setAttachedWidget(null); // Clear attached widget after sending
@@ -1124,13 +1168,74 @@ const Dashboard = ({ initialDashboardId }) => {
       role: 'user', 
       content: userMessage,
       widgetRef: widgetContext,
+      cardRef: creationMode?.card,
     }]);
     
-    // Call the dashboard edit API with widget context if available
-    const result = await handleDashboardEdit(
-      userMessage, 
-      widgetContext?.widgetId
-    );
+    setIsChatLoading(true);
+    
+    let result;
+    
+    // If in widget creation mode from a card
+    if (creationMode) {
+      const username = getUsername();
+      const connectionId = getConnectionId();
+      const documentKey = getDocumentKey();
+      const selectedOutputType = outputType; // Capture current output type
+      
+      try {
+        if (creationMode.mode === 'create') {
+          // Use dashboard edit API with outputType
+          result = await dashboardService.editDashboardWithPrompt(
+            activeDashboardId,
+            username,
+            connectionId,
+            userMessage,
+            { 
+              outputType: selectedOutputType,
+              autoApproveCard: true,
+              sourceCardId: creationMode.card?.id,
+              ...(documentKey && { documentKey }),
+            }
+          );
+          
+          if (result.success) {
+            // Refresh the dashboard to show the new widget/card
+            await setActiveDashboard(activeDashboardId);
+            const typeLabel = selectedOutputType === 'both' ? 'Widget and Card' : 
+                              selectedOutputType === 'card' ? 'Insight Card' : 'Widget';
+            result.message = `${typeLabel} created successfully!`;
+          }
+        } else if (creationMode.mode === 'edit') {
+          // Edit existing summary card using PATCH
+          result = await dashboardService.editSummaryCard(
+            activeDashboardId,
+            creationMode.card?.id,
+            username,
+            { title: userMessage }
+          );
+          
+          if (result.success) {
+            // Refresh the dashboard to show the updated card
+            await setActiveDashboard(activeDashboardId);
+            result.message = 'Insight card updated successfully!';
+          }
+        }
+      } catch (error) {
+        console.error('Error in card creation/edit mode:', error);
+        result = { success: false, message: error.message || 'Failed to process request' };
+      }
+      
+      // Clear the creation mode after processing
+      setWidgetCreationMode(null);
+    } else {
+      // Regular chat - call the dashboard edit API with widget context if available
+      result = await handleDashboardEdit(
+        userMessage, 
+        widgetContext?.widgetId
+      );
+    }
+    
+    setIsChatLoading(false);
     
     // Add AI response
     setChatMessages(prev => [...prev, { 
@@ -2931,6 +3036,32 @@ const Dashboard = ({ initialDashboardId }) => {
       {/* Main Content Area */}
       <Container maxWidth="xl" sx={{ py: 3 }}>
 
+        {/* Summary Cards Section */}
+        {summaryCards && summaryCards.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <SummaryCardsPanel
+              dashboardId={activeDashboardId}
+              username={getUsername()}
+              connectionId={getConnectionId()}
+              widgets={allItems}
+              summaryCards={summaryCards}
+              onRefresh={async () => {
+                // Force reload to fetch new widgets and summary cards after approval
+                const username = getUsername();
+                if (username && activeDashboardId) {
+                  await loadWidgetsForDashboard(username, activeDashboardId, true);
+                }
+              }}
+              onCreateWidget={handleCreateWidgetFromCard}
+              onEditCard={handleEditCardInDrawer}
+              compact={false}
+              onCardClick={(card) => {
+                console.log('Card clicked:', card);
+              }}
+            />
+          </Box>
+        )}
+
         {/* Widgets Grid */}
         {(isLoading || isInitialLoad || loadingWidgets.size > 0) && allItems.length === 0 ? (
           <DashboardLoadingSkeleton />
@@ -3477,8 +3608,6 @@ const Dashboard = ({ initialDashboardId }) => {
                   {[
                     { label: 'Add a new chart widget', icon: <BarChartIcon sx={{ fontSize: 16 }} />, color: '#3B82F6', prompt: 'Add a new widget showing today\'s performance metrics' },
                     { label: 'Show top performers', icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#10B981', prompt: 'Add a widget showing top performing regions' },
-                    { label: 'Compare data', icon: <GridViewIcon sx={{ fontSize: 16 }} />, color: '#3B82F6', prompt: 'Add a widget comparing monthly vs weekly data' },
-                    { label: 'Remove a widget', icon: <DeleteIcon sx={{ fontSize: 16 }} />, color: '#6B7280', prompt: 'Remove the oldest widget from this dashboard' },
                   ].map((action, i) => (
                     <Box
                       key={i}
@@ -3509,6 +3638,28 @@ const Dashboard = ({ initialDashboardId }) => {
                     </Box>
                   ))}
                 </Stack>
+              </Box>
+
+              {/* AI Insights Section */}
+              <Box sx={{ px: 3, pb: 2 }}>
+                <SummaryCardsPanel
+                  dashboardId={activeDashboardId}
+                  username={getUsername()}
+                  connectionId={getConnectionId()}
+                  widgets={allItems}
+                  summaryCards={summaryCards}
+                  onRefresh={async () => {
+                    // Force reload to fetch new widgets and summary cards after approval
+                    const username = getUsername();
+                    if (username && activeDashboardId) {
+                      await loadWidgetsForDashboard(username, activeDashboardId, true);
+                    }
+                  }}
+                  compact
+                  onCardClick={(card) => {
+                    console.log('Card clicked:', card);
+                  }}
+                />
               </Box>
 
               {/* Chat Messages */}
@@ -3624,8 +3775,139 @@ const Dashboard = ({ initialDashboardId }) => {
                 </Box>
               )}
               
+              {/* Card-based Widget Creation Mode Indicator */}
+              {widgetCreationMode && !chatDropZoneActive && (
+                <Box sx={{
+                  mb: 1.5,
+                  p: 2,
+                  background: widgetCreationMode.mode === 'create' 
+                    ? 'linear-gradient(135deg, #10B981 0%, #34D399 100%)' 
+                    : 'linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)',
+                  borderRadius: 3,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  boxShadow: widgetCreationMode.mode === 'create' 
+                    ? '0 4px 12px rgba(16, 185, 129, 0.3)' 
+                    : '0 4px 12px rgba(245, 158, 11, 0.3)',
+                  animation: 'slideIn 0.3s ease-out',
+                  '@keyframes slideIn': {
+                    '0%': { opacity: 0, transform: 'translateY(10px) scale(0.98)' },
+                    '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
+                  },
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                    <Box sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 2,
+                      bgcolor: 'rgba(255,255,255,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {widgetCreationMode.mode === 'create' ? (
+                        <BarChartIcon sx={{ fontSize: 22, color: '#fff' }} />
+                      ) : (
+                        <EditIcon sx={{ fontSize: 22, color: '#fff' }} />
+                      )}
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ 
+                        color: 'rgba(255,255,255,0.85)', 
+                        fontSize: '0.7rem', 
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        mb: 0.25,
+                      }}>
+                        {widgetCreationMode.mode === 'create' ? 'Add New Insight' : 'Edit Insight'}
+                      </Typography>
+                      {widgetCreationMode.card?.title && (
+                        <Typography sx={{ 
+                          color: '#fff', 
+                          fontSize: '0.9rem', 
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {widgetCreationMode.card?.title}
+                        </Typography>
+                      )}
+                    </Box>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => {
+                        setWidgetCreationMode(null);
+                        setChatInput('');
+                      }}
+                      sx={{ 
+                        p: 0.75, 
+                        color: 'rgba(255,255,255,0.7)', 
+                        bgcolor: 'rgba(255,255,255,0.1)',
+                        '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.2)' } 
+                      }}
+                    >
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Box>
+                  <Typography sx={{ 
+                    color: 'rgba(255,255,255,0.9)', 
+                    fontSize: '0.8rem',
+                    lineHeight: 1.4,
+                    mb: widgetCreationMode.mode === 'create' ? 1.5 : 0,
+                  }}>
+                    {widgetCreationMode.mode === 'create' 
+                      ? 'Ask a question about your data to create:'
+                      : 'Enter a new title or description for this insight.'}
+                  </Typography>
+                  
+                  {/* Output Type Toggle - Only show for create mode */}
+                  {widgetCreationMode.mode === 'create' && (
+                    <ToggleButtonGroup
+                      value={outputType}
+                      exclusive
+                      onChange={(e, newValue) => newValue && setOutputType(newValue)}
+                      size="small"
+                      sx={{
+                        bgcolor: 'rgba(255,255,255,0.15)',
+                        borderRadius: 2,
+                        '& .MuiToggleButton-root': {
+                          color: 'rgba(255,255,255,0.7)',
+                          border: 'none',
+                          px: 1.5,
+                          py: 0.5,
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          textTransform: 'none',
+                          '&.Mui-selected': {
+                            bgcolor: 'rgba(255,255,255,0.25)',
+                            color: '#fff',
+                            fontWeight: 600,
+                          },
+                          '&:hover': {
+                            bgcolor: 'rgba(255,255,255,0.2)',
+                          },
+                        },
+                      }}
+                    >
+                      <ToggleButton value="widget">
+                        <BarChartIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                        Widget
+                      </ToggleButton>
+                      <ToggleButton value="card">
+                        <GridViewIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                        Card
+                      </ToggleButton>
+                      <ToggleButton value="both">
+                        Both
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                  )}
+                </Box>
+              )}
+
               {/* Attached Widget Card - Prominent Success Indicator */}
-              {attachedWidget && !chatDropZoneActive && (
+              {attachedWidget && !chatDropZoneActive && !widgetCreationMode && (
                 <Box sx={{
                   mb: 1.5,
                   p: 2,
@@ -3764,6 +4046,55 @@ const Dashboard = ({ initialDashboardId }) => {
                 </Box>
               )}
               
+              {/* Output Type Toggle - Always visible for regular chat */}
+              {!widgetCreationMode && !attachedWidget && (
+                <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: '0.7rem', color: '#6B7280', fontWeight: 500 }}>
+                    Create:
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={outputType}
+                    exclusive
+                    onChange={(e, newValue) => newValue && setOutputType(newValue)}
+                    size="small"
+                    sx={{
+                      bgcolor: '#F3F4F6',
+                      borderRadius: 1.5,
+                      '& .MuiToggleButton-root': {
+                        color: '#6B7280',
+                        border: 'none',
+                        px: 1.25,
+                        py: 0.25,
+                        fontSize: '0.7rem',
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        '&.Mui-selected': {
+                          bgcolor: '#3B82F6',
+                          color: '#fff',
+                          fontWeight: 600,
+                          '&:hover': {
+                            bgcolor: '#2563EB',
+                          },
+                        },
+                        '&:hover': {
+                          bgcolor: '#E5E7EB',
+                        },
+                      },
+                    }}
+                  >
+                    <ToggleButton value="widget">
+                      Widget
+                    </ToggleButton>
+                    <ToggleButton value="card">
+                      Card
+                    </ToggleButton>
+                    <ToggleButton value="both">
+                      Both
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+              )}
+
               <Paper
                 elevation={0}
                 sx={{

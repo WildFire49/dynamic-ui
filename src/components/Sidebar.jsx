@@ -380,11 +380,10 @@ const Sidebar = ({
   const drawerContent = (
     <Box
       sx={{
-        height: "100vh",
+        minHeight: "100%",
         display: "flex",
         flexDirection: "column",
-        pb: 4,
-        overflow: "auto",
+        pb: 6,
         backgroundColor: "#fafbfc",
       }}
     >
@@ -555,9 +554,7 @@ const Sidebar = ({
       <Divider />
 
       {/* Recent Section: Chat or Analyses */}
-      <Box
-        sx={{ flex: 3, display: "flex", flexDirection: "column", minHeight: 0 }}
-      >
+      <Box sx={{ display: "flex", flexDirection: "column" }}>
         <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #e1e5e9" }}>
           <Typography
             variant="h6"
@@ -599,24 +596,8 @@ const Sidebar = ({
 
         <Box
           sx={{
-            flex: 1,
-            overflowY: "auto",
             px: 2,
             py: 1,
-            "&::-webkit-scrollbar": {
-              width: "6px",
-            },
-            "&::-webkit-scrollbar-track": {
-              background: "#f1f1f1",
-              borderRadius: "3px",
-            },
-            "&::-webkit-scrollbar-thumb": {
-              background: "#c1c1c1",
-              borderRadius: "3px",
-              "&:hover": {
-                background: "#a8a8a8",
-              },
-            },
           }}
           onScroll={handleScroll}
         >
@@ -1024,6 +1005,10 @@ const Sidebar = ({
             backgroundColor: "#fafbfc",
             borderRight: "1px solid #e1e5e9",
             boxShadow: "2px 0 8px rgba(0,0,0,0.08)",
+            height: "100%",
+            maxHeight: "100dvh",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
           },
         }}
       >

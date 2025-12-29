@@ -779,7 +779,205 @@ class DashboardService {
   }
 
   /**
-   * 16. Health check
+   * 16. Create Summary Card from Question
+   * Creates a summary card using natural language question
+   * @param {string} dashboardId - Dashboard ID
+   * @param {string} username - User's username
+   * @param {string} question - Natural language question
+   * @param {string} connectionId - Optional database connection ID
+   * @param {string} documentKey - Optional document key for Excel/CSV
+   * @param {boolean} autoApprove - Auto approve the card (default: true)
+   * @param {string} cardType - Card type hint: metric, alert, comparison, insight, info
+   * @param {string} urgency - Urgency hint: critical, high, medium, low, info
+   * @returns {Promise<Object>} Created card data
+   */
+  async createSummaryCardFromQuestion(
+    dashboardId,
+    username,
+    question,
+    {
+      connectionId = null,
+      documentKey = null,
+      autoApprove = true,
+      cardType = null,
+      urgency = null,
+    } = {}
+  ) {
+    try {
+      console.log("🎯 Creating summary card from question:", {
+        dashboardId,
+        question,
+      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/dashboard/summary-cards/${dashboardId}/create-from-question`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            username,
+            question,
+            ...(connectionId && { connectionId }),
+            ...(documentKey && { documentKey }),
+            autoApprove,
+            ...(cardType && { cardType }),
+            ...(urgency && { urgency }),
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.status === 200 || data.status === 201) {
+        console.log("✅ Summary card created from question:", data.data);
+        return {
+          success: true,
+          data: data.data?.data || data.data,
+        };
+      }
+
+      return {
+        success: false,
+        message:
+          data.data?.message || data.message || "Failed to create summary card",
+      };
+    } catch (error) {
+      console.error("Error creating summary card from question:", error);
+      return {
+        success: false,
+        message: "Network error creating summary card",
+      };
+    }
+  }
+
+  /**
+   * 17. Edit Summary Card (PATCH)
+   * Updates an existing approved summary card
+   * @param {string} dashboardId - Dashboard ID
+   * @param {string} cardId - Card ID to edit
+   * @param {string} username - User's username
+   * @param {Object} updates - Fields to update (title, description, color, urgency, etc.)
+   * @returns {Promise<Object>} Updated card data
+   */
+  async editSummaryCard(dashboardId, cardId, username, updates) {
+    try {
+      console.log("✏️ Editing summary card:", { dashboardId, cardId, updates });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/dashboard/summary-cards/${dashboardId}/${cardId}`,
+        {
+          method: "PATCH",
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            username,
+            ...updates,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.status === 200) {
+        console.log("✅ Summary card updated:", data.data);
+        return {
+          success: true,
+          data: data.data?.data || data.data,
+        };
+      }
+
+      return {
+        success: false,
+        message:
+          data.data?.message || data.message || "Failed to update summary card",
+      };
+    } catch (error) {
+      console.error("Error editing summary card:", error);
+      return {
+        success: false,
+        message: "Network error updating summary card",
+      };
+    }
+  }
+
+  /**
+   * 18. Edit Dashboard via Natural Language
+`   * Creates widgets and/or summary cards using natural language prompts`
+   * @param {string} dashboardId - Dashboard ID
+   * @param {string} username - User's username
+   * @param {string} connectionId - Connection ID
+   * @param {string} prompt - Natural language prompt
+   * @param {Object} options - Additional options
+   * @param {string} options.outputType - "widget", "card", or "both" (default: "widget")
+   * @param {boolean} options.autoApproveCard - Auto-save card (default: true)
+   * @param {string} options.cardType - Card type hint: metric, alert, comparison, insight, info
+   * @param {string} options.cardUrgency - Urgency hint: critical, high, medium, low, info
+   * @param {string} options.documentKey - Document key for Excel/CSV queries
+   * @param {string} options.sourceCardId - Optional summary card ID that triggered this
+   * @returns {Promise<Object>} Created widget/card data
+   */
+  async editDashboardWithPrompt(
+    dashboardId,
+    username,
+    connectionId,
+    prompt,
+    options = {}
+  ) {
+    const {
+      outputType = "widget",
+      autoApproveCard = true,
+      cardType = null,
+      cardUrgency = null,
+      documentKey = null,
+      sourceCardId = null,
+    } = options;
+
+    try {
+      console.log("🎯 Edit dashboard with prompt:", {
+        dashboardId,
+        prompt,
+        outputType,
+      });
+      const response = await fetch(`${API_BASE_URL}/api/v1/dashboard/edit`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          dashboardId,
+          username,
+          connectionId,
+          prompt,
+          outputType,
+          autoApproveCard,
+          ...(cardType && { cardType }),
+          ...(cardUrgency && { cardUrgency }),
+          ...(documentKey && { documentKey }),
+          ...(sourceCardId && { sourceCardId }),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 200) {
+        console.log("✅ Widget created via natural language:", data.data);
+        return {
+          success: true,
+          data: data.data?.data || data.data,
+        };
+      }
+
+      return {
+        success: false,
+        message:
+          data.data?.message || data.message || "Failed to create widget",
+      };
+    } catch (error) {
+      console.error("Error editing dashboard with prompt:", error);
+      return {
+        success: false,
+        message: "Network error creating widget",
+      };
+    }
+  }
+
+  /**
+   * 17. Health check
    * @returns {Promise<Object>} Health status
    */
   async healthCheck() {
