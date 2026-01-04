@@ -50,6 +50,9 @@ const SummaryCardsPanel = ({
   onCreateWidget,
   onEditCard,
   compact = false,
+  selectionMode = false,
+  selectedCards = new Set(),
+  onToggleCardSelection = () => {},
 }) => {
   const [cards, setCards] = useState([]);
   const [pendingCards, setPendingCards] = useState([]);

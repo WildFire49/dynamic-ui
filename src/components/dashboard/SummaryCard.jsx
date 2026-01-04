@@ -75,6 +75,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Checkbox,
   alpha,
 } from '@mui/material';
 import {
@@ -86,6 +87,7 @@ import {
   TableChart as TableChartIcon,
   Lightbulb as LightbulbIcon,
   Info as InfoIcon,
+  InfoOutlined as InfoOutlinedIcon,
   CheckCircle as CheckCircleIcon,
   Close as CloseIcon,
   Edit as EditIcon,
@@ -134,9 +136,9 @@ const URGENCY_CONFIG = {
     label: 'Medium',
   },
   low: {
-    color: '#10B981',
-    bgColor: '#ECFDF5',
-    borderColor: '#6EE7B7',
+    color: '#0D9488',
+    bgColor: '#F0FDFA',
+    borderColor: '#5EEAD4',
     label: 'Low',
   },
   info: {
@@ -149,13 +151,13 @@ const URGENCY_CONFIG = {
 
 // Uniform card height for consistent layout - taller for better graph visibility
 const CARD_TYPE_STYLES = {
-  metric: { minHeight: 200 },
-  alert: { minHeight: 200 },
-  comparison: { minHeight: 240 },
-  trend: { minHeight: 200 },
-  table_summary: { minHeight: 240 },
-  insight: { minHeight: 200 },
-  info: { minHeight: 200 },
+  metric: { minHeight: 180 },
+  alert: { minHeight: 180 },
+  comparison: { minHeight: 200 },
+  trend: { minHeight: 180 },
+  table_summary: { minHeight: 200 },
+  insight: { minHeight: 180 },
+  info: { minHeight: 180 },
 };
 
 // Beautiful gradient colors for charts - Blue theme with red/yellow accents
@@ -206,25 +208,39 @@ const ComparisonChart = ({ data, color }) => {
   };
 
   return (
-    <Box sx={{ width: '100%', flex: 1, minHeight: 100, mt: 1 }}>
+    <Box sx={{ width: '100%', flex: 1, minHeight: 80, mt: 0.5 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap="20%">
           <XAxis type="number" hide domain={[0, maxValue * 1.15]} />
           <YAxis type="category" dataKey="name" hide />
           <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-          <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={28} animationDuration={1000}>
+          <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={24} animationDuration={1000}>
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={index === 0 ? "url(#colorGradientPrimary)" : "url(#colorGradientSecondary)"} />
+              <Cell 
+                key={`cell-${index}`} 
+                fill={index === 0 ? "url(#colorGradientPrimary)" : "url(#colorGradientSecondary)"} 
+                style={{
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                }}
+              />
             ))}
           </Bar>
           <defs>
             <linearGradient id="colorGradientPrimary" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#1E40AF" />
-              <stop offset="100%" stopColor="#3B82F6" />
+              <stop offset="0%" stopColor="#1E40AF">
+                <animate attributeName="stop-color" values="#1E40AF; #3B82F6; #1E40AF" dur="3s" repeatCount="indefinite" />
+              </stop>
+              <stop offset="100%" stopColor="#3B82F6">
+                <animate attributeName="stop-color" values="#3B82F6; #60A5FA; #3B82F6" dur="3s" repeatCount="indefinite" />
+              </stop>
             </linearGradient>
             <linearGradient id="colorGradientSecondary" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#60A5FA" />
-              <stop offset="100%" stopColor="#93C5FD" />
+              <stop offset="0%" stopColor="#60A5FA">
+                <animate attributeName="stop-color" values="#60A5FA; #93C5FD; #60A5FA" dur="4s" repeatCount="indefinite" />
+              </stop>
+              <stop offset="100%" stopColor="#93C5FD">
+                <animate attributeName="stop-color" values="#93C5FD; #BFDBFE; #93C5FD" dur="4s" repeatCount="indefinite" />
+              </stop>
             </linearGradient>
           </defs>
         </BarChart>
@@ -283,6 +299,9 @@ const SummaryCard = ({
   onClick,
   onCreateWidget,
   showActions = false,
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelection = () => {},
 }) => {
   const {
     id,
@@ -310,14 +329,35 @@ const SummaryCard = ({
     sort_order,
   } = card;
   
-  // Smart formatting for values
-  const displayPrimaryValue = formatted_primary_value || smartFormat(primary_value) || primary_value;
-  const displaySecondaryValue = formatted_secondary_value || smartFormat(secondary_value) || secondary_value;
+  // Helper to safely format values based on metric unit
+  const getSafeDisplayValue = (val, formattedVal, unit) => {
+    if (unit === 'count' && typeof val === 'number') {
+      return val.toLocaleString(); // Just show comma separated number for counts
+    }
+    // For non-counts or missing unit, trust backend format but fallback to smartFormat
+    return formattedVal || smartFormat(val) || val;
+  };
+
+  // Smart formatting for values with unit awareness
+  const displayPrimaryValue = getSafeDisplayValue(primary_value, formatted_primary_value, metric_unit);
+  const displaySecondaryValue = getSafeDisplayValue(secondary_value, formatted_secondary_value, metric_unit);
   const displayTrendValue = trend_value;
 
   const IconComponent = ICON_MAP[icon] || InfoIcon;
   const urgencyConfig = URGENCY_CONFIG[urgency] || URGENCY_CONFIG.info;
-  const cardColor = color || urgencyConfig.color;
+  
+  // Apply muted color mapping directly
+  const rawColor = color || urgencyConfig.color;
+  const colorMap = {
+    '#22C55E': '#059669', '#10B981': '#0D9488',
+    '#FACC15': '#D97706', '#F59E0B': '#B45309',
+    '#ffff00': '#D97706', '#FFFF00': '#D97706',
+    '#EF4444': '#DC2626', '#ff0000': '#DC2626', '#FF0000': '#DC2626',
+    '#3B82F6': '#2563EB', '#0000ff': '#2563EB', '#0000FF': '#2563EB',
+    '#008000': '#059669', '#ffa500': '#D97706', '#FFA500': '#D97706',
+    '#8B5CF6': '#7C3AED', '#EC4899': '#DB2777',
+  };
+  const cardColor = colorMap[rawColor] || rawColor;
   const cardStyles = CARD_TYPE_STYLES[card_type] || {};
 
   const sizeStyles = {
@@ -348,6 +388,7 @@ const SummaryCard = ({
         p: { xs: 2, sm: 3 }, // Increased padding for breathability
         borderRadius: 4,
         bgcolor: '#FFFFFF',
+        background: 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
         border: '1px solid',
         borderColor: selected ? cardColor : 'rgba(226, 232, 240, 0.8)',
         cursor: selectable || onClick ? 'pointer' : 'default',
@@ -374,8 +415,37 @@ const SummaryCard = ({
     >
       <CardBackground type={card_type} color={cardColor} />
 
-      {/* Selection indicator */}
-      {selectable && (
+      {/* Selection checkbox */}
+      {selectionMode && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 10,
+          }}
+        >
+          <Checkbox
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              onToggleSelection(id);
+            }}
+            sx={{
+              color: alpha(cardColor, 0.5),
+              '&.Mui-checked': {
+                color: cardColor,
+              },
+              '& .MuiSvgIcon-root': {
+                fontSize: 24,
+              },
+            }}
+          />
+        </Box>
+      )}
+
+      {/* Selection indicator (legacy) */}
+      {selectable && !selectionMode && (
         <Box
           sx={{
             position: 'absolute',
@@ -398,12 +468,12 @@ const SummaryCard = ({
       )}
 
       {/* Header with icon and urgency badge */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5, position: 'relative', zIndex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, width: '100%' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5, position: 'relative', zIndex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
           <Box
             sx={{
-              width: { xs: 44, sm: 52 },
-              height: { xs: 44, sm: 52 },
+              width: { xs: 48, sm: 56 },
+              height: { xs: 48, sm: 56 },
               borderRadius: 3,
               background: `linear-gradient(135deg, ${cardColor} 0%, ${alpha(cardColor, 0.8)} 100%)`,
               display: 'flex',
@@ -413,75 +483,77 @@ const SummaryCard = ({
               boxShadow: `0 8px 16px ${alpha(cardColor, 0.2)}`,
             }}
           >
-            <IconComponent sx={{ fontSize: { xs: 24, sm: 28 }, color: '#FFFFFF' }} />
+            <IconComponent sx={{ fontSize: { xs: 26, sm: 30 }, color: '#FFFFFF' }} />
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-                {showTypeLabel && (
-                  <Typography
-                      sx={{
-                      fontSize: '0.65rem',
-                      fontWeight: 800,
-                      color: alpha('#64748B', 0.9),
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      }}
-                  >
-                      {card_type.replace('_', ' ')}
-                  </Typography>
-                )}
-                {urgency === 'critical' && (
-                    <Chip
-                    label={urgencyConfig.label}
+             {/* Title with Info Icon - Centered with Icon */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Typography
+                  sx={{
+                  fontSize: { xs: '1.25rem', sm: '1.4rem' },
+                  fontWeight: 800,
+                  color: '#0F172A',
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.02em',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  flex: 1,
+                  }}
+              >
+                  {title}
+              </Typography>
+              {description && (
+                <Tooltip 
+                  title={description} 
+                  arrow 
+                  placement="top"
+                  sx={{
+                    '& .MuiTooltip-tooltip': {
+                      bgcolor: '#1E293B',
+                      fontSize: '0.75rem',
+                      maxWidth: 280,
+                      p: 1.5,
+                    },
+                  }}
+                >
+                  <IconButton
                     size="small"
                     sx={{
-                        height: 20,
-                        fontSize: '0.65rem',
-                        fontWeight: 700,
-                        bgcolor: '#FEE2E2',
-                        color: urgencyConfig.color,
-                        border: '1px solid',
-                        borderColor: '#FECACA',
-                        px: 0.5,
-                        '& .MuiChip-label': { px: 0.5 },
+                      width: 24,
+                      height: 24,
+                      color: alpha(cardColor, 0.7),
+                      '&:hover': {
+                        bgcolor: alpha(cardColor, 0.1),
+                        color: cardColor,
+                      },
                     }}
-                    />
-                )}
-             </Box>
-             {/* Title - Bigger and bolder */}
-            <Typography
+                  >
+                    <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+            
+            {/* Urgency Badge below title if needed */}
+            {urgency === 'critical' && (
+                <Chip
+                label={urgencyConfig.label}
+                size="small"
                 sx={{
-                fontSize: { xs: '1.1rem', sm: '1.25rem' },
-                fontWeight: 800,
-                color: '#0F172A',
-                lineHeight: 1.25,
-                letterSpacing: '-0.02em',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                mb: 0.25,
+                    height: 20,
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    bgcolor: '#FEE2E2',
+                    color: urgencyConfig.color,
+                    border: '1px solid',
+                    borderColor: '#FECACA',
+                    px: 0.5,
+                    '& .MuiChip-label': { px: 0.5 },
                 }}
-            >
-                {title}
-            </Typography>
-            {description && (
-              <Typography
-                sx={{
-                  fontSize: '0.65rem',
-                  color: '#94A3B8',
-                  lineHeight: 1.3,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 1,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  fontWeight: 400,
-                  mt: 0,
-                }}
-              >
-                {description}
-              </Typography>
+                />
             )}
           </Box>
         </Box>
@@ -489,21 +561,32 @@ const SummaryCard = ({
 
       {/* Metrics - Widget Style */}
       {(primary_value || secondary_value || comparison_data || top_entries || bottom_entries || info_data) && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 0.5, position: 'relative', zIndex: 1, flex: 1, justifyContent: (card_type === 'metric' || card_type === 'alert') ? 'center' : 'flex-start' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1, position: 'relative', zIndex: 1, flex: 1, justifyContent: (card_type === 'metric' || card_type === 'alert') ? 'center' : 'flex-start' }}>
           {/* Table Summary Card - Top Entries with progress bars */}
           {card_type === 'table_summary' && top_entries && top_entries.length > 0 ? (
-            <Box sx={{ width: '100%', mt: 0, display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, justifyContent: 'flex-start' }}>
-              {top_entries.map((entry, idx) => (
+            <Box sx={{ 
+              width: '100%', 
+              mt: 0, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 2, 
+              flex: 1, 
+              justifyContent: 'center',
+              py: 0
+            }}>
+              {top_entries.map((entry, idx) => {
+                const isSparse = top_entries.length <= 2;
+                return (
                 <Tooltip key={idx} title={`${entry.fullName || entry.name}: ${entry.formatted}`} arrow placement="top" enterDelay={200}>
                   <Box sx={{ cursor: 'default' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5, alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: isSparse ? 1.25 : 0.75, alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: isSparse ? 2 : 1.5 }}>
                         <Typography sx={{ 
-                          fontSize: '0.7rem', 
+                          fontSize: isSparse ? '0.85rem' : '0.75rem', 
                           color: '#64748B', 
                           fontWeight: 700,
-                          width: 18,
-                          height: 18,
+                          width: isSparse ? 28 : 22,
+                          height: isSparse ? 28 : 22,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -514,45 +597,54 @@ const SummaryCard = ({
                         }}>
                           {entry.rank}
                         </Typography>
-                        <Typography sx={{ fontSize: '0.85rem', color: '#334155', fontWeight: 600 }}>
+                        <Typography sx={{ fontSize: isSparse ? '1rem' : '0.9rem', color: '#334155', fontWeight: 600 }}>
                           {entry.name}
                         </Typography>
                       </Box>
-                      <Typography sx={{ fontSize: '0.85rem', color: '#1E40AF', fontWeight: 700 }}>
+                      <Typography sx={{ fontSize: isSparse ? '1.1rem' : '0.9rem', color: '#1E40AF', fontWeight: 700 }}>
                         {entry.formatted || smartFormat(entry.value)}
                       </Typography>
                     </Box>
                     <Box sx={{ 
                       width: '100%', 
-                      height: 12, 
+                      height: isSparse ? 20 : 12, 
                       bgcolor: '#F1F5F9', 
-                      borderRadius: 6,
+                      borderRadius: isSparse ? 10 : 6,
                       overflow: 'hidden',
                     }}>
                       <Box sx={{ 
                         width: `${(entry.value / Math.max(...top_entries.map(e => e.value))) * 100}%`, 
                         height: '100%', 
                         background: `linear-gradient(90deg, ${idx === 0 ? '#1E40AF' : '#3B82F6'} 0%, ${idx === 0 ? '#3B82F6' : '#60A5FA'} 100%)`,
-                        borderRadius: 6,
+                        borderRadius: isSparse ? 10 : 6,
                         transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
                         boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                       }} />
                     </Box>
                   </Box>
                 </Tooltip>
-              ))}
+              )})}
             </Box>
           ) : card_type === 'table_summary' && bottom_entries && bottom_entries.length > 0 ? (
             /* Table Summary Card - Bottom Entries (Zero Performers) */
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, justifyContent: 'space-between', py: 0.5 }}>
-              {bottom_entries.slice(0, 5).map((entry, idx) => (
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 1.5, 
+              flex: 1, 
+              justifyContent: 'center', 
+              py: 0.5 
+            }}>
+              {bottom_entries.slice(0, 5).map((entry, idx) => {
+                const isSparse = bottom_entries.length <= 2;
+                return (
                 <Box 
                   key={idx} 
                   sx={{ 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center',
-                    py: 1.25,
+                    py: isSparse ? 2 : 1.25,
                     px: 2,
                     bgcolor: '#FFF5F5',
                     borderRadius: 3,
@@ -563,21 +655,21 @@ const SummaryCard = ({
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                      <Box sx={{ 
-                         width: 24, 
-                         height: 24, 
+                         width: isSparse ? 28 : 24, 
+                         height: isSparse ? 28 : 24, 
                          borderRadius: '50%', 
                          bgcolor: '#FFFFFF', 
                          display: 'flex', 
                          alignItems: 'center', 
                          justifyContent: 'center',
-                         fontSize: '0.75rem',
+                         fontSize: isSparse ? '0.85rem' : '0.75rem',
                          fontWeight: 800,
                          color: '#E53E3E',
                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                      }}>
                          {entry.rank || idx + 1}
                      </Box>
-                     <Typography sx={{ fontSize: '0.85rem', color: '#9B2C2C', fontWeight: 700 }}>
+                     <Typography sx={{ fontSize: isSparse ? '1rem' : '0.85rem', color: '#9B2C2C', fontWeight: 700 }}>
                         {entry.name}
                      </Typography>
                   </Box>
@@ -585,35 +677,34 @@ const SummaryCard = ({
                     label={entry.value === 0 ? 'No Activity' : entry.formatted} 
                     size="small"
                     sx={{ 
-                      height: 22,
+                      height: isSparse ? 26 : 22,
                       bgcolor: '#FFFFFF', 
                       color: '#E53E3E', 
                       fontWeight: 800,
-                      fontSize: '0.7rem',
+                      fontSize: isSparse ? '0.75rem' : '0.7rem',
                       borderRadius: 1.5,
                       border: '1px solid #FC8181'
                     }} 
                   />
                 </Box>
-              ))}
+              )})}
             </Box>
           ) : card_type === 'comparison' && Array.isArray(comparison_data) && comparison_data.length > 0 ? (
-            /* Comparison Card - Array Format (MTD vs LMTD style with bar chart) */
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, justifyContent: 'flex-start', py: 0 }}>
+          /* Comparison Card - Array Format (MTD vs LMTD style with bar chart) */
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, justifyContent: 'flex-start', py: 0 }}>
               {comparison_data.slice(0, 1).map((item, idx) => {
                 const mtdValue = item.mtd_lakhs || 0;
                 const lmtdValue = item.lmtd_lakhs || 0;
                 const maxValue = Math.max(mtdValue, lmtdValue);
                 const changePct = item.change_pct || 0;
                 const isPositive = changePct >= 0;
-                // Green for positive growth, Red for negative
                 const trendColor = isPositive ? '#10B981' : '#EF4444';
                 const trendBg = isPositive ? '#ECFDF5' : '#FEF2F2';
                 
                 return (
                   <React.Fragment key={idx}>
                     {/* Values Row */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', px: 0 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', px: 0, mb: 0.5 }}>
                       <Box>
                         <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 700, mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           Current (MTD)
@@ -626,122 +717,235 @@ const SummaryCard = ({
                          <Typography sx={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 700, mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           Previous (LMTD)
                         </Typography>
-                        <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: '#64748B', lineHeight: 1 }}>
+                         <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: '#94A3B8', lineHeight: 1, letterSpacing: '-0.02em' }}>
                           ₹{lmtdValue.toFixed(0)}L
                         </Typography>
                       </Box>
                     </Box>
                     
-                    {/* Bar Chart - Both Colored (Not Gray) - Flex grow to fill space */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, justifyContent: 'flex-start', py: 1, mt: 0.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ flex: 1, height: 32, bgcolor: '#F1F5F9', borderRadius: 16, overflow: 'hidden', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
+                    {/* Bar Chart Container with Accent Background */}
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: 1.25, 
+                      justifyContent: 'center', 
+                      py: 1.5,
+                      px: 2,
+                      mt: 0.5,
+                      bgcolor: '#F8FAFC',
+                      borderRadius: 3,
+                      border: '1px solid #F1F5F9',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '@keyframes shimmer': {
+                        '0%': { backgroundPosition: '200% 0' },
+                        '100%': { backgroundPosition: '-200% 0' }
+                      }
+                    }}>
+                      {/* Decorative background accent */}
+                      <Box sx={{ position: 'absolute', top: 0, right: 0, width: 60, height: 60, background: 'radial-gradient(circle at top right, #E2E8F0 0%, transparent 70%)', opacity: 0.5 }} />
+
+                      {/* Current Period Bar */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#3B82F6' }}>Current</Typography>
+                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#3B82F6' }}>{((mtdValue / maxValue) * 100).toFixed(0)}%</Typography>
+                        </Box>
+                        <Box sx={{ width: '100%', height: 16, bgcolor: '#E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
                           <Box sx={{ 
                             width: `${maxValue > 0 ? (mtdValue / maxValue) * 100 : 0}%`, 
                             height: '100%', 
-                            background: 'linear-gradient(90deg, #1E40AF 0%, #3B82F6 100%)',
-                            borderRadius: 16,
-                            transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
-                            boxShadow: '0 2px 6px rgba(30, 64, 175, 0.25)'
+                            background: 'linear-gradient(90deg, #1E40AF 0%, #3B82F6 50%, #1E40AF 100%)',
+                            backgroundSize: '200% 100%',
+                            borderRadius: 8,
+                            animation: 'shimmer 3s infinite linear',
+                            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
                           }} />
                         </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ flex: 1, height: 32, bgcolor: '#F1F5F9', borderRadius: 16, overflow: 'hidden', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
+
+                      {/* Previous Period Bar */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8' }}>Previous</Typography>
+                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8' }}>{((lmtdValue / maxValue) * 100).toFixed(0)}%</Typography>
+                        </Box>
+                        <Box sx={{ width: '100%', height: 16, bgcolor: '#E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
                           <Box sx={{ 
                             width: `${maxValue > 0 ? (lmtdValue / maxValue) * 100 : 0}%`, 
                             height: '100%', 
-                            background: 'linear-gradient(90deg, #94A3B8 0%, #CBD5E1 100%)', 
-                            borderRadius: 16,
-                            transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                            background: 'linear-gradient(90deg, #64748B 0%, #94A3B8 50%, #64748B 100%)',
+                            backgroundSize: '200% 100%',
+                            borderRadius: 8,
+                            animation: 'shimmer 4s infinite linear',
+                            opacity: 0.8
                           }} />
                         </Box>
                       </Box>
                     </Box>
                     
-                    {/* Change Badge */}
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 1.5,
-                      mt: 0,
-                      px: 0
-                    }}>
-                       <Box sx={{ 
-                           display: 'flex', 
-                           alignItems: 'center', 
-                           gap: 0.5, 
-                           bgcolor: trendBg,
-                           px: 2,
-                           py: 1,
-                           borderRadius: 4,
-                           border: `1px solid ${alpha(trendColor, 0.1)}`,
-                           boxShadow: `0 2px 8px ${alpha(trendColor, 0.15)}`
-                       }}>
-                            {isPositive ? (
-                                <TrendingUpIcon sx={{ fontSize: 22, color: trendColor }} />
-                            ) : (
-                                <TrendingDownIcon sx={{ fontSize: 22, color: trendColor }} />
-                            )}
-                            <Typography sx={{ fontSize: '1.1rem', fontWeight: 800, color: trendColor }}>
-                                {Math.abs(changePct).toFixed(1)}%
-                            </Typography>
-                       </Box>
-                       <Typography sx={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600 }}>
-                           vs Last Month
-                       </Typography>
+                    {/* Trend Badge */}
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 0.5, mb: 0.5 }}>
+                      <Chip
+                        icon={isPositive ? <TrendingUpIcon /> : <TrendingDownIcon />}
+                        label={`${isPositive ? '+' : ''}${changePct.toFixed(2)}% vs Last Month`}
+                        sx={{
+                          bgcolor: trendBg,
+                          color: trendColor,
+                          fontWeight: 800,
+                          fontSize: '0.8rem',
+                          height: 32,
+                          px: 1.5,
+                          border: `1px solid ${alpha(trendColor, 0.2)}`,
+                          '& .MuiChip-icon': { color: trendColor, fontSize: 18 },
+                        }}
+                      />
                     </Box>
                   </React.Fragment>
                 );
               })}
             </Box>
           ) : card_type === 'info' && info_data && info_data.length > 0 ? (
-            /* Info Card */
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, justifyContent: 'space-between', py: 1 }}>
-              {info_data.slice(0, 3).map((item, idx) => (
-                <Box key={idx} sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  py: 0.75,
-                  px: 1,
-                  borderRadius: 1.5,
-                  bgcolor: idx % 2 === 0 ? '#F8FAFC' : 'transparent'
-                }}>
-                  <Typography sx={{ fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>
-                    {item.name}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.8rem', color: '#1E40AF', fontWeight: 700 }}>
-                    {item.formatted || smartFormat(item.value)}
-                  </Typography>
+            /* Info Card - Enhanced with Progress Bars */
+            <Box sx={{ 
+              width: '100%', 
+              mt: 0, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 2, 
+              flex: 1, 
+              justifyContent: 'center',
+              py: 0
+            }}>
+              {/* Primary Value Display for Info Cards */}
+              {primary_value !== undefined && primary_value !== null && (
+                <Box sx={{ mb: 1.5 }}>
+                   <Typography sx={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                     {primary_label || 'Total'}
+                   </Typography>
+                   <Typography sx={{ fontSize: '2.25rem', fontWeight: 800, color: cardColor, lineHeight: 1, letterSpacing: '-0.03em' }}>
+                     {displayPrimaryValue}
+                   </Typography>
                 </Box>
-              ))}
+              )}
+
+              {info_data.slice(0, 5).map((entry, idx) => {
+                 const isSparse = info_data.length <= 2;
+                 // Calculate max value for progress bars
+                 const allValues = info_data.map(e => typeof e.value === 'number' ? e.value : 0);
+                 const maxValue = Math.max(...allValues, 1);
+                 const numericValue = typeof entry.value === 'number' ? entry.value : 0;
+                 const percentage = maxValue > 0 ? (numericValue / maxValue) * 100 : 0;
+                 
+                 // Handle name display - prefer label for info cards
+                 const displayName = entry.name || entry.label || (typeof entry.value === 'string' ? entry.value : `Item ${idx + 1}`);
+                 const displayValue = entry.formatted || (typeof entry.value === 'number' ? smartFormat(entry.value) : entry.value);
+
+                 // Colorful palette for each bank/entry - distinct vibrant colors
+                 const progressColors = [
+                   '#3B82F6', // Blue
+                   '#10B981', // Green
+                   '#F59E0B', // Amber
+                   '#EF4444', // Red
+                   '#8B5CF6', // Purple
+                   '#EC4899', // Pink
+                   '#14B8A6', // Teal
+                   '#F97316', // Orange
+                 ];
+                 const entryColor = progressColors[idx % progressColors.length];
+
+                 return (
+                <Box key={idx} sx={{ cursor: 'default' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: isSparse ? 1.25 : 0.75, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: isSparse ? 2 : 1.5 }}>
+                       {/* Bullet point with unique color */}
+                      <Box sx={{ 
+                        width: isSparse ? 14 : 10, 
+                        height: isSparse ? 14 : 10, 
+                        borderRadius: '50%', 
+                        bgcolor: entryColor,
+                        opacity: 0.9 
+                      }} />
+                      <Typography sx={{ fontSize: isSparse ? '1rem' : '0.9rem', color: '#334155', fontWeight: 600 }}>
+                        {displayName}
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: isSparse ? '1.1rem' : '0.9rem', color: entryColor, fontWeight: 700 }}>
+                      {displayValue}
+                    </Typography>
+                  </Box>
+                  {/* Progress Bar only if we have numeric value */}
+                  {typeof entry.value === 'number' && (
+                    <Box sx={{ 
+                      width: '100%', 
+                      height: isSparse ? 20 : 10, 
+                      bgcolor: alpha(entryColor, 0.15), 
+                      borderRadius: isSparse ? 10 : 5,
+                      overflow: 'hidden',
+                    }}>
+                      <Box sx={{ 
+                        width: `${percentage}%`, 
+                        height: '100%', 
+                        bgcolor: entryColor,
+                        borderRadius: isSparse ? 10 : 5,
+                        transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                        opacity: 0.85
+                      }} />
+                    </Box>
+                  )}
+                </Box>
+              )})}
             </Box>
           ) : card_type === 'alert' && info_data && info_data.length > 0 ? (
-            /* Alert Card */
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, justifyContent: 'space-between', py: 1 }}>
-              {info_data.slice(0, 3).map((item, idx) => (
+            /* Alert Card - List View */
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: info_data.length <= 2 ? 4 : 1.5, 
+              flex: 1, 
+              justifyContent: info_data.length <= 3 ? 'space-evenly' : 'space-between', 
+              py: info_data.length <= 2 ? 1 : 0.5 
+            }}>
+              {info_data.slice(0, 5).map((entry, idx) => {
+                 const isSparse = info_data.length <= 2;
+                 // Handle data variations for alerts
+                 const displayValue = entry.formatted || (typeof entry.value === 'number' ? smartFormat(entry.value) : '');
+                 
+                 // Intelligent name detection
+                 let displayName = entry.name || entry.label;
+                 // If value is string and label is generic (like "FO Name") or missing, use value as name
+                 if (typeof entry.value === 'string' && (!displayName || displayName === 'FO Name' || displayName === 'Label')) {
+                     displayName = entry.value;
+                 }
+                 
+                 return (
                 <Box key={idx} sx={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center',
-                  py: 0.75,
-                  px: 1,
-                  borderRadius: 1.5,
-                  bgcolor: '#FEF2F2'
+                  py: isSparse ? 1.5 : 1,
+                  px: 2,
+                  borderRadius: 2,
+                  bgcolor: '#FEF2F2',
+                  border: '1px solid #FECACA',
+                  transition: 'all 0.2s',
+                  '&:hover': { transform: 'translateX(4px)', bgcolor: '#FEE2E2' }
                 }}>
-                  <Typography sx={{ fontSize: '0.8rem', color: '#7F1D1D', fontWeight: 500 }}>
-                    {item.name}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 700 }}>
-                    {item.formatted || smartFormat(item.value)}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <WarningIcon sx={{ fontSize: isSparse ? 22 : 18, color: '#EF4444' }} />
+                    <Typography sx={{ fontSize: isSparse ? '1rem' : '0.9rem', color: '#991B1B', fontWeight: 600 }}>
+                      {displayName}
+                    </Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: isSparse ? '1rem' : '0.9rem', color: '#EF4444', fontWeight: 700 }}>
+                    {displayValue}
                   </Typography>
                 </Box>
-              ))}
+              )})}
             </Box>
           ) : comparison_data && comparison_data.entity1 && comparison_data.entity2 ? (
             /* Comparison Card - Object Format */
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, justifyContent: 'flex-start' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, justifyContent: 'space-evenly' }}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography
@@ -808,7 +1012,7 @@ const SummaryCard = ({
               width: '100%',
               height: '100%',
               flex: 1,
-              py: 1
+              py: 2
             }}>
               {primary_value && (
                 <Box sx={{ 
@@ -819,8 +1023,8 @@ const SummaryCard = ({
                   width: '100%',
                   bgcolor: alpha(cardColor, 0.04),
                   borderRadius: 4,
-                  py: 3,
-                  px: 2,
+                  py: 4,
+                  px: 3,
                   border: `1px dashed ${alpha(cardColor, 0.2)}`,
                   position: 'relative',
                   overflow: 'hidden'
@@ -839,7 +1043,7 @@ const SummaryCard = ({
 
                   <Typography
                     sx={{
-                      fontSize: { xs: '2.5rem', sm: '3.25rem' },
+                      fontSize: { xs: '2.75rem', sm: '3.5rem' },
                       fontWeight: 800,
                       color: urgency === 'critical' ? '#EF4444' : urgency === 'high' ? '#F59E0B' : '#0F172A',
                       lineHeight: 1,
@@ -847,7 +1051,7 @@ const SummaryCard = ({
                       background: urgency === 'high' ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' : 'none',
                       WebkitBackgroundClip: urgency === 'high' ? 'text' : 'none',
                       WebkitTextFillColor: urgency === 'high' ? 'transparent' : 'initial',
-                      mb: 1.5,
+                      mb: 2,
                       textAlign: 'center'
                     }}
                   >

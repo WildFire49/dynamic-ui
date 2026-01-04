@@ -17,13 +17,15 @@ import {
   Divider,
   Avatar,
   IconButton,
-  Tooltip
+  Tooltip,
+  Grid,
+  keyframes
 } from '@mui/material';
 import {
+  Timer as TimerIcon,
   Schedule as ScheduleIcon,
-  Download as DownloadIcon,
-  PictureAsPdf as PdfIcon,
-  WhatsApp as WhatsAppIcon,
+  EventNote as EventNoteIcon,
+  NotificationsActive as NotificationsActiveIcon,
   CheckCircle as CheckCircleIcon,
   AccessTime as AccessTimeIcon,
   Description as DescriptionIcon,
@@ -41,7 +43,8 @@ const SchedulerResponse = ({ content }) => {
                              content?.data?.response_type === 'scheduled' ||
                              content?.response_type === 'scheduled';
   
-  let title, metadata, download_url, status, data, message, success, job_id, schedule_details, result, isCompleted, response_type;
+  let title, metadata, download_url, status, data, message, success, job_id, schedule_details, result, isCompleted, response_type, config;
+  let needsClarification, clarificationQuestion;
   
   if (isSchedulerResponse) {
     // Handle the new nested format: content.response.data
@@ -49,12 +52,17 @@ const SchedulerResponse = ({ content }) => {
     const responseContent = content?.response || content;
     
     title = responseContent.content || content.content || 'Scheduler Response';
-    job_id = responseData.job_id;
+    job_id = responseData.job_id || responseContent.scheduler_id;
     status = responseData.success ? 'scheduled' : 'failed';
     schedule_details = responseData.schedule_details;
     result = responseData.result;
     response_type = responseData.response_type || 'scheduled';
-    message = responseData.message || responseContent.content || content.content || title;
+    message = responseData.message || responseContent.message || responseContent.content || title;
+    config = responseContent.config || responseData.config;
+    
+    // Clarification logic
+    needsClarification = responseData.needs_clarification || responseContent.needs_clarification;
+    clarificationQuestion = responseData.clarification_question || responseContent.clarification_question;
     
     // Check if this is a completed task with results
     isCompleted = status === 'completed' && result;
@@ -105,7 +113,14 @@ const SchedulerResponse = ({ content }) => {
   };
 
   const scheduleTimeFormatted = formatScheduleTime();
-  const isScheduledTask = response_type === 'scheduled' && schedule_details;
+  // Enhanced check: task is scheduled if response says so OR if we have a valid config object
+  const isScheduledTask = (response_type === 'scheduled' || status === 'scheduled') && (schedule_details || config);
+
+  // Animation definition
+  const slideIn = keyframes`
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  `;
 
   const handleDownload = () => {
     if (download_url) {
@@ -119,124 +134,237 @@ const SchedulerResponse = ({ content }) => {
         elevation={3} 
         sx={{ 
           borderRadius: 3,
-          background: 'linear-gradient(135deg, #dcf8c6 0%, #e8f5e8 100%)',
-          border: '1px solid #25D366',
+          background: needsClarification 
+            ? 'linear-gradient(135deg, #fff4e5 0%, #fffbf2 100%)' 
+            : 'linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%)',
+          border: needsClarification ? '1px solid #ff9800' : '1px solid #1976d2',
           overflow: 'hidden',
-          position: 'relative'
+          position: 'relative',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
         }}
       >
-        {/* WhatsApp-style header */}
+        {/* Header - More Conversational */}
         <Box sx={{ 
-          background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
-          p: 2,
-          color: 'white'
+          background: needsClarification 
+            ? 'linear-gradient(135deg, #ed6c02 0%, #ff9800 100%)'
+            : 'linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)',
+          p: 1.5,
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
-          <Stack direction="row" alignItems="center" spacing={2}>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
             <Avatar sx={{ 
               bgcolor: 'rgba(255,255,255,0.2)', 
-              width: 48, 
-              height: 48,
-              border: '2px solid rgba(255,255,255,0.3)'
+              width: 32, 
+              height: 32,
+              border: '1px solid rgba(255,255,255,0.3)'
             }}>
-              <WhatsAppIcon sx={{ fontSize: 28 }} />
+              {needsClarification ? (
+                <NotificationsActiveIcon sx={{ fontSize: 18 }} />
+              ) : (
+                <ScheduleIcon sx={{ fontSize: 18 }} />
+              )}
             </Avatar>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" sx={{ 
-                fontWeight: 'bold',
-                fontSize: '1.1rem',
-                mb: 0.5
-              }}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', lineHeight: 1 }}>
                 Scheduler Agent
               </Typography>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <CheckCircleIcon sx={{ fontSize: 16 }} />
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  {isScheduledTask ? 'Task scheduled successfully' : 'Report processed successfully'}
-                </Typography>
-              </Stack>
+              <Typography variant="caption" sx={{ opacity: 0.8, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {needsClarification ? <AccessTimeIcon sx={{ fontSize: 10 }} /> : <CheckCircleIcon sx={{ fontSize: 10 }} />}
+                {needsClarification ? 'Action Required' : 'Status: active'}
+              </Typography>
             </Box>
-            <Tooltip title="Share Report">
-              <IconButton sx={{ color: 'white' }}>
-                <ShareIcon />
-              </IconButton>
-            </Tooltip>
           </Stack>
+          <Tooltip title="View Schedule">
+            <IconButton size="small" sx={{ color: 'white', opacity: 0.8 }}>
+              <TimerIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         <CardContent sx={{ p: 3 }}>
-          {/* Success Message */}
+          {/* Main Content Area - Conversational & Animated */}
           <Box sx={{ 
-            mb: 3, 
-            p: 2.5, 
-            bgcolor: 'rgba(37, 211, 102, 0.1)', 
+            mb: 2, 
+            animation: `${slideIn} 0.4s ease-out`,
+            p: 2, 
+            bgcolor: needsClarification ? 'rgba(255, 152, 0, 0.03)' : 'rgba(25, 118, 210, 0.03)', 
             borderRadius: 2,
-            border: '1px solid rgba(37, 211, 102, 0.3)'
+            border: needsClarification ? '1px solid rgba(255, 152, 0, 0.1)' : '1px solid rgba(25, 118, 210, 0.1)'
           }}>
-            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1.5 }}>
-              {isScheduledTask ? (
-                <ScheduleIcon sx={{ color: '#25D366', fontSize: 24 }} />
+            <Stack direction="row" alignItems="flex-start" spacing={1.5}>
+              {needsClarification ? (
+                <NotificationsActiveIcon sx={{ color: '#ed6c02', fontSize: 24, mt: 0.3 }} />
               ) : (
-                <WhatsAppIcon sx={{ color: '#25D366', fontSize: 24 }} />
+                <Avatar sx={{ width: 24, height: 24, bgcolor: '#1976d2' }}>
+                  <CheckCircleIcon sx={{ fontSize: 16, color: 'white' }} />
+                </Avatar>
               )}
-              <Typography variant="h6" sx={{ 
-                color: '#128C7E',
-                fontWeight: 'bold'
-              }}>
-                {isScheduledTask ? 'Task Scheduled Successfully!' : (message || 'Report Generated Successfully!')}
-              </Typography>
-            </Stack>
-            
-            <Typography variant="body1" sx={{ 
-              color: '#2e7d32',
-              mb: 2,
-              lineHeight: 1.6
-            }}>
-              {isScheduledTask ? (
-                <>
-                  {message}
-                  {scheduleTimeFormatted && (
-                    <>
-                      <br />
-                      <Box component="span" sx={{ display: 'block', fontWeight: 'bold', color: '128C7E', textAlign: 'center' }}>
-                        Your Report will be sent to your WhatsApp shortly.
+              <Box sx={{ flex: 1 }}>
+                
+                {/* Persona-driven Message */}
+                <Typography variant="body1" sx={{ 
+                  color: needsClarification ? '#a65d00' : '#0d47a1',
+                  fontSize: '1rem',
+                  lineHeight: 1.6,
+                  fontWeight: needsClarification ? 'normal' : 'medium'
+                }}>
+                  {needsClarification ? (
+                     // Clarification Question
+                    <Box component="span" sx={{ display: 'block' }}>
+                      <Typography component="span" sx={{ fontWeight: 'bold', display: 'block', mb: 1, fontSize: '1.05rem' }}>
+                        {clarificationQuestion || message || 'I need a few more details.'}
+                      </Typography>
+                      <Typography component="span" variant="body2" sx={{ color: '#666', fontStyle: 'italic' }}>
+                        Please reply with the missing info so I can proceed.
+                      </Typography>
+                    </Box>
+                  ) : isScheduledTask && config ? (
+                    // Intelligent Success Confirmation
+                    <Box component="span">
+                      {`I've successfully scheduled the `}
+                      <Box component="span" sx={{ fontWeight: 'bold' }}>
+                        {config.event?.name || 'task'}
                       </Box>
-                    </>
+                      {`. It will run `}
+                      <Box component="span" sx={{ fontWeight: 'bold' }}>
+                        {config.schedule?.time ? `${config.schedule.time.toLowerCase()}` : 'as requested'}
+                      </Box>
+                      {config.delivery?.[0]?.recipient ? (
+                        <>
+                          {' for '}
+                          <Box component="span" sx={{ fontWeight: 'bold' }}>
+                            {config.delivery[0].recipient}
+                          </Box>
+                        </>
+                      ) : ''}
+                      {'.'}
+                    </Box>
+                  ) : (
+                    // Generics Fallback
+                    <Box component="span">
+                       {message}
+                    </Box>
                   )}
-                </>
-              ) : (
-                <>
-                  Your report has been generated and will be sent to your WhatsApp shortly. 
-                  <br />
-                  You'll receive a notification once it's delivered.
-                </>
-              )}
-            </Typography>
+                </Typography>
 
-            {/* WhatsApp Status Chip */}
-            {/* <Chip 
-              icon={<WhatsAppIcon />}
-              label="Will be sent to WhatsApp" 
-              sx={{
-                bgcolor: '#25D366',
-                color: 'white',
-                fontWeight: 'medium',
-                '& .MuiChip-icon': {
-                  color: 'white'
-                }
-              }}
-            /> */}
+              </Box>
+            </Stack>
           </Box>
 
-          {/* Schedule Details - Made visible and modern */}
-          {(isScheduledTask || job_id) && (
+          {/* Schedule Configuration Summary - Only show if not clarification */}
+          {!needsClarification && config && (
+             <Card sx={{ 
+              mb: 3, 
+              animation: `${slideIn} 0.5s ease-out`,
+              animationDelay: '0.1s',
+              animationFillMode: 'both',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+              borderRadius: 3,
+              border: '1px solid rgba(25, 118, 210, 0.08)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+              overflow: 'hidden'
+            }}>
+              <Box sx={{ 
+                bgcolor: 'rgba(25, 118, 210, 0.04)', 
+                p: 1.5, 
+                px: 2,
+                borderBottom: '1px solid rgba(25, 118, 210, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#1565c0', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Configuration Details
+                </Typography>
+                <Chip label="Active" size="small" color="success" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 'bold' }} />
+              </Box>
+              <Box sx={{ p: 2.5 }}>
+                 {/* Event Name & Desc */}
+                 <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#1a237e' }}>
+                        {config.event?.name || 'Scheduled Task'}
+                      </Typography>
+                      {config.event?.description && (
+                        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                          {config.event.description}
+                        </Typography>
+                      )}
+                    </Box>
+
+                    <Divider sx={{ borderStyle: 'dashed' }} />
+
+                    {/* Meta Grid */}
+                    <Grid container spacing={2}>
+                        {/* Time */}
+                        <Grid item xs={6}>
+                           <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                              <AccessTimeIcon sx={{ fontSize: 18, color: '#1976d2', mt: 0.2 }} />
+                              <Box>
+                                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', display: 'block' }}>
+                                  SCHEDULE
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#333' }}>
+                                  {config.schedule?.time}
+                                  {config.schedule?.recurrence?.pattern?.type && (
+                                    <Box component="span" sx={{ color: 'text.secondary', ml: 0.5, fontSize: '0.9em' }}>
+                                      ({config.schedule.recurrence.pattern.type})
+                                    </Box>
+                                  )}
+                                </Typography>
+                              </Box>
+                           </Stack>
+                        </Grid>
+
+                        {/* Delivery */}
+                        <Grid item xs={6}>
+                          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                              <NotificationsActiveIcon sx={{ fontSize: 18, color: '#ed6c02', mt: 0.2 }} />
+                              <Box>
+                                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', display: 'block' }}>
+                                  DELIVERY
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#333' }}>
+                                  {config.delivery?.[0]?.channel || 'Default'}
+                                  {config.delivery?.[0]?.recipient && (
+                                    <Box component="span" sx={{ color: 'text.secondary', ml: 0.5 }}>
+                                       to {config.delivery[0].recipient}
+                                    </Box>
+                                  )}
+                                </Typography>
+                              </Box>
+                           </Stack>
+                        </Grid>
+                    </Grid>
+                 </Stack>
+              </Box>
+            </Card>
+          )}
+
+          {/* Legacy Schedule Details */}
+          {(isScheduledTask || job_id) && !config && (
             <Card sx={{ 
-              mb: 1, 
+              mb: 3, 
               background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%)',
               borderRadius: 3,
-              border: '1px solid rgba(37, 211, 102, 0.2)',
-              boxShadow: '0 8px 32px rgba(37, 211, 102, 0.1)'
+              border: '1px solid rgba(25, 118, 210, 0.1)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+              p: 2
             }}>
-              
+               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Task Details
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Job ID: {job_id}
+              </Typography>
+              {scheduleTimeFormatted && (
+                 <Typography variant="body2" color="text.secondary">
+                 Scheduled for: {scheduleTimeFormatted}
+               </Typography>
+              )}
             </Card>
           )}
 
@@ -259,53 +387,35 @@ const SchedulerResponse = ({ content }) => {
             {download_url && (
               <Button
                 variant="contained"
-                startIcon={<PdfIcon />}
+                startIcon={<DescriptionIcon />}
                 onClick={handleDownload}
                 sx={{
-                  bgcolor: '#dc3545',
-                  '&:hover': { bgcolor: '#c82333' },
+                  bgcolor: '#1976d2',
+                  '&:hover': { bgcolor: '#1565c0' },
                   textTransform: 'none',
                   borderRadius: 2,
                   px: 3,
                   py: 1,
                   fontWeight: 'medium',
-                  boxShadow: '0 4px 12px rgba(220, 53, 69, 0.3)'
+                  boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
                 }}
               >
                 Download PDF Report
               </Button>
             )}
-            
-            {/* <Button
-              variant="outlined"
-              startIcon={<WhatsAppIcon />}
-              sx={{
-                borderColor: '#25D366',
-                color: '#25D366',
-                '&:hover': { 
-                  bgcolor: 'rgba(37, 211, 102, 0.1)',
-                  borderColor: '#128C7E'
-                },
-                textTransform: 'none',
-                borderRadius: 2,
-                px: 3,
-                py: 1,
-                fontWeight: 'medium'
-              }}
-            >
-              Open WhatsApp
-            </Button> */}
           </Stack>
         </CardContent>
 
-        {/* Decorative WhatsApp pattern */}
+        {/* Decorative pattern */}
         <Box sx={{
           position: 'absolute',
           top: 0,
           right: 0,
           width: 100,
           height: 100,
-          background: 'radial-gradient(circle, rgba(37, 211, 102, 0.1) 0%, transparent 70%)',
+          background: needsClarification 
+            ? 'radial-gradient(circle, rgba(237, 108, 2, 0.1) 0%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(25, 118, 210, 0.1) 0%, transparent 70%)',
           borderRadius: '50%',
           transform: 'translate(30px, -30px)'
         }} />

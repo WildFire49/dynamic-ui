@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -71,7 +71,8 @@ import {
   AreaChart as AreaChartIcon,
   Download as DownloadIcon,
   CheckCircle as CheckCircleIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -98,6 +99,7 @@ import { DashboardLoadingSkeleton, WidgetContentSkeleton } from './skeletons/Wid
 import WidgetConfigStudio from './widgets/WidgetConfigStudio';
 import dashboardService from '../services/dashboardService';
 import SummaryCardsPanel from './dashboard/SummaryCardsPanel';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 // Color palette - distinct colors for multi-series charts
 const CHART_COLORS = {
@@ -190,12 +192,17 @@ const Dashboard = ({ initialDashboardId }) => {
   const [attachedWidget, setAttachedWidget] = useState(null); // Widget attached to chat input
   const [widgetCreationMode, setWidgetCreationMode] = useState(null); // { mode: 'create' | 'edit', card: cardObject } - for card-based widget creation
   const [outputType, setOutputType] = useState('widget'); // 'widget', 'card', or 'both' - for dashboard edit API
+  const [pullToRefreshEnabled, setPullToRefreshEnabled] = useState(true); // Enable pull-to-refresh on mobile
+  const [selectedWidgets, setSelectedWidgets] = useState(new Set()); // Selected widget IDs for batch operations
+  const [selectedCards, setSelectedCards] = useState(new Set()); // Selected card IDs for batch operations
+  const [selectionMode, setSelectionMode] = useState(false); // Enable selection mode
   
   // Refs to prevent duplicate API calls
   const dataFetchInProgress = useRef(false);
   const fetchedWidgetIds = useRef(new Set());
   const initialFetchDone = useRef(false); // Prevent duplicate initial fetch
   const draggedWidgetRef = useRef(null); // Store dragged widget for chat drop
+  const mainContainerRef = useRef(null); // Ref for pull-to-refresh container
   
   // Helper to check if a string is a UUID
   const isUUID = (str) => {
@@ -383,6 +390,30 @@ const Dashboard = ({ initialDashboardId }) => {
     if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
     return value.toLocaleString();
   };
+
+  // Pull-to-refresh handler
+  const handlePullToRefresh = useCallback(async () => {
+    const username = getUsername();
+    if (!username || !activeDashboardId) return;
+
+    console.log('🔄 Pull-to-refresh triggered');
+    
+    // Reload widgets and summary cards
+    await loadWidgetsForDashboard(username, activeDashboardId, true);
+    
+    // Small delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }, [activeDashboardId, loadWidgetsForDashboard]);
+
+  // Initialize pull-to-refresh
+  const { containerRef, isPulling, pullDistance, isRefreshing: isPullRefreshing } = usePullToRefresh(
+    handlePullToRefresh,
+    {
+      threshold: 60,
+      maxPullDistance: 120,
+      enabled: pullToRefreshEnabled,
+    }
+  );
 
   // Cache helper functions
   const getCachedData = (dashboardId, widgetId) => {
@@ -1121,11 +1152,23 @@ const Dashboard = ({ initialDashboardId }) => {
           }
         }
         
+        // Build success message based on outputType
+        let successMessage = actionSummary.length > 0 
+          ? actionSummary.join('\n') 
+          : resultData.message || 'Dashboard updated successfully!';
+        
+        // Add outputType context to message if available
+        if (payload.outputType === 'card') {
+          successMessage = `Summary card created successfully! ${successMessage}`;
+        } else if (payload.outputType === 'both') {
+          successMessage = `Widget and summary card created successfully! ${successMessage}`;
+        } else if (payload.outputType === 'widget') {
+          successMessage = `Widget created successfully! ${successMessage}`;
+        }
+        
         return { 
           success: true, 
-          message: actionSummary.length > 0 
-            ? actionSummary.join('\n') 
-            : resultData.message || 'Dashboard updated successfully!',
+          message: successMessage,
           actions: actions,
           addedWidgets: resultData.addedWidgets
         };
@@ -1152,6 +1195,58 @@ const Dashboard = ({ initialDashboardId }) => {
     }
   };
 
+  // Toggle widget selection
+  const toggleWidgetSelection = (widgetId) => {
+    setSelectedWidgets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(widgetId)) {
+        newSet.delete(widgetId);
+      } else {
+        newSet.add(widgetId);
+      }
+      return newSet;
+    });
+  };
+
+  // Toggle card selection
+  const toggleCardSelection = (cardId) => {
+    setSelectedCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(cardId)) {
+        newSet.delete(cardId);
+      } else {
+        newSet.add(cardId);
+      }
+      return newSet;
+    });
+  };
+
+  // Clear all selections
+  const clearSelections = () => {
+    setSelectedWidgets(new Set());
+    setSelectedCards(new Set());
+    setSelectionMode(false);
+  };
+
+  // Attach selected items to chat for update
+  const attachSelectedToChat = () => {
+    const selectedWidgetsList = savedVisualizations.filter(w => selectedWidgets.has(w.id));
+    const selectedCardsList = summaryCards.filter(c => selectedCards.has(c.id));
+    
+    if (selectedWidgetsList.length === 1) {
+      setAttachedWidget(selectedWidgetsList[0]);
+      setChatDrawerOpen(true);
+      clearSelections();
+    } else if (selectedCardsList.length === 1) {
+      setWidgetCreationMode({ mode: 'edit', card: selectedCardsList[0] });
+      setChatDrawerOpen(true);
+      clearSelections();
+    } else if (selectedWidgetsList.length > 1 || selectedCardsList.length > 1) {
+      // Batch update mode - will be handled in chat submit
+      setChatDrawerOpen(true);
+    }
+  };
+
   // Handle chat message submission
   const handleChatSubmit = async () => {
     if (!chatInput.trim() || isChatLoading) return;
@@ -1159,6 +1254,9 @@ const Dashboard = ({ initialDashboardId }) => {
     const userMessage = chatInput.trim();
     const widgetContext = attachedWidget ? { widgetId: attachedWidget.id, widgetTitle: attachedWidget.title } : null;
     const creationMode = widgetCreationMode;
+    
+    // Check for batch update mode (multiple selections)
+    const hasBatchSelection = selectedWidgets.size > 1 || selectedCards.size > 1;
     
     setChatInput('');
     setAttachedWidget(null); // Clear attached widget after sending
@@ -1227,8 +1325,74 @@ const Dashboard = ({ initialDashboardId }) => {
       
       // Clear the creation mode after processing
       setWidgetCreationMode(null);
+    } else if (hasBatchSelection) {
+      // Batch update mode - update multiple widgets/cards
+      const username = getUsername();
+      const connectionId = getConnectionId();
+      
+      try {
+        const edits = [];
+        
+        // Add widget updates
+        selectedWidgets.forEach(widgetId => {
+          edits.push({
+            prompt: userMessage,
+            widgetId: widgetId,
+            outputType: 'widget'
+          });
+        });
+        
+        // Add card updates
+        selectedCards.forEach(cardId => {
+          edits.push({
+            prompt: userMessage,
+            cardId: cardId,
+            outputType: 'card'
+          });
+        });
+        
+        // Call batch edit API
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}/api/v1/dashboard/edit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            dashboardId: activeDashboardId,
+            connectionId: connectionId,
+            username: username,
+            autoApproveCard: true,
+            edits: edits
+          }),
+        });
+        
+        const responseData = await response.json();
+        
+        if (response.ok && responseData.status === 200) {
+          await setActiveDashboard(activeDashboardId);
+          result = {
+            success: true,
+            message: `Updated ${edits.length} item(s) successfully!`
+          };
+        } else {
+          result = {
+            success: false,
+            message: responseData.message || 'Failed to update items'
+          };
+        }
+        
+        // Clear selections after batch update
+        clearSelections();
+      } catch (error) {
+        console.error('Error in batch update:', error);
+        result = { success: false, message: error.message || 'Failed to update items' };
+      }
     } else {
-      // Regular chat - call the dashboard edit API with widget context if available
+      // Use the dashboard edit API with the selected outputType from toggle
+      // outputType can be: 'widget', 'card', or 'both'
+      // - 'widget': Creates a new widget on the dashboard
+      // - 'card': Generates a summary card (fetches widget data, analyzes, generates card)
+      // - 'both': Creates both widget and summary card
       result = await handleDashboardEdit(
         userMessage, 
         widgetContext?.widgetId
@@ -3030,11 +3194,128 @@ const Dashboard = ({ initialDashboardId }) => {
               </Typography>
             </Box>
           </Stack>
+
+          {/* Right - Selection Mode Toggle */}
+          <Stack direction="row" spacing={1} alignItems="center">
+            {selectionMode && (selectedWidgets.size > 0 || selectedCards.size > 0) && (
+              <Chip
+                label={`${selectedWidgets.size + selectedCards.size} selected`}
+                size="small"
+                onDelete={clearSelections}
+                sx={{
+                  bgcolor: '#EBF5FF',
+                  color: '#0078d7',
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                }}
+              />
+            )}
+            
+            {selectionMode && (selectedWidgets.size > 0 || selectedCards.size > 0) && (
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={attachSelectedToChat}
+                sx={{
+                  bgcolor: '#0078d7',
+                  textTransform: 'none',
+                  fontSize: '0.75rem',
+                  px: 2,
+                  py: 0.5,
+                  '&:hover': { bgcolor: '#005a9e' },
+                }}
+              >
+                Update Selected
+              </Button>
+            )}
+            
+            <Button
+              size="small"
+              variant={selectionMode ? 'contained' : 'outlined'}
+              startIcon={<CheckCircleIcon />}
+              onClick={() => {
+                setSelectionMode(!selectionMode);
+                if (selectionMode) clearSelections();
+              }}
+              sx={{
+                textTransform: 'none',
+                fontSize: '0.75rem',
+                px: 2,
+                py: 0.5,
+                bgcolor: selectionMode ? '#0078d7' : 'transparent',
+                color: selectionMode ? '#fff' : '#64748B',
+                borderColor: '#E2E8F0',
+                '&:hover': {
+                  bgcolor: selectionMode ? '#005a9e' : '#F1F5F9',
+                  borderColor: '#E2E8F0',
+                },
+              }}
+            >
+              {selectionMode ? 'Exit Selection' : 'Select'}
+            </Button>
+          </Stack>
         </Stack>
       </Box>
 
-      {/* Main Content Area */}
-      <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Main Content Area with Pull-to-Refresh */}
+      <Box
+        ref={containerRef}
+        sx={{
+          position: 'relative',
+          minHeight: '100vh',
+          overflow: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        {/* iOS-style Pull-to-Refresh White Space */}
+        <Box
+          sx={{
+            height: isPulling || isPullRefreshing ? `${pullDistance}px` : 0,
+            transition: isPulling ? 'none' : 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            bgcolor: '#f8fafc',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            pb: 1,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Loader at top */}
+          {(isPulling || isPullRefreshing) && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: isPullRefreshing ? 1 : Math.min(pullDistance / 60, 1),
+                transform: isPullRefreshing ? 'none' : `scale(${Math.min(pullDistance / 60, 1)})`,
+                transition: isPullRefreshing ? 'none' : 'transform 0.2s ease',
+              }}
+            >
+              <CircularProgress 
+                size={20} 
+                thickness={3}
+                sx={{ 
+                  color: '#0078d7',
+                  animation: isPullRefreshing ? 'spin 1s linear infinite' : 'none',
+                  '@keyframes spin': {
+                    '0%': { transform: 'rotate(0deg)' },
+                    '100%': { transform: 'rotate(360deg)' },
+                  },
+                }} 
+              />
+            </Box>
+          )}
+        </Box>
+
+        <Container 
+          maxWidth="xl" 
+          sx={{ 
+            py: 3,
+            position: 'relative',
+          }}
+        >
 
         {/* Summary Cards Section */}
         {summaryCards && summaryCards.length > 0 && (
@@ -3055,6 +3336,9 @@ const Dashboard = ({ initialDashboardId }) => {
               onCreateWidget={handleCreateWidgetFromCard}
               onEditCard={handleEditCardInDrawer}
               compact={false}
+              selectionMode={selectionMode}
+              selectedCards={selectedCards}
+              onToggleCardSelection={toggleCardSelection}
               onCardClick={(card) => {
                 console.log('Card clicked:', card);
               }}
@@ -3085,7 +3369,8 @@ const Dashboard = ({ initialDashboardId }) => {
             })}
           </Box>
         )}
-      </Container>
+        </Container>
+      </Box>
 
       {/* Fullscreen View */}
       <Dialog 
@@ -3587,7 +3872,7 @@ const Dashboard = ({ initialDashboardId }) => {
                     />
                   </Box>
                   <Typography sx={{ color: '#374151', fontSize: '0.8rem', lineHeight: 1.4 }}>
-                    Hello! Try asking me to add, remove, or update widgets!
+                    Hello! Ask me to add widgets or create custom insight cards from your data!
                   </Typography>
                 </Box>
               </Box>
@@ -3608,6 +3893,8 @@ const Dashboard = ({ initialDashboardId }) => {
                   {[
                     { label: 'Add a new chart widget', icon: <BarChartIcon sx={{ fontSize: 16 }} />, color: '#3B82F6', prompt: 'Add a new widget showing today\'s performance metrics' },
                     { label: 'Show top performers', icon: <TrendingUpIcon sx={{ fontSize: 16 }} />, color: '#10B981', prompt: 'Add a widget showing top performing regions' },
+                    { label: 'Show me MTD disbursement', icon: <InfoIcon sx={{ fontSize: 16 }} />, color: '#F59E0B', prompt: 'Show me total MTD disbursement for Federal Bank' },
+                    { label: 'Create alert card', icon: <WarningIcon sx={{ fontSize: 16 }} />, color: '#EF4444', prompt: 'Create an alert for zero performing FOs' },
                   ].map((action, i) => (
                     <Box
                       key={i}

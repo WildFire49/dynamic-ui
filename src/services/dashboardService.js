@@ -1,7 +1,7 @@
 "use client";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://supervisory-dev.mifix.io";
 
 /**
  * Dashboard Service - Handles all dashboard and widget API operations
@@ -23,6 +23,8 @@ const API_BASE_URL =
  * 14. POST  /{dashboardId}/refresh                    - Refresh all dashboard widgets
  * 15. POST  /widgets/data                             - Get widget data (single or multiple)
  * 16. GET   /health                                   - Health check
+ * 17. POST  /edit                                     - Create widget/card via NL prompt
+ * 18. POST  /summary-cards/{dashboardId}/generate-from-query - Generate custom summary card from NL query
  */
 class DashboardService {
   /**
@@ -972,6 +974,81 @@ class DashboardService {
       return {
         success: false,
         message: "Network error creating widget",
+      };
+    }
+  }
+
+  /**
+   * 19. Generate Summary Card from Natural Language Query
+   * Creates a custom summary card based on user's natural language query
+   * @param {string} dashboardId - Dashboard ID
+   * @param {string} query - Natural language query
+   * @param {string} username - User's username
+   * @param {string} connectionId - Database connection ID
+   * @param {Object} options - Additional options
+   * @param {string} options.cardType - Override card type (metric, alert, comparison, info, table_summary)
+   * @param {string} options.urgency - Override urgency (critical, high, medium, low, info)
+   * @param {boolean} options.autoApprove - Auto-save or require approval (default: true)
+   * @returns {Promise<Object>} Generated summary card
+   */
+  async generateSummaryCardFromQuery(
+    dashboardId,
+    query,
+    username,
+    connectionId,
+    options = {}
+  ) {
+    const { cardType = null, urgency = null, autoApprove = true } = options;
+
+    try {
+      console.log("🎯 Generate summary card from query:", {
+        dashboardId,
+        query,
+        autoApprove,
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/dashboard/summary-cards/${dashboardId}/generate-from-query`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            query,
+            dashboardId,
+            connectionId,
+            username,
+            ...(cardType && { cardType }),
+            ...(urgency && { urgency }),
+            autoApprove,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.status === 200 && data.data) {
+        console.log("✅ Summary card generated:", data.data);
+        return {
+          success: true,
+          data: data.data,
+          card: data.data.card,
+          dataSource: data.data.data_source,
+          metadata: data.data.metadata,
+        };
+      }
+
+      return {
+        success: false,
+        message:
+          data.data?.message ||
+          data.message ||
+          "Failed to generate summary card",
+      };
+    } catch (error) {
+      console.error("Error generating summary card from query:", error);
+      return {
+        success: false,
+        message: "Network error generating summary card",
       };
     }
   }
