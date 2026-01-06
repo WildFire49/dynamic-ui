@@ -382,13 +382,13 @@ const Dashboard = ({ initialDashboardId }) => {
       if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)}Cr`;
       if (value >= 100000) return `₹${(value / 100000).toFixed(2)}L`;
       if (value >= 1000) return `₹${(value / 1000).toFixed(1)}K`;
-      return `₹${value.toLocaleString()}`;
+      return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
     
     // Default formatting for other numbers
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-    return value.toLocaleString();
+    return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   // Pull-to-refresh handler
@@ -2260,7 +2260,7 @@ const Dashboard = ({ initialDashboardId }) => {
         }
         // Format with Indian locale (lakhs, crores) - limit to 2 decimals for cleaner display
         return numValue.toLocaleString('en-IN', {
-          minimumFractionDigits: 0,
+          minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         });
       }
@@ -2335,7 +2335,7 @@ const Dashboard = ({ initialDashboardId }) => {
         }
         // Regular formatting
         return numValue.toLocaleString('en-IN', {
-          minimumFractionDigits: 0,
+          minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         });
       }
