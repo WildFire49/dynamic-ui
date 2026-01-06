@@ -1941,16 +1941,25 @@ const Dashboard = ({ initialDashboardId }) => {
 
   // Extract data from item - handles multiple data formats from API
   const getItemData = (item) => {
+    // Helper to check if array has data
+    const hasData = (arr) => Array.isArray(arr) && arr.length > 0;
+
     // Check all possible data locations (API format, store format, legacy format)
-    const rawData = 
-      item.pipelineData ||                                    // Store transformed format
-      item.supportingData ||                                  // Store transformed format
-      item.supporting_data ||                                 // Legacy format
-      item.data?.pipelineData ||                              // Direct API format
-      item.data?.supportingData ||                            // Direct API format
-      item.data?.dataGrid?.gridRows ||                        // API dataGrid format
-      item.data?.response?.analysis_result?.supporting_data || // Chat response format
-      [];
+    // Prioritize non-empty arrays to avoid empty initializers masking actual data
+    let rawData = [];
+    
+    if (hasData(item.pipelineData)) rawData = item.pipelineData;
+    else if (hasData(item.supportingData)) rawData = item.supportingData;
+    else if (hasData(item.supporting_data)) rawData = item.supporting_data;
+    else if (hasData(item.dataGrid?.gridRows)) rawData = item.dataGrid.gridRows;
+    else if (hasData(item.data?.pipelineData)) rawData = item.data.pipelineData;
+    else if (hasData(item.data?.supportingData)) rawData = item.data.supportingData;
+    else if (hasData(item.data?.dataGrid?.gridRows)) rawData = item.data.dataGrid.gridRows;
+    else if (hasData(item.data?.response?.analysis_result?.supporting_data)) rawData = item.data.response.analysis_result.supporting_data;
+    else {
+      // Fallback to existing if all checks fail (might be empty array)
+      rawData = item.pipelineData || item.supportingData || [];
+    }
     
     return rawData.map((row, index) => ({
       id: row.id ?? row._id ?? `row-${index}`,

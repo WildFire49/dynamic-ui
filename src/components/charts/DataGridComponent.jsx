@@ -62,13 +62,36 @@ const DataGridComponent = ({
       const firstItem = data[0];
       const generatedColumns = Object.keys(firstItem).map((key, index) => {
         const val = firstItem[key];
-        const isNumber = typeof val === 'number' || (typeof val === 'string' && !isNaN(Number(val)) && !isNaN(parseFloat(val)));
-        const headerName = formatHeaderName(key);
-        // Check if column is a percentage column
-        const isPercentageColumn = key.toLowerCase().includes('percent') || 
-                                   key.toLowerCase().includes('achievement') || 
-                                   key.toLowerCase().includes('rate') ||
+        
+        // Determine column types based on key name and value
+        const lowerKey = key.toLowerCase();
+        
+        // Identify amount/numeric columns by name
+        const isAmountColumn = lowerKey.includes('amount') || 
+                               lowerKey.includes('demand') || 
+                               lowerKey.includes('collected') || 
+                               lowerKey.includes('balance') || 
+                               lowerKey.includes('price') || 
+                               lowerKey.includes('cost') ||
+                               lowerKey.includes('target') ||
+                               lowerKey.includes('disbursed') ||
+                               lowerKey.includes('outstanding') ||
+                               lowerKey.includes('count') ||
+                               lowerKey.includes('number');
+                               
+        // Identify percentage columns
+        const isPercentageColumn = lowerKey.includes('percent') || 
+                                   lowerKey.includes('achievement') || 
+                                   lowerKey.includes('rate') ||
                                    key.includes('%');
+                                   
+        // Check if value is numeric
+        const isValueNumeric = typeof val === 'number' || (typeof val === 'string' && !isNaN(Number(val)) && !isNaN(parseFloat(val)));
+        
+        // Final check for numeric column (for alignment)
+        const isNumber = isValueNumeric || isAmountColumn || isPercentageColumn;
+        
+        const headerName = formatHeaderName(key);
         
         return {
           field: key,
@@ -106,9 +129,10 @@ const DataGridComponent = ({
             if (isValidNumber) {
               // Add % symbol for percentage columns
               if (isPercentageColumn) {
-                return `${numValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`;
+                return `${numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
               }
-              return numValue.toLocaleString('en-IN', { maximumFractionDigits: 6 });
+              // Format all numbers to exactly 2 decimal places as requested
+              return numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
             
             // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
@@ -158,13 +182,112 @@ const DataGridComponent = ({
     } else if (rows.length > 0 && autoGenerateColumns && columns.length === 0) {
         // Auto-generate columns from rows if columns prop is empty but rows are provided
         const firstItem = rows[0];
-        finalColumns = Object.keys(firstItem).filter(key => key !== 'id').map((key) => ({
-            field: key,
-            headerName: formatHeaderName(key),
-            flex: 1,
-            minWidth: 140,
-            width: 180,
-        }));
+        finalColumns = Object.keys(firstItem).filter(key => key !== 'id').map((key) => {
+            const val = firstItem[key];
+            
+            // Determine column types based on key name and value
+            const lowerKey = key.toLowerCase();
+            
+            // Identify amount/numeric columns by name
+            const isAmountColumn = lowerKey.includes('amount') || 
+                                   lowerKey.includes('demand') || 
+                                   lowerKey.includes('collected') || 
+                                   lowerKey.includes('balance') || 
+                                   lowerKey.includes('price') || 
+                                   lowerKey.includes('cost') ||
+                                   lowerKey.includes('target') || 
+                                   lowerKey.includes('disbursed') ||
+                                   lowerKey.includes('outstanding') ||
+                                   lowerKey.includes('count') ||
+                                   lowerKey.includes('number');
+                                   
+            // Identify percentage columns
+            const isPercentageColumn = lowerKey.includes('percent') || 
+                                       lowerKey.includes('achievement') || 
+                                       lowerKey.includes('rate') ||
+                                       key.includes('%');
+                                       
+            // Check if value is numeric
+            const isValueNumeric = typeof val === 'number' || (typeof val === 'string' && !isNaN(Number(val)) && !isNaN(parseFloat(val)));
+            
+            // Final check for numeric column (for alignment)
+            const isNumber = isValueNumeric || isAmountColumn || isPercentageColumn;
+            
+            const headerName = formatHeaderName(key);
+            
+            return {
+                field: key,
+                headerName: headerName,
+                flex: 1,
+                minWidth: 140,
+                width: 180,
+                align: isNumber ? 'right' : 'left',
+                headerAlign: isNumber ? 'right' : 'left',
+                renderCell: (params) => {
+                    const value = params.value;
+                    
+                    // Handle null/undefined
+                    if (value === null || value === undefined) {
+                        return '—';
+                    }
+                    
+                    // Try to parse string numbers
+                    let numValue = value;
+                    let isValidNumber = typeof value === 'number';
+                    
+                    if (typeof value === 'string') {
+                        // Check if it's a valid number string (and not a date string)
+                        const parsed = Number(value);
+                        if (!isNaN(parsed) && !isNaN(parseFloat(value)) && value.trim() !== '') {
+                            // Avoid formatting IDs or codes that might start with 0
+                            if (!key.toLowerCase().endsWith('id') && !key.toLowerCase().includes('code')) {
+                                numValue = parsed;
+                                isValidNumber = true;
+                            }
+                        }
+                    }
+                    
+                    // Handle numbers with proper formatting
+                    if (isValidNumber) {
+                        // Add % symbol for percentage columns
+                        if (isPercentageColumn) {
+                            return `${numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+                        }
+                        // Format all numbers to exactly 2 decimal places as requested
+                        return numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    }
+                    
+                    // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
+                    if (typeof value === 'string') {
+                        const isoDatePattern = /^\d{4}-\d{2}-\d{2}T/;
+                        const datePattern = /^\d{4}-\d{2}-\d{2}/;
+                        
+                        if (isoDatePattern.test(value) || datePattern.test(value)) {
+                            try {
+                                const date = new Date(value);
+                                if (!isNaN(date.getTime())) {
+                                    if (key.toLowerCase().includes('month')) {
+                                        return date.toLocaleDateString('en-US', { 
+                                            month: 'short', 
+                                            year: 'numeric' 
+                                        });
+                                    }
+                                    return date.toLocaleDateString('en-US', { 
+                                        month: 'short', 
+                                        day: 'numeric',
+                                        year: 'numeric' 
+                                    });
+                                }
+                            } catch (e) {
+                                return value;
+                            }
+                        }
+                    }
+                    
+                    return value;
+                }
+            };
+        });
     }
 
     return {
