@@ -309,9 +309,9 @@ const SchedulerResponse = ({ content }) => {
                                 </Typography>
                                 <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#333' }}>
                                   {config.schedule?.time}
-                                  {config.schedule?.recurrence?.pattern?.type && (
+                                  {(config.schedule?.recurrence?.pattern?.type || config.schedule?.mode) && (
                                     <Box component="span" sx={{ color: 'text.secondary', ml: 0.5, fontSize: '0.9em' }}>
-                                      ({config.schedule.recurrence.pattern.type})
+                                      ({config.schedule?.recurrence?.pattern?.type || config.schedule?.mode})
                                     </Box>
                                   )}
                                 </Typography>

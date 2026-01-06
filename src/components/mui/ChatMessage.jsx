@@ -1173,6 +1173,47 @@ const ChatMessage = ({ message, index, onAction }) => {
       );
     }
 
+    // Try to parse string content as JSON to see if it's a structured message (e.g. from history)
+    if (typeof message.content === "string" && message.content.trim().startsWith("{")) {
+      try {
+        const parsedContent = JSON.parse(message.content);
+        const resolvedType = parsedContent.type || parsedContent.response?.type;
+        const resolvedContent = parsedContent.content || parsedContent.response?.content;
+
+        // If it's a scheduler response or error, render it accordingly
+        if (
+          resolvedType === "scheduler_response" ||
+          resolvedType === "error"
+        ) {
+          // Check if it's a scheduler error to show the Scheduler-style UI
+          if (
+            resolvedType === "error" &&
+            typeof resolvedContent === "string" &&
+            resolvedContent.toLowerCase().includes("scheduler")
+          ) {
+             return (
+              <SchedulerResponse
+                content={{
+                  type: "scheduler_response",
+                  success: false,
+                  message: resolvedContent,
+                  status: 'failed'
+                }}
+              />
+            );
+          }
+
+          if (resolvedType === "scheduler_response") {
+             // Pass the full parsed content (or the inner response if that's where the data is)
+             // SchedulerResponse expects the full object generally, or we might need to normalize it
+             return <SchedulerResponse content={parsedContent} />;
+          }
+        }
+      } catch (e) {
+        // Not valid JSON, continue to render as text
+      }
+    }
+
     // Default text message
     // But first check one more time for form schema in content
     if (

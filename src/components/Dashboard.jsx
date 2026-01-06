@@ -2515,6 +2515,11 @@ const Dashboard = ({ initialDashboardId }) => {
     const recordCount = data.length;
     const widgetHeight = getWidgetHeight(item.id, data);
     
+    // Check if table has many columns (> 6) to span full width
+    const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'id' && !k.startsWith('_')) : [];
+    const isWideTable = currentViewMode === 'table' && keys.length > 6;
+    const shouldSpanFull = isFullWidth || isWideTable;
+    
     // Get accent color for this widget
     const accent = WIDGET_ACCENTS[index % WIDGET_ACCENTS.length];
     
@@ -2523,6 +2528,7 @@ const Dashboard = ({ initialDashboardId }) => {
         in 
         timeout={300 + (index * 100)} 
         key={item._uniqueKey || `${item.id}-${index}`}
+        style={{ transformOrigin: '0 0 0' }}
       >
         <Paper
           id={`widget-${item.id}`}
@@ -2534,6 +2540,7 @@ const Dashboard = ({ initialDashboardId }) => {
           onDrop={(e) => handleDrop(e, index)}
           onDragEnd={handleDragEnd}
           sx={{
+            gridColumn: shouldSpanFull ? '1 / -1' : 'auto',
             height: widgetHeight,
             minHeight: 280,
             maxHeight: 800,
