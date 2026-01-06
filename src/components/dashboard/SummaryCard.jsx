@@ -30,44 +30,54 @@ const formatIndianCurrency = (value) => {
   
   // Convert to Lakhs or Crores
   if (num >= 10000000) { // 1 Crore = 10 Million
-    return `₹${(num / 10000000).toFixed(1)}Cr`;
+    return `₹${(num / 10000000).toFixed(2)}Cr`;
   } else if (num >= 100000) { // 1 Lakh = 100 Thousand
-    return `₹${(num / 100000).toFixed(1)}L`;
+    return `₹${(num / 100000).toFixed(2)}L`;
   } else if (num >= 1000) {
-    return `₹${(num / 1000).toFixed(1)}K`;
+    return `₹${(num / 1000).toFixed(2)}K`;
   }
-  return `₹${num.toFixed(0)}`;
+  return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 /**
  * Smart format - handles currency, percentages, and plain numbers
  */
 const smartFormat = (value) => {
-  if (!value) return value;
+  if (value === null || value === undefined) return value;
   
   const str = String(value);
   
   // Already formatted
-  if (str.includes('₹') || str.includes('%') || str.includes('L') || str.includes('Cr')) {
+  if (str.includes('₹') || str.includes('L') || str.includes('Cr')) {
     return str;
   }
   
   // Check if it's a percentage
-  if (str.includes('%') || (parseFloat(str) > 0 && parseFloat(str) <= 100 && str.length <= 5)) {
-    return str.includes('%') ? str : `${str}%`;
+  if (str.includes('%')) {
+    return str;
   }
   
+  // Try to parse as number
+  const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
+  if (isNaN(num)) return value;
+
+  // Handle percentages (small numbers that might be percentages if they are in specific contexts, 
+  // but here we rely on explicit % or context. If just a number < 100, we treat as number unless explicit)
+  // Reverting strict percentage check to avoid confusing small counts with percentages.
+  // Using explicit unit check if possible, but here we just format numbers.
+
   // Check if it looks like currency (has M, K, or large number)
-  if (str.includes('M') || str.includes('K') || parseFloat(str.replace(/[^0-9.-]/g, '')) > 1000) {
+  if (str.includes('M') || str.includes('K') || num > 1000) {
     // Convert M to Indian format
     if (str.includes('M')) {
-      const num = parseFloat(str.replace('M', '')) * 1000000;
-      return formatIndianCurrency(num);
+      const numM = parseFloat(str.replace('M', '')) * 1000000;
+      return formatIndianCurrency(numM);
     }
-    return formatIndianCurrency(str);
+    return formatIndianCurrency(num);
   }
   
-  return value;
+  // Regular number formatting
+  return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 import {
   Box,
@@ -690,118 +700,48 @@ const SummaryCard = ({
               )})}
             </Box>
           ) : card_type === 'comparison' && Array.isArray(comparison_data) && comparison_data.length > 0 ? (
-          /* Comparison Card - Array Format (MTD vs LMTD style with bar chart) */
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, justifyContent: 'flex-start', py: 0 }}>
-              {comparison_data.slice(0, 1).map((item, idx) => {
-                const mtdValue = item.mtd_lakhs || 0;
-                const lmtdValue = item.lmtd_lakhs || 0;
-                const maxValue = Math.max(mtdValue, lmtdValue);
-                const changePct = item.change_pct || 0;
-                const isPositive = changePct >= 0;
-                const trendColor = isPositive ? '#10B981' : '#EF4444';
-                const trendBg = isPositive ? '#ECFDF5' : '#FEF2F2';
+            /* Comparison Card - Cross-Entity Comparison */
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 2, 
+              flex: 1, 
+              justifyContent: 'center', 
+              py: 0.5 
+            }}>
+              {comparison_data.map((entry, idx) => {
+                const value = entry.mtd_lakhs !== undefined ? entry.mtd_lakhs : (entry.value || 0);
+                // Calculate max value for bar width
+                const allValues = comparison_data.map(e => e.mtd_lakhs !== undefined ? e.mtd_lakhs : (e.value || 0));
+                const maxValue = Math.max(...allValues) || 1;
+                const barColor = CHART_COLORS.primary[idx % CHART_COLORS.primary.length];
                 
                 return (
-                  <React.Fragment key={idx}>
-                    {/* Values Row */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', px: 0, mb: 0.5 }}>
-                      <Box>
-                        <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 700, mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Current (MTD)
-                        </Typography>
-                        <Typography sx={{ fontSize: '2.5rem', fontWeight: 800, color: trendColor, lineHeight: 1, letterSpacing: '-0.03em' }}>
-                          ₹{mtdValue.toFixed(0)}L
-                        </Typography>
-                      </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                         <Typography sx={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 700, mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Previous (LMTD)
-                        </Typography>
-                         <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: '#94A3B8', lineHeight: 1, letterSpacing: '-0.02em' }}>
-                          ₹{lmtdValue.toFixed(0)}L
-                        </Typography>
-                      </Box>
+                  <Box key={idx} sx={{ width: '100%' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75, alignItems: 'center' }}>
+                      <Typography sx={{ fontSize: '0.85rem', color: '#334155', fontWeight: 600 }}>
+                        {entry.name}
+                      </Typography>
+                      <Typography sx={{ fontSize: '0.85rem', color: '#1E40AF', fontWeight: 700 }}>
+                        {entry.formatted || smartFormat(value)}
+                      </Typography>
                     </Box>
-                    
-                    {/* Bar Chart Container with Accent Background */}
                     <Box sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: 1.25, 
-                      justifyContent: 'center', 
-                      py: 1.5,
-                      px: 2,
-                      mt: 0.5,
-                      bgcolor: '#F8FAFC',
-                      borderRadius: 3,
-                      border: '1px solid #F1F5F9',
-                      position: 'relative',
+                      width: '100%', 
+                      height: 10, 
+                      bgcolor: '#F1F5F9', 
+                      borderRadius: 5,
                       overflow: 'hidden',
-                      '@keyframes shimmer': {
-                        '0%': { backgroundPosition: '200% 0' },
-                        '100%': { backgroundPosition: '-200% 0' }
-                      }
                     }}>
-                      {/* Decorative background accent */}
-                      <Box sx={{ position: 'absolute', top: 0, right: 0, width: 60, height: 60, background: 'radial-gradient(circle at top right, #E2E8F0 0%, transparent 70%)', opacity: 0.5 }} />
-
-                      {/* Current Period Bar */}
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#3B82F6' }}>Current</Typography>
-                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#3B82F6' }}>{((mtdValue / maxValue) * 100).toFixed(0)}%</Typography>
-                        </Box>
-                        <Box sx={{ width: '100%', height: 16, bgcolor: '#E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
-                          <Box sx={{ 
-                            width: `${maxValue > 0 ? (mtdValue / maxValue) * 100 : 0}%`, 
-                            height: '100%', 
-                            background: 'linear-gradient(90deg, #1E40AF 0%, #3B82F6 50%, #1E40AF 100%)',
-                            backgroundSize: '200% 100%',
-                            borderRadius: 8,
-                            animation: 'shimmer 3s infinite linear',
-                            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
-                          }} />
-                        </Box>
-                      </Box>
-
-                      {/* Previous Period Bar */}
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8' }}>Previous</Typography>
-                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8' }}>{((lmtdValue / maxValue) * 100).toFixed(0)}%</Typography>
-                        </Box>
-                        <Box sx={{ width: '100%', height: 16, bgcolor: '#E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
-                          <Box sx={{ 
-                            width: `${maxValue > 0 ? (lmtdValue / maxValue) * 100 : 0}%`, 
-                            height: '100%', 
-                            background: 'linear-gradient(90deg, #64748B 0%, #94A3B8 50%, #64748B 100%)',
-                            backgroundSize: '200% 100%',
-                            borderRadius: 8,
-                            animation: 'shimmer 4s infinite linear',
-                            opacity: 0.8
-                          }} />
-                        </Box>
-                      </Box>
+                      <Box sx={{ 
+                        width: `${Math.min((value / maxValue) * 100, 100)}%`, 
+                        height: '100%', 
+                        bgcolor: barColor,
+                        borderRadius: 5,
+                        transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                      }} />
                     </Box>
-                    
-                    {/* Trend Badge */}
-                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 0.5, mb: 0.5 }}>
-                      <Chip
-                        icon={isPositive ? <TrendingUpIcon /> : <TrendingDownIcon />}
-                        label={`${isPositive ? '+' : ''}${changePct.toFixed(2)}% vs Last Month`}
-                        sx={{
-                          bgcolor: trendBg,
-                          color: trendColor,
-                          fontWeight: 800,
-                          fontSize: '0.8rem',
-                          height: 32,
-                          px: 1.5,
-                          border: `1px solid ${alpha(trendColor, 0.2)}`,
-                          '& .MuiChip-icon': { color: trendColor, fontSize: 18 },
-                        }}
-                      />
-                    </Box>
-                  </React.Fragment>
+                  </Box>
                 );
               })}
             </Box>
