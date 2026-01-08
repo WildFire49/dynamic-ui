@@ -356,16 +356,8 @@ const DataGridComponent = ({
         width: '100%',
         minWidth: 0,
         minHeight: 200,
-        overflow: 'auto',
         display: 'flex',
         flexDirection: 'column',
-        // Hide scrollbar but allow scrolling
-        '&::-webkit-scrollbar': { width: 6, height: 6 },
-        '&::-webkit-scrollbar-track': { background: 'transparent' },
-        '&::-webkit-scrollbar-thumb': { background: '#E2E8F0', borderRadius: 3 },
-        '&::-webkit-scrollbar-thumb:hover': { background: '#CBD5E1' },
-        scrollbarWidth: 'thin',
-        scrollbarColor: '#E2E8F0 transparent',
       }}>
         <DataGrid
           rows={rowsWithIds}
@@ -385,7 +377,7 @@ const DataGridComponent = ({
             border: 'none',
             fontSize: { xs: '0.75rem', sm: '0.875rem' },
             '& .MuiDataGrid-main': {
-              overflow: 'auto',
+              // Remove overflow to prevent double scrollbar
             },
             '& .MuiDataGrid-cell': {
               borderBottom: '1px solid #E2E8F0',
@@ -475,8 +467,7 @@ const DataGridComponent = ({
       minHeight: height + 200,
       border: 'none',
       boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-      borderRadius: 3,
-      overflow: 'hidden'
+      borderRadius: 3
     }}>
       <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header - Only show when title is provided */}
@@ -571,7 +562,7 @@ const DataGridComponent = ({
               sx={{
                 border: 'none',
                 '& .MuiDataGrid-main': {
-                  overflow: 'auto',
+                  // Remove overflow to prevent double scrollbar
                 },
                 '& .MuiDataGrid-cell': {
                   borderBottom: '1px solid #E2E8F0',

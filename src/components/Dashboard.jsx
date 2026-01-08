@@ -205,6 +205,7 @@ const Dashboard = ({ initialDashboardId }) => {
   const initialFetchDone = useRef(false); // Prevent duplicate initial fetch
   const draggedWidgetRef = useRef(null); // Store dragged widget for chat drop
   const mainContainerRef = useRef(null); // Ref for pull-to-refresh container
+  const widgetRefs = useRef({}); // Refs to widget elements for scrolling
   
   // Helper to check if a string is a UUID
   const isUUID = (str) => {
@@ -398,7 +399,6 @@ const Dashboard = ({ initialDashboardId }) => {
     const username = getUsername();
     if (!username || !activeDashboardId) return;
 
-    console.log('🔄 Pull-to-refresh triggered');
     
     // Reload widgets and summary cards
     await loadWidgetsForDashboard(username, activeDashboardId, true);
@@ -444,11 +444,9 @@ const Dashboard = ({ initialDashboardId }) => {
   useEffect(() => {
     // Reset refs at the start of each mount cycle
     const mountId = Date.now();
-    console.log('🔄 Dashboard effect running, mountId:', mountId);
     
     // Check if already initialized in this render cycle
     if (initialFetchDone.current) {
-      console.log('⏭️ Skipping - already initialized');
       return;
     }
     initialFetchDone.current = true;
@@ -459,18 +457,15 @@ const Dashboard = ({ initialDashboardId }) => {
       const username = getUsername();
       const connectionId = getConnectionId();
       
-      console.log('🚀 Dashboard init - username:', username, 'connectionId:', connectionId);
       
       if (username) {
         // Try to load from server first
         const result = await loadFromServer(username);
-        console.log('📦 Server load result:', result.success, 'dashboards:', result.dashboards?.length || 0);
         
         if (result.success) {
           // If initialDashboardId is provided (from URL), switch to that dashboard
           let activeId;
           if (initialDashboardId) {
-            console.log(`🎯 Switching to dashboard from URL: ${initialDashboardId}`);
             await setActiveDashboard(initialDashboardId);
             activeId = initialDashboardId;
           } else {
@@ -484,15 +479,11 @@ const Dashboard = ({ initialDashboardId }) => {
           const freshState = useDashboardStore.getState();
           const widgets = freshState.visualizationsByDashboard[activeId] || [];
           
-          console.log(`📊 All dashboards in store:`, Object.keys(freshState.visualizationsByDashboard));
-          console.log(`📊 Widgets for "${activeId}":`, widgets.map(w => ({ id: w.id, title: w.title })));
           
-          console.log(`📊 Active dashboard "${activeId}" has ${widgets.length} widgets`);
           
           // Fetch data even if connectionId is empty - the API will handle it
           if (widgets.length > 0) {
             const widgetIds = widgets.map(w => w.id);
-            console.log(`📥 Fetching data for ${widgetIds.length} widgets, connectionId: ${connectionId || 'EMPTY'}`);
             
             // Mark all widgets as loading (dataFetchInProgress already set at effect start)
             setLoadingWidgets(new Set(widgetIds));
@@ -501,13 +492,11 @@ const Dashboard = ({ initialDashboardId }) => {
             // Fetch data immediately
             try {
               const dataResult = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
-              console.log('📦 Widget data API response:', JSON.stringify(dataResult, null, 2));
               
               if (dataResult.success && dataResult.data?.results) {
                 let successCount = 0;
                 const updatedWidgets = widgets.map(w => {
                   const widgetResult = dataResult.data.results.find(r => r.widgetId === w.id);
-                  console.log(`🔍 Widget ${w.id} result:`, widgetResult?.success, 'hasData:', !!widgetResult?.data);
                   
                   if (widgetResult?.success && widgetResult.data) {
                     successCount++;
@@ -528,12 +517,10 @@ const Dashboard = ({ initialDashboardId }) => {
                 
                 setSavedVisualizations(updatedWidgets);
                 widgetIds.forEach(id => fetchedWidgetIds.current.add(id));
-                console.log(`✅ Fetched and cached data for ${successCount}/${widgetIds.length} widgets`);
               } else {
-                console.log('⚠️ No results in API response:', dataResult);
               }
             } catch (error) {
-              console.error('❌ Error fetching widget data:', error);
+              ('❌ Error fetching widget data:', error);
             } finally {
               setLoadingWidgets(new Set());
               dataFetchInProgress.current = false;
@@ -543,7 +530,6 @@ const Dashboard = ({ initialDashboardId }) => {
             dataFetchInProgress.current = false; // No widgets to fetch, reset flag
           }
         } else {
-          console.log('📦 Server load failed, using local data');
           const hasMigrated = localStorage.getItem('dashboardMigrated');
           if (!hasMigrated) {
             migrateFromLocalStorage();
@@ -567,7 +553,6 @@ const Dashboard = ({ initialDashboardId }) => {
     
     // Cleanup - reset ref on unmount so next mount will initialize
     return () => {
-      console.log('🔄 Dashboard unmounting - resetting initialFetchDone');
       initialFetchDone.current = false;
       dataFetchInProgress.current = false;
     };
@@ -591,7 +576,6 @@ const Dashboard = ({ initialDashboardId }) => {
         const prevVisualizations = prevState?.visualizationsByDashboard?.[currentDashboardId] || [];
         if (storeVisualizations.length !== prevVisualizations.length || 
             JSON.stringify(storeVisualizations.map(v => v.id)) !== JSON.stringify(prevVisualizations.map(v => v.id))) {
-          console.log(`🔄 Store updated for dashboard "${currentDashboardId}":`, storeVisualizations.length, 'items (post-init)');
           
           // Merge store data with any existing fetched data to preserve pipelineData
           setSavedVisualizations(prev => {
@@ -632,7 +616,6 @@ const Dashboard = ({ initialDashboardId }) => {
       const hasCachedData = visualizationsWithCache.some(v => v.pipelineData?.length > 0);
       
       if (hasCachedData) {
-        console.log(`📦 Using cached data for dashboard "${activeDashboardId}"`);
         setLoadingWidgets(new Set());
       } else if (storeVisualizations.length > 0) {
         // No cached data - mark all widgets as loading so skeleton shows
@@ -669,7 +652,6 @@ const Dashboard = ({ initialDashboardId }) => {
     
     // Skip if initial data fetch is still in progress
     if (dataFetchInProgress.current) {
-      console.log('⏭️ Skipping dashboard switch fetch - initial fetch in progress');
       prevDashboardId.current = activeDashboardId;
       return;
     }
@@ -687,7 +669,6 @@ const Dashboard = ({ initialDashboardId }) => {
       
       // Double-check that initial fetch isn't still running
       if (dataFetchInProgress.current) {
-        console.log('⏭️ Skipping - data fetch still in progress');
         return;
       }
       
@@ -697,13 +678,11 @@ const Dashboard = ({ initialDashboardId }) => {
       
       // Skip only if no widgets AND not because they're still loading
       if (storeWidgets.length === 0) {
-        console.log(`⏭️ Skipping fetch: no widgets for dashboard ${activeDashboardId}`);
         return;
       }
       
       // If another dashboard is fetching, that's OK - we can fetch for this one
       if (fetchingDashboardId.current === activeDashboardId) {
-        console.log(`⏭️ Already fetching for dashboard ${activeDashboardId}`);
         return;
       }
 
@@ -722,11 +701,9 @@ const Dashboard = ({ initialDashboardId }) => {
       );
       
       if (widgetsNeedingData.length === 0) {
-        console.log(`📦 All widgets have cached data for dashboard "${activeDashboardId}"`);
         return;
       }
 
-      console.log(`📥 Fetching data for ${widgetsNeedingData.length} widgets (dashboard switch)`);
       fetchingDashboardId.current = activeDashboardId;
       
       const widgetIds = widgetsNeedingData.map(v => v.id);
@@ -737,7 +714,6 @@ const Dashboard = ({ initialDashboardId }) => {
         
         // Only update if we're still on the same dashboard
         if (fetchingDashboardId.current !== activeDashboardId) {
-          console.log(`⏭️ Dashboard changed during fetch, skipping update`);
           return;
         }
         
@@ -764,10 +740,9 @@ const Dashboard = ({ initialDashboardId }) => {
             return v;
           });
           setSavedVisualizations(updatedWidgets);
-          console.log(`✅ Fetched and cached data for ${result.data.successCount} widgets`);
         }
       } catch (error) {
-        console.error('❌ Error fetching widget data:', error);
+        ('❌ Error fetching widget data:', error);
       } finally {
         if (fetchingDashboardId.current === activeDashboardId) {
           fetchingDashboardId.current = null;
@@ -866,7 +841,6 @@ const Dashboard = ({ initialDashboardId }) => {
   const handleDeleteVisualization = async (id) => {
     // Validate widget ID before proceeding
     if (!id) {
-      console.error('❌ Cannot delete widget: ID is undefined');
       return;
     }
     
@@ -881,18 +855,14 @@ const Dashboard = ({ initialDashboardId }) => {
     // Call API to delete from server
     if (username && activeDashboardId) {
       try {
-        console.log('🗑️ Deleting widget:', { id, dashboardId: activeDashboardId, username });
         const result = await dashboardService.deleteWidget(username, activeDashboardId, id);
         if (result.success) {
-          console.log('✅ Widget deleted from server:', id);
           // Also remove from store
           removeVisualization(id);
         } else {
-          console.error('❌ Failed to delete widget from server:', result.message);
           // Could optionally restore the widget here if API fails
         }
       } catch (error) {
-        console.error('❌ Error deleting widget:', error);
       }
     }
   };
@@ -911,12 +881,9 @@ const Dashboard = ({ initialDashboardId }) => {
     try {
       const result = await dashboardService.updateWidget(username, dashboardId, id, { title: newTitle });
       if (result.success) {
-        console.log('✅ Widget title updated successfully');
       } else {
-        console.error('Failed to update widget title:', result.message);
       }
     } catch (error) {
-      console.error('Error updating widget title:', error);
     }
   };
 
@@ -940,7 +907,6 @@ const Dashboard = ({ initialDashboardId }) => {
 
   // Create summary card from question - opens drawer with empty input
   const handleCreateWidgetFromCard = (card) => {
-    console.log('🎯 Opening drawer to create from card:', { cardId: card.id });
     
     // Set the mode and open drawer with empty input
     setWidgetCreationMode({ mode: 'create', card });
@@ -950,7 +916,6 @@ const Dashboard = ({ initialDashboardId }) => {
 
   // Edit summary card - opens drawer with edit mode
   const handleEditCardInDrawer = (card) => {
-    console.log('✏️ Opening drawer to edit card:', { cardId: card.id });
     
     // Set the mode and open drawer with empty input
     setWidgetCreationMode({ mode: 'edit', card });
@@ -964,8 +929,7 @@ const Dashboard = ({ initialDashboardId }) => {
     const connectionId = getConnectionId();
     
     if (!connectionId) {
-      console.warn('Cannot refresh: No connection ID found. Please select a database connection.');
-      return;
+            return;
     }
 
     setRefreshingWidgets(prev => ({ ...prev, [item.id]: true }));
@@ -1006,17 +970,123 @@ const Dashboard = ({ initialDashboardId }) => {
             timestamp: updatedItem.timestamp,
           });
 
-          console.log(`✅ Widget "${item.title}" refreshed in ${widgetResult.executionTimeMs}ms, ${widgetResult.rowCount} rows`);
         } else {
-          console.error('Failed to refresh widget:', widgetResult.error);
         }
       } else {
-        console.error('Failed to refresh widget:', result.message);
       }
     } catch (error) {
-      console.error('Error refreshing widget:', error);
     } finally {
       setRefreshingWidgets(prev => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  // Handle card click to scroll to corresponding widget
+  const handleCardClick = (card) => {
+    
+    if (!card) {
+      return;
+    }
+
+
+    // Since widget_id is null, we need to find the matching widget by prompt/title similarity
+    const allWidgetItems = getDisplayItems();
+
+    // Find matching widget based on prompt or title similarity
+    let matchingWidget = null;
+    
+    // Define keyword mappings for better matching
+    const keywordMappings = {
+      'region': ['region', 'regions'],
+      'bank': ['bank', 'federal', 'kvb'],
+      'branch': ['branch', 'branches'],
+      'area': ['area', 'areas'],
+      'fo': ['fo', 'field officer'],
+      'rm': ['rm', 'relationship manager', 'rms']
+    };
+
+    // Special case mapping for specific card types
+    const specialCases = {
+      'zero disbursement': 'region', // Zero disbursement cards should go to region widget
+      'least performing': 'region', // Performance cards should go to region widget
+      'top performing': 'region', // Performance cards should go to region widget
+      'total disbursement': 'bank' // Total disbursement cards should go to bank widget
+    };
+
+    // Extract keywords from card prompt/title
+    const cardText = `${card.prompt || ''} ${card.title || ''}`.toLowerCase();
+    
+    // Check for special cases first
+    let preferredCategory = null;
+    Object.entries(specialCases).forEach(([pattern, category]) => {
+      if (cardText.includes(pattern)) {
+        preferredCategory = category;
+      }
+    });
+    
+    // Score each widget based on keyword matches
+    const widgetScores = allWidgetItems.map(widget => {
+      const widgetText = `${widget.prompt || ''} ${widget.title || ''}`.toLowerCase();
+      let score = 0;
+      const scoreDetails = {};
+      
+      // Exact match gets highest score
+      if (widget.prompt === card.prompt || widget.title === card.title) {
+        score = 100;
+        scoreDetails.exact = 100;
+      } else {
+        // Calculate score based on keyword matches
+        Object.entries(keywordMappings).forEach(([category, keywords]) => {
+          const cardHasKeywords = keywords.some(keyword => cardText.includes(keyword));
+          const widgetHasKeywords = keywords.some(keyword => widgetText.includes(keyword));
+          
+          if (cardHasKeywords && widgetHasKeywords) {
+            const points = preferredCategory === category ? 20 : 10; // Bonus for preferred category
+            score += points;
+            scoreDetails[category] = points;
+          }
+        });
+        
+        // Bonus for partial text matches
+        if (widgetText.includes(cardText.substring(0, 20)) || cardText.includes(widgetText.substring(0, 20))) {
+          score += 5;
+          scoreDetails.partial = 5;
+        }
+      }
+      
+      return { widget, score, details: scoreDetails };
+    });
+    
+    // Sort by score and get the best match
+    widgetScores.sort((a, b) => b.score - a.score);
+    matchingWidget = widgetScores[0]?.widget;
+    
+
+
+    if (!matchingWidget) {
+      return;
+    }
+
+    const widgetId = matchingWidget.id;
+    const widgetElementId = `widget-${widgetId}`;
+
+    const widgetElement = document.getElementById(widgetElementId);
+
+    if (widgetElement) {
+      widgetElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+      
+      // Add a brief highlight effect
+      widgetElement.style.transition = 'box-shadow 0.3s ease';
+      widgetElement.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.5)';
+      setTimeout(() => {
+        widgetElement.style.boxShadow = '';
+      }, 1500);
+    } else {
+      
+      // Debug: List all widget elements that exist
+      const allWidgetElements = document.querySelectorAll('[id^="widget-"]');
     }
   };
 
@@ -1116,25 +1186,20 @@ const Dashboard = ({ initialDashboardId }) => {
         // Get fresh widgets from store after reload
         const freshState = useDashboardStore.getState();
         const storeWidgets = freshState.visualizationsByDashboard[activeDashboardId] || [];
-        console.log('📊 Store widgets after reload:', storeWidgets.length);
         
         // Fetch data for ALL widgets (new + existing) to ensure data is populated
         const allWidgetIds = storeWidgets.map(w => w.id);
         if (allWidgetIds.length > 0) {
           // Wait for backend to process and generate widget data (1.5s delay)
-          console.log('⏳ Waiting for backend to process widget data...');
           await new Promise(resolve => setTimeout(resolve, 1500));
           
-          console.log('Fetching data for all widgets:', allWidgetIds);
           const widgetData = await fetchWidgetsData(allWidgetIds);
-          console.log('📦 Widget data response:', widgetData);
           
           if (widgetData?.results) {
             // Merge store widgets with fetched data
             const mergedWidgets = storeWidgets.map(w => {
               const fetchedData = widgetData.results.find(r => r.widgetId === w.id);
               if (fetchedData?.success && fetchedData.data) {
-                console.log(`✅ Merging data for widget ${w.id}:`, fetchedData.data.pipelineData?.length, 'rows');
                 return {
                   ...w,
                   timestamp: new Date().toISOString(),
@@ -1150,7 +1215,6 @@ const Dashboard = ({ initialDashboardId }) => {
             
             // Update local state with merged widgets
             setSavedVisualizations(mergedWidgets);
-            console.log('✅ Updated savedVisualizations with', mergedWidgets.length, 'widgets');
           }
         }
         
@@ -1160,12 +1224,20 @@ const Dashboard = ({ initialDashboardId }) => {
           : resultData.message || 'Dashboard updated successfully!';
         
         // Add outputType context to message if available
+        const outputCreatesCard = payload.outputType === 'card' || payload.outputType === 'both';
         if (payload.outputType === 'card') {
           successMessage = `Summary card created successfully! ${successMessage}`;
         } else if (payload.outputType === 'both') {
           successMessage = `Widget and summary card created successfully! ${successMessage}`;
         } else if (payload.outputType === 'widget') {
           successMessage = `Widget created successfully! ${successMessage}`;
+        }
+        
+        if (outputCreatesCard) {
+          await refreshSummaryCards({
+            forceMetadataRefresh: true,
+            regenerateSql: true,
+          });
         }
         
         return { 
@@ -1187,7 +1259,6 @@ const Dashboard = ({ initialDashboardId }) => {
         };
       }
     } catch (error) {
-      console.error('Error editing dashboard:', error);
       return { 
         success: false, 
         message: 'Failed to connect to the server. Please try again.' 
@@ -1321,7 +1392,6 @@ const Dashboard = ({ initialDashboardId }) => {
           }
         }
       } catch (error) {
-        console.error('Error in card creation/edit mode:', error);
         result = { success: false, message: error.message || 'Failed to process request' };
       }
       
@@ -1386,7 +1456,6 @@ const Dashboard = ({ initialDashboardId }) => {
         // Clear selections after batch update
         clearSelections();
       } catch (error) {
-        console.error('Error in batch update:', error);
         result = { success: false, message: error.message || 'Failed to update items' };
       }
     } else {
@@ -1419,12 +1488,10 @@ const Dashboard = ({ initialDashboardId }) => {
     const connectionId = getConnectionId();
     
     if (!connectionId) {
-      console.warn('Cannot fetch widget data: No connection ID found.');
       return null;
     }
 
     if (!widgetIds || widgetIds.length === 0) {
-      console.warn('No widget IDs provided for data fetch.');
       return null;
     }
 
@@ -1434,11 +1501,9 @@ const Dashboard = ({ initialDashboardId }) => {
       if (result.success && result.data) {
         return result.data;
       } else {
-        console.error('Failed to fetch widget data:', result.message);
         return null;
       }
     } catch (error) {
-      console.error('Error fetching widget data:', error);
       return null;
     }
   };
@@ -1476,13 +1541,11 @@ const Dashboard = ({ initialDashboardId }) => {
     const connectionId = getConnectionId();
     
     if (!username) {
-      console.warn('Cannot refresh: No username found');
       return;
     }
 
     if (!connectionId) {
-      console.warn('Cannot refresh: No connection ID found. Please select a database connection.');
-      return;
+            return;
     }
 
     setIsRefreshingAll(true);
@@ -1542,14 +1605,11 @@ const Dashboard = ({ initialDashboardId }) => {
           timestamp: new Date().toISOString(),
         });
 
-        console.log(`✅ Refreshed ${successCount}/${widgetIds.length} widgets`);
 
         if (summaryCardsResponse?.data?.summary_cards && activeDashboardId) {
           setSummaryCardsForDashboard(activeDashboardId, summaryCardsResponse.data.summary_cards);
-          console.log(`✨ Refreshed ${summaryCardsResponse.data.summary_cards.length} summary cards`);
         }
       } else {
-        console.error('Failed to refresh:', result.message);
         setRefreshResults({
           totalWidgets: widgetIds.length,
           refreshedCount: 0,
@@ -1559,7 +1619,6 @@ const Dashboard = ({ initialDashboardId }) => {
         });
       }
     } catch (error) {
-      console.error('Error refreshing:', error);
       setRefreshResults({
         totalWidgets: savedVisualizations.length,
         refreshedCount: 0,
@@ -1598,7 +1657,6 @@ const Dashboard = ({ initialDashboardId }) => {
       title: item.title || item.question || 'Widget' 
     };
     
-    console.log('🚀 Drag started:', widgetInfo.title);
     
     // Set dashboard drag state
     setDraggedItem(item);
@@ -1670,13 +1728,10 @@ const Dashboard = ({ initialDashboardId }) => {
         );
         
         if (result.success) {
-          console.log('✅ Widget order persisted to backend');
         } else {
-          console.error('❌ Failed to persist widget order:', result.message);
         }
       } catch (error) {
-        console.error('❌ Error persisting widget order:', error);
-      }
+              }
     }
     
     // Reset drag state
@@ -1686,7 +1741,6 @@ const Dashboard = ({ initialDashboardId }) => {
   };
 
   const handleDragEnd = async (e) => {
-    console.log('🏁 Drag end event');
     // If dropped on valid target, handleDrop already handled it
     // This handles dropping outside valid targets
     if (draggedItem && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
@@ -1714,13 +1768,10 @@ const Dashboard = ({ initialDashboardId }) => {
           );
           
           if (result.success) {
-            console.log('✅ Widget order persisted to backend');
           } else {
-            console.error('❌ Failed to persist widget order:', result.message);
           }
         } catch (error) {
-          console.error('❌ Error persisting widget order:', error);
-        }
+                  }
       }
     }
     
@@ -1744,7 +1795,6 @@ const Dashboard = ({ initialDashboardId }) => {
     if (draggedWidgetRef.current || e.dataTransfer.types.includes('application/widget')) {
       e.dataTransfer.dropEffect = "copy";
       if (!chatDropZoneActive) {
-        console.log('🔵 Chat zone active');
         setChatDropZoneActive(true);
       }
     }
@@ -1768,7 +1818,6 @@ const Dashboard = ({ initialDashboardId }) => {
   const handleChatDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('🎯 Chat drop');
     
     setChatDropZoneActive(false);
     
@@ -1784,12 +1833,10 @@ const Dashboard = ({ initialDashboardId }) => {
         const json = e.dataTransfer.getData("application/widget");
         if (json) widgetData = JSON.parse(json);
       } catch (err) {
-        console.error('❌ Drop parse error:', err);
       }
     }
 
     if (widgetData) {
-      console.log('✅ Attached widget:', widgetData.title);
       setAttachedWidget(widgetData);
       
       // Reset dashboard drag state since we handled the drop
@@ -1815,6 +1862,52 @@ const Dashboard = ({ initialDashboardId }) => {
   };
   
   const displayItems = getDisplayItems();
+  const totalWidgets = displayItems.length;
+  const widgetGridColumns = React.useMemo(() => {
+    if (totalWidgets <= 1) {
+      return { xs: '1fr', sm: '1fr', lg: '1fr' };
+    }
+    return {
+      xs: '1fr',
+      sm: 'repeat(2, minmax(0, 1fr))',
+      lg: 'repeat(2, minmax(0, 1fr))',
+    };
+  }, [totalWidgets]);
+
+  const refreshSummaryCards = useCallback(
+    async ({ forceMetadataRefresh = false, regenerateSql = false } = {}) => {
+      if (!activeDashboardId) return null;
+
+      const username = getUsername();
+      const connectionId = getConnectionId();
+      if (!username || !connectionId) return null;
+
+      try {
+        const response = await getSummaryCards({
+          username,
+          dashboardId: activeDashboardId,
+          connectionId,
+          regenerateSql,
+          existingCards: forceMetadataRefresh
+            ? []
+            : summaryCardsByDashboard?.[activeDashboardId] || [],
+        });
+
+        if (response?.data?.summary_cards) {
+          setSummaryCardsForDashboard(
+            activeDashboardId,
+            response.data.summary_cards
+          );
+        }
+
+        return response;
+      } catch (error) {
+        console.warn('Failed to refresh summary cards:', error);
+        return null;
+      }
+    },
+    [activeDashboardId, summaryCardsByDashboard, setSummaryCardsForDashboard]
+  );
 
   // Optimized resize handlers using refs for smooth performance
   const resizeRef = useRef(null);
@@ -2464,18 +2557,16 @@ const Dashboard = ({ initialDashboardId }) => {
     }
     
     return (
-      <Box sx={{ height: '100%', width: '100%', minWidth: 0, minHeight: 200, display: 'flex', flexDirection: 'column' }}>
-        <DataGridComponent
-          rows={data}
-          columns={[]}
-          title={null}
-          height="100%"
-          autoGenerateColumns={true}
-          showSaveButton={false}
-          variant="clean"
-          useInfiniteScroll={isFullscreen}
-        />
-      </Box>
+      <DataGridComponent
+        rows={data}
+        columns={[]}
+        title={null}
+        height="100%"
+        autoGenerateColumns={true}
+        showSaveButton={false}
+        variant="clean"
+        useInfiniteScroll={isFullscreen}
+      />
     );
   };
 
@@ -2552,7 +2643,10 @@ const Dashboard = ({ initialDashboardId }) => {
     // Check if table has many columns (> 6) to span full width
     const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'id' && !k.startsWith('_')) : [];
     const isWideTable = currentViewMode === 'table' && keys.length > 6;
-    const shouldSpanFull = isFullWidth || isWideTable;
+    const allowWideTableFullWidth = isWideTable && totalWidgets > 2;
+    const shouldForceFullWidth = totalWidgets <= 1;
+    const isLastOddCard = totalWidgets > 1 && totalWidgets % 2 === 1 && index === totalWidgets - 1;
+    const shouldSpanFull = isFullWidth || allowWideTableFullWidth || shouldForceFullWidth || isLastOddCard;
     
     // Get accent color for this widget
     const accent = WIDGET_ACCENTS[index % WIDGET_ACCENTS.length];
@@ -2677,8 +2771,8 @@ const Dashboard = ({ initialDashboardId }) => {
                       sx={{ 
                         fontWeight: 600, 
                         color: '#fff',
-                        fontSize: '0.875rem',
-                        lineHeight: 1.4,
+                        fontSize: { xs: '0.8rem', md: '0.85rem' },
+                        lineHeight: 1.35,
                         cursor: 'text',
                         px: 0.5,
                         py: 0.25,
@@ -2686,6 +2780,10 @@ const Dashboard = ({ initialDashboardId }) => {
                         userSelect: 'none',
                         wordBreak: 'break-word',
                         textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
                         '&:hover': {
                           bgcolor: 'rgba(255,255,255,0.15)',
                         }
@@ -3380,9 +3478,7 @@ const Dashboard = ({ initialDashboardId }) => {
               selectionMode={selectionMode}
               selectedCards={selectedCards}
               onToggleCardSelection={toggleCardSelection}
-              onCardClick={(card) => {
-                console.log('Card clicked:', card);
-              }}
+              onCardClick={handleCardClick}
             />
           </Box>
         )}
@@ -3394,13 +3490,10 @@ const Dashboard = ({ initialDashboardId }) => {
           <Box 
             sx={{ 
               display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                lg: 'repeat(2, 1fr)',
-              },
-              gap: 2.5,
+              gridTemplateColumns: widgetGridColumns,
+              gap: { xs: 2, md: 2.5 },
               alignItems: 'start',
+              transition: 'grid-template-columns 0.3s ease',
             }}
           >
             {displayItems.filter(item => item && item.id).map((item, index) => {
@@ -3671,7 +3764,6 @@ const Dashboard = ({ initialDashboardId }) => {
             e.preventDefault();
             e.stopPropagation();
             if (draggedWidgetRef.current) {
-              console.log('🎯 Dragging over chat bubble, opening drawer');
               setChatDrawerOpen(true);
             }
           }}
@@ -3984,9 +4076,7 @@ const Dashboard = ({ initialDashboardId }) => {
                     }
                   }}
                   compact
-                  onCardClick={(card) => {
-                    console.log('Card clicked:', card);
-                  }}
+                  onCardClick={handleCardClick}
                 />
               </Box>
 

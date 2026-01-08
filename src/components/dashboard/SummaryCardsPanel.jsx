@@ -102,7 +102,6 @@ const SummaryCardsPanel = ({
           setCards(sortedCards);
         }
       } catch (err) {
-        console.error('Error fetching summary cards:', err);
         setError('Failed to load insights');
       } finally {
         if (withLoader) {
@@ -157,7 +156,6 @@ const SummaryCardsPanel = ({
         setShowPending(true);
       }
     } catch (err) {
-      console.error('Error generating summary cards:', err);
       setError(err.message || 'Failed to generate insights. Please try again.');
     } finally {
       setGenerating(false);
@@ -212,7 +210,6 @@ const SummaryCardsPanel = ({
         await onRefresh();
       }
     } catch (err) {
-      console.error('Error approving summary cards:', err);
       setError(err.message || 'Failed to approve insights. Please try again.');
     } finally {
       setApproving(false);
@@ -233,7 +230,6 @@ const SummaryCardsPanel = ({
       await deleteSummaryCard({ username, dashboardId, cardId });
       setCards(prev => prev.filter(c => c.id !== cardId));
     } catch (err) {
-      console.error('Error deleting summary card:', err);
       setError('Failed to delete card');
     }
   };
@@ -256,7 +252,6 @@ const SummaryCardsPanel = ({
       
       return response;
     } catch (err) {
-      console.error('Error editing approved card:', err);
       setError('Failed to edit card');
       throw err;
     }
@@ -275,7 +270,6 @@ const SummaryCardsPanel = ({
       
       return response;
     } catch (err) {
-      console.error('Error editing pending card:', err);
       setError('Failed to edit pending card');
       throw err;
     }
@@ -362,20 +356,18 @@ const SummaryCardsPanel = ({
   const renderPendingApproval = () => (
     <Fade in={showPending}>
       <Box>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            mb: 2,
-            pb: 1.5,
-            borderBottom: '1px solid #E5E7EB',
-          }}
+        <Stack
+          direction="row"
+          spacing={2}
+          alignItems="center"
+          justifyContent="space-between"
+          mb={2}
+          pb={1.5}
+          borderBottom="1px solid #E5E7EB"
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AutoAwesomeIcon sx={{ fontSize: 18, color: '#F59E0B' }} />
-            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#1F2937' }}>
-              Review Insights
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#0F172A' }}>
+              {cards.length} insights
             </Typography>
             <Chip
               label={`${selectedCardIds.size}/${pendingCards.length}`}
@@ -388,7 +380,7 @@ const SummaryCardsPanel = ({
                 color: '#3B82F6',
               }}
             />
-          </Box>
+          </Stack>
           <Box sx={{ display: 'flex', gap: 0.5 }}>
             <Tooltip title="Select All" arrow>
               <IconButton size="small" onClick={handleSelectAll}>
@@ -406,7 +398,7 @@ const SummaryCardsPanel = ({
               </IconButton>
             </Tooltip>
           </Box>
-        </Box>
+        </Stack>
 
         <Stack spacing={1.5} sx={{ mb: 2 }}>
           {pendingCards.map((card, index) => (
@@ -469,12 +461,31 @@ const SummaryCardsPanel = ({
     </Fade>
   );
 
+  const handleCardClick = useCallback(
+    (card) => {
+      
+      if (selectionMode) {
+        return;
+      }
+      
+      onCardClick?.(card);
+    },
+    [onCardClick, selectionMode]
+  );
+
   const renderApprovedCards = () => {
     // Sort cards: comparison/chart cards first, then table_summary, then others
     const sortedCards = [...cards].sort((a, b) => {
       const order = { comparison: 0, table_summary: 1, metric: 2, alert: 3, info: 4 };
       return (order[a.card_type] ?? 5) - (order[b.card_type] ?? 5);
     });
+    const cardCount = sortedCards.length;
+    const desktopColumns =
+      cardCount === 1
+        ? '1fr'
+        : cardCount === 2
+          ? 'repeat(2, minmax(0, 1fr))'
+          : 'repeat(3, minmax(0, 1fr))';
 
     return (
       <Box>
@@ -487,7 +498,7 @@ const SummaryCardsPanel = ({
                   <SummaryCard
                     card={card}
                     size="small"
-                    onClick={onCardClick}
+                    onClick={handleCardClick}
                     onCreateWidget={onCreateWidget}
                     onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
                     onDelete={() => handleDelete(card.id)}
@@ -504,10 +515,10 @@ const SummaryCardsPanel = ({
               display: 'grid',
               gridTemplateColumns: {
                 xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-                lg: 'repeat(3, 1fr)',
-                xl: 'repeat(4, 1fr)',
+                sm: cardCount === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                md: desktopColumns,
+                lg: desktopColumns,
+                xl: cardCount >= 4 ? 'repeat(4, minmax(0, 1fr))' : desktopColumns,
               },
               gap: { xs: 2, sm: 3 },
               pb: 2,
@@ -523,7 +534,7 @@ const SummaryCardsPanel = ({
                   <SummaryCard
                     card={card}
                     size="medium"
-                    onClick={onCardClick}
+                    onClick={handleCardClick}
                     onCreateWidget={onCreateWidget}
                     onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
                     onDelete={() => handleDelete(card.id)}

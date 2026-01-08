@@ -457,10 +457,13 @@ const SummaryCard = ({
   const currentSize = sizeStyles[size] || sizeStyles.medium;
 
   const handleClick = (e) => {
+    e.stopPropagation();
+    
     if (selectable && onSelect) {
       onSelect(id, !selected);
     } else if (onClick) {
       onClick(card);
+    } else {
     }
   };
 
