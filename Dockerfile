@@ -23,8 +23,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
 # Build the Next.js application
-# The standalone output already includes only production dependencies
-RUN npm run build
+# Re-use Next.js incremental cache between builds to avoid recompiling unchanged pages
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # 2. Runner Stage: Create the final, minimal image
 FROM node:20-alpine AS runner
