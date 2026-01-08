@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -50,6 +50,7 @@ const SummaryCardsPanel = ({
   onCreateWidget,
   onEditCard,
   compact = false,
+  autoRefresh = true,
   selectionMode = false,
   selectedCards = new Set(),
   onToggleCardSelection = () => {},
@@ -65,33 +66,69 @@ const SummaryCardsPanel = ({
   const [expanded, setExpanded] = useState(true);
   const [showPending, setShowPending] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
+  const isFetchingRef = useRef(false);
+  const latestCardsRef = useRef(summaryCards || []);
+
+  useEffect(() => {
+    if (summaryCards && summaryCards.length > 0) {
+      latestCardsRef.current = summaryCards;
+    }
+  }, [summaryCards]);
+
+  const fetchLatestCards = useCallback(
+    async ({ withLoader = false, force = false } = {}) => {
+      if (!dashboardId || !username || !connectionId) return;
+      if (isFetchingRef.current && !force) return;
+
+      if (withLoader) {
+        setLoading(true);
+      }
+      setError(null);
+      isFetchingRef.current = true;
+
+      try {
+        const response = await getSummaryCards({
+          username,
+          dashboardId,
+          connectionId,
+          existingCards:
+            (latestCardsRef.current && latestCardsRef.current.length > 0
+              ? latestCardsRef.current
+              : undefined),
+        });
+        if (response?.data?.summary_cards) {
+          const sortedCards = sortCardsByPriority(response.data.summary_cards);
+          latestCardsRef.current = sortedCards;
+          setCards(sortedCards);
+        }
+      } catch (err) {
+        console.error('Error fetching summary cards:', err);
+        setError('Failed to load insights');
+      } finally {
+        if (withLoader) {
+          setLoading(false);
+        }
+        isFetchingRef.current = false;
+      }
+    },
+    [dashboardId, username, connectionId]
+  );
 
   // Use summary cards from parent (widgets API) or fetch separately
   useEffect(() => {
     if (summaryCards && summaryCards.length > 0) {
+      latestCardsRef.current = summaryCards;
       setCards(sortCardsByPriority(summaryCards));
-      setLoading(false);
-    } else if (dashboardId && username) {
-      // Fallback: fetch separately if not provided
-      const fetchApprovedCards = async () => {
-        setLoading(true);
-        setError(null);
-        
-        try {
-          const response = await getSummaryCards({ username, dashboardId });
-          if (response?.data?.summary_cards) {
-            setCards(sortCardsByPriority(response.data.summary_cards));
-          }
-        } catch (err) {
-          console.error('Error fetching summary cards:', err);
-          setError('Failed to load insights');
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchApprovedCards();
     }
-  }, [summaryCards, dashboardId, username]);
+  }, [summaryCards]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    if (dashboardId && username && connectionId) {
+      const shouldShowLoader = !summaryCards || summaryCards.length === 0;
+      fetchLatestCards({ withLoader: shouldShowLoader });
+    }
+  }, [autoRefresh, dashboardId, username, connectionId, summaryCards?.length, fetchLatestCards]);
 
   const handleGenerate = async () => {
     if (!dashboardId || !username || !connectionId) {
@@ -168,6 +205,9 @@ const SummaryCardsPanel = ({
       setSelectedCardIds(new Set());
       
       // Trigger parent refresh to reload widgets and summary cards
+      if (autoRefresh) {
+        await fetchLatestCards({ withLoader: false, force: true });
+      }
       if (onRefresh) {
         await onRefresh();
       }
@@ -208,6 +248,11 @@ const SummaryCardsPanel = ({
       setCards(prev => prev.map(c => 
         c.id === cardId ? { ...c, ...updates } : c
       ));
+
+      // Re-fetch to get fresh widget data for this card
+      if (autoRefresh) {
+        await fetchLatestCards({ withLoader: false, force: true });
+      }
       
       return response;
     } catch (err) {

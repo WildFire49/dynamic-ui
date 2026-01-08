@@ -98,6 +98,7 @@ import useDashboardStore from '../store/dashboardStore';
 import { DashboardLoadingSkeleton, WidgetContentSkeleton } from './skeletons/WidgetSkeleton';
 import WidgetConfigStudio from './widgets/WidgetConfigStudio';
 import dashboardService from '../services/dashboardService';
+import { getSummaryCards } from '../services/summaryCardsService';
 import SummaryCardsPanel from './dashboard/SummaryCardsPanel';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
@@ -154,6 +155,7 @@ const Dashboard = ({ initialDashboardId }) => {
     lastSyncedAt,
     setActiveDashboard,
     loadWidgetsForDashboard,
+    setSummaryCardsForDashboard,
   } = useDashboardStore();
 
   const [savedVisualizations, setSavedVisualizations] = useState([]);
@@ -1478,6 +1480,11 @@ const Dashboard = ({ initialDashboardId }) => {
       return;
     }
 
+    if (!connectionId) {
+      console.warn('Cannot refresh: No connection ID found. Please select a database connection.');
+      return;
+    }
+
     setIsRefreshingAll(true);
     setRefreshResults(null);
 
@@ -1489,8 +1496,21 @@ const Dashboard = ({ initialDashboardId }) => {
         return;
       }
 
-      // Call the data API to get fresh widget data
-      const result = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
+      // Kick off widget data refresh (+ summary cards in parallel)
+      const widgetDataPromise = dashboardService.getWidgetsData(username, connectionId, widgetIds);
+      const summaryCardsPromise = activeDashboardId
+        ? getSummaryCards({
+            username,
+            dashboardId: activeDashboardId,
+            connectionId,
+            existingCards: summaryCardsByDashboard?.[activeDashboardId] || [],
+          })
+        : Promise.resolve(null);
+
+      const [result, summaryCardsResponse] = await Promise.all([
+        widgetDataPromise,
+        summaryCardsPromise,
+      ]);
 
       if (result.success && result.data) {
         const results = result.data.results || [];
@@ -1523,6 +1543,11 @@ const Dashboard = ({ initialDashboardId }) => {
         });
 
         console.log(`✅ Refreshed ${successCount}/${widgetIds.length} widgets`);
+
+        if (summaryCardsResponse?.data?.summary_cards && activeDashboardId) {
+          setSummaryCardsForDashboard(activeDashboardId, summaryCardsResponse.data.summary_cards);
+          console.log(`✨ Refreshed ${summaryCardsResponse.data.summary_cards.length} summary cards`);
+        }
       } else {
         console.error('Failed to refresh:', result.message);
         setRefreshResults({

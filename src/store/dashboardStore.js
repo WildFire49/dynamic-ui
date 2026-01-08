@@ -92,6 +92,19 @@ const useDashboardStore = create(
       // Summary cards organized by dashboard ID
       summaryCardsByDashboard: {},
 
+      /**
+       * Replace summary cards for a specific dashboard
+       */
+      setSummaryCardsForDashboard: (dashboardId, cards = []) => {
+        if (!dashboardId) return;
+        set((state) => ({
+          summaryCardsByDashboard: {
+            ...state.summaryCardsByDashboard,
+            [dashboardId]: Array.isArray(cards) ? cards : [],
+          },
+        }));
+      },
+
       // Loading and error states
       isLoading: false,
       isSyncing: false,

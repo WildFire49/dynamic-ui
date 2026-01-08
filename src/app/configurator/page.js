@@ -695,18 +695,18 @@ export default function ConfiguratorPage() {
                         height: 120,
                         borderRadius: "50%",
                         background:
-                          "linear-gradient(135deg, #2196F3 0%, #21CBF3 50%, #9C27B0 100%)",
+                          "linear-gradient(135deg, #DA5EB9 0%, #F9F6F9 50%, #D18DDD 100%)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         mx: "auto",
                         mb: 4,
-                        boxShadow: `0 20px 40px ${alpha("#2196F3", 0.3)}`,
+                        boxShadow: `0 20px 40px ${alpha("#082F4F", 0.3)}`,
                         animation: "pulse 3s infinite ease-in-out",
                         "@keyframes pulse": {
                           "0%": {
                             transform: "scale(1)",
-                            boxShadow: `0 20px 40px ${alpha("#2196F3", 0.3)}`,
+                            boxShadow: `0 20px 40px ${alpha("#AB71B0", 0.3)}`,
                           },
                           "50%": {
                             transform: "scale(1.05)",
@@ -719,7 +719,16 @@ export default function ConfiguratorPage() {
                         },
                       }}
                     >
-                      <PsychologyIcon sx={{ fontSize: 60, color: "white" }} />
+                      <Box
+                        component="img"
+                        src="/Mifix-ai.png"
+                        alt="MiFiX AI Logo"
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
                     </Box>
                   </Zoom>
                 </Box>

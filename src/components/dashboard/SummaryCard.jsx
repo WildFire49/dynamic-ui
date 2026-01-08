@@ -335,23 +335,101 @@ const SummaryCard = ({
     top_entries,
     bottom_entries,
     info_data,
+    query_results,
+    _pipelineData,
+    _dataGrid,
     sort_by,
     sort_order,
   } = card;
   
+  const toNumeric = (value) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const cleaned = value.replace(/[^0-9.-]/g, '');
+      const parsed = Number(cleaned);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  const prettifyLabel = (label = '') =>
+    label
+      .toString()
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
   // Helper to safely format values based on metric unit
   const getSafeDisplayValue = (val, formattedVal, unit) => {
-    if (unit === 'count' && typeof val === 'number') {
-      return val.toLocaleString(); // Just show comma separated number for counts
+    const numericVal = toNumeric(val);
+
+    if (unit === 'count' && numericVal !== null) {
+      return numericVal.toLocaleString('en-IN');
     }
-    // For non-counts or missing unit, trust backend format but fallback to smartFormat
-    return formattedVal || smartFormat(val) || val;
+
+    if (unit === 'currency' && numericVal !== null && !formattedVal) {
+      return formatIndianCurrency(numericVal);
+    }
+
+    if (formattedVal) return formattedVal;
+    if (numericVal !== null) return smartFormat(numericVal);
+    return smartFormat(val) || val;
   };
 
   // Smart formatting for values with unit awareness
   const displayPrimaryValue = getSafeDisplayValue(primary_value, formatted_primary_value, metric_unit);
   const displaySecondaryValue = getSafeDisplayValue(secondary_value, formatted_secondary_value, metric_unit);
   const displayTrendValue = trend_value;
+
+  const rawInfoSource = useMemo(() => {
+    if (Array.isArray(info_data) && info_data.length > 0) return info_data;
+    if (Array.isArray(query_results) && query_results.length > 0) return query_results;
+    if (Array.isArray(_pipelineData) && _pipelineData.length > 0) return _pipelineData;
+    if (Array.isArray(_dataGrid?.gridRows) && _dataGrid.gridRows.length > 0) return _dataGrid.gridRows;
+    return [];
+  }, [info_data, query_results, _pipelineData, _dataGrid]);
+
+  const resolvedInfoData = useMemo(() => {
+    if (!Array.isArray(rawInfoSource) || rawInfoSource.length === 0) return [];
+
+    // If entries already contain name/value, respect them
+    if (
+      rawInfoSource.every(
+        (entry) =>
+          entry &&
+          typeof entry === 'object' &&
+          ('name' in entry || 'label' in entry || 'title' in entry)
+      )
+    ) {
+      return rawInfoSource.map((entry) => ({
+        name: entry.name || entry.label || entry.title || prettifyLabel(entry.field || entry.key || ''),
+        value: entry.value ?? entry.count ?? entry.total ?? entry.formatted ?? null,
+        formatted:
+          entry.formatted ||
+          (entry.value !== undefined ? smartFormat(entry.value) : entry.value) ||
+          entry.count ||
+          entry.total ||
+          '—',
+      }));
+    }
+
+    // Convert row-based data into info entries
+    return rawInfoSource.flatMap((row) => {
+      if (!row || typeof row !== 'object') return [];
+      return Object.entries(row)
+        .filter(([key]) => key !== 'id' && !key.startsWith('_'))
+        .map(([key, value]) => {
+          const formattedValue =
+            value === null || value === undefined ? 'No data' : smartFormat(value);
+          return {
+            name: prettifyLabel(key),
+            value,
+            formatted: formattedValue,
+          };
+        });
+    });
+  }, [rawInfoSource]);
+
+  const hasInfoData = resolvedInfoData.length > 0;
 
   const IconComponent = ICON_MAP[icon] || InfoIcon;
   const urgencyConfig = URGENCY_CONFIG[urgency] || URGENCY_CONFIG.info;
@@ -570,7 +648,7 @@ const SummaryCard = ({
       </Box>
 
       {/* Metrics - Widget Style */}
-      {(primary_value || secondary_value || comparison_data || top_entries || bottom_entries || info_data) && (
+      {(primary_value || secondary_value || comparison_data || top_entries || bottom_entries || hasInfoData) && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1, position: 'relative', zIndex: 1, flex: 1, justifyContent: (card_type === 'metric' || card_type === 'alert') ? 'center' : 'flex-start' }}>
           {/* Table Summary Card - Top Entries with progress bars */}
           {card_type === 'table_summary' && top_entries && top_entries.length > 0 ? (
@@ -745,7 +823,7 @@ const SummaryCard = ({
                 );
               })}
             </Box>
-          ) : card_type === 'info' && info_data && info_data.length > 0 ? (
+          ) : card_type === 'info' && hasInfoData ? (
             /* Info Card - Enhanced with Progress Bars */
             <Box sx={{ 
               width: '100%', 
@@ -769,12 +847,12 @@ const SummaryCard = ({
                 </Box>
               )}
 
-              {info_data.slice(0, 5).map((entry, idx) => {
-                 const isSparse = info_data.length <= 2;
+              {resolvedInfoData.slice(0, 5).map((entry, idx) => {
+                 const isSparse = resolvedInfoData.length <= 2;
                  // Calculate max value for progress bars
-                 const allValues = info_data.map(e => typeof e.value === 'number' ? e.value : 0);
+                 const allValues = resolvedInfoData.map(e => (typeof e.value === 'number' ? e.value : toNumeric(e.value) || 0));
                  const maxValue = Math.max(...allValues, 1);
-                 const numericValue = typeof entry.value === 'number' ? entry.value : 0;
+                 const numericValue = typeof entry.value === 'number' ? entry.value : toNumeric(entry.value) || 0;
                  const percentage = maxValue > 0 ? (numericValue / maxValue) * 100 : 0;
                  
                  // Handle name display - prefer label for info cards
@@ -836,18 +914,18 @@ const SummaryCard = ({
                 </Box>
               )})}
             </Box>
-          ) : card_type === 'alert' && info_data && info_data.length > 0 ? (
+          ) : card_type === 'alert' && hasInfoData ? (
             /* Alert Card - List View */
             <Box sx={{ 
               display: 'flex', 
               flexDirection: 'column', 
-              gap: info_data.length <= 2 ? 4 : 1.5, 
+              gap: resolvedInfoData.length <= 2 ? 4 : 1.5, 
               flex: 1, 
-              justifyContent: info_data.length <= 3 ? 'space-evenly' : 'space-between', 
-              py: info_data.length <= 2 ? 1 : 0.5 
+              justifyContent: resolvedInfoData.length <= 3 ? 'space-evenly' : 'space-between', 
+              py: resolvedInfoData.length <= 2 ? 1 : 0.5 
             }}>
-              {info_data.slice(0, 5).map((entry, idx) => {
-                 const isSparse = info_data.length <= 2;
+              {resolvedInfoData.slice(0, 5).map((entry, idx) => {
+                 const isSparse = resolvedInfoData.length <= 2;
                  // Handle data variations for alerts
                  const displayValue = entry.formatted || (typeof entry.value === 'number' ? smartFormat(entry.value) : '');
                  

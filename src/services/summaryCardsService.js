@@ -106,33 +106,141 @@ export const approveSummaryCards = async ({
  * Get approved summary cards for a dashboard
  * Returns empty array gracefully if API not available
  */
-export const getSummaryCards = async ({ username, dashboardId }) => {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/v1/dashboard/summary-cards/${dashboardId}?username=${encodeURIComponent(
-        username
-      )}`,
-      {
-        method: "GET",
-        headers: getAuthHeaders(),
-      }
-    );
+export const getSummaryCards = async ({
+  username,
+  dashboardId,
+  connectionId,
+  cardIds = [],
+  regenerateSql = false,
+  existingCards = [],
+}) => {
+  const headers = getAuthHeaders();
+  let metadataCards = Array.isArray(existingCards)
+    ? existingCards.filter(Boolean)
+    : [];
 
-    if (!response.ok) {
-      // Return empty data structure if API not available (404) or other errors
-      if (response.status === 404) {
-        return { data: { summary_cards: [] } };
+  // Step 1: Fetch metadata if not already provided
+  if (
+    (!metadataCards || metadataCards.length === 0) &&
+    dashboardId &&
+    username
+  ) {
+    try {
+      const metaResponse = await fetch(
+        `${API_BASE_URL}/api/v1/dashboard/summary-cards/${dashboardId}?username=${encodeURIComponent(
+          username
+        )}`,
+        {
+          method: "GET",
+          headers,
+        }
+      );
+
+      if (metaResponse.ok) {
+        const metaJson = await metaResponse.json();
+        metadataCards =
+          metaJson?.data?.summary_cards ||
+          metaJson?.data?.data?.summary_cards ||
+          metaJson?.data ||
+          [];
+      } else if (metaResponse.status !== 404) {
+        console.warn(
+          `Summary cards metadata API returned ${metaResponse.status}`
+        );
       }
-      console.warn(`Summary cards API returned ${response.status}`);
-      return { data: { summary_cards: [] } };
+    } catch (error) {
+      console.warn("Summary cards metadata API not available:", error.message);
     }
-
-    return await response.json();
-  } catch (error) {
-    // Gracefully handle network errors - API might not be deployed yet
-    console.warn("Summary cards API not available:", error.message);
-    return { data: { summary_cards: [] } };
   }
+
+  const idsToFetch =
+    Array.isArray(cardIds) && cardIds.length > 0
+      ? cardIds
+      : (metadataCards || []).map((card) => card.id).filter(Boolean);
+
+  let combinedCards = metadataCards;
+
+  // Step 2: Fetch computed values if connection details available
+  if (connectionId && username) {
+    try {
+      const payload = {
+        username,
+        connectionId,
+        regenerateSql,
+      };
+
+      if (dashboardId) {
+        payload.dashboardId = dashboardId;
+      }
+
+      if (idsToFetch.length > 0) {
+        payload.cardIds = idsToFetch;
+      }
+
+      const dataResponse = await fetch(
+        `${API_BASE_URL}/api/v1/dashboard/summary-cards/data`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (dataResponse.ok) {
+        const dataJson = await dataResponse.json();
+        const results =
+          dataJson?.data?.data?.results ||
+          dataJson?.data?.results ||
+          dataJson?.results ||
+          [];
+
+        const refreshedCards = results
+          .filter((item) => item.success && item.data)
+          .map((item) => {
+            const cardPayload =
+              item.data?.cardData && Object.keys(item.data.cardData).length > 0
+                ? item.data.cardData
+                : item.data;
+
+            return {
+              ...cardPayload,
+              _pipelineData: item.data.pipelineData || item.pipelineData,
+              _dataGrid: item.data.dataGrid || item.dataGrid,
+              executionTimeMs: item.executionTimeMs,
+              rowCount: item.rowCount,
+            };
+          })
+          .filter((card) => card?.id);
+
+        if (refreshedCards.length > 0) {
+          const refreshedMap = new Map(
+            refreshedCards.map((card) => [card.id, card])
+          );
+
+          if (metadataCards && metadataCards.length > 0) {
+            const metadataIds = new Set(metadataCards.map((card) => card.id));
+            const mergedCards = metadataCards.map((card) =>
+              refreshedMap.has(card.id)
+                ? { ...card, ...refreshedMap.get(card.id) }
+                : card
+            );
+            const newCards = refreshedCards.filter(
+              (card) => !metadataIds.has(card.id)
+            );
+            combinedCards = [...mergedCards, ...newCards];
+          } else {
+            combinedCards = refreshedCards;
+          }
+        }
+      } else if (dataResponse.status !== 404) {
+        console.warn(`Summary card data API returned ${dataResponse.status}`);
+      }
+    } catch (error) {
+      console.warn("Summary card data API not available:", error.message);
+    }
+  }
+
+  return { data: { summary_cards: combinedCards || [] } };
 };
 
 /**
