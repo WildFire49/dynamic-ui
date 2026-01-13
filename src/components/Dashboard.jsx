@@ -613,17 +613,19 @@ const Dashboard = ({ initialDashboardId }) => {
       
       // Apply cached data if available
       const visualizationsWithCache = applyCache(storeVisualizations, activeDashboardId);
-      const hasCachedData = visualizationsWithCache.some(v => v.pipelineData?.length > 0);
       
-      if (hasCachedData) {
+      // Check which widgets have data (either cached or already loaded)
+      const widgetsWithData = visualizationsWithCache.filter(v => v.pipelineData?.length > 0 || v.supportingData?.length > 0);
+      const widgetsWithoutData = visualizationsWithCache.filter(v => !v.pipelineData?.length && !v.supportingData?.length);
+      
+      // Only mark widgets WITHOUT data as loading - this ensures skeleton shows for widgets that need data
+      if (widgetsWithoutData.length > 0) {
+        const loadingIds = widgetsWithoutData.map(v => v.id);
+        setLoadingWidgets(new Set(loadingIds));
+      } else {
+        // All widgets have data - clear loading state
         setLoadingWidgets(new Set());
-      } else if (storeVisualizations.length > 0) {
-        // No cached data - mark all widgets as loading so skeleton shows
-        // This ensures skeleton shows while API is fetching data
-        const widgetIds = storeVisualizations.map(v => v.id);
-        setLoadingWidgets(new Set(widgetIds));
       }
-      // Don't clear loadingWidgets if there are no visualizations yet - let the fetch complete
       
       setSavedVisualizations([...visualizationsWithCache]);
       
@@ -739,7 +741,20 @@ const Dashboard = ({ initialDashboardId }) => {
             if (cached) return { ...v, ...cached };
             return v;
           });
+          
+          // Update visualizations with fetched data
           setSavedVisualizations(updatedWidgets);
+          
+          // Clear loading state for widgets that now have data
+          setLoadingWidgets(prev => {
+            const newLoading = new Set(prev);
+            updatedWidgets.forEach(w => {
+              if (w.pipelineData?.length > 0 || w.supportingData?.length > 0) {
+                newLoading.delete(w.id);
+              }
+            });
+            return newLoading;
+          });
         }
       } catch (error) {
         ('❌ Error fetching widget data:', error);
@@ -747,6 +762,7 @@ const Dashboard = ({ initialDashboardId }) => {
         if (fetchingDashboardId.current === activeDashboardId) {
           fetchingDashboardId.current = null;
         }
+        // Clear all loading states for this dashboard
         setLoadingWidgets(new Set());
       }
     };
@@ -2592,12 +2608,12 @@ const Dashboard = ({ initialDashboardId }) => {
 
     const data = getItemData(item);
     
-    // Show skeleton while loading data OR if widget has no data and we're still fetching
-    const isLoading = loadingWidgets.has(item.id) || loadingWidgets.size > 0 || isInitialLoad || dataFetchInProgress.current;
+    // Show skeleton ONLY if THIS specific widget is loading
+    const isThisWidgetLoading = loadingWidgets.has(item.id);
     
     if (data.length === 0) {
-      // If any widgets are loading or initial load, show skeleton instead of "no data"
-      if (isLoading) {
+      // If THIS widget is loading, show skeleton instead of "no data"
+      if (isThisWidgetLoading) {
         return <WidgetContentSkeleton variant="chart" />;
       }
       return (
@@ -2643,7 +2659,7 @@ const Dashboard = ({ initialDashboardId }) => {
     // Check if table has many columns (> 6) to span full width
     const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'id' && !k.startsWith('_')) : [];
     const isWideTable = currentViewMode === 'table' && keys.length > 6;
-    const allowWideTableFullWidth = isWideTable && totalWidgets > 2;
+    const allowWideTableFullWidth = isWideTable;
     const shouldForceFullWidth = totalWidgets <= 1;
     const isLastOddCard = totalWidgets > 1 && totalWidgets % 2 === 1 && index === totalWidgets - 1;
     const shouldSpanFull = isFullWidth || allowWideTableFullWidth || shouldForceFullWidth || isLastOddCard;
@@ -3025,13 +3041,6 @@ const Dashboard = ({ initialDashboardId }) => {
         overflowX: 'hidden',
         overflowY: 'auto',                 
         height: '100vh',
-        // Hide scrollbar but keep scroll functionality
-        '&::-webkit-scrollbar': {
-          width: 0,
-          background: 'transparent',
-        },
-        scrollbarWidth: 'none', // Firefox
-        msOverflowStyle: 'none', // IE/Edge
       }}>
         {/* Dashboard Selector Tabs */}
         <DashboardSelector />

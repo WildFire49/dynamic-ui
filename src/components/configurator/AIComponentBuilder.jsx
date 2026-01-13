@@ -544,20 +544,6 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
           flex: 1,
           overflowY: "auto",
           p: 2,
-          "&::-webkit-scrollbar": {
-            width: "8px",
-          },
-          "&::-webkit-scrollbar-track": {
-            bgcolor: alpha("#000", 0.05),
-            borderRadius: "4px",
-          },
-          "&::-webkit-scrollbar-thumb": {
-            bgcolor: alpha("#000", 0.2),
-            borderRadius: "4px",
-            "&:hover": {
-              bgcolor: alpha("#000", 0.3),
-            },
-          },
         }}
       >
         {messages.map((message) => (

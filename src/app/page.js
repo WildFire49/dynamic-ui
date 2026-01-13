@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { flushSync } from "react-dom";
 import React, {
   useCallback,
   useEffect,
@@ -43,7 +44,7 @@ import { keyframes } from "@emotion/react";
 
 // Critical components - load immediately
 import Sidebar from "../components/Sidebar";
-import { StellarThinking } from "../components/mui/ChatMessage";
+import StellarThinking from "../components/mui/StellarThinking";
 import ChatSkeleton from "../components/mui/ChatSkeleton";
 import InputWithRecording from "../components/mui/InputWithRecording";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
@@ -223,6 +224,9 @@ export default function HomePage() {
   const taskPollingRef = useRef(null);
   const [pdfPopupOpen, setPdfPopupOpen] = useState(false);
   const [pdfPopupData, setPdfPopupData] = useState(null);
+  const [thinkingStage, setThinkingStage] = useState(null);
+  const [thinkingMessage, setThinkingMessage] = useState(null);
+  const [thinkingCounter, setThinkingCounter] = useState(0);
 
   // Access control state
   const [isAccessDenied, setIsAccessDenied] = useState(false);
@@ -355,8 +359,14 @@ export default function HomePage() {
 
   const handleApiResponse = useCallback(
     (data) => {
-      console.log("API Response:", data);
-      setIsTyping(false);
+      console.log("API Response Arrival:", data);
+      
+      // Force clear typing and thinking states synchronously
+      flushSync(() => {
+        setIsTyping(false);
+        setThinkingStage(null);
+        setThinkingMessage(null);
+      });
 
       if (data.conversation_id) {
         setConversationId(data.conversation_id);
@@ -415,17 +425,29 @@ export default function HomePage() {
         const hasMultipleRecords = rowCount > 1;
 
         botMessage = {
-          type: "data_analysis",
+          type: "data_query_result",
           content: {
-            response: data.response,
-            showGraphOptions: hasMultipleRecords, // Only show graph options if more than 1 record
-            // Include document_key from response or from selected document for Excel-based queries
+            ...data.response.content,
+            showGraphOptions: hasMultipleRecords,
             document_key:
               data.response?.content?.document_key ||
               data.response?.document_key ||
               (dataSourceMode === "excel" && selectedDocument
                 ? selectedDocument.document_key
                 : null),
+          },
+          response: {
+            ...data.response,
+            content: {
+              ...data.response.content,
+              showGraphOptions: hasMultipleRecords,
+              document_key:
+                data.response?.content?.document_key ||
+                data.response?.document_key ||
+                (dataSourceMode === "excel" && selectedDocument
+                  ? selectedDocument.document_key
+                  : null),
+            },
           },
           conversation_id: data.conversation_id,
           isBot: true,
@@ -781,7 +803,14 @@ export default function HomePage() {
         return;
       }
 
-      setIsTyping(true);
+      // Set initial thinking state - all three must be truthy for StellarThinking to render
+      // Use flushSync to ensure synchronous update before starting the stream
+      flushSync(() => {
+        setIsTyping(true);
+        setThinkingStage('initializing');
+        setThinkingMessage('Connecting with the Agent...');
+        setThinkingCounter(prev => prev + 1);
+      });
       try {
         const requestBody = { ...body };
         if (conversationId) {
@@ -831,7 +860,7 @@ export default function HomePage() {
           setConfiguratorCallTime(Date.now());
         }
 
-        const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
+        const response = await fetch(`${CHAT_ENDPOINT}`, {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify(requestBody),
@@ -841,8 +870,140 @@ export default function HomePage() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
-        console.log("Chat API Response:", data);
+        // Handle SSE streaming response
+        console.log("🌊 [SSE] Starting to read stream...");
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalData = null;
+
+        // SSE state variables
+        let currentEventType = "";
+        let currentDataStr = "";
+        console.log("🌊 [SSE] Stream reader initialized");
+
+        // Helper to update thinking state and wait for React to render
+        const updateThinkingState = async (stage, msg) => {
+          // SAFETY: Ensure stage and message are always strings
+          const safeStage = typeof stage === 'string' ? stage : String(stage || 'processing');
+          const safeMsg = typeof msg === 'string' ? msg : String(msg || 'Processing...');
+          
+          // Timestamp logging for debugging
+          const now = new Date();
+          const timestamp = `${now.toLocaleTimeString()}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+          console.log(`[SSE ${timestamp}] 🔄 UI Update: stage="${safeStage}", msg="${safeMsg}"`);
+          
+          // Update all states together
+          setThinkingStage(safeStage);
+          setThinkingMessage(safeMsg);
+          setThinkingCounter(prev => prev + 1);
+          
+          // Minimal delay - just yield to allow React to batch and render
+          await new Promise(resolve => requestAnimationFrame(resolve));
+        };
+
+        // Process a complete SSE event
+        const processSSEEvent = async (eventType, dataStr) => {
+          if (!eventType || !dataStr) return;
+          
+          try {
+            const parsed = JSON.parse(dataStr);
+
+            switch (eventType) {
+              case "connected":
+                console.log(`[SSE] ✅ Connected: ${parsed.message}`);
+                await updateThinkingState('connected', parsed.message || "Connection established...");
+                break;
+                
+              case "progress":
+                const stage = parsed.stage || 'processing';
+                const msg = parsed.message || 'Processing your request...';
+                console.log(`[SSE] 📊 Progress: ${stage} - ${msg}`);
+                await updateThinkingState(stage, msg);
+                break;
+                
+              case "result":
+                console.log("[SSE] 📦 Result received");
+                finalData = parsed;
+                break;
+                
+              case "complete":
+                console.log("[SSE] ✓ Complete:", parsed.message);
+                break;
+                
+              case "error":
+                console.error("[SSE] ❌ Error:", parsed.error);
+                // SAFETY: Ensure error message is always a string
+                const errorMsg = typeof parsed.error === 'string' ? parsed.error :
+                                (typeof parsed.error === 'object' ? JSON.stringify(parsed.error) : 'Unknown error');
+                throw new Error(errorMsg);
+                
+              default:
+                console.log(`[SSE] Unknown event type: ${eventType}`);
+            }
+          } catch (e) {
+            if (eventType === "error") throw e;
+            console.error(`[SSE] Parse error for "${eventType}":`, e.message);
+          }
+        };
+
+        try {
+          // Read the stream
+          let chunkCount = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+              console.log(`🌊 [SSE] Stream done, processed ${chunkCount} chunks`);
+              // Process any remaining buffered event
+              if (currentEventType && currentDataStr) {
+                await processSSEEvent(currentEventType, currentDataStr);
+              }
+              break;
+            }
+
+            chunkCount++;
+            // Decode the chunk and add to buffer
+            buffer += decoder.decode(value, { stream: true });
+            console.log(`🌊 [SSE] Chunk ${chunkCount} received, buffer size: ${buffer.length}`);
+            
+            // Split into lines and process
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ""; // Keep incomplete line in buffer
+            
+            for (const rawLine of lines) {
+              const line = rawLine.trim();
+              
+              if (line === '') {
+                // Empty line = end of current event, process it
+                if (currentEventType && currentDataStr) {
+                  await processSSEEvent(currentEventType, currentDataStr);
+                  currentEventType = "";
+                  currentDataStr = "";
+                }
+              } else if (line.startsWith('event:')) {
+                // New event starting - process previous first
+                if (currentEventType && currentDataStr) {
+                  await processSSEEvent(currentEventType, currentDataStr);
+                }
+                currentEventType = line.substring(6).trim();
+                currentDataStr = "";
+              } else if (line.startsWith('data:')) {
+                const dataPart = line.substring(5).trim();
+                currentDataStr = currentDataStr ? currentDataStr + dataPart : dataPart;
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+
+        if (!finalData) {
+          throw new Error("No final response received from streaming API");
+        }
+
+        const data = finalData;
+        console.log("Chat API Response (Streaming):", data);
         handleApiResponse(data);
       } catch (error) {
         console.error("Error calling chat API:", error);
@@ -1277,7 +1438,14 @@ export default function HomePage() {
     async (question) => {
       try {
         setIsAnalyzing(true);
-        setIsTyping(true);
+        // Set initial thinking state - all three must be truthy for StellarThinking to render
+        // Use flushSync to ensure synchronous update before starting the stream
+        flushSync(() => {
+          setIsTyping(true);
+          setThinkingStage('initializing');
+          setThinkingMessage('Connecting to Data Source...');
+          setThinkingCounter(prev => prev + 1);
+        });
 
         // Ensure user_id is never empty - use username (not UUID)
         const userId =
@@ -1328,7 +1496,7 @@ export default function HomePage() {
 
         console.log("📤 Sending payload:", requestPayload);
 
-        const response = await fetch(`${API_BASE_URL}/chat`, {
+        const response = await fetch(`${CHAT_ENDPOINT}`, {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify(requestPayload),
@@ -1340,7 +1508,138 @@ export default function HomePage() {
           throw new Error(`Chat API error: ${response.status} - ${errorText}`);
         }
 
-        const analysisResult = await response.json();
+        // Handle SSE streaming response (same as callChatApi)
+        console.log("🌊 [SSE Analysis] Starting to read stream...");
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalData = null;
+
+        // SSE state variables
+        let currentEventType = "";
+        let currentDataStr = "";
+
+        // Helper to update thinking state and wait for React to render
+        const updateThinkingState = async (stage, msg) => {
+          // SAFETY: Ensure stage and message are always strings
+          const safeStage = typeof stage === 'string' ? stage : String(stage || 'processing');
+          const safeMsg = typeof msg === 'string' ? msg : String(msg || 'Processing...');
+          
+          // Timestamp logging for debugging
+          const now = new Date();
+          const timestamp = `${now.toLocaleTimeString()}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+          console.log(`[SSE Analysis ${timestamp}] 🔄 UI Update: stage="${safeStage}", msg="${safeMsg}"`);
+          
+          // Update all states together
+          setThinkingStage(safeStage);
+          setThinkingMessage(safeMsg);
+          setThinkingCounter(prev => prev + 1);
+          
+          // Minimal delay - just yield to allow React to batch and render
+          await new Promise(resolve => requestAnimationFrame(resolve));
+        };
+
+        // Process a complete SSE event
+        const processSSEEvent = async (eventType, dataStr) => {
+          if (!eventType || !dataStr) return;
+          
+          try {
+            const parsed = JSON.parse(dataStr);
+
+            switch (eventType) {
+              case "connected":
+                console.log(`[SSE Analysis] ✅ Connected: ${parsed.message}`);
+                await updateThinkingState('connected', parsed.message || "Connection established...");
+                break;
+                
+              case "progress":
+                const stage = parsed.stage || 'processing';
+                const msg = parsed.message || 'Processing your request...';
+                console.log(`[SSE Analysis] 📊 Progress: ${stage} - ${msg}`);
+                await updateThinkingState(stage, msg);
+                break;
+                
+              case "result":
+                console.log("[SSE Analysis] 📦 Result received");
+                finalData = parsed;
+                break;
+                
+              case "complete":
+                console.log("[SSE Analysis] ✓ Complete:", parsed.message);
+                break;
+                
+              case "error":
+                console.error("[SSE Analysis] ❌ Error:", parsed.error);
+                // SAFETY: Ensure error message is always a string
+                const errorMsgAnalysis = typeof parsed.error === 'string' ? parsed.error :
+                                (typeof parsed.error === 'object' ? JSON.stringify(parsed.error) : 'Unknown error');
+                throw new Error(errorMsgAnalysis);
+                
+              default:
+                console.log(`[SSE Analysis] Unknown event type: ${eventType}`);
+            }
+          } catch (e) {
+            if (eventType === "error") throw e;
+            console.error(`[SSE Analysis] Parse error for "${eventType}":`, e.message);
+          }
+        };
+
+        try {
+          // Read the stream
+          let chunkCount = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+              console.log(`🌊 [SSE Analysis] Stream done, processed ${chunkCount} chunks`);
+              // Process any remaining buffered event
+              if (currentEventType && currentDataStr) {
+                await processSSEEvent(currentEventType, currentDataStr);
+              }
+              break;
+            }
+
+            chunkCount++;
+            // Decode the chunk and add to buffer
+            buffer += decoder.decode(value, { stream: true });
+            console.log(`🌊 [SSE Analysis] Chunk ${chunkCount} received, buffer size: ${buffer.length}`);
+            
+            // Split into lines and process
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ""; // Keep incomplete line in buffer
+            
+            for (const rawLine of lines) {
+              const line = rawLine.trim();
+              
+              if (line === '') {
+                // Empty line = end of current event, process it
+                if (currentEventType && currentDataStr) {
+                  await processSSEEvent(currentEventType, currentDataStr);
+                  currentEventType = "";
+                  currentDataStr = "";
+                }
+              } else if (line.startsWith('event:')) {
+                // New event starting - process previous first
+                if (currentEventType && currentDataStr) {
+                  await processSSEEvent(currentEventType, currentDataStr);
+                }
+                currentEventType = line.substring(6).trim();
+                currentDataStr = "";
+              } else if (line.startsWith('data:')) {
+                const dataPart = line.substring(5).trim();
+                currentDataStr = currentDataStr ? currentDataStr + dataPart : dataPart;
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+
+        if (!finalData) {
+          throw new Error("No final response received from streaming API");
+        }
+
+        const analysisResult = finalData;
 
         // Extract and store conversation_id if present
         if (analysisResult.conversation_id) {
@@ -2217,17 +2516,20 @@ export default function HomePage() {
                 />
               ))
             )}
-            {isTyping && (
+            {isTyping && thinkingStage && thinkingMessage && (
               <Box
                 sx={{
                   display: "flex",
                   justifyContent: "flex-start",
                   mb: 2,
-                  width: "100%",
                   px: { xs: 0.5, sm: 1, md: 1 }, // Match new native chat padding
                 }}
               >
-                <StellarThinking />
+                <StellarThinking
+                  key={`thinking-${thinkingCounter}`}
+                  stage={thinkingStage}
+                  message={thinkingMessage}
+                />
               </Box>
             )}
           </Box>

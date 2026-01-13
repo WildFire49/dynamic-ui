@@ -262,8 +262,6 @@ const PieChartComponent = ({
                   borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
                   maxHeight: '150px', // Limit height
                   overflowY: 'auto', // Enable scrolling
-                  '&::-webkit-scrollbar': { width: '4px' },
-                  '&::-webkit-scrollbar-thumb': { backgroundColor: '#e0e0e0', borderRadius: '4px' }
                 }}>
                   <Box sx={{ 
                     display: 'grid',

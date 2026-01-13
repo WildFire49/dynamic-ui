@@ -445,16 +445,9 @@ const DataGridComponent = ({
               fontSize: '0.8125rem',
               color: '#64748B',
             },
-            '& .MuiDataGrid-virtualScroller': {
-              minHeight: 180,
-              // Subtle scrollbar
-              '&::-webkit-scrollbar': { width: 6, height: 6 },
-              '&::-webkit-scrollbar-track': { background: 'transparent' },
-              '&::-webkit-scrollbar-thumb': { background: '#E2E8F0', borderRadius: 3 },
-              '&::-webkit-scrollbar-thumb:hover': { background: '#CBD5E1' },
-              scrollbarWidth: 'thin',
-              scrollbarColor: '#E2E8F0 transparent',
-            },
+              '& .MuiDataGrid-virtualScroller': {
+                minHeight: 180,
+              },
           }}
         />
       </Box>

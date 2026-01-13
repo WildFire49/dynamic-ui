@@ -161,42 +161,54 @@ const SQLQueryGenerator = React.memo(() => {
   const highlightSQL = (sql) => {
     if (!sql) return "";
 
+    // Safety check: If SQL is too large (>100KB), return plain text to avoid RangeError
+    const MAX_SQL_LENGTH = 100000; // 100KB
+    if (sql.length > MAX_SQL_LENGTH) {
+      console.warn(`SQL query too large (${sql.length} chars), skipping syntax highlighting`);
+      return sql; // Return plain text without highlighting
+    }
+
     let highlightedSQL = sql;
 
-    // First, protect strings from keyword replacement
-    const stringPlaceholders = [];
-    highlightedSQL = highlightedSQL.replace(/'([^']*)'/g, (match) => {
-      stringPlaceholders.push(match);
-      return `__STRING_${stringPlaceholders.length - 1}__`;
-    });
+    try {
+      // First, protect strings from keyword replacement
+      const stringPlaceholders = [];
+      highlightedSQL = highlightedSQL.replace(/'([^']*)'/g, (match) => {
+        stringPlaceholders.push(match);
+        return `__STRING_${stringPlaceholders.length - 1}__`;
+      });
 
-    // Highlight keywords (from longest to shortest to avoid partial matches)
-    const sortedKeywords = [...SQL_KEYWORDS].sort(
-      (a, b) => b.length - a.length
-    );
-    sortedKeywords.forEach((keyword) => {
-      const regex = new RegExp(`\\b${keyword}\\b`, "gi");
-      highlightedSQL = highlightedSQL.replace(
-        regex,
-        `<span class="sql-keyword">${keyword.toUpperCase()}</span>`
+      // Highlight keywords (from longest to shortest to avoid partial matches)
+      const sortedKeywords = [...SQL_KEYWORDS].sort(
+        (a, b) => b.length - a.length
       );
-    });
+      sortedKeywords.forEach((keyword) => {
+        const regex = new RegExp(`\\b${keyword}\\b`, "gi");
+        highlightedSQL = highlightedSQL.replace(
+          regex,
+          `<span class="sql-keyword">${keyword.toUpperCase()}</span>`
+        );
+      });
 
-    // Restore strings and highlight them
-    stringPlaceholders.forEach((str, index) => {
+      // Restore strings and highlight them
+      stringPlaceholders.forEach((str, index) => {
+        highlightedSQL = highlightedSQL.replace(
+          `__STRING_${index}__`,
+          `<span class="sql-string">${str}</span>`
+        );
+      });
+
+      // Highlight numbers
       highlightedSQL = highlightedSQL.replace(
-        `__STRING_${index}__`,
-        `<span class="sql-string">${str}</span>`
+        /\b\d+(\.\d+)?\b/g,
+        '<span class="sql-number">$&</span>'
       );
-    });
 
-    // Highlight numbers
-    highlightedSQL = highlightedSQL.replace(
-      /\b\d+(\.\d+)?\b/g,
-      '<span class="sql-number">$&</span>'
-    );
-
-    return highlightedSQL;
+      return highlightedSQL;
+    } catch (error) {
+      console.error('Error highlighting SQL:', error);
+      return sql; // Return plain text if highlighting fails
+    }
   };
 
   // Load saved connections

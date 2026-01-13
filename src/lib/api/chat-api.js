@@ -7,16 +7,105 @@ import { API_BASE_URL, CHAT_ENDPOINT } from "@/lib/config";
  * @returns {Object} Headers object with authorization
  */
 const getAuthHeaders = () => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   const headers = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
-  
+
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
-  
+
   return headers;
+};
+
+/**
+ * Handle SSE streaming response
+ * @param {Response} response - Fetch response object
+ * @param {string} context - Context for logging
+ * @returns {Promise<Object>} Final parsed data
+ */
+const handleSSEResponse = async (response, context = "SSE Event") => {
+  // Handle SSE streaming response
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalData = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Split by double newline (SSE message separator)
+      const messages = buffer.split("\n\n");
+      buffer = messages.pop() || "";
+
+      for (const message of messages) {
+        if (!message.trim()) continue;
+
+        const lines = message.split("\n");
+        let eventType = "";
+        let dataStr = "";
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            eventType = line.substring(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataStr = line.substring(5).trim();
+          }
+        }
+
+        if (eventType && dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            console.log(`${context} (${eventType}):`, parsed);
+
+            // Handle different event types
+            if (eventType === "progress") {
+              console.log("Progress:", parsed.message);
+              continue;
+            }
+
+            if (eventType === "connected") {
+              console.log("Connected:", parsed.message);
+              continue;
+            }
+
+            if (eventType === "complete") {
+              console.log("Stream complete");
+              continue;
+            }
+
+            if (eventType === "error") {
+              throw new Error(parsed.error || "Unknown error");
+            }
+
+            // Store final response from 'result' event
+            if (eventType === "result") {
+              finalData = parsed;
+            }
+          } catch (e) {
+            console.error("Failed to parse SSE data:", dataStr, e);
+            if (eventType === "error") {
+              throw e;
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!finalData) {
+    throw new Error("No final response received from streaming API");
+  }
+
+  return finalData;
 };
 
 /**
@@ -47,7 +136,7 @@ class ChatApiService {
 
       console.log("Starting new conversation:", requestBody);
 
-      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
+      const response = await fetch(`${CHAT_ENDPOINT}`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(requestBody),
@@ -57,7 +146,10 @@ class ChatApiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await handleSSEResponse(
+        response,
+        "SSE Event (startNewConversation)"
+      );
 
       // Store conversation and session data for future requests
       if (data.conversation_id) {
@@ -108,7 +200,7 @@ class ChatApiService {
 
       console.log("Continuing conversation:", requestBody);
 
-      const response = await fetch(`${API_BASE_URL}${CHAT_ENDPOINT}`, {
+      const response = await fetch(`${CHAT_ENDPOINT}`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(requestBody),
@@ -118,7 +210,10 @@ class ChatApiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await handleSSEResponse(
+        response,
+        "SSE Event (continueConversation)"
+      );
 
       // Update session data if provided
       if (data.response?.session_data?.session_id) {
@@ -265,5 +360,3 @@ export const setUserId = (userId) => {
 
 // Export the service instance for advanced usage
 export { chatApiService };
-
-export default chatApiService;

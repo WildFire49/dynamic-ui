@@ -51,6 +51,8 @@ const UserMenu = () => {
   const handleLogout = async () => {
     handleClose();
     await logout();
+    // Redirect to home page after logout
+    router.push('/');
   };
 
   if (!user) return null;

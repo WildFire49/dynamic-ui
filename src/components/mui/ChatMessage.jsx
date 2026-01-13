@@ -180,86 +180,20 @@ const styles = {
   },
 };
 
-// Stellar Thinking Animation Component
-export const StellarThinking = () => (
-  <Box 
-    sx={{ 
-      display: "flex", 
-      gap: 1.5, 
-      alignItems: "center", 
-      px: { xs: 1, sm: 2 },
-      py: 1,
-    }}
-  >
-    {/* Avatar - Simple circular */}
-    <Box
-      sx={{
-        width: 40,
-        height: 40,
-        borderRadius: "50%",
-        overflow: "hidden",
-        flexShrink: 0,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-      }}
-    >
-      <img 
-        src="/ai-chatbot.png" 
-        alt="AI" 
-        style={{ 
-          width: "100%", 
-          height: "100%", 
-          objectFit: "cover",
-        }} 
-      />
-    </Box>
-
-    {/* Thinking Bubble - Simple pill shape */}
-    <Box
-      sx={{
-        px: 2,
-        py: 1.25,
-        backgroundColor: "#fff",
-        borderRadius: "18px",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-        border: "1px solid #E5E7EB",
-        display: "flex",
-        alignItems: "center",
-        gap: 0.75,
-      }}
-    >
-      {/* Animated dots */}
-      {[0, 1, 2].map((i) => (
-        <Box
-          key={i}
-          sx={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: "linear-gradient(135deg, #3B82F6, #1D4ED8)",
-            animation: "dotBounce 1.4s infinite ease-in-out both",
-            animationDelay: `${i * 0.16}s`,
-          }}
-        />
-      ))}
-      <style>
-        {`
-          @keyframes dotBounce {
-            0%, 80%, 100% { 
-              transform: scale(0.7); 
-              opacity: 0.4; 
-            }
-            40% { 
-              transform: scale(1); 
-              opacity: 1; 
-            }
-          }
-        `}
-      </style>
-    </Box>
-  </Box>
-);
-
 const ChatMessage = ({ message, index, onAction }) => {
+  // Safety guard
+  if (!message) return null;
+
+  // Normalized helpers (avoid undefined access)
+  const safeContent = message?.content || {};
+  const safeResponse = message?.response || {};
+  const safeType =
+    message?.type ||
+    safeContent?.type ||
+    safeResponse?.type ||
+    safeContent?.response?.type ||
+    "text";
+
   // Handle saving analysis to dashboard
   const handleSaveAnalysis = (analysisData) => {
     try {
@@ -278,22 +212,26 @@ const ChatMessage = ({ message, index, onAction }) => {
       // Silent error handling
     }
   };
-  const isUser = message.type === "user" && !message.isBot;
+  const isUser = safeType === "user" && !message?.isBot;
   const isBot =
-    message.isBot || message.type === "schema" || message.type === "table";
-  const isError = message.isError;
+    message?.isBot ||
+    safeType === "schema" ||
+    safeType === "table" ||
+    safeType === "system" ||
+    safeType === "data_query_result";
+  const isError = message?.isError || safeType === "error";
 
   // Use a stable key based on message content and index to prevent bouncing
   const generateMessageKey = () => {
-    if (message.type === "schema") {
-      return `schema-${message.content.id}-${index}`;
+    if (safeType === "schema" && safeContent.id) {
+      return `schema-${safeContent.id}-${index}`;
     }
-    if (message.type === "table") {
-      return `table-${index}-${message.content.data?.length || 0}`;
+    if (safeType === "table") {
+      return `table-${index}-${safeContent.data?.length || 0}`;
     }
 
     // For API responses with supporting_data, include question/data hash for uniqueness
-    const apiResponse = message.content?.response || message.content;
+    const apiResponse = safeContent.response || safeContent || {};
     const analysisResult = apiResponse?.analysis_result || apiResponse;
 
     if (
@@ -321,7 +259,10 @@ const ChatMessage = ({ message, index, onAction }) => {
 
     // Check for query_error type - Failed queries
     if (message.type === "query_error") {
-      const errorContent = message.content?.error || "An error occurred";
+      // SAFETY: Ensure error content is always a string (prevents React Error #31)
+      const rawError = message.content?.error || "An error occurred";
+      const errorContent = typeof rawError === 'string' ? rawError : 
+                          (typeof rawError === 'object' ? JSON.stringify(rawError, null, 2) : String(rawError));
       return (
         <Box sx={styles.dynamicDataContainer}>
           <Card
@@ -483,20 +424,23 @@ const ChatMessage = ({ message, index, onAction }) => {
     // Handle multiple possible structures:
     // 1. message.response.type === "data_query_result"
     // 2. message.content.response.type === "data_query_result"
-    const isDataQueryResult = 
-      message.response?.type === "data_query_result" || 
-      message.content?.response?.type === "data_query_result";
+    // 3. safeType === "data_query_result"
+    const isDataQueryResult =
+      safeType === "data_query_result" ||
+      safeResponse?.type === "data_query_result" ||
+      safeContent?.response?.type === "data_query_result";
     
     if (isDataQueryResult) {
-      const queryResult = message.response?.content || message.content?.response?.content;
-      const showGraphOptions = message.content?.showGraphOptions !== false; // Default to true unless explicitly false
+      const queryResult = safeResponse?.content || safeContent?.response?.content || safeContent;
+      const showGraphOptions = safeContent?.showGraphOptions !== false; // Default to true unless explicitly false
       
       console.log("✅ MATCH: Rendering data_query_result", queryResult);
       console.log("📊 Message structure:", {
-        hasResponse: !!message.response,
-        responseType: message.response?.type,
-        hasContentResponse: !!message.content?.response,
-        contentResponseType: message.content?.response?.type,
+        safeType,
+        hasResponse: !!safeResponse,
+        responseType: safeResponse?.type,
+        hasContentResponse: !!safeContent?.response,
+        contentResponseType: safeContent?.response?.type,
         queryResult: queryResult,
         showGraphOptions: showGraphOptions
       });
@@ -504,24 +448,24 @@ const ChatMessage = ({ message, index, onAction }) => {
       if (queryResult?.results && Array.isArray(queryResult.results) && queryResult.results.length > 0) {
         console.log("✅ Rendering DynamicDataVisualization with results:", queryResult.results);
         return (
-          <Box sx={styles.dynamicDataContainer}>
+          <Box sx={{ ...styles.dynamicDataContainer, minHeight: '100px' }}>
             <DynamicDataVisualization
               analysisResult={{
                 analysis_result: {
                   supporting_data: queryResult.results,
                   // Include SQL query for dashboard widget refresh
-                  generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
+                  generated_sql: queryResult.generated_sql || safeContent?.generated_sql || '',
                   // Include document key for Excel-based queries
-                  document_key: queryResult.document_key || message.content?.document_key || null,
+                  document_key: queryResult.document_key || safeContent?.document_key || null,
                 },
-                question: queryResult.natural_language_query || message.content?.natural_language_query || '',
-                natural_language_query: queryResult.natural_language_query || message.content?.natural_language_query || '',
+                question: queryResult.natural_language_query || safeContent?.natural_language_query || '',
+                natural_language_query: queryResult.natural_language_query || safeContent?.natural_language_query || '',
                 // Include SQL at top level too for easier access
-                generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
+                generated_sql: queryResult.generated_sql || safeContent?.generated_sql || '',
                 // Include document key at top level for easier access
-                document_key: queryResult.document_key || message.content?.document_key || null,
+                document_key: queryResult.document_key || safeContent?.document_key || null,
                 content: {
-                  generated_sql: queryResult.generated_sql || message.content?.generated_sql || '',
+                  generated_sql: queryResult.generated_sql || safeContent?.generated_sql || '',
                 },
               }}
               loading={false}
@@ -540,6 +484,14 @@ const ChatMessage = ({ message, index, onAction }) => {
           isArray: Array.isArray(queryResult?.results),
           length: queryResult?.results?.length
         });
+        // Fallback to visible text rendering if no results
+        return (
+          <Card sx={{ p: 2, bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}>
+            <Typography variant="body2" sx={{ color: "#64748b", fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+              {typeof queryResult === 'string' ? queryResult : JSON.stringify(queryResult, null, 2)}
+            </Typography>
+          </Card>
+        );
       }
     }
 
@@ -1306,6 +1258,7 @@ const ChatMessage = ({ message, index, onAction }) => {
 
   // Check if this is a data query result or dynamic data visualization
   const isDataQueryResult = 
+    safeType === "data_query_result" ||
     message.response?.type === "data_query_result" || 
     message.content?.response?.type === "data_query_result" ||
     message.type === "dynamic_data";
