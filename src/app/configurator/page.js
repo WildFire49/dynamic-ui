@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Box,
   Typography,
@@ -310,6 +310,8 @@ const spinKeyframes = `
 
 export default function ConfiguratorPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const prevPathnameRef = useRef(pathname);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [brainDialog, setBrainDialog] = useState(false);
@@ -336,6 +338,37 @@ export default function ConfiguratorPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Detect pathname changes to reset navigation state
+  useEffect(() => {
+    // If pathname changed and we're navigating, the navigation completed
+    if (pathname !== prevPathnameRef.current && isNavigating) {
+      console.log('✅ Navigation completed, resetting loader');
+      setIsNavigating(false);
+      setNavigationMessage("");
+    }
+    prevPathnameRef.current = pathname;
+  }, [pathname, isNavigating]);
+
+  // Reset navigation state when component unmounts or as a safety timeout
+  useEffect(() => {
+    // Safety timeout: reset navigation state after 3 seconds
+    let timeoutId;
+    if (isNavigating) {
+      console.log('⏱️ Navigation timeout started (3s safety net)');
+      timeoutId = setTimeout(() => {
+        console.log('⚠️ Navigation timeout reached, forcing reset');
+        setIsNavigating(false);
+        setNavigationMessage("");
+      }, 3000); // 3 second timeout as safety net
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isNavigating]);
 
   // Load collections on component mount
   useEffect(() => {
@@ -1021,11 +1054,26 @@ export default function ConfiguratorPage() {
                           onMouseLeave={() => setHoveredOption(null)}
                           onClick={() => {
                             if (option.route) {
+                              console.log(`🚀 Navigating to: ${option.route}`);
                               setIsNavigating(true);
                               setNavigationMessage(
                                 `Loading ${option.title}...`
                               );
-                              router.push(option.route);
+                              
+                              // Use try-catch for navigation
+                              try {
+                                router.push(option.route);
+                              } catch (error) {
+                                console.error('❌ Navigation error:', error);
+                                // Reset navigation state on error
+                                setIsNavigating(false);
+                                setNavigationMessage("");
+                                setSnackbar({
+                                  open: true,
+                                  message: "Navigation failed. Please try again.",
+                                  severity: "error",
+                                });
+                              }
                             } else {
                               // For knowledge upload, show agent selection
                               setUploadDialogOpen(true);

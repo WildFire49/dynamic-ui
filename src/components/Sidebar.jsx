@@ -25,7 +25,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import authService from "../services/authService";
 import apiClient from "../services/apiClient";
@@ -102,6 +102,8 @@ const Sidebar = ({
 }) => {
   const theme = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
+  const prevPathnameRef = useRef(pathname);
   const { user, getUserRoles, hasRole, isSuperAdmin, isRegularUser } =
     useAuth();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -178,6 +180,36 @@ const Sidebar = ({
       return "—";
     }
   };
+
+  // Detect pathname changes to reset navigation state
+  useEffect(() => {
+    // If pathname changed and we're navigating, the navigation completed
+    if (pathname !== prevPathnameRef.current && isNavigating) {
+      console.log('✅ [Sidebar] Navigation completed, resetting loader');
+      setIsNavigating(false);
+      setNavigationMessage("");
+    }
+    prevPathnameRef.current = pathname;
+  }, [pathname, isNavigating]);
+
+  // Safety timeout: reset navigation state after 3 seconds
+  useEffect(() => {
+    let timeoutId;
+    if (isNavigating) {
+      console.log('⏱️ [Sidebar] Navigation timeout started (3s safety net)');
+      timeoutId = setTimeout(() => {
+        console.log('⚠️ [Sidebar] Navigation timeout reached, forcing reset');
+        setIsNavigating(false);
+        setNavigationMessage("");
+      }, 3000); // 3 second timeout as safety net
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isNavigating]);
 
   // Load analyses from Zustand store for active dashboard
   const PAGE_SIZE = 10;
@@ -330,49 +362,42 @@ const Sidebar = ({
   }, [mode]);
 
   const handleMenuClick = (item) => {
-    // Handle navigation for specific items
-    if (item.id === "dashboard") {
-      // Navigate to dashboard page
+    // Map of item IDs to their routes
+    const routeMap = {
+      dashboard: "/dashboard",
+      chat: "/",
+      configurator: "/configurator",
+      leads: "/leads",
+      productConfigurator: "/product-configurator",
+      creConfigurator: "/configurator/cre",
+      accessControl: "/access-control",
+    };
+
+    const targetRoute = routeMap[item.id];
+    
+    // If this item has a route, check if we're already there
+    if (targetRoute) {
+      // Check if we're already on this route
+      if (pathname === targetRoute) {
+        console.log(`ℹ️ [Sidebar] Already on ${targetRoute}, skipping navigation`);
+        return; // Don't navigate if already on the same page
+      }
+
+      // Navigate to the target route
+      console.log(`🚀 [Sidebar] Navigating to: ${targetRoute}`);
       setIsNavigating(true);
-      setNavigationMessage("Loading Dashboard...");
-      router.push("/dashboard");
-    } else if (item.id === "chat") {
-      // Navigate to chat page (base route)
-      setIsNavigating(true);
-      setNavigationMessage("Loading Chat...");
-      router.push("/");
-    } else if (item.id === "chat" && mode === "dashboard") {
-      // Navigate to chat page from dashboard
-      setIsNavigating(true);
-      setNavigationMessage("Loading Chat...");
-      router.push("/");
-    } else if (item.id === "configurator") {
-      // Show loader and navigate to configurator
-      setIsNavigating(true);
-      setNavigationMessage("Loading Configurator...");
-      router.push("/configurator");
-    } else if (item.id === "leads") {
-      // Navigate to Internal CPH (leads) page
-      setIsNavigating(true);
-      setNavigationMessage("Loading Internal CPH...");
-      router.push("/leads");
-    } else if (item.id === "productConfigurator") {
-      // Navigate to Product Configurator page
-      setIsNavigating(true);
-      setNavigationMessage("Loading Product Configurator...");
-      router.push("/product-configurator");
-    } else if (item.id === "creConfigurator") {
-      // Navigate to CRE Configurator page
-      setIsNavigating(true);
-      setNavigationMessage("Loading CRE Configurator...");
-      router.push("/configurator/cre");
-    } else if (item.id === "accessControl") {
-      // Navigate to Access Control page
-      setIsNavigating(true);
-      setNavigationMessage("Loading Access Control...");
-      router.push("/access-control");
+      setNavigationMessage(`Loading ${item.label}...`);
+      
+      try {
+        router.push(targetRoute);
+      } catch (error) {
+        console.error('❌ [Sidebar] Navigation error:', error);
+        // Reset navigation state on error
+        setIsNavigating(false);
+        setNavigationMessage("");
+      }
     } else {
-      // For other items, use the callback
+      // For other items without routes, use the callback
       onTabChange(item.id);
     }
   };
