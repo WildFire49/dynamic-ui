@@ -10,6 +10,7 @@ import {
   DialogActions,
   Button,
   TextField,
+  InputAdornment,
   Tooltip,
   Grid,
   Fade,
@@ -35,7 +36,13 @@ import {
   Skeleton,
   Badge,
   Zoom,
-  Grow
+  Grow,
+  Select,
+  FormControl,
+  InputLabel,
+  OutlinedInput,
+  ListItemText,
+  Checkbox
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -165,6 +172,8 @@ const Dashboard = ({ initialDashboardId }) => {
   const summaryCards = summaryCardsByDashboard?.[activeDashboardId] || [];
   const [fullscreenView, setFullscreenView] = useState({ open: false, item: null });
   const [fullscreenViewMode, setFullscreenViewMode] = useState('table'); // table, bar, pie, area
+  const [fullscreenSearchQuery, setFullscreenSearchQuery] = useState('');
+  const [fullscreenFilters, setFullscreenFilters] = useState({});
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [widgetOrder, setWidgetOrder] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -385,13 +394,13 @@ const Dashboard = ({ initialDashboardId }) => {
       if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)}Cr`;
       if (value >= 100000) return `₹${(value / 100000).toFixed(2)}L`;
       if (value >= 1000) return `₹${(value / 1000).toFixed(1)}K`;
-      return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
     }
     
     // Default formatting for other numbers
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-    return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   };
 
   // Pull-to-refresh handler
@@ -2101,6 +2110,31 @@ const Dashboard = ({ initialDashboardId }) => {
     }));
   };
 
+  // Apply fullscreen filters (search + column filters)
+  const applyFullscreenFilters = (data) => {
+    let filtered = data;
+
+    // Apply search filter
+    if (fullscreenSearchQuery) {
+      filtered = filtered.filter(row => 
+        Object.values(row).some(val => 
+          String(val).toLowerCase().includes(fullscreenSearchQuery.toLowerCase())
+        )
+      );
+    }
+
+    // Apply column filters
+    Object.entries(fullscreenFilters).forEach(([column, selectedValues]) => {
+      if (selectedValues && selectedValues.length > 0) {
+        filtered = filtered.filter(row => 
+          selectedValues.includes(row[column])
+        );
+      }
+    });
+
+    return filtered;
+  };
+
   // Render Area Chart
   const renderAreaChart = (data) => {
     const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
@@ -2394,7 +2428,7 @@ const Dashboard = ({ initialDashboardId }) => {
         }
         // Format with Indian locale (lakhs, crores) - limit to 2 decimals for cleaner display
         return numValue.toLocaleString('en-IN', {
-          minimumFractionDigits: 2,
+          minimumFractionDigits: 0, 
           maximumFractionDigits: 2,
         });
       }
@@ -2469,7 +2503,7 @@ const Dashboard = ({ initialDashboardId }) => {
         }
         // Regular formatting
         return numValue.toLocaleString('en-IN', {
-          minimumFractionDigits: 2,
+          minimumFractionDigits: 0, 
           maximumFractionDigits: 2,
         });
       }
@@ -2567,8 +2601,9 @@ const Dashboard = ({ initialDashboardId }) => {
   const renderTable = (data, isFullscreen = false) => {
     const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
     
-    // For single-row data, show beautiful metric cards
-    if (data.length === 1) {
+    // For single-row data, show beautiful metric cards, UNLESS we are in fullscreen mode
+    // where we want to maintain the table structure for consistency during filtering
+    if (data.length === 1 && !isFullscreen) {
       return renderSingleRecordCard(data);
     }
     
@@ -2587,7 +2622,7 @@ const Dashboard = ({ initialDashboardId }) => {
   };
 
   // Main visualization renderer
-  const renderVisualization = (item, viewMode, isFullscreen = false) => {
+  const renderVisualization = (item, viewMode, isFullscreen = false, customData = null) => {
     // Analysis Widget
     if (item.type === 'analysis_widget') {
       const analysisData = item.data || {
@@ -2606,7 +2641,7 @@ const Dashboard = ({ initialDashboardId }) => {
       );
     }
 
-    const data = getItemData(item);
+    const data = customData || getItemData(item);
     
     // Show skeleton ONLY if THIS specific widget is loading
     const isThisWidgetLoading = loadingWidgets.has(item.id);
@@ -3518,7 +3553,7 @@ const Dashboard = ({ initialDashboardId }) => {
       {/* Fullscreen View */}
       <Dialog 
         open={fullscreenView.open} 
-        onClose={() => { setFullscreenView({ open: false, item: null }); setFullscreenViewMode('table'); }}
+        onClose={() => { setFullscreenView({ open: false, item: null }); setFullscreenViewMode('table'); setFullscreenSearchQuery(''); }}
         maxWidth={false}
         fullScreen
         PaperProps={{
@@ -3667,7 +3702,12 @@ const Dashboard = ({ initialDashboardId }) => {
           </Stack>
           
           <IconButton 
-            onClick={() => { setFullscreenView({ open: false, item: null }); setFullscreenViewMode('table'); }}
+            onClick={() => { 
+              setFullscreenView({ open: false, item: null }); 
+              setFullscreenViewMode('table'); 
+              setFullscreenSearchQuery(''); 
+              setFullscreenFilters({});
+            }}
             sx={{ 
               color: '#fff',
               bgcolor: 'rgba(255,255,255,0.15)',
@@ -3678,10 +3718,297 @@ const Dashboard = ({ initialDashboardId }) => {
             <CloseIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: '#F8FAFC', height: { xs: 'calc(100vh - 120px)', sm: 'calc(100vh - 80px)' }, overflow: 'auto' }}>
+        <DialogContent sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: '#F8FAFC', height: { xs: 'calc(100vh - 120px)', sm: 'calc(100vh - 80px)' }, overflow: 'hidden', display: 'flex', gap: 3 }}>
+          {/* Left Sidebar - Filters (35% width) */}
           <Box sx={{ 
-            height: '100%', 
-            minHeight: 600,
+            width: '35%',
+            minWidth: 320,
+            maxWidth: 450,
+            bgcolor: '#fff', 
+            borderRadius: 4, 
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 12px 30px -10px rgba(0,0,0,0.08)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            background: 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
+          }}>
+            {/* Background Decoration like SummaryCard */}
+            <Box sx={{ 
+              position: 'absolute', 
+              top: -60, 
+              right: -60, 
+              width: 150, 
+              height: 150, 
+              borderRadius: '20%', 
+              background: `radial-gradient(circle, ${alpha('#3B82F6', 0.08)} 0%, transparent 70%)`, 
+              pointerEvents: 'none' 
+            }} />
+
+            {/* Filter Header - Premium Style */}
+            <Box sx={{ 
+              p: 3, 
+              borderBottom: '1px solid #E2E8F0',
+              background: `linear-gradient(135deg, ${alpha('#3B82F6', 0.05)} 0%, ${alpha('#3B82F6', 0.12)} 100%)`,
+              position: 'relative',
+            }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={{ 
+                    p: 1, 
+                    borderRadius: 2, 
+                    bgcolor: '#3B82F6', 
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                  }}>
+                    <FilterListIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 900, fontSize: '1.25rem', color: '#1E293B', letterSpacing: '-0.02em' }}>
+                    Quick Filters
+                  </Typography>
+                </Box>
+                {Object.keys(fullscreenFilters).length > 0 && (
+                  <Button 
+                    size="small" 
+                    variant="contained"
+                    onClick={() => setFullscreenFilters({})}
+                    sx={{ 
+                      textTransform: 'none', 
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      bgcolor: '#EF4444',
+                      borderRadius: 1,
+                      '&:hover': { bgcolor: '#DC2626' },
+                      boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)'
+                    }}
+                  >
+                    Reset All
+                  </Button>
+                )}
+              </Stack>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip 
+                  label={(() => {
+                    if (!fullscreenView.item) return '0 records';
+                    const data = getItemData(fullscreenView.item);
+                    const filtered = applyFullscreenFilters(data);
+                    return `${filtered.length} of ${data.length} records`;
+                  })()}
+                  size="small"
+                  sx={{ 
+                    bgcolor: '#fff', 
+                    color: '#3B82F6', 
+                    fontWeight: 800, 
+                    fontSize: '0.75rem',
+                    border: '1px solid #E2E8F0',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                  }}
+                />
+              </Box>
+            </Box>
+
+            {/* Search Filter - Integrated Look */}
+            <Box sx={{ p: 3, borderBottom: '1px solid #E2E8F0', bgcolor: 'rgba(255,255,255,0.5)' }}>
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Global Search
+              </Typography>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search anything..."
+                value={fullscreenSearchQuery}
+                onChange={(e) => setFullscreenSearchQuery(e.target.value)}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                    bgcolor: '#fff',
+                    transition: 'all 0.2s',
+                    '&:hover': { bgcolor: '#F8FAFC' },
+                    '&.Mui-focused': { boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.1)' }
+                  }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: '#3B82F6', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: fullscreenSearchQuery && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setFullscreenSearchQuery('')}>
+                        <CloseIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Box>
+
+            {/* Dynamic Column Filters - SummaryCard Style */}
+            <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+              {fullscreenView.item && (() => {
+                const data = getItemData(fullscreenView.item);
+                if (data.length === 0) return <Typography variant="body2" color="text.secondary">No data to filter</Typography>;
+                
+                const columns = Object.keys(data[0]).filter(key => key !== 'id' && !key.startsWith('_'));
+                const filterPalette = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+                
+                return (
+                  <Stack spacing={3}>
+                    {columns.map((column, idx) => {
+                      const uniqueValues = [...new Set(data.map(row => row[column]))].filter(v => v !== null && v !== undefined).slice(0, 50);
+                      
+                      // Skip if too many unique values (likely not a good filter candidate)
+                      if (uniqueValues.length > 50 || uniqueValues.length === 0) return null;
+                      
+                      const selectedValues = fullscreenFilters[column] || [];
+                      const itemColor = filterPalette[idx % filterPalette.length];
+                      
+                      return (
+                        <Box key={column}>
+                          <Typography component="div" sx={{ 
+                            fontSize: '0.75rem', 
+                            fontWeight: 800, 
+                            color: itemColor, 
+                            mb: 1, 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '0.05em',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1
+                          }}>
+                            <Box sx={{ width: 6, height: 6, borderRadius: '20%', bgcolor: itemColor }} />
+                            {column.replace(/_/g, ' ')}
+                          </Typography>
+                          <FormControl size="small" fullWidth>
+                            <Select
+                              multiple
+                              displayEmpty
+                              value={selectedValues}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const newValues = typeof value === 'string' ? value.split(',') : value;
+                                
+                                if (newValues.length === 0) {
+                                  const { [column]: _, ...rest } = fullscreenFilters;
+                                  setFullscreenFilters(rest);
+                                } else {
+                                  setFullscreenFilters(prev => ({
+                                    ...prev,
+                                    [column]: newValues
+                                  }));
+                                }
+                              }}
+                              renderValue={(selected) => {
+                                if (selected.length === 0) {
+                                  return <Typography sx={{ color: '#94A3B8', fontSize: '0.875rem' }}>Select values...</Typography>;
+                                }
+                                return (
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {selected.map((value) => (
+                                      <Chip 
+                                        key={value} 
+                                        label={String(value)} 
+                                        size="small" 
+                                        sx={{ 
+                                          height: 24, 
+                                          fontSize: '0.75rem', 
+                                          fontWeight: 700,
+                                          bgcolor: alpha(itemColor, 0.1),
+                                          color: itemColor,
+                                          border: `1px solid ${alpha(itemColor, 0.2)}`,
+                                          '& .MuiChip-deleteIcon': { color: itemColor, fontSize: 14 }
+                                        }}
+                                        onDelete={() => {
+                                          const newValues = selectedValues.filter(v => v !== value);
+                                          if (newValues.length === 0) {
+                                            const { [column]: _, ...rest } = fullscreenFilters;
+                                            setFullscreenFilters(rest);
+                                          } else {
+                                            setFullscreenFilters(prev => ({
+                                              ...prev,
+                                              [column]: newValues
+                                            }));
+                                          }
+                                        }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      />
+                                    ))}
+                                  </Box>
+                                );
+                              }}
+
+                              sx={{
+                                borderRadius: 3,
+                                bgcolor: selectedValues.length > 0 ? alpha(itemColor, 0.02) : '#fff',
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: selectedValues.length > 0 ? alpha(itemColor, 0.3) : '#E2E8F0',
+                                  borderWidth: selectedValues.length > 0 ? 2 : 1,
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: itemColor,
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: itemColor,
+                                }
+                              }}
+                              MenuProps={{
+                                PaperProps: {
+                                  sx: {
+                                    borderRadius: 3,
+                                    mt: 1,
+                                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                                    '& .MuiMenuItem-root': {
+                                      fontSize: '0.875rem',
+                                      py: 1,
+                                      mx: 1,
+                                      borderRadius: 2,
+                                      '&.Mui-selected': {
+                                        bgcolor: alpha(itemColor, 0.1),
+                                        color: itemColor,
+                                        fontWeight: 700,
+                                        '&:hover': { bgcolor: alpha(itemColor, 0.15) }
+                                      }
+                                    }
+                                  },
+                                },
+                              }}
+                            >
+                              {uniqueValues.map((value) => (
+                                <MenuItem key={value} value={value}>
+                                  <Checkbox 
+                                    checked={selectedValues.indexOf(value) > -1} 
+                                    size="small"
+                                    sx={{ 
+                                      py: 0,
+                                      color: alpha(itemColor, 0.3),
+                                      '&.Mui-checked': { color: itemColor }
+                                    }}
+                                  />
+                                  <ListItemText 
+                                    primary={String(value)} 
+                                    primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: selectedValues.indexOf(value) > -1 ? 700 : 500 }}
+                                  />
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                );
+              })()}
+            </Box>
+          </Box>
+
+          {/* Right Content - Data Visualization (65% width) */}
+          <Box sx={{ 
+            flex: 1,
             bgcolor: '#fff', 
             borderRadius: 2, 
             border: '1px solid #E2E8F0',
@@ -3691,11 +4018,16 @@ const Dashboard = ({ initialDashboardId }) => {
             flexDirection: 'column'
           }}>
             <Box sx={{ flex: 1, p: 2, overflow: 'auto' }}>
-              {fullscreenView.item && renderVisualization(
-                fullscreenView.item, 
-                fullscreenViewMode,
-                true
-              )}
+              {fullscreenView.item && (() => {
+                const data = getItemData(fullscreenView.item);
+                const filteredData = applyFullscreenFilters(data);
+                return renderVisualization(
+                  fullscreenView.item, 
+                  fullscreenViewMode,
+                  true,
+                  filteredData
+                );
+              })()}
             </Box>
           </Box>
         </DialogContent>
@@ -3782,7 +4114,7 @@ const Dashboard = ({ initialDashboardId }) => {
             right: 24,
             width: 60,
             height: 60,
-            borderRadius: '50%',
+            borderRadius: '20%',
             bgcolor: '#fff',
             display: 'flex',
             alignItems: 'center',

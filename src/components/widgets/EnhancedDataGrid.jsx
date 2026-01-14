@@ -662,6 +662,7 @@ const EnhancedDataGrid = ({
             <DataGrid
               rows={rows}
               columns={columns}
+              autoHeight={height === 'auto' || !height || rows.length <= 10}
               initialState={{
                 pagination: {
                   paginationModel: { page: 0, pageSize: effectivePageSize }

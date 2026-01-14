@@ -20,7 +20,7 @@ const FinancialCard = ({
     // Convert to Indian numbering system
     const formatter = new Intl.NumberFormat('en-IN', {
       style: 'decimal',
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
       maximumFractionDigits: 2
     });
     

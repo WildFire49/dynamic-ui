@@ -87,7 +87,7 @@ const DisbursementExample = () => {
             </Typography>
             <Typography variant="h6">
               ₹{new Intl.NumberFormat('en-IN', {
-                minimumFractionDigits: 2,
+                minimumFractionDigits: 0,
                 maximumFractionDigits: 2
               }).format(disbursementData.amount)}
             </Typography>

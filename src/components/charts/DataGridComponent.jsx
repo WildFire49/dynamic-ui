@@ -129,10 +129,13 @@ const DataGridComponent = ({
             if (isValidNumber) {
               // Add % symbol for percentage columns
               if (isPercentageColumn) {
-                return `${numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+                return `${numValue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
               }
-              // Format all numbers to exactly 2 decimal places as requested
-              return numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              // Format numbers: only show up to 2 decimal places if they exist
+              return numValue.toLocaleString('en-IN', { 
+                minimumFractionDigits: 0, 
+                maximumFractionDigits: 2 
+              });
             }
             
             // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
@@ -251,10 +254,10 @@ const DataGridComponent = ({
                     if (isValidNumber) {
                         // Add % symbol for percentage columns
                         if (isPercentageColumn) {
-                            return `${numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+                            return `${numValue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
                         }
-                        // Format all numbers to exactly 2 decimal places as requested
-                        return numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        // Format all numbers to up to 2 decimal places as requested
+                        return numValue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
                     }
                     
                     // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
@@ -363,6 +366,7 @@ const DataGridComponent = ({
           rows={rowsWithIds}
           columns={processedColumns}
           getRowId={(row) => row.id}
+          autoHeight={rowsWithIds.length <= 10}
           initialState={{
             pagination: {
               paginationModel: { page: 0, pageSize: useInfiniteScroll ? 100 : 10 },
@@ -539,12 +543,13 @@ const DataGridComponent = ({
         )}
 
         {/* Data Grid */}
-        <Box sx={{ flex: 1, p: { xs: 1, sm: 2, md: 3 } }}>
-          <Box sx={{ height: height, width: '100%' }}>
+        <Box sx={{ flex: 1, p: { xs: 1, sm: 2, md: 3 }, minWidth: 0 }}>
+          <Box sx={{ width: '100%', minHeight: 200 }}>
             <DataGrid
               rows={rowsWithIds}
               columns={processedColumns}
               getRowId={(row) => row.id}
+              autoHeight={true}
               initialState={{
                 pagination: {
                   paginationModel: { page: 0, pageSize: 10 },

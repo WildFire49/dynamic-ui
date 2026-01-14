@@ -36,7 +36,7 @@ const formatIndianCurrency = (value) => {
   } else if (num >= 1000) {
     return `₹${(num / 1000).toFixed(2)}K`;
   }
-  return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 };
 
 /**
@@ -77,7 +77,7 @@ const smartFormat = (value) => {
   }
   
   // Regular number formatting
-  return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 };
 import {
   Box,
@@ -109,12 +109,12 @@ const CXOSingleMetric = ({ data, color, title, icon: Icon }) => {
         justifyContent: 'center',
         height: '100%',
         width: '100%',
-        p: 3,
+        p: { xs: 2, sm: 3 },
         overflow: 'hidden',
         background: `linear-gradient(135deg, ${alpha(color, 0.04)} 0%, ${alpha(color, 0.12)} 100%)`,
         borderRadius: 4,
         border: `1px solid ${alpha(color, 0.15)}`,
-        minHeight: 240,
+        minHeight: { xs: 180, sm: 200, md: 240 },
         boxShadow: `inset 0 0 40px ${alpha(color, 0.05)}`,
       }}
     >
@@ -274,7 +274,7 @@ const CXOMultiMetric = ({ data, color }) => {
             <Box 
               key={idx}
               sx={{
-                p: 3,
+                p: { xs: 2, sm: 2.5, md: 3 },
                 borderRadius: 6,
                 bgcolor: alpha(itemColor, 0.03),
                 border: '1px solid',
@@ -307,12 +307,12 @@ const CXOMultiMetric = ({ data, color }) => {
                 background: `linear-gradient(180deg, ${itemColor} 0%, ${alpha(itemColor, 0.4)} 100%)`,
               }} />
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, ml: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: { xs: 1.5, sm: 2, md: 3 }, ml: 1 }}>
                 <Typography sx={{ 
-                  fontSize: '1rem', 
+                  fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' }, 
                   fontWeight: 900, 
                   color: itemColor, 
-                  textTransform: 'uppercase', 
+                  textTransform: 'capitalize', 
                   letterSpacing: '0.02em',
                   bgcolor: alpha(itemColor, 0.1),
                   px: 2,
@@ -324,7 +324,7 @@ const CXOMultiMetric = ({ data, color }) => {
                 <Box sx={{ flex: 1, height: '2px', bgcolor: alpha(itemColor, 0.1), borderRadius: 1 }} />
               </Box>
               
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, ml: 1 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: { xs: 2, sm: 2.5, md: 3 }, ml: 1 }}>
                 {entity.metrics.map((metric, mIdx) => {
                   const isPrimary = metric.name.toLowerCase().includes('mtd');
                   const numericValue = typeof metric.value === 'number' ? metric.value : parseFloat(String(metric.value).replace(/[^0-9.-]/g, '')) || 0;
@@ -335,7 +335,9 @@ const CXOMultiMetric = ({ data, color }) => {
                         {metric.name.replace('Disbursed Amount', 'Disbursed')}
                       </Typography>
                       <Typography sx={{ 
-                        fontSize: isPrimary ? '1.75rem' : '1.4rem', 
+                        fontSize: isPrimary 
+                          ? { xs: '1.4rem', sm: '1.6rem', md: '1.75rem' } 
+                          : { xs: '1.1rem', sm: '1.25rem', md: '1.4rem' }, 
                         color: isPrimary ? '#0F172A' : '#475569', 
                         fontWeight: 900,
                         lineHeight: 1,
@@ -563,13 +565,13 @@ const URGENCY_CONFIG = {
 
 // Uniform card height for consistent layout - taller for better graph visibility
 const CARD_TYPE_STYLES = {
-  metric: { minHeight: 180 },
-  alert: { minHeight: 180 },
-  comparison: { minHeight: 200 },
-  trend: { minHeight: 180 },
-  table_summary: { minHeight: 200 },
-  insight: { minHeight: 180 },
-  info: { minHeight: 180 },
+  metric: { minHeight: { xs: 140, sm: 160, md: 180 } },
+  alert: { minHeight: { xs: 140, sm: 160, md: 180 } },
+  comparison: { minHeight: { xs: 160, sm: 180, md: 200 } },
+  trend: { minHeight: { xs: 140, sm: 160, md: 180 } },
+  table_summary: { minHeight: { xs: 160, sm: 180, md: 200 } },
+  insight: { minHeight: { xs: 140, sm: 160, md: 180 } },
+  info: { minHeight: { xs: 140, sm: 160, md: 180 } },
 };
 
 // Beautiful gradient colors for charts - Blue theme with red/yellow accents
@@ -899,7 +901,7 @@ const SummaryCard = ({
       onClick={handleClick}
       sx={{
         position: 'relative',
-        p: { xs: 2, sm: 3 }, // Increased padding for breathability
+        p: { xs: 1.5, sm: 2, md: 2.5 }, // More compact but still breathable
         borderRadius: 4,
         bgcolor: '#FFFFFF',
         background: isCXOView 

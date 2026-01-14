@@ -70,7 +70,8 @@ const WeeklyDisbursementDashboard = ({
         formattedAmount: new Intl.NumberFormat('en-IN', {
           style: 'currency',
           currency: 'INR',
-          minimumFractionDigits: 2
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
         }).format(item.total_disbursements)
       };
     });
