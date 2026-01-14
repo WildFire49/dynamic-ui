@@ -1062,7 +1062,7 @@ export default function ConfiguratorPage() {
                               
                               // Use try-catch for navigation
                               try {
-                                router.push(option.route);
+                              router.push(option.route);
                               } catch (error) {
                                 console.error('❌ Navigation error:', error);
                                 // Reset navigation state on error

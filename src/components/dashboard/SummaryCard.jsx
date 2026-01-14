@@ -376,7 +376,26 @@ const SummaryCard = ({
   };
 
   // Smart formatting for values with unit awareness
-  const displayPrimaryValue = getSafeDisplayValue(primary_value, formatted_primary_value, metric_unit);
+  // For comparison cards, recalculate primary_value from query_results if available
+  let correctedPrimaryValue = primary_value;
+  let correctedFormattedPrimaryValue = formatted_primary_value;
+  
+  if (card_type === 'comparison' && Array.isArray(query_results) && query_results.length > 0) {
+    // Sum up MTD amounts from query_results
+    const totalMtd = query_results.reduce((sum, result) => {
+      const mtdAmount = result.mtd_disbursed_amount || 0;
+      // Convert to lakhs if value is in raw rupees
+      const mtdLakhs = mtdAmount > 10000 ? mtdAmount / 100000 : mtdAmount;
+      return sum + mtdLakhs;
+    }, 0);
+    
+    if (totalMtd > 0) {
+      correctedPrimaryValue = totalMtd.toFixed(2);
+      correctedFormattedPrimaryValue = `₹${totalMtd.toFixed(2)}L`;
+    }
+  }
+  
+  const displayPrimaryValue = getSafeDisplayValue(correctedPrimaryValue, correctedFormattedPrimaryValue, metric_unit);
   const displaySecondaryValue = getSafeDisplayValue(secondary_value, formatted_secondary_value, metric_unit);
   const displayTrendValue = trend_value;
 
@@ -791,9 +810,47 @@ const SummaryCard = ({
               py: 0.5 
             }}>
               {comparison_data.map((entry, idx) => {
-                const value = entry.mtd_lakhs !== undefined ? entry.mtd_lakhs : (entry.value || 0);
+                // Try to get the correct value from query_results if available
+                let value = entry.mtd_lakhs !== undefined ? entry.mtd_lakhs : (entry.value || 0);
+                let lmtdValue = entry.lmtd_lakhs !== undefined ? entry.lmtd_lakhs : null;
+                let formattedValue = entry.formatted;
+                
+                // If query_results exists, use it to get accurate values
+                if (Array.isArray(query_results) && query_results.length > 0) {
+                  const matchingResult = query_results.find(
+                    r => r.bank_name?.toLowerCase() === entry.name?.toLowerCase()
+                  );
+                  if (matchingResult) {
+                    // Convert to lakhs if values are in raw amount
+                    const mtdAmount = matchingResult.mtd_disbursed_amount || 0;
+                    const lmtdAmount = matchingResult.lmtd_disbursed_amount || 0;
+                    
+                    // If amounts are > 10000, they're likely in raw rupees, convert to lakhs
+                    value = mtdAmount > 10000 ? mtdAmount / 100000 : mtdAmount;
+                    lmtdValue = lmtdAmount > 10000 ? lmtdAmount / 100000 : lmtdAmount;
+                    
+                    // Calculate change percentage
+                    const changePct = lmtdValue > 0 ? ((value - lmtdValue) / lmtdValue * 100) : 0;
+                    const changeSign = changePct > 0 ? '+' : '';
+                    
+                    // Format the display value
+                    formattedValue = `₹${value.toFixed(2)}L (${changeSign}${changePct.toFixed(2)}%)`;
+                  }
+                }
+                
                 // Calculate max value for bar width
-                const allValues = comparison_data.map(e => e.mtd_lakhs !== undefined ? e.mtd_lakhs : (e.value || 0));
+                const allValues = comparison_data.map((e, i) => {
+                  if (Array.isArray(query_results) && query_results.length > 0) {
+                    const matchingResult = query_results.find(
+                      r => r.bank_name?.toLowerCase() === e.name?.toLowerCase()
+                    );
+                    if (matchingResult) {
+                      const mtdAmount = matchingResult.mtd_disbursed_amount || 0;
+                      return mtdAmount > 10000 ? mtdAmount / 100000 : mtdAmount;
+                    }
+                  }
+                  return e.mtd_lakhs !== undefined ? e.mtd_lakhs : (e.value || 0);
+                });
                 const maxValue = Math.max(...allValues) || 1;
                 const barColor = CHART_COLORS.primary[idx % CHART_COLORS.primary.length];
                 
@@ -804,7 +861,7 @@ const SummaryCard = ({
                         {entry.name}
                       </Typography>
                       <Typography sx={{ fontSize: '0.85rem', color: '#1E40AF', fontWeight: 700 }}>
-                        {entry.formatted || smartFormat(value)}
+                        {formattedValue || smartFormat(value)}
                       </Typography>
                     </Box>
                     <Box sx={{ 

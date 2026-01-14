@@ -197,15 +197,21 @@ export const getSummaryCards = async ({
         const refreshedCards = results
           .filter((item) => item.success && item.data)
           .map((item) => {
+            // Extract the card data - prioritize cardData if it exists
             const cardPayload =
               item.data?.cardData && Object.keys(item.data.cardData).length > 0
                 ? item.data.cardData
                 : item.data;
 
+            // Merge all data sources
             return {
               ...cardPayload,
-              _pipelineData: item.data.pipelineData || item.pipelineData,
-              _dataGrid: item.data.dataGrid || item.dataGrid,
+              _pipelineData: item.data.pipelineData || item.pipelineData || cardPayload.pipelineData,
+              _dataGrid: item.data.dataGrid || item.dataGrid || cardPayload.dataGrid,
+              query_results: cardPayload.query_results || item.data.query_results,
+              comparison_data: cardPayload.comparison_data || item.data.comparison_data,
+              top_entries: cardPayload.top_entries || item.data.top_entries,
+              bottom_entries: cardPayload.bottom_entries || item.data.bottom_entries,
               executionTimeMs: item.executionTimeMs,
               rowCount: item.rowCount,
             };
