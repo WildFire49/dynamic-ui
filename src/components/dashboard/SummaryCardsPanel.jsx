@@ -474,11 +474,8 @@ const SummaryCardsPanel = ({
   );
 
   const renderApprovedCards = () => {
-    // Sort cards: comparison/chart cards first, then table_summary, then others
-    const sortedCards = [...cards].sort((a, b) => {
-      const order = { comparison: 0, table_summary: 1, metric: 2, alert: 3, info: 4 };
-      return (order[a.card_type] ?? 5) - (order[b.card_type] ?? 5);
-    });
+    // Already sorted by priority in fetchLatestCards
+    const sortedCards = cards;
     const cardCount = sortedCards.length;
     const desktopColumns =
       cardCount === 1
