@@ -42,7 +42,8 @@ import {
   InputLabel,
   OutlinedInput,
   ListItemText,
-  Checkbox
+  Checkbox,
+  Autocomplete
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -3724,6 +3725,8 @@ const Dashboard = ({ initialDashboardId }) => {
             width: '35%',
             minWidth: 320,
             maxWidth: 450,
+            height: 'fit-content',
+            maxHeight: '100%',
             bgcolor: '#fff', 
             borderRadius: 4, 
             border: '1px solid #E2E8F0',
@@ -3860,10 +3863,10 @@ const Dashboard = ({ initialDashboardId }) => {
                 return (
                   <Stack spacing={3}>
                     {columns.map((column, idx) => {
-                      const uniqueValues = [...new Set(data.map(row => row[column]))].filter(v => v !== null && v !== undefined).slice(0, 50);
+                      const uniqueValues = [...new Set(data.map(row => row[column]))].filter(v => v !== null && v !== undefined).slice(0, 200);
                       
                       // Skip if too many unique values (likely not a good filter candidate)
-                      if (uniqueValues.length > 50 || uniqueValues.length === 0) return null;
+                      if (uniqueValues.length > 200 || uniqueValues.length === 0) return null;
                       
                       const selectedValues = fullscreenFilters[column] || [];
                       const itemColor = filterPalette[idx % filterPalette.length];
@@ -3884,104 +3887,52 @@ const Dashboard = ({ initialDashboardId }) => {
                             <Box sx={{ width: 6, height: 6, borderRadius: '20%', bgcolor: itemColor }} />
                             {column.replace(/_/g, ' ')}
                           </Typography>
-                          <FormControl size="small" fullWidth>
-                            <Select
-                              multiple
-                              displayEmpty
-                              value={selectedValues}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                const newValues = typeof value === 'string' ? value.split(',') : value;
-                                
-                                if (newValues.length === 0) {
-                                  const { [column]: _, ...rest } = fullscreenFilters;
-                                  setFullscreenFilters(rest);
-                                } else {
-                                  setFullscreenFilters(prev => ({
-                                    ...prev,
-                                    [column]: newValues
-                                  }));
-                                }
-                              }}
-                              renderValue={(selected) => {
-                                if (selected.length === 0) {
-                                  return <Typography sx={{ color: '#94A3B8', fontSize: '0.875rem' }}>Select values...</Typography>;
-                                }
-                                return (
-                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                    {selected.map((value) => (
-                                      <Chip 
-                                        key={value} 
-                                        label={String(value)} 
-                                        size="small" 
-                                        sx={{ 
-                                          height: 24, 
-                                          fontSize: '0.75rem', 
-                                          fontWeight: 700,
-                                          bgcolor: alpha(itemColor, 0.1),
-                                          color: itemColor,
-                                          border: `1px solid ${alpha(itemColor, 0.2)}`,
-                                          '& .MuiChip-deleteIcon': { color: itemColor, fontSize: 14 }
-                                        }}
-                                        onDelete={() => {
-                                          const newValues = selectedValues.filter(v => v !== value);
-                                          if (newValues.length === 0) {
-                                            const { [column]: _, ...rest } = fullscreenFilters;
-                                            setFullscreenFilters(rest);
-                                          } else {
-                                            setFullscreenFilters(prev => ({
-                                              ...prev,
-                                              [column]: newValues
-                                            }));
-                                          }
-                                        }}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                      />
-                                    ))}
-                                  </Box>
-                                );
-                              }}
-
-                              sx={{
-                                borderRadius: 3,
-                                bgcolor: selectedValues.length > 0 ? alpha(itemColor, 0.02) : '#fff',
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                  borderColor: selectedValues.length > 0 ? alpha(itemColor, 0.3) : '#E2E8F0',
-                                  borderWidth: selectedValues.length > 0 ? 2 : 1,
-                                },
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                  borderColor: itemColor,
-                                },
-                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                  borderColor: itemColor,
-                                }
-                              }}
-                              MenuProps={{
-                                PaperProps: {
-                                  sx: {
+                          <Autocomplete
+                            multiple
+                            size="small"
+                            options={uniqueValues}
+                            value={selectedValues}
+                            getOptionLabel={(option) => String(option)}
+                            onChange={(event, newValue) => {
+                              if (!newValue || newValue.length === 0) {
+                                const { [column]: _, ...rest } = fullscreenFilters;
+                                setFullscreenFilters(rest);
+                              } else {
+                                setFullscreenFilters(prev => ({
+                                  ...prev,
+                                  [column]: newValue
+                                }));
+                              }
+                            }}
+                            disableCloseOnSelect
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder={selectedValues.length === 0 ? "Select values..." : ""}
+                                sx={{
+                                  '& .MuiOutlinedInput-root': {
                                     borderRadius: 3,
-                                    mt: 1,
-                                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                                    '& .MuiMenuItem-root': {
-                                      fontSize: '0.875rem',
-                                      py: 1,
-                                      mx: 1,
-                                      borderRadius: 2,
-                                      '&.Mui-selected': {
-                                        bgcolor: alpha(itemColor, 0.1),
-                                        color: itemColor,
-                                        fontWeight: 700,
-                                        '&:hover': { bgcolor: alpha(itemColor, 0.15) }
-                                      }
+                                    bgcolor: selectedValues.length > 0 ? alpha(itemColor, 0.02) : '#fff',
+                                    '& fieldset': {
+                                      borderColor: selectedValues.length > 0 ? alpha(itemColor, 0.3) : '#E2E8F0',
+                                      borderWidth: selectedValues.length > 0 ? 2 : 1,
+                                    },
+                                    '&:hover fieldset': {
+                                      borderColor: itemColor,
+                                    },
+                                    '&.Mui-focused fieldset': {
+                                      borderColor: itemColor,
                                     }
-                                  },
-                                },
-                              }}
-                            >
-                              {uniqueValues.map((value) => (
-                                <MenuItem key={value} value={value}>
+                                  }
+                                }}
+                              />
+                            )}
+                            renderOption={(props, option, { selected }) => {
+                              const { key, ...optionProps } = props;
+                              return (
+                                <li key={key} {...optionProps}>
                                   <Checkbox 
-                                    checked={selectedValues.indexOf(value) > -1} 
+                                    checked={selected} 
                                     size="small"
                                     sx={{ 
                                       py: 0,
@@ -3990,13 +3941,56 @@ const Dashboard = ({ initialDashboardId }) => {
                                     }}
                                   />
                                   <ListItemText 
-                                    primary={String(value)} 
-                                    primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: selectedValues.indexOf(value) > -1 ? 700 : 500 }}
+                                    primary={String(option)} 
+                                    primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: selected ? 700 : 500 }}
                                   />
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
+                                </li>
+                              );
+                            }}
+                            renderTags={(value, getTagProps) =>
+                              value.map((option, index) => {
+                                const { key, ...tagProps } = getTagProps({ index });
+                                return (
+                                  <Chip 
+                                    key={key}
+                                    label={String(option)} 
+                                    size="small" 
+                                    {...tagProps}
+                                    sx={{ 
+                                      height: 24, 
+                                      fontSize: '0.75rem', 
+                                      fontWeight: 700,
+                                      bgcolor: alpha(itemColor, 0.1),
+                                      color: itemColor,
+                                      border: `1px solid ${alpha(itemColor, 0.2)}`,
+                                      '& .MuiChip-deleteIcon': { color: itemColor, fontSize: 14 }
+                                    }}
+                                  />
+                                );
+                              })
+                            }
+                            ListboxProps={{
+                              sx: {
+                                maxHeight: 350, // Fixed height for popover
+                                '& .MuiAutocomplete-option': {
+                                  px: 1,
+                                  py: 0.5,
+                                  mx: 1,
+                                  my: 0.25,
+                                  borderRadius: 2,
+                                  '&[aria-selected="true"]': {
+                                    bgcolor: alpha(itemColor, 0.1),
+                                    '&.Mui-focused': { bgcolor: alpha(itemColor, 0.15) }
+                                  }
+                                }
+                              }
+                            }}
+                            sx={{
+                              '& .MuiAutocomplete-endAdornment': {
+                                top: 'calc(50% - 14px)'
+                              }
+                            }}
+                          />
                         </Box>
                       );
                     })}
