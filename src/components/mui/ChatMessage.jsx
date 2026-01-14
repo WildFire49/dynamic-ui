@@ -35,6 +35,8 @@ import { PhoneNumberDetector, HardcodedPhoneWidget } from "./PhoneWidget";
 import DashboardGeneratedResponse from "./DashboardGeneratedResponse";
 import WelcomeIntroCard from "./WelcomeIntroCard";
 import DataSyncingCard from "./DataSyncingCard";
+import NoDataCard from "./NoDataCard";
+import ResponseFormatErrorCard from "./ResponseFormatErrorCard";
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -495,132 +497,10 @@ const ChatMessage = ({ message, index, onAction }) => {
           // Empty results - show friendly "no data" message in chat bubble style
           console.log("ℹ️ Query returned 0 results, showing no data message");
           return (
-            <Box sx={styles.dynamicDataContainer}>
-              <Card
-                sx={{
-                  border: "1px solid #e3f2fd",
-                  backgroundColor: "#f0f9ff",
-                  borderRadius: 3,
-                  overflow: "hidden",
-                  boxShadow: "0 4px 12px rgba(33, 150, 243, 0.1)",
-                }}
-              >
-                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                  {/* Robot Avatar with Info Icon */}
-                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, mb: 2 }}>
-                    <Box
-                      sx={{
-                        width: { xs: 48, sm: 56 },
-                        height: { xs: 48, sm: 56 },
-                        borderRadius: "50%",
-                        background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        boxShadow: "0 4px 12px rgba(59, 130, 246, 0.2)",
-                      }}
-                    >
-                      <SmartToy sx={{ fontSize: { xs: 28, sm: 32 }, color: "#2563eb" }} />
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          fontWeight: 700,
-                          color: "#1e40af",
-                          fontSize: { xs: "1.1rem", sm: "1.25rem" },
-                          mb: 0.5,
-                        }}
-                      >
-                        No Data Found
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#1e3a8a",
-                          fontSize: { xs: "0.875rem", sm: "0.95rem" },
-                        }}
-                      >
-                        {queryResult.message || "The query executed successfully but returned no results."}
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Query Info */}
-                  {queryResult.natural_language_query && (
-                    <Box
-                      sx={{
-                        p: { xs: 1.5, sm: 2 },
-                        backgroundColor: "white",
-                        borderRadius: 2,
-                        border: "1px solid #bfdbfe",
-                        mb: 2,
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "#64748b",
-                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
-                          fontWeight: 600,
-                          display: "block",
-                          mb: 0.5,
-                        }}
-                      >
-                        Your Query:
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#374151",
-                          fontSize: { xs: "0.875rem", sm: "0.95rem" },
-                        }}
-                      >
-                        {queryResult.natural_language_query}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {/* Helpful Message */}
-                  <Box
-                    sx={{
-                      p: { xs: 1.5, sm: 2 },
-                      backgroundColor: "#eff6ff",
-                      borderRadius: 2,
-                      border: "1px solid #dbeafe",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                      <Lightbulb sx={{ fontSize: 20, color: "#2563eb" }} />
-                      <Typography
-                        variant="subtitle2"
-                        sx={{
-                          fontWeight: 600,
-                          color: "#1e40af",
-                          fontSize: { xs: "0.8125rem", sm: "0.875rem" },
-                        }}
-                      >
-                        Suggestions:
-                      </Typography>
-                    </Box>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#1e3a8a",
-                        fontSize: { xs: "0.8125rem", sm: "0.875rem" },
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      • Try adjusting the date range or filters
-                      <br />
-                      • Check if the data exists for this criteria
-                      <br />• Rephrase your question with different parameters
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Box>
+            <NoDataCard 
+              message={queryResult.message} 
+              query={queryResult.natural_language_query} 
+            />
           );
         }
       } else {
@@ -631,59 +511,7 @@ const ChatMessage = ({ message, index, onAction }) => {
         });
         // Fallback to error-style message if results field is missing/invalid
         return (
-          <Box sx={styles.dynamicDataContainer}>
-            <Card
-              sx={{
-                border: "1px solid #fee",
-                backgroundColor: "#fef5f5",
-                borderRadius: 3,
-                overflow: "hidden",
-                boxShadow: "0 4px 12px rgba(239, 68, 68, 0.1)",
-              }}
-            >
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-                  <Box
-                    sx={{
-                      width: { xs: 48, sm: 56 },
-                      height: { xs: 48, sm: 56 },
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #fee2e2, #fecaca)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)",
-                    }}
-                  >
-                    <SmartToy sx={{ fontSize: { xs: 28, sm: 32 }, color: "#dc2626" }} />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontWeight: 700,
-                        color: "#991b1b",
-                        fontSize: { xs: "1.1rem", sm: "1.25rem" },
-                        mb: 0.5,
-                      }}
-                    >
-                      Unexpected Response Format
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#7f1d1d",
-                        fontSize: { xs: "0.875rem", sm: "0.95rem" },
-                      }}
-                    >
-                      The query response is missing expected data fields.
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Box>
+          <ResponseFormatErrorCard />
         );
       }
     }
