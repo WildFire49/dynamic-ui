@@ -34,6 +34,7 @@ import { getFormSchemaByKeyword } from "../dynamic-form/sampleFormSchemas";
 import { PhoneNumberDetector, HardcodedPhoneWidget } from "./PhoneWidget";
 import DashboardGeneratedResponse from "./DashboardGeneratedResponse";
 import WelcomeIntroCard from "./WelcomeIntroCard";
+import DataSyncingCard from "./DataSyncingCard";
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -263,6 +264,16 @@ const ChatMessage = ({ message, index, onAction }) => {
       const rawError = message.content?.error || "An error occurred";
       const errorContent = typeof rawError === 'string' ? rawError : 
                           (typeof rawError === 'object' ? JSON.stringify(rawError, null, 2) : String(rawError));
+      
+      // Check for data sync message
+      if (errorContent.includes("Data sync is in progress")) {
+        return (
+          <Box sx={styles.dynamicDataContainer}>
+            <DataSyncingCard />
+          </Box>
+        );
+      }
+
       return (
         <Box sx={styles.dynamicDataContainer}>
           <Card
@@ -445,52 +456,234 @@ const ChatMessage = ({ message, index, onAction }) => {
         showGraphOptions: showGraphOptions
       });
       
-      if (queryResult?.results && Array.isArray(queryResult.results) && queryResult.results.length > 0) {
-        console.log("✅ Rendering DynamicDataVisualization with results:", queryResult.results);
-        return (
-          <Box sx={{ ...styles.dynamicDataContainer, minHeight: '100px' }}>
-            <DynamicDataVisualization
-              analysisResult={{
-                analysis_result: {
-                  supporting_data: queryResult.results,
-                  // Include SQL query for dashboard widget refresh
+      if (queryResult?.results && Array.isArray(queryResult.results)) {
+        if (queryResult.results.length > 0) {
+          // Has results - render data visualization
+          console.log("✅ Rendering DynamicDataVisualization with results:", queryResult.results);
+          return (
+            <Box sx={{ ...styles.dynamicDataContainer, minHeight: '100px' }}>
+              <DynamicDataVisualization
+                analysisResult={{
+                  analysis_result: {
+                    supporting_data: queryResult.results,
+                    // Include SQL query for dashboard widget refresh
+                    generated_sql: queryResult.generated_sql || safeContent?.generated_sql || '',
+                    // Include document key for Excel-based queries
+                    document_key: queryResult.document_key || safeContent?.document_key || null,
+                  },
+                  question: queryResult.natural_language_query || safeContent?.natural_language_query || '',
+                  natural_language_query: queryResult.natural_language_query || safeContent?.natural_language_query || '',
+                  // Include SQL at top level too for easier access
                   generated_sql: queryResult.generated_sql || safeContent?.generated_sql || '',
-                  // Include document key for Excel-based queries
+                  // Include document key at top level for easier access
                   document_key: queryResult.document_key || safeContent?.document_key || null,
-                },
-                question: queryResult.natural_language_query || safeContent?.natural_language_query || '',
-                natural_language_query: queryResult.natural_language_query || safeContent?.natural_language_query || '',
-                // Include SQL at top level too for easier access
-                generated_sql: queryResult.generated_sql || safeContent?.generated_sql || '',
-                // Include document key at top level for easier access
-                document_key: queryResult.document_key || safeContent?.document_key || null,
-                content: {
-                  generated_sql: queryResult.generated_sql || safeContent?.generated_sql || '',
-                },
-              }}
-              loading={false}
-              isFromDashboard={false}
-              showGraphOptions={showGraphOptions}
-              onGraphRequest={(graphType) => {
-                // User clicked a graph button - just log it, don't send to API
-                console.log(`User selected ${graphType} chart`);
-              }}
-            />
-          </Box>
-        );
+                  content: {
+                    generated_sql: queryResult.generated_sql || safeContent?.generated_sql || '',
+                  },
+                }}
+                loading={false}
+                isFromDashboard={false}
+                showGraphOptions={showGraphOptions}
+                onGraphRequest={(graphType) => {
+                  // User clicked a graph button - just log it, don't send to API
+                  console.log(`User selected ${graphType} chart`);
+                }}
+              />
+            </Box>
+          );
+        } else {
+          // Empty results - show friendly "no data" message in chat bubble style
+          console.log("ℹ️ Query returned 0 results, showing no data message");
+          return (
+            <Box sx={styles.dynamicDataContainer}>
+              <Card
+                sx={{
+                  border: "1px solid #e3f2fd",
+                  backgroundColor: "#f0f9ff",
+                  borderRadius: 3,
+                  overflow: "hidden",
+                  boxShadow: "0 4px 12px rgba(33, 150, 243, 0.1)",
+                }}
+              >
+                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                  {/* Robot Avatar with Info Icon */}
+                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, mb: 2 }}>
+                    <Box
+                      sx={{
+                        width: { xs: 48, sm: 56 },
+                        height: { xs: 48, sm: 56 },
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        boxShadow: "0 4px 12px rgba(59, 130, 246, 0.2)",
+                      }}
+                    >
+                      <SmartToy sx={{ fontSize: { xs: 28, sm: 32 }, color: "#2563eb" }} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 700,
+                          color: "#1e40af",
+                          fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                          mb: 0.5,
+                        }}
+                      >
+                        No Data Found
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#1e3a8a",
+                          fontSize: { xs: "0.875rem", sm: "0.95rem" },
+                        }}
+                      >
+                        {queryResult.message || "The query executed successfully but returned no results."}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Query Info */}
+                  {queryResult.natural_language_query && (
+                    <Box
+                      sx={{
+                        p: { xs: 1.5, sm: 2 },
+                        backgroundColor: "white",
+                        borderRadius: 2,
+                        border: "1px solid #bfdbfe",
+                        mb: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "#64748b",
+                          fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+                          fontWeight: 600,
+                          display: "block",
+                          mb: 0.5,
+                        }}
+                      >
+                        Your Query:
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#374151",
+                          fontSize: { xs: "0.875rem", sm: "0.95rem" },
+                        }}
+                      >
+                        {queryResult.natural_language_query}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Helpful Message */}
+                  <Box
+                    sx={{
+                      p: { xs: 1.5, sm: 2 },
+                      backgroundColor: "#eff6ff",
+                      borderRadius: 2,
+                      border: "1px solid #dbeafe",
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                      <Lightbulb sx={{ fontSize: 20, color: "#2563eb" }} />
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          fontWeight: 600,
+                          color: "#1e40af",
+                          fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+                        }}
+                      >
+                        Suggestions:
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#1e3a8a",
+                        fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      • Try adjusting the date range or filters
+                      <br />
+                      • Check if the data exists for this criteria
+                      <br />• Rephrase your question with different parameters
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          );
+        }
       } else {
-        console.warn("⚠️ data_query_result matched but no valid results found:", {
+        console.warn("⚠️ data_query_result matched but results field is invalid:", {
           hasResults: !!queryResult?.results,
           isArray: Array.isArray(queryResult?.results),
-          length: queryResult?.results?.length
+          queryResult: queryResult
         });
-        // Fallback to visible text rendering if no results
+        // Fallback to error-style message if results field is missing/invalid
         return (
-          <Card sx={{ p: 2, bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}>
-            <Typography variant="body2" sx={{ color: "#64748b", fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
-              {typeof queryResult === 'string' ? queryResult : JSON.stringify(queryResult, null, 2)}
-            </Typography>
-          </Card>
+          <Box sx={styles.dynamicDataContainer}>
+            <Card
+              sx={{
+                border: "1px solid #fee",
+                backgroundColor: "#fef5f5",
+                borderRadius: 3,
+                overflow: "hidden",
+                boxShadow: "0 4px 12px rgba(239, 68, 68, 0.1)",
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                  <Box
+                    sx={{
+                      width: { xs: 48, sm: 56 },
+                      height: { xs: 48, sm: 56 },
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #fee2e2, #fecaca)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)",
+                    }}
+                  >
+                    <SmartToy sx={{ fontSize: { xs: 28, sm: 32 }, color: "#dc2626" }} />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 700,
+                        color: "#991b1b",
+                        fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                        mb: 0.5,
+                      }}
+                    >
+                      Unexpected Response Format
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#7f1d1d",
+                        fontSize: { xs: "0.875rem", sm: "0.95rem" },
+                      }}
+                    >
+                      The query response is missing expected data fields.
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
         );
       }
     }
@@ -909,6 +1102,18 @@ const ChatMessage = ({ message, index, onAction }) => {
       const errorMessage =
         message.content?.message || message.message || "An error occurred";
       const errorContent = message.content?.content || message.content?.result;
+
+      // Check for data sync message
+      if (
+        errorMessage.includes("Data sync is in progress") || 
+        (typeof errorContent === 'string' && errorContent.includes("Data sync is in progress"))
+      ) {
+        return (
+          <Box sx={{ width: "100%", maxWidth: "100%" }}>
+            <DataSyncingCard />
+          </Box>
+        );
+      }
 
       return (
         <Paper

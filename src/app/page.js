@@ -287,6 +287,7 @@ export default function HomePage() {
           // Handle AI responses
           let content;
           let response = null;
+          let messageType = "ai"; // Default type
 
           try {
             // Try to parse as JSON first
@@ -295,15 +296,31 @@ export default function HomePage() {
             // Check if this is a data_query_result or other structured response
             if (parsedContent.type === "data_query_result") {
               // Structure it the way ChatMessage expects
+              messageType = "data_query_result"; // Use the actual type
               response = {
                 type: "data_query_result",
                 content: parsedContent.content,
               };
               content = {
+                ...parsedContent.content, // Spread content at top level for compatibility
+                response: response,
+              };
+            } else if (parsedContent.type === "error") {
+              // Handle error responses
+              messageType = "query_error";
+              content = {
+                error: parsedContent.content || "An error occurred",
+              };
+            } else if (parsedContent.type === "form_schema") {
+              // Handle form schema responses
+              messageType = "form_schema";
+              response = parsedContent;
+              content = {
                 response: response,
               };
             } else if (parsedContent.type) {
               // Other typed responses
+              messageType = parsedContent.type;
               response = parsedContent;
               content = {
                 response: response,
@@ -319,7 +336,7 @@ export default function HomePage() {
           }
 
           return {
-            type: "ai",
+            type: messageType, // Use the actual message type
             content: content,
             response: response, // Also set at top level for compatibility
             isBot: true,
