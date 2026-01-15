@@ -490,19 +490,17 @@ const SummaryCardsPanel = ({
         {compact ? (
           <Stack spacing={1.5}>
             {sortedCards.map((card, index) => (
-              <Fade in key={card.id} timeout={300 + index * 100}>
-                <Box>
-                  <SummaryCard
-                    card={card}
-                    size="small"
-                    onClick={handleCardClick}
-                    onCreateWidget={onCreateWidget}
-                    onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
-                    onDelete={() => handleDelete(card.id)}
-                    showActions
-                  />
-                </Box>
-              </Fade>
+              <Box key={card.id}>
+                <SummaryCard
+                  card={card}
+                  size="small"
+                  onClick={handleCardClick}
+                  onCreateWidget={onCreateWidget}
+                  onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
+                  onDelete={() => handleDelete(card.id)}
+                  showActions
+                />
+              </Box>
             ))}
           </Stack>
         ) : (
@@ -522,23 +520,22 @@ const SummaryCardsPanel = ({
             }}
           >
             {sortedCards.map((card, index) => (
-              <Fade in key={card.id} timeout={300 + index * 100}>
-                <Box
-                  sx={{
-                    height: '100%',
-                  }}
-                >
-                  <SummaryCard
-                    card={card}
-                    size="medium"
-                    onClick={handleCardClick}
-                    onCreateWidget={onCreateWidget}
-                    onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
-                    onDelete={() => handleDelete(card.id)}
-                    showActions
-                  />
-                </Box>
-              </Fade>
+              <Box
+                key={card.id}
+                sx={{
+                  height: '100%',
+                }}
+              >
+                <SummaryCard
+                  card={card}
+                  size="medium"
+                  onClick={handleCardClick}
+                  onCreateWidget={onCreateWidget}
+                  onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
+                  onDelete={() => handleDelete(card.id)}
+                  showActions
+                />
+              </Box>
             ))}
           </Box>
         )}
@@ -549,7 +546,7 @@ const SummaryCardsPanel = ({
   if (compact) {
     return (
       <Box sx={{ px: 2, py: 1.5 }}>
-        {loading ? (
+        {loading && cards.length === 0 ? (
           renderSkeletons()
         ) : showPending ? (
           renderPendingApproval()
@@ -625,7 +622,7 @@ const SummaryCardsPanel = ({
 
       <Collapse in={expanded}>
         <Box>
-          {loading ? (
+          {loading && cards.length === 0 ? (
             renderSkeletons()
           ) : showPending ? (
             renderPendingApproval()

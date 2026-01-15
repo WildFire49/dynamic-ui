@@ -37,6 +37,26 @@ const formatHeaderName = (key) => {
     .join(' ');
 };
 
+// Helper function to check if a value has decimal places
+const hasDecimals = (val) => {
+  if (typeof val === 'number') {
+    return val % 1 !== 0;
+  }
+  if (typeof val === 'string') {
+    const num = parseFloat(val);
+    return !isNaN(num) && num % 1 !== 0;
+  }
+  return false;
+};
+
+// Helper function to check if any value in a column has decimals
+const columnHasDecimals = (key, dataArray) => {
+  return dataArray.some(item => {
+    const val = item[key];
+    return val !== null && val !== undefined && hasDecimals(val);
+  });
+};
+
 const DataGridComponent = ({ 
   rows = [], 
   columns = [], 
@@ -91,6 +111,9 @@ const DataGridComponent = ({
         // Final check for numeric column (for alignment)
         const isNumber = isValueNumeric || isAmountColumn || isPercentageColumn;
         
+        // Check if any value in this column has decimals
+        const hasDecimalsInColumn = isNumber && columnHasDecimals(key, data);
+        
         const headerName = formatHeaderName(key);
         
         return {
@@ -127,15 +150,17 @@ const DataGridComponent = ({
             
             // Handle numbers with proper formatting
             if (isValidNumber) {
+              // If column has any decimals, format all values with 2 decimal places
+              const formatOptions = hasDecimalsInColumn 
+                ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                : { minimumFractionDigits: 0, maximumFractionDigits: 2 };
+              
               // Add % symbol for percentage columns
               if (isPercentageColumn) {
-                return `${numValue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
+                return `${numValue.toLocaleString('en-IN', formatOptions)}%`;
               }
-              // Format numbers: only show up to 2 decimal places if they exist
-              return numValue.toLocaleString('en-IN', { 
-                minimumFractionDigits: 0, 
-                maximumFractionDigits: 2 
-              });
+              // Format numbers
+              return numValue.toLocaleString('en-IN', formatOptions);
             }
             
             // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
@@ -185,6 +210,7 @@ const DataGridComponent = ({
     } else if (rows.length > 0 && autoGenerateColumns && columns.length === 0) {
         // Auto-generate columns from rows if columns prop is empty but rows are provided
         const firstItem = rows[0];
+        
         finalColumns = Object.keys(firstItem).filter(key => key !== 'id').map((key) => {
             const val = firstItem[key];
             
@@ -215,6 +241,9 @@ const DataGridComponent = ({
             
             // Final check for numeric column (for alignment)
             const isNumber = isValueNumeric || isAmountColumn || isPercentageColumn;
+            
+            // Check if any value in this column has decimals
+            const hasDecimalsInColumn = isNumber && columnHasDecimals(key, rows);
             
             const headerName = formatHeaderName(key);
             
@@ -252,12 +281,17 @@ const DataGridComponent = ({
                     
                     // Handle numbers with proper formatting
                     if (isValidNumber) {
+                        // If column has any decimals, format all values with 2 decimal places
+                        const formatOptions = hasDecimalsInColumn 
+                          ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                          : { minimumFractionDigits: 0, maximumFractionDigits: 2 };
+                        
                         // Add % symbol for percentage columns
                         if (isPercentageColumn) {
-                            return `${numValue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
+                            return `${numValue.toLocaleString('en-IN', formatOptions)}%`;
                         }
-                        // Format all numbers to up to 2 decimal places as requested
-                        return numValue.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                        // Format numbers
+                        return numValue.toLocaleString('en-IN', formatOptions);
                     }
                     
                     // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
@@ -380,78 +414,162 @@ const DataGridComponent = ({
           sx={{
             border: 'none',
             fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            bgcolor: '#FFFFFF',
+            // Remove all blue colors from DataGrid
+            '& .MuiDataGrid-root': {
+              '--DataGrid-containerBackground': '#FFFFFF',
+              '--DataGrid-rowSelectedBackground': '#F8F9FA',
+              '--DataGrid-rowSelectedHoverBackground': '#F1F3F5',
+            },
             '& .MuiDataGrid-main': {
               // Remove overflow to prevent double scrollbar
             },
+            // Override any blue selection colors
+            '& .MuiDataGrid-row.Mui-selected': {
+              backgroundColor: '#F8F9FA !important',
+              '&:hover': {
+                backgroundColor: '#F1F3F5 !important',
+              },
+            },
+            '& .MuiCheckbox-root': {
+              color: '#6C757D !important',
+              '&.Mui-checked': {
+                color: '#495057 !important',
+              },
+            },
             '& .MuiDataGrid-cell': {
-              borderBottom: '1px solid #E2E8F0',
-              borderRight: '1px solid #E2E8F0',
-              fontSize: { xs: '0.75rem', sm: '0.85rem' },
-              padding: { xs: '8px 10px', sm: '12px 16px' },
-              color: '#1E293B',
+              borderBottom: '1px solid #F1F3F5',
+              borderRight: '1px solid #F1F3F5',
+              fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+              padding: { xs: '12px 14px', sm: '14px 18px' },
+              color: '#212529',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              fontWeight: 500,
-              minHeight: { xs: '44px', sm: '52px' },
+              fontWeight: 400,
+              minHeight: { xs: '48px', sm: '56px' },
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+              transition: 'background-color 0.15s ease, color 0.15s ease',
             },
             '& .MuiDataGrid-cell[data-field]': {
               display: 'flex',
               alignItems: 'center',
             },
+            // Right-align numeric cells
+            '& .MuiDataGrid-cell--textRight': {
+              justifyContent: 'flex-end',
+            },
             '& .MuiDataGrid-row': {
+              bgcolor: '#FFFFFF',
               '&:nth-of-type(even)': {
                 backgroundColor: '#FAFBFC',
               },
               '&:hover': {
-                backgroundColor: '#EEF2FF',
-                transform: 'scale(1.001)',
-                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.08)',
-                transition: 'all 0.2s ease',
+                backgroundColor: '#F8F9FA',
+                '& .MuiDataGrid-cell': {
+                  color: '#0D1117',
+                  fontWeight: 500,
+                },
               },
+              transition: 'background-color 0.15s ease',
             },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#F8FAFC',
-              borderBottom: '2px solid #E2E8F0',
-              minHeight: { xs: '44px !important', sm: '52px !important' },
-              maxHeight: { xs: '44px !important', sm: '52px !important' },
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+              backgroundColor: '#F8F9FA !important',
+              borderBottom: '2px solid #E9ECEF',
+              minHeight: { xs: '48px !important', sm: '56px !important' },
+              maxHeight: { xs: '48px !important', sm: '56px !important' },
+              boxShadow: '0 1px 0 0 rgba(0, 0, 0, 0.05)',
             },
             '& .MuiDataGrid-columnHeader': {
-              padding: { xs: '8px 10px', sm: '12px 16px' },
-              borderRight: '1px solid #E2E8F0',
+              padding: { xs: '12px 14px', sm: '14px 18px' },
+              borderRight: '1px solid #E9ECEF',
+              backgroundColor: '#F8F9FA !important',
               '&:last-child': {
                 borderRight: 'none',
               },
               '&:focus': {
                 outline: 'none',
+                backgroundColor: '#F8F9FA !important',
               },
+              '&:focus-within': {
+                backgroundColor: '#F8F9FA !important',
+              },
+              '&:hover': {
+                backgroundColor: '#F1F3F5 !important',
+              },
+              '&.Mui-selected': {
+                backgroundColor: '#F8F9FA !important',
+              },
+            },
+            '& .MuiDataGrid-iconButtonContainer': {
+              '& .MuiIconButton-root': {
+                color: '#6C757D !important',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  color: '#495057 !important',
+                },
+              },
+            },
+            '& .MuiDataGrid-sortIcon': {
+              color: '#6C757D !important',
             },
             '& .MuiDataGrid-columnHeaderTitleContainer': {
               overflow: 'hidden',
             },
             '& .MuiDataGrid-columnHeaderTitle': {
-              fontWeight: 700,
-              fontSize: { xs: '0.7rem', sm: '0.85rem' },
-              color: '#1E293B',
-              letterSpacing: '0.02em',
-              textTransform: 'uppercase',
+              fontWeight: 600,
+              fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+              color: '#495057',
+              letterSpacing: '0.01em',
+              textTransform: 'none',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             },
             '& .MuiDataGrid-footerContainer': {
-              borderTop: '1px solid #E2E8F0',
-              minHeight: '44px !important',
-              backgroundColor: '#FAFBFC',
+              borderTop: '1px solid #E9ECEF',
+              minHeight: '52px !important',
+              backgroundColor: '#FFFFFF',
+              borderTopWidth: '2px',
             },
             '& .MuiTablePagination-root': {
               fontSize: '0.8125rem',
-              color: '#64748B',
-            },
-              '& .MuiDataGrid-virtualScroller': {
-                minHeight: 180,
+              color: '#6C757D',
+              fontWeight: 400,
+              '& .MuiIconButton-root': {
+                color: '#6C757D !important',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  color: '#495057 !important',
+                },
+                '&.Mui-disabled': {
+                  color: '#DEE2E6 !important',
+                },
               },
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              minHeight: 180,
+            },
+            '& .MuiDataGrid-virtualScrollerContent': {
+              bgcolor: '#FFFFFF',
+            },
+            // Modern scrollbar styling
+            '& .MuiDataGrid-virtualScroller::-webkit-scrollbar': {
+              width: '8px',
+              height: '8px',
+            },
+            '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-track': {
+              background: '#F8F9FA',
+              borderRadius: '4px',
+            },
+            '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb': {
+              background: '#DEE2E6',
+              borderRadius: '4px',
+              '&:hover': {
+                background: '#CED4DA',
+              },
+            },
           }}
         />
       </Box>
@@ -462,32 +580,44 @@ const DataGridComponent = ({
     <Card sx={{ 
       height: '100%', 
       minHeight: height + 200,
-      border: 'none',
-      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-      borderRadius: 3
+      border: '1px solid #E9ECEF',
+      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+      borderRadius: 2,
+      bgcolor: '#FFFFFF',
+      overflow: 'hidden',
     }}>
       <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header - Only show when title is provided */}
         {title && (
           <Box sx={{ 
-            p: { xs: 2, sm: 3 }, 
+            p: { xs: 2, sm: 2.5 }, 
             pb: { xs: 1.5, sm: 2 },
-            borderBottom: '1px solid #f3f4f6',
+            borderBottom: '1px solid #E9ECEF',
             flexShrink: 0,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
             flexDirection: { xs: 'column', sm: 'row' },
-            gap: { xs: 2, sm: 0 }
+            gap: { xs: 2, sm: 0 },
+            bgcolor: '#F8F9FA',
           }}>
             <Box>
               <Typography variant="h6" sx={{ 
                 fontWeight: 600,
-                color: '#1a1a1a',
-                fontSize: { xs: '1rem', sm: '1.125rem' },
-                letterSpacing: '-0.025em'
+                color: '#212529',
+                fontSize: { xs: '0.9375rem', sm: '1rem' },
+                letterSpacing: '-0.01em',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                mb: 0.5,
               }}>
-                {title} ({processedRows.length} {processedRows.length === 1 ? 'record' : 'records'})
+                {title}
+              </Typography>
+              <Typography variant="caption" sx={{
+                color: '#6C757D',
+                fontSize: '0.75rem',
+                fontWeight: 400,
+              }}>
+                {processedRows.length} {processedRows.length === 1 ? 'record' : 'records'}
               </Typography>
             </Box>
             
@@ -506,12 +636,14 @@ const DataGridComponent = ({
                   onClick={onSave}
                   sx={{ 
                     textTransform: 'none',
-                    backgroundColor: '#0078d7',
+                    backgroundColor: '#212529',
                     fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                     fontWeight: 500,
                     width: { xs: '100%', sm: 'auto' },
+                    borderRadius: 1.5,
+                    px: 2,
                     '&:hover': {
-                      backgroundColor: '#005a9e'
+                      backgroundColor: '#0D1117'
                     }
                   }}
                 >
@@ -525,14 +657,18 @@ const DataGridComponent = ({
                 onClick={onExport || handleExportToCSV}
                 sx={{ 
                   textTransform: 'none',
-                  borderColor: '#d1d5db',
-                  color: '#6b7280',
+                  borderColor: '#DEE2E6',
+                  color: '#495057',
                   fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                   fontWeight: 500,
                   width: { xs: '100%', sm: 'auto' },
+                  borderRadius: 1.5,
+                  px: 2,
+                  bgcolor: '#FFFFFF',
                   '&:hover': {
-                    borderColor: '#9ca3af',
-                    backgroundColor: '#f9fafb'
+                    borderColor: '#ADB5BD',
+                    backgroundColor: '#F8F9FA',
+                    color: '#212529',
                   }
                 }}
               >
@@ -559,67 +695,144 @@ const DataGridComponent = ({
               disableSelectionOnClick
               sx={{
                 border: 'none',
+                bgcolor: '#FFFFFF',
+                // Remove all blue colors from DataGrid
+                '& .MuiDataGrid-root': {
+                  '--DataGrid-containerBackground': '#FFFFFF',
+                  '--DataGrid-rowSelectedBackground': '#F8F9FA',
+                  '--DataGrid-rowSelectedHoverBackground': '#F1F3F5',
+                },
                 '& .MuiDataGrid-main': {
                   // Remove overflow to prevent double scrollbar
                 },
+                // Override any blue selection colors
+                '& .MuiDataGrid-row.Mui-selected': {
+                  backgroundColor: '#F8F9FA !important',
+                  '&:hover': {
+                    backgroundColor: '#F1F3F5 !important',
+                  },
+                },
+                '& .MuiCheckbox-root': {
+                  color: '#6C757D !important',
+                  '&.Mui-checked': {
+                    color: '#495057 !important',
+                  },
+                },
                 '& .MuiDataGrid-cell': {
-                  borderBottom: '1px solid #E2E8F0',
-                  borderRight: '1px solid #E2E8F0',
+                  borderBottom: '1px solid #F1F3F5',
+                  borderRight: '1px solid #F1F3F5',
                   fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                  padding: { xs: '10px', sm: '12px' },
+                  padding: { xs: '12px 14px', sm: '14px 18px' },
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
+                  color: '#212529',
+                  fontWeight: 400,
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                  transition: 'background-color 0.15s ease, color 0.15s ease',
+                },
+                // Right-align numeric cells
+                '& .MuiDataGrid-cell--textRight': {
+                  justifyContent: 'flex-end',
                 },
                 '& .MuiDataGrid-row': {
+                  bgcolor: '#FFFFFF',
                   '&:nth-of-type(even)': {
                     backgroundColor: '#FAFBFC',
                   },
                   '&:hover': {
-                    backgroundColor: '#F1F5F9',
+                    backgroundColor: '#F8F9FA',
+                    '& .MuiDataGrid-cell': {
+                      color: '#0D1117',
+                      fontWeight: 500,
+                    },
                   },
+                  transition: 'background-color 0.15s ease',
                 },
                 '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#F1F5F9',
-                  borderBottom: '2px solid #E2E8F0',
-                  fontWeight: 700,
-                  fontSize: { xs: '0.8rem', sm: '0.85rem' },
-                  minHeight: '52px !important',
-                  maxHeight: '52px !important',
+                  backgroundColor: '#F8F9FA !important',
+                  borderBottom: '2px solid #E9ECEF',
+                  fontWeight: 600,
+                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                  minHeight: '56px !important',
+                  maxHeight: '56px !important',
+                  boxShadow: '0 1px 0 0 rgba(0, 0, 0, 0.05)',
                 },
                 '& .MuiDataGrid-columnHeader': {
-                  borderRight: '1px solid #E2E8F0',
-                  padding: '12px 14px',
+                  borderRight: '1px solid #E9ECEF',
+                  padding: { xs: '12px 14px', sm: '14px 18px' },
+                  backgroundColor: '#F8F9FA !important',
                   '&:last-child': {
                     borderRight: 'none',
                   },
+                  '&:focus': {
+                    outline: 'none',
+                    backgroundColor: '#F8F9FA !important',
+                  },
+                  '&:focus-within': {
+                    backgroundColor: '#F8F9FA !important',
+                  },
+                  '&:hover': {
+                    backgroundColor: '#F1F3F5 !important',
+                  },
+                  '&.Mui-selected': {
+                    backgroundColor: '#F8F9FA !important',
+                  },
+                },
+                '& .MuiDataGrid-iconButtonContainer': {
+                  '& .MuiIconButton-root': {
+                    color: '#6C757D !important',
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                      color: '#495057 !important',
+                    },
+                  },
+                },
+                '& .MuiDataGrid-sortIcon': {
+                  color: '#6C757D !important',
                 },
                 '& .MuiDataGrid-columnHeaderTitleContainer': {
                   overflow: 'hidden',
                 },
                 '& .MuiDataGrid-columnHeaderTitle': {
-                  fontWeight: 700,
-                  color: '#1E293B',
+                  fontWeight: 600,
+                  color: '#495057',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                   lineHeight: '1.2',
                   letterSpacing: '0.01em',
-                  textTransform: 'uppercase',
+                  textTransform: 'none',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                 },
                 '& .MuiDataGrid-footerContainer': {
-                  minHeight: '44px',
-                  backgroundColor: '#FAFBFC',
-                  borderTop: '1px solid #E2E8F0',
+                  minHeight: '52px',
+                  backgroundColor: '#FFFFFF',
+                  borderTop: '2px solid #E9ECEF',
+                },
+                '& .MuiTablePagination-root': {
+                  fontSize: '0.8125rem',
+                  color: '#6C757D',
+                  fontWeight: 400,
+                  '& .MuiIconButton-root': {
+                    color: '#6C757D !important',
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                      color: '#495057 !important',
+                    },
+                    '&.Mui-disabled': {
+                      color: '#DEE2E6 !important',
+                    },
+                  },
                 },
                 '& .MuiDataGrid-virtualScroller': {
-                  // Subtle scrollbar
-                  '&::-webkit-scrollbar': { width: 6, height: 6 },
-                  '&::-webkit-scrollbar-track': { background: 'transparent' },
-                  '&::-webkit-scrollbar-thumb': { background: '#E2E8F0', borderRadius: 3 },
-                  '&::-webkit-scrollbar-thumb:hover': { background: '#CBD5E1' },
+                  // Modern scrollbar
+                  '&::-webkit-scrollbar': { width: '8px', height: '8px' },
+                  '&::-webkit-scrollbar-track': { background: '#F8F9FA', borderRadius: '4px' },
+                  '&::-webkit-scrollbar-thumb': { background: '#DEE2E6', borderRadius: '4px' },
+                  '&::-webkit-scrollbar-thumb:hover': { background: '#CED4DA' },
                   scrollbarWidth: 'thin',
-                  scrollbarColor: '#E2E8F0 transparent',
+                  scrollbarColor: '#DEE2E6 #F8F9FA',
                 },
                 '& .MuiDataGrid-root': {
                   border: 'none'

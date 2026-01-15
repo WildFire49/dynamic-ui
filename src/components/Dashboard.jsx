@@ -80,7 +80,8 @@ import {
   Download as DownloadIcon,
   CheckCircle as CheckCircleIcon,
   Image as ImageIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -1891,12 +1892,14 @@ const Dashboard = ({ initialDashboardId }) => {
   const totalWidgets = displayItems.length;
   const widgetGridColumns = React.useMemo(() => {
     if (totalWidgets <= 1) {
-      return { xs: '1fr', sm: '1fr', lg: '1fr' };
+      return { xs: '1fr', sm: '1fr', md: '1fr', lg: '1fr' };
     }
     return {
       xs: '1fr',
       sm: 'repeat(2, minmax(0, 1fr))',
-      lg: 'repeat(2, minmax(0, 1fr))',
+      md: 'repeat(3, minmax(0, 1fr))',
+      lg: 'repeat(4, minmax(0, 1fr))',
+      xl: 'repeat(6, minmax(0, 1fr))',
     };
   }, [totalWidgets]);
 
@@ -2033,10 +2036,17 @@ const Dashboard = ({ initialDashboardId }) => {
   }, [resizing, handleResizeMove, handleResizeEnd]);
 
   // Get widget height with defaults
-  const getWidgetHeight = (itemId, data) => {
+  const getWidgetHeight = (itemId, data, item) => {
     const saved = widgetSizes[itemId];
     if (saved?.height) return saved.height;
-    return 380; // Default height for all widgets - enough for 3 records
+    
+    // Comparison widgets and small bar charts can be shorter
+    const isComparison = item?.card_type === 'comparison' || 
+                         item?.data?.cardData?.card_type === 'comparison' ||
+                         item?.data?.card_type === 'comparison';
+    
+    if (isComparison) return 300;
+    return 380; // Default height for all widgets
   };
 
   const handleMenuOpen = (event, id) => {
@@ -2690,15 +2700,23 @@ const Dashboard = ({ initialDashboardId }) => {
       ? globalViewMode 
       : (widgetViewModes[item.id] || detectedType);
     const recordCount = data.length;
-    const widgetHeight = getWidgetHeight(item.id, data);
+    const widgetHeight = getWidgetHeight(item.id, data, item);
     
-    // Check if table has many columns (> 6) to span full width
+    // Check if it's a comparison widget (only for SummaryCard comparison cards)
+    const isComparison = item.card_type === 'comparison' || 
+                         item.data?.cardData?.card_type === 'comparison' || 
+                         item.data?.card_type === 'comparison';
+    
+    // Tables/data grids should always span full width
     const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'id' && !k.startsWith('_')) : [];
-    const isWideTable = currentViewMode === 'table' && keys.length > 6;
-    const allowWideTableFullWidth = isWideTable;
+    const isTable = currentViewMode === 'table';
     const shouldForceFullWidth = totalWidgets <= 1;
-    const isLastOddCard = totalWidgets > 1 && totalWidgets % 2 === 1 && index === totalWidgets - 1;
-    const shouldSpanFull = isFullWidth || allowWideTableFullWidth || shouldForceFullWidth || isLastOddCard;
+    
+    // Analysis widgets and tables/data grids span full width
+    const shouldSpanFull = isFullWidth || isTable || shouldForceFullWidth;
+    
+    // Only comparison cards should be rectangular (not tables or data grids)
+    const isRectangular = isComparison;
     
     // Get accent color for this widget
     const accent = WIDGET_ACCENTS[index % WIDGET_ACCENTS.length];
@@ -2720,7 +2738,15 @@ const Dashboard = ({ initialDashboardId }) => {
           onDrop={(e) => handleDrop(e, index)}
           onDragEnd={handleDragEnd}
           sx={{
-            gridColumn: shouldSpanFull ? '1 / -1' : 'auto',
+            gridColumn: shouldSpanFull 
+              ? '1 / -1' 
+              : { 
+                  xs: '1 / -1', 
+                  sm: isRectangular ? 'span 2' : 'span 1',
+                  md: isRectangular ? 'span 2' : 'span 1',
+                  lg: isRectangular ? 'span 2' : 'span 1',
+                  xl: isRectangular ? 'span 3' : 'span 1'
+                },
             height: widgetHeight,
             minHeight: 280,
             maxHeight: 800,
@@ -2775,12 +2801,11 @@ const Dashboard = ({ initialDashboardId }) => {
               borderRadius: '12px 12px 0 0',
               flexShrink: 0,
             }}>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Box sx={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center' }}>
                 {editingTitleId === item.id ? (
                   <ClickAwayListener onClickAway={handleSaveInlineTitle}>
                     <InputBase
                       autoFocus
-                      fullWidth
                       value={editingTitleValue}
                       onChange={(e) => setEditingTitleValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -2797,7 +2822,8 @@ const Dashboard = ({ initialDashboardId }) => {
                         borderRadius: 1,
                         bgcolor: 'rgba(255,255,255,0.2)',
                         border: '1px solid rgba(255,255,255,0.4)',
-                        width: '100%',
+                        minWidth: 200,
+                        maxWidth: '100%',
                         '& input': {
                           padding: 0,
                           color: '#fff',
@@ -2810,40 +2836,40 @@ const Dashboard = ({ initialDashboardId }) => {
                     />
                   </ClickAwayListener>
                 ) : (
-                  <Tooltip title="Click to rename" arrow placement="top">
-                    <Typography 
-                      variant="subtitle1" 
-                      draggable={false}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartEditTitle(item);
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onDragStart={(e) => e.preventDefault()}
-                      sx={{ 
-                        fontWeight: 600, 
-                        color: '#fff',
-                        fontSize: { xs: '0.8rem', md: '0.85rem' },
-                        lineHeight: 1.35,
-                        cursor: 'text',
-                        px: 0.5,
-                        py: 0.25,
-                        borderRadius: 1,
-                        userSelect: 'none',
-                        wordBreak: 'break-word',
-                        textShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        '&:hover': {
-                          bgcolor: 'rgba(255,255,255,0.15)',
-                        }
-                      }}
-                    >
-                      {getTitle(item)}
-                    </Typography>
-                  </Tooltip>
+                  <Typography 
+                    component="span"
+                    variant="subtitle1" 
+                    draggable={false}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartEditTitle(item);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onDragStart={(e) => e.preventDefault()}
+                    sx={{ 
+                      fontWeight: 600, 
+                      color: '#fff',
+                      fontSize: { xs: '0.8rem', md: '0.85rem' },
+                      lineHeight: 1.35,
+                      cursor: 'text',
+                      px: 0.5,
+                      py: 0.25,
+                      borderRadius: 1,
+                      userSelect: 'none',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      display: 'inline-block',
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      '&:hover': {
+                        bgcolor: 'rgba(255,255,255,0.15)',
+                      }
+                    }}
+                    title={getTitle(item)}
+                  >
+                    {getTitle(item)}
+                  </Typography>
                 )}
               </Box>
 
@@ -3841,9 +3867,18 @@ const Dashboard = ({ initialDashboardId }) => {
                     </InputAdornment>
                   ),
                   endAdornment: fullscreenSearchQuery && (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setFullscreenSearchQuery('')}>
-                        <CloseIcon sx={{ fontSize: 16 }} />
+                    <InputAdornment position="end" sx={{ mr: 1 }}>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => setFullscreenSearchQuery('')}
+                        sx={{ 
+                          padding: 0.5,
+                          '& svg': {
+                            fontSize: 18
+                          }
+                        }}
+                      >
+                        <CloseIcon />
                       </IconButton>
                     </InputAdornment>
                   )
@@ -3963,7 +3998,14 @@ const Dashboard = ({ initialDashboardId }) => {
                                       bgcolor: alpha(itemColor, 0.1),
                                       color: itemColor,
                                       border: `1px solid ${alpha(itemColor, 0.2)}`,
-                                      '& .MuiChip-deleteIcon': { color: itemColor, fontSize: 14 }
+                                      '& .MuiChip-deleteIcon': { 
+                                        color: itemColor, 
+                                        fontSize: 16,
+                                        margin: '0 2px 0 4px',
+                                        '&:hover': {
+                                          color: itemColor
+                                        }
+                                      }
                                     }}
                                   />
                                 );
@@ -3987,7 +4029,32 @@ const Dashboard = ({ initialDashboardId }) => {
                             }}
                             sx={{
                               '& .MuiAutocomplete-endAdornment': {
-                                top: 'calc(50% - 14px)'
+                                position: 'absolute',
+                                right: 8,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.25
+                              },
+                              '& .MuiAutocomplete-clearIndicator': {
+                                padding: 0.25,
+                                marginRight: 0,
+                                '& svg': {
+                                  fontSize: 18
+                                }
+                              },
+                              '& .MuiAutocomplete-popupIndicator': {
+                                padding: 0.25,
+                                '& svg': {
+                                  fontSize: 20
+                                }
+                              },
+                              '& .MuiInputBase-root': {
+                                paddingRight: '45px !important',
+                                '& .MuiAutocomplete-input': {
+                                  paddingRight: '8px !important'
+                                }
                               }
                             }}
                           />
@@ -4108,7 +4175,7 @@ const Dashboard = ({ initialDashboardId }) => {
             right: 24,
             width: 60,
             height: 60,
-            borderRadius: '20%',
+            borderRadius: '47%',
             bgcolor: '#fff',
             display: 'flex',
             alignItems: 'center',

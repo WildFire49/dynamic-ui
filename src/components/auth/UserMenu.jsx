@@ -115,23 +115,14 @@ const UserMenu = () => {
           },
         }}
       >
-        {/* Header Section with Gradient */}
+        {/* Header Section - Off White */}
         <Box
           sx={{
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+            background: '#FAFBFC',
             p: 3,
-            color: 'white',
+            color: theme.palette.text.primary,
             position: 'relative',
-            '&::after': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'linear-gradient(135deg, transparent 0%, rgba(0,0,0,0.1) 100%)',
-              pointerEvents: 'none',
-            }
+            borderBottom: '1px solid #E9ECEF',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative', zIndex: 1 }}>
@@ -139,12 +130,12 @@ const UserMenu = () => {
               sx={{
                 width: 56,
                 height: 56,
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
-                border: '3px solid rgba(255,255,255,0.3)',
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+                border: '3px solid #E9ECEF',
                 fontWeight: 700,
                 fontSize: '1.4rem',
                 color: 'white',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               }}
             >
               {user.username?.charAt(0).toUpperCase() || 'U'}
@@ -157,7 +148,7 @@ const UserMenu = () => {
                   fontSize: '1rem',
                   lineHeight: 1.2,
                   mb: 0.5,
-                  color: 'white',
+                  color: '#212529',
                 }}
               >
                 Welcome Back
@@ -165,9 +156,9 @@ const UserMenu = () => {
               <Typography 
                 variant="body2" 
                 sx={{ 
-                  opacity: 0.9,
                   fontSize: '0.85rem',
                   fontWeight: 500,
+                  color: '#6C757D',
                 }}
               >
                 Employee ID: {user.employeeId}
@@ -182,14 +173,13 @@ const UserMenu = () => {
                 icon={<BadgeIcon sx={{ color: 'inherit !important' }} />}
                 label={primaryRole.roleName?.replace('Configurator', 'User') || 'User'}
                 sx={{
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.3)',
+                  backgroundColor: '#F1F3F5',
+                  color: '#495057',
+                  border: '1px solid #DEE2E6',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  backdropFilter: 'blur(10px)',
                   '& .MuiChip-icon': {
-                    color: 'white',
+                    color: '#495057',
                   },
                 }}
               />

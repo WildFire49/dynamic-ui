@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import {
   BarChart,
   Bar,
@@ -138,13 +138,13 @@ const CXOSingleMetric = ({ data, color, title, icon: Icon }) => {
       
       {/* Floating Sparkles - More Dynamic */}
       {[...Array(5)].map((_, i) => (
-        <Box
+      <Box
           key={i}
-          sx={{
-            position: 'absolute',
+        sx={{
+          position: 'absolute',
             width: i % 2 === 0 ? 6 : 4,
             height: i % 2 === 0 ? 6 : 4,
-            borderRadius: '50%',
+          borderRadius: '50%',
             bgcolor: color,
             opacity: 0.4,
             top: `${10 + Math.random() * 80}%`,
@@ -154,9 +154,9 @@ const CXOSingleMetric = ({ data, color, title, icon: Icon }) => {
             '@keyframes floatPremium': {
               '0%, 100%': { transform: 'translate(0, 0) scale(1)', opacity: 0.2 },
               '50%': { transform: `translate(${Math.sin(i) * 20}px, ${Math.cos(i) * 20}px) scale(1.5)`, opacity: 0.5 },
-            },
-          }}
-        />
+          },
+        }}
+      />
       ))}
       
       {/* Icon Bubble - More Premium */}
@@ -212,7 +212,6 @@ const CXOSingleMetric = ({ data, color, title, icon: Icon }) => {
             border: `1.5px solid ${alpha(color, 0.3)}`,
             boxShadow: `0 8px 16px -4px ${alpha(color, 0.1)}`,
             animation: 'labelEntrance 1.2s ease-out forwards 0.3s',
-            opacity: 0,
             '@keyframes labelEntrance': {
               '0%': { transform: 'translateY(10px)', opacity: 0 },
               '100%': { transform: 'translateY(0)', opacity: 1 },
@@ -256,44 +255,40 @@ const CXOMultiMetric = ({ data, color }) => {
     });
     if (currentEntity) entities.push(currentEntity);
 
-    return (
+  return (
       <Box sx={{ 
         width: '100%', 
         display: 'flex', 
         flexDirection: 'column', 
-        gap: entities.length <= 2 ? 6 : 3, 
-        py: 1,
+        gap: entities.length <= 2 ? { xs: 3, sm: 4 } : 2, 
+        py: 0.5,
         flex: 1,
-        justifyContent: 'space-evenly'
+        justifyContent: 'center'
       }}>
         {entities.map((entity, idx) => {
-          const palette = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+          const palette = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
           const itemColor = palette[idx % palette.length];
           
           return (
             <Box 
               key={idx}
               sx={{
-                p: { xs: 2, sm: 2.5, md: 3 },
-                borderRadius: 6,
+                p: { xs: 2, sm: 2.25, md: 2.5 },
+                borderRadius: 5,
                 bgcolor: alpha(itemColor, 0.03),
                 border: '1px solid',
                 borderColor: alpha(itemColor, 0.1),
-                boxShadow: `0 12px 30px -10px ${alpha(itemColor, 0.15)}`,
-                animation: `slideInPremium 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards ${idx * 0.15}s`,
-                opacity: 0,
+                boxShadow: `0 10px 25px -10px ${alpha(itemColor, 0.12)}`,
+                animation: `slideInPremium 0.5s ease-out forwards ${idx * 0.08}s`,
                 position: 'relative',
+                willChange: 'transform, opacity',
                 overflow: 'hidden',
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
-                  transform: 'translateY(-6px) scale(1.02)',
-                  boxShadow: `0 20px 40px -12px ${alpha(itemColor, 0.25)}`,
+                  transform: 'translateY(-4px) scale(1.01)',
+                  boxShadow: `0 15px 35px -12px ${alpha(itemColor, 0.2)}`,
                   borderColor: alpha(itemColor, 0.3),
                   bgcolor: alpha(itemColor, 0.05),
-                },
-                '@keyframes slideInPremium': {
-                  '0%': { transform: 'translateY(20px)', opacity: 0 },
-                  '100%': { transform: 'translateY(0)', opacity: 1 },
                 }
               }}
             >
@@ -302,57 +297,56 @@ const CXOMultiMetric = ({ data, color }) => {
                 position: 'absolute', 
                 top: 0, 
                 left: 0, 
-                width: 8, 
+                width: 6, 
                 height: '100%', 
                 background: `linear-gradient(180deg, ${itemColor} 0%, ${alpha(itemColor, 0.4)} 100%)`,
               }} />
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: { xs: 1.5, sm: 2, md: 3 }, ml: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: { xs: 1.5, sm: 2 }, ml: 0.5 }}>
                 <Typography sx={{ 
-                  fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' }, 
+                  fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.95rem' }, 
                   fontWeight: 900, 
                   color: itemColor, 
-                  textTransform: 'capitalize', 
-                  letterSpacing: '0.02em',
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.06em',
                   bgcolor: alpha(itemColor, 0.1),
-                  px: 2,
-                  py: 0.75,
-                  borderRadius: '12px'
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: '8px'
                 }}>
-                  {entity.name?.toLowerCase()}
+                  {entity.name}
                 </Typography>
-                <Box sx={{ flex: 1, height: '2px', bgcolor: alpha(itemColor, 0.1), borderRadius: 1 }} />
+                <Box sx={{ flex: 1, height: '1.5px', bgcolor: alpha(itemColor, 0.1), borderRadius: 1 }} />
               </Box>
               
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: { xs: 2, sm: 2.5, md: 3 }, ml: 1 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: { xs: 1.5, sm: 2, md: 2.5 }, ml: 0.5 }}>
                 {entity.metrics.map((metric, mIdx) => {
                   const isPrimary = metric.name.toLowerCase().includes('mtd');
-                  const numericValue = typeof metric.value === 'number' ? metric.value : parseFloat(String(metric.value).replace(/[^0-9.-]/g, '')) || 0;
                   
                   return (
-                    <Box key={mIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Typography sx={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <Box key={mIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                      <Typography sx={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         {metric.name.replace('Disbursed Amount', 'Disbursed')}
                       </Typography>
                       <Typography sx={{ 
                         fontSize: isPrimary 
-                          ? { xs: '1.4rem', sm: '1.6rem', md: '1.75rem' } 
-                          : { xs: '1.1rem', sm: '1.25rem', md: '1.4rem' }, 
+                          ? { xs: '1.25rem', sm: '1.4rem', md: '1.6rem' } 
+                          : { xs: '1.1rem', sm: '1.2rem', md: '1.3rem' }, 
                         color: isPrimary ? '#0F172A' : '#475569', 
                         fontWeight: 900,
                         lineHeight: 1,
-                        letterSpacing: '-0.04em'
+                        letterSpacing: '-0.03em'
                       }}>
                         {metric.formatted}
                       </Typography>
                       
                       {/* Comparison visual indicator */}
-                      <Box sx={{ height: 14, bgcolor: alpha(itemColor, 0.05), borderRadius: 7, overflow: 'hidden', mt: 1 }}>
+                      <Box sx={{ height: 10, bgcolor: alpha(itemColor, 0.05), borderRadius: 5, overflow: 'hidden', mt: 0.5 }}>
                         <Box sx={{ 
-                          width: mIdx === 0 ? '100%' : '70%', // Simplified comparative visual
+                          width: mIdx === 0 ? '100%' : '75%', 
                           height: '100%',
                           bgcolor: mIdx === 0 ? itemColor : alpha(itemColor, 0.3),
-                          borderRadius: 7,
+                          borderRadius: 5,
                           position: 'relative',
                           '&::after': {
                             content: '""',
@@ -362,7 +356,7 @@ const CXOMultiMetric = ({ data, color }) => {
                             right: 0,
                             bottom: 0,
                             background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                            animation: 'shimmerPremium 3s infinite linear',
+                            animation: 'premiumShimmer 3s infinite linear',
                           }
                         }} />
                       </Box>
@@ -397,7 +391,7 @@ const CXOMultiMetric = ({ data, color }) => {
               p: 2.5,
               borderRadius: 5,
               bgcolor: '#FFFFFF',
-              border: '1.5px solid',
+              border: '1px solid',
               borderColor: alpha(itemColor, 0.15),
               boxShadow: `0 6px 16px ${alpha(itemColor, 0.08)}`,
               transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -407,8 +401,8 @@ const CXOMultiMetric = ({ data, color }) => {
                 borderColor: alpha(itemColor, 0.35),
               },
               overflow: 'hidden',
-              animation: `slideInList 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards ${idx * 0.1}s`,
-              opacity: 0,
+              animation: `slideInList 0.5s ease-out forwards ${idx * 0.08}s`,
+              willChange: 'transform, opacity',
               '@keyframes slideInList': {
                 '0%': { transform: 'translateX(-30px)', opacity: 0 },
                 '100%': { transform: 'translateX(0)', opacity: 1 },
@@ -416,7 +410,7 @@ const CXOMultiMetric = ({ data, color }) => {
             }}
           >
             {/* Background Decoration */}
-            <Box sx={{ 
+                <Box sx={{ 
               position: 'absolute', 
               top: 0, 
               right: 0, 
@@ -473,11 +467,7 @@ const CXOMultiMetric = ({ data, color }) => {
                   right: 0,
                   bottom: 0,
                   background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
-                  animation: 'shimmerPremium 2.5s infinite linear',
-                },
-                '@keyframes shimmerPremium': {
-                  '0%': { transform: 'translateX(-100%)' },
-                  '100%': { transform: 'translateX(100%)' },
+                  animation: 'premiumShimmer 2.5s infinite linear',
                 }
               }} />
             </Box>
@@ -574,22 +564,22 @@ const CARD_TYPE_STYLES = {
   info: { minHeight: { xs: 140, sm: 160, md: 180 } },
 };
 
-// Beautiful gradient colors for charts - Blue theme with red/yellow accents
+// Beautiful gradient colors for charts - Vibrant & Diverse premium theme
 const CHART_COLORS = {
-  primary: ['#1E40AF', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'],
-  success: ['#1D4ED8', '#3B82F6', '#60A5FA'],
+  primary: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'],
+  success: ['#10B981', '#34D399', '#6EE7B7'],
   warning: ['#F59E0B', '#FBBF24', '#FCD34D'],
   danger: ['#EF4444', '#F87171', '#FCA5A5'],
-  purple: ['#1E3A8A', '#2563EB', '#3B82F6'],
+  purple: ['#8B5CF6', '#A78BFA', '#C4B5FD'],
 };
 
-// Comparison Bar Chart Component - Blue theme
+// Comparison Bar Chart Component - Premium visual
 const ComparisonChart = ({ data, color }) => {
   const chartData = useMemo(() => {
     if (!data?.entity1 || !data?.entity2) return [];
     return [
-      { name: data.entity1.name, value: data.entity1.value, formatted: data.entity1.formatted, fill: '#1E40AF' },
-      { name: data.entity2.name, value: data.entity2.value, formatted: data.entity2.formatted, fill: '#93C5FD' },
+      { name: data.entity1.name, value: data.entity1.value, formatted: data.entity1.formatted, fill: '#4F46E5' },
+      { name: data.entity2.name, value: data.entity2.value, formatted: data.entity2.formatted, fill: '#10B981' },
     ];
   }, [data]);
 
@@ -602,17 +592,17 @@ const ComparisonChart = ({ data, color }) => {
       const data = payload[0].payload;
       return (
         <Box sx={{ 
-          bgcolor: 'rgba(255, 255, 255, 0.95)', 
+          bgcolor: 'rgba(15, 23, 42, 0.95)', 
           p: 1.5, 
-          border: '1px solid #E2E8F0', 
-          borderRadius: 2,
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          backdropFilter: 'blur(4px)'
+          border: '1px solid rgba(255,255,255,0.1)', 
+          borderRadius: 3,
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+          backdropFilter: 'blur(12px)'
         }}>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', mb: 0.5 }}>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.6)', mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {data.name}
           </Typography>
-          <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#1E40AF' }}>
+          <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, color: '#FFFFFF' }}>
             {data.formatted || smartFormat(data.value)}
           </Typography>
         </Box>
@@ -622,39 +612,31 @@ const ComparisonChart = ({ data, color }) => {
   };
 
   return (
-    <Box sx={{ width: '100%', flex: 1, minHeight: 80, mt: 0.5 }}>
+    <Box sx={{ width: '100%', flex: 1, minHeight: 120, mt: 1 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap="20%">
-          <XAxis type="number" hide domain={[0, maxValue * 1.15]} />
+        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }} barCategoryGap="30%">
+          <XAxis type="number" hide domain={[0, maxValue * 1.1]} />
           <YAxis type="category" dataKey="name" hide />
-          <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-          <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={24} animationDuration={1000}>
+          <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 12 }} />
+          <Bar dataKey="value" radius={[0, 16, 16, 0]} barSize={40} animationDuration={1500} animationBegin={200}>
             {chartData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
-                fill={index === 0 ? "url(#colorGradientPrimary)" : "url(#colorGradientSecondary)"} 
+                fill={index === 0 ? "url(#premiumGradientPrimary)" : "url(#premiumGradientSuccess)"} 
                 style={{
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                  filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.15))',
                 }}
               />
             ))}
           </Bar>
           <defs>
-            <linearGradient id="colorGradientPrimary" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#1E40AF">
-                <animate attributeName="stop-color" values="#1E40AF; #3B82F6; #1E40AF" dur="3s" repeatCount="indefinite" />
-              </stop>
-              <stop offset="100%" stopColor="#3B82F6">
-                <animate attributeName="stop-color" values="#3B82F6; #60A5FA; #3B82F6" dur="3s" repeatCount="indefinite" />
-              </stop>
+            <linearGradient id="premiumGradientPrimary" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#4F46E5" />
+              <stop offset="100%" stopColor="#818CF8" />
             </linearGradient>
-            <linearGradient id="colorGradientSecondary" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#60A5FA">
-                <animate attributeName="stop-color" values="#60A5FA; #93C5FD; #60A5FA" dur="4s" repeatCount="indefinite" />
-              </stop>
-              <stop offset="100%" stopColor="#93C5FD">
-                <animate attributeName="stop-color" values="#93C5FD; #BFDBFE; #93C5FD" dur="4s" repeatCount="indefinite" />
-              </stop>
+            <linearGradient id="premiumGradientSuccess" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#10B981" />
+              <stop offset="100%" stopColor="#34D399" />
             </linearGradient>
           </defs>
         </BarChart>
@@ -668,40 +650,39 @@ const CardBackground = ({ type, color }) => {
   const decorations = {
     metric: (
       <>
-        <Box sx={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.1)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', bottom: -20, left: -20, width: 100, height: 100, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.08)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
-        <svg style={{ position: 'absolute', top: 10, right: 10, width: 40, height: 40, opacity: 0.05, pointerEvents: 'none' }} viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="12" cy="12" r="8" />
-        </svg>
+        <Box sx={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.12)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', bottom: -30, left: -30, width: 140, height: 140, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.08)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: '20%', right: '10%', width: 4, height: 4, borderRadius: '50%', bgcolor: color, opacity: 0.2, animation: 'floatPremium 4s infinite ease-in-out' }} />
+        <Box sx={{ position: 'absolute', bottom: '20%', left: '15%', width: 6, height: 6, borderRadius: '50%', bgcolor: color, opacity: 0.15, animation: 'floatPremium 6s infinite ease-in-out 1s' }} />
       </>
     ),
     comparison: (
       <>
-        <Box sx={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '100%', background: `linear-gradient(135deg, ${alpha(color, 0.04)} 0%, transparent 100%)`, pointerEvents: 'none' }} />
-        <svg style={{ position: 'absolute', right: -10, bottom: -10, width: 140, height: 100, opacity: 0.08, pointerEvents: 'none' }} viewBox="0 0 100 100" preserveAspectRatio="none">
-          <path d="M0 100 C 30 50 70 50 100 0 L 100 100 Z" fill={color} />
+        <Box sx={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '100%', background: `linear-gradient(135deg, ${alpha(color, 0.05)} 0%, transparent 100%)`, pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', bottom: -50, right: -50, width: 200, height: 200, borderRadius: '50%', border: `2px dashed ${alpha(color, 0.1)}`, pointerEvents: 'none' }} />
+        <svg style={{ position: 'absolute', right: 0, bottom: 0, width: 180, height: 120, opacity: 0.06, pointerEvents: 'none' }} viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path d="M0 100 Q 50 0 100 100" fill={color} />
         </svg>
       </>
     ),
     alert: (
       <>
-        <Box sx={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', bgcolor: color, opacity: 0.8 }} />
-        <Box sx={{ position: 'absolute', top: 0, right: 0, width: 120, height: 120, background: `radial-gradient(circle at top right, ${alpha(color, 0.15)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
-        <svg style={{ position: 'absolute', top: 10, right: 10, width: 60, height: 60, opacity: 0.05, pointerEvents: 'none' }} viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2L1 21h22L12 2zm1 16h-2v-2h2v2zm0-4h-2v-4h2v4z" />
-        </svg>
+        <Box sx={{ position: 'absolute', top: 0, left: 0, width: 6, height: '100%', bgcolor: color, opacity: 0.9 }} />
+        <Box sx={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: `radial-gradient(circle at top right, ${alpha(color, 0.18)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: 20, right: 20, width: 40, height: 40, borderRadius: '50%', border: `1px solid ${alpha(color, 0.1)}`, animation: 'pulsePremium 4s infinite ease-in-out' }} />
       </>
     ),
     table_summary: (
       <>
-        <Box sx={{ position: 'absolute', top: -40, right: -40, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.06)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: -60, right: -60, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.08)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', bottom: 20, right: 20, width: 80, height: 80, borderRadius: '50%', border: `1px solid ${alpha(color, 0.05)}`, pointerEvents: 'none' }} />
       </>
     ),
   };
   return decorations[type] || decorations.metric;
 };
 
-const SummaryCard = ({
+const SummaryCard = memo(({
   card,
   variant = 'default',
   size = 'medium',
@@ -901,33 +882,57 @@ const SummaryCard = ({
       onClick={handleClick}
       sx={{
         position: 'relative',
-        p: { xs: 1.5, sm: 2, md: 2.5 }, // More compact but still breathable
-        borderRadius: 4,
+        p: { xs: 2, sm: 2.5, md: 3 },
+        borderRadius: 6,
         bgcolor: '#FFFFFF',
         background: isCXOView 
-          ? `linear-gradient(145deg, #FFFFFF 0%, ${alpha(cardColor, 0.02)} 100%)`
+          ? `linear-gradient(145deg, #FFFFFF 0%, ${alpha(cardColor, 0.03)} 100%)`
           : 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
         border: '1px solid',
-        borderColor: selected ? cardColor : 'rgba(226, 232, 240, 0.8)',
+        borderColor: selected ? cardColor : 'rgba(226, 232, 240, 0.7)',
         cursor: selectable || onClick ? 'pointer' : 'default',
-        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: selected 
-          ? `0 12px 32px ${alpha(cardColor, 0.2)}` 
-          : '0 4px 6px -1px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.04)', // Cleaner, softer shadow
+          ? `0 20px 40px -12px ${alpha(cardColor, 0.25)}` 
+          : '0 4px 20px -2px rgba(0,0,0,0.03), 0 12px 30px -4px rgba(0,0,0,0.04)',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden', // Contain background decorations
+        overflow: 'hidden',
         ...cardStyles,
         '&:hover': {
-          transform: 'translateY(-6px) scale(1.01)',
-          boxShadow: `0 20px 40px -4px ${alpha(cardColor, 0.12)}, 0 8px 12px -4px rgba(0,0,0,0.04)`,
-          borderColor: alpha(cardColor, 0.4),
+          transform: 'translateY(-8px) scale(1.01)',
+          boxShadow: `0 30px 60px -12px ${alpha(cardColor, 0.18)}, 0 18px 36px -18px rgba(0,0,0,0.08)`,
+          borderColor: alpha(cardColor, 0.5),
+          '& .card-actions': {
+            opacity: 1,
+            transform: 'translateY(0)',
+          }
         },
-        animation: 'fadeInUp 0.6s ease-out forwards',
-        '@keyframes fadeInUp': {
-          '0%': { opacity: 0, transform: 'translateY(20px)' },
-          '100%': { opacity: 1, transform: 'translateY(0)' },
+        animation: 'fadeInPremium 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        '@keyframes fadeInPremium': {
+          '0%': { opacity: 0, transform: 'translateY(30px) scale(0.98)' },
+          '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
+        },
+        '@keyframes floatPremium': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-15px)' },
+        },
+        '@keyframes pulsePremium': {
+          '0%, 100%': { transform: 'scale(1)', opacity: 0.1 },
+          '50%': { transform: 'scale(1.1)', opacity: 0.2 },
+        },
+        '@keyframes premiumEntrance': {
+          '0%': { transform: 'translateX(-20px)', opacity: 0 },
+          '100%': { transform: 'translateX(0)', opacity: 1 },
+        },
+        '@keyframes slideInPremium': {
+          '0%': { transform: 'translateY(20px)', opacity: 0 },
+          '100%': { transform: 'translateY(0)', opacity: 1 },
+        },
+        '@keyframes premiumShimmer': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
         },
       }}
     >
@@ -990,21 +995,21 @@ const SummaryCard = ({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
           {/* Hide header icon in CXO view to avoid redundancy */}
           {!isCXOView && (
-            <Box
-              sx={{
-                width: { xs: 48, sm: 56 },
-                height: { xs: 48, sm: 56 },
-                borderRadius: 3,
-                background: `linear-gradient(135deg, ${cardColor} 0%, ${alpha(cardColor, 0.8)} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: `0 8px 16px ${alpha(cardColor, 0.2)}`,
-              }}
-            >
-              <IconComponent sx={{ fontSize: { xs: 26, sm: 30 }, color: '#FFFFFF' }} />
-            </Box>
+          <Box
+            sx={{
+              width: { xs: 48, sm: 56 },
+              height: { xs: 48, sm: 56 },
+              borderRadius: 3,
+              background: `linear-gradient(135deg, ${cardColor} 0%, ${alpha(cardColor, 0.8)} 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: `0 8px 16px ${alpha(cardColor, 0.2)}`,
+            }}
+          >
+            <IconComponent sx={{ fontSize: { xs: 26, sm: 30 }, color: '#FFFFFF' }} />
+          </Box>
           )}
           <Box sx={{ flex: 1, minWidth: 0 }}>
              {/* Title with Info Icon - Centered with Icon */}
@@ -1108,64 +1113,103 @@ const SummaryCard = ({
               />
             )
           ) : card_type === 'table_summary' && top_entries && top_entries.length > 0 ? (
-            /* Table Summary Card - Top Entries with progress bars */
+            /* Table Summary Card - Top Entries with premium styling */
             <Box sx={{ 
               width: '100%', 
               mt: 0, 
               display: 'flex', 
               flexDirection: 'column', 
-              gap: top_entries.length <= 3 ? 5 : 2, 
+              gap: top_entries.length <= 3 ? { xs: 4, sm: 5 } : 2.5, 
               flex: 1, 
-              justifyContent: top_entries.length <= 3 ? 'space-evenly' : 'center',
-              py: 2
+              justifyContent: 'center',
+              py: 1
             }}>
               {top_entries.map((entry, idx) => {
-                const isSparse = top_entries.length <= 2;
+                const isSparse = top_entries.length <= 3;
+                const maxValue = Math.max(...top_entries.map(e => e.value), 1);
+                const percentage = (entry.value / maxValue) * 100;
+                
+                // Diverse color palette for each entry
+                const diversePalette = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
+                const rankColor = diversePalette[idx % diversePalette.length];
+
                 return (
                 <Tooltip key={idx} title={`${entry.fullName || entry.name}: ${entry.formatted}`} arrow placement="top" enterDelay={200}>
-                  <Box sx={{ cursor: 'default' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: isSparse ? 1.25 : 0.75, alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: isSparse ? 2 : 1.5 }}>
-                        <Typography sx={{ 
-                          fontSize: isSparse ? '0.85rem' : '0.75rem', 
-                          color: '#64748B', 
-                          fontWeight: 700,
-                          width: isSparse ? 28 : 22,
-                          height: isSparse ? 28 : 22,
+                      <Box 
+                    sx={{ 
+                      cursor: 'default',
+                      animation: `premiumEntrance 0.6s ease-out forwards ${idx * 0.08}s`,
+                      width: '100%',
+                      willChange: 'transform, opacity',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'center', gap: { xs: 1.5, sm: 3 } }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2.5 }, flex: 1, minWidth: 0 }}>
+                        <Box sx={{ 
+                          width: isSparse ? { xs: 32, sm: 40 } : 28,
+                          height: isSparse ? { xs: 32, sm: 40 } : 28,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          bgcolor: idx < 3 ? (idx === 0 ? '#1E40AF' : idx === 1 ? alpha('#1E40AF', 0.8) : alpha('#1E40AF', 0.6)) : '#F1F5F9',
-                          color: idx < 3 ? '#FFFFFF' : '#64748B',
-                          borderRadius: '50%',
-                          border: idx < 3 ? 'none' : '1px solid #E2E8F0'
+                          bgcolor: rankColor,
+                          color: '#FFFFFF',
+                          borderRadius: '14px',
+                          fontWeight: 900,
+                          fontSize: isSparse ? { xs: '0.9rem', sm: '1.1rem' } : '0.85rem',
+                          boxShadow: `0 8px 20px -4px ${alpha(rankColor, 0.4)}`,
+                          position: 'relative',
+                          flexShrink: 0,
+                          '&::after': {
+                            content: idx === 0 ? '"👑"' : '""',
+                            position: 'absolute',
+                            top: -14,
+                            right: -14,
+                            fontSize: { xs: '1rem', sm: '1.2rem' },
+                          }
                         }}>
                           {entry.rank}
-                        </Typography>
-                        <Typography sx={{ fontSize: isSparse ? '1rem' : '0.9rem', color: '#334155', fontWeight: 600 }}>
+                        </Box>
+                        <Typography sx={{ 
+                          fontSize: isSparse ? { xs: '0.9rem', sm: '1.1rem' } : '0.95rem', 
+                          color: '#0F172A', 
+                          fontWeight: 800,
+                          letterSpacing: '-0.01em',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          flex: 1
+                        }}>
                           {entry.name}
                         </Typography>
                       </Box>
-                      <Typography sx={{ fontSize: isSparse ? '1.1rem' : '0.9rem', color: '#1E40AF', fontWeight: 700 }}>
+                      <Typography sx={{ 
+                        fontSize: isSparse ? { xs: '1.1rem', sm: '1.4rem' } : '1.1rem', 
+                        color: rankColor, 
+                        fontWeight: 900,
+                        fontVariantNumeric: 'tabular-nums',
+                        letterSpacing: '-0.03em',
+                        flexShrink: 0,
+                        textAlign: 'right'
+                      }}>
                         {entry.formatted || smartFormat(entry.value)}
                       </Typography>
                     </Box>
                     <Box sx={{ 
                       width: '100%', 
-                      height: isSparse ? 32 : 22, 
-                      bgcolor: '#F1F5F9', 
-                      borderRadius: isSparse ? 16 : 11,
+                      height: isSparse ? { xs: 12, sm: 16 } : 10, 
+                      bgcolor: alpha(rankColor, 0.06), 
+                      borderRadius: 10,
                       overflow: 'hidden',
-                      mt: 0.5,
-                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                      position: 'relative',
+                      boxShadow: `inset 0 1px 3px ${alpha(rankColor, 0.1)}`
                     }}>
                       <Box sx={{ 
-                        width: `${(entry.value / Math.max(...top_entries.map(e => e.value))) * 100}%`, 
+                        width: `${percentage}%`, 
                         height: '100%', 
-                        background: `linear-gradient(90deg, ${cardColor} 0%, ${alpha(cardColor, 0.6)} 100%)`,
-                        borderRadius: isSparse ? 16 : 11,
-                        transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                        boxShadow: `0 0 12px ${alpha(cardColor, 0.3)}`,
+                        background: `linear-gradient(90deg, ${rankColor} 0%, ${alpha(rankColor, 0.7)} 100%)`,
+                        borderRadius: 10,
+                        transition: 'width 1.2s ease-out',
+                        boxShadow: `0 0 20px ${alpha(rankColor, 0.35)}`,
                         position: 'relative',
                         '&::after': {
                           content: '""',
@@ -1174,9 +1218,9 @@ const SummaryCard = ({
                           left: 0,
                           right: 0,
                           bottom: 0,
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                          animation: 'shimmerPremium 2s infinite linear',
-                        }
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                          animation: 'premiumShimmer 2.5s infinite linear',
+                        },
                       }} />
                     </Box>
                   </Box>
@@ -1208,9 +1252,9 @@ const SummaryCard = ({
                     borderRadius: 4,
                     border: '1px solid',
                     borderColor: alpha(cardColor, 0.1),
-                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    animation: `slideInList 0.5s ease-out forwards ${idx * 0.1}s`,
-                    opacity: 0,
+                    transition: 'all 0.3s ease-out',
+                    animation: `slideInList 0.4s ease-out forwards ${idx * 0.05}s`,
+                    willChange: 'transform, opacity',
                     '&:hover': { 
                       transform: 'translateX(8px)', 
                       bgcolor: alpha(cardColor, 0.1),
@@ -1256,85 +1300,113 @@ const SummaryCard = ({
               )})}
             </Box>
           ) : card_type === 'comparison' && Array.isArray(comparison_data) && comparison_data.length > 0 ? (
-            /* Comparison Card - Cross-Entity Comparison */
+            /* Comparison Card - Cross-Entity Comparison Premium */
             <Box sx={{ 
               display: 'flex', 
               flexDirection: 'column', 
-              gap: 2, 
+              gap: comparison_data.length <= 2 ? 4 : 2.5, 
               flex: 1, 
               justifyContent: 'center', 
-              py: 0.5 
+              py: 1
             }}>
               {comparison_data.map((entry, idx) => {
-                // Try to get the correct value from query_results if available
-                let value = entry.mtd_lakhs !== undefined ? entry.mtd_lakhs : (entry.value || 0);
-                let lmtdValue = entry.lmtd_lakhs !== undefined ? entry.lmtd_lakhs : null;
-                let formattedValue = entry.formatted;
+                const maxValue = Math.max(...comparison_data.map(e => e.mtd_lakhs || e.value || 0), 1);
+                const value = entry.mtd_lakhs || entry.value || 0;
+                const percentage = (value / maxValue) * 100;
+                const changePct = entry.change_pct || 0;
                 
-                // If query_results exists, use it to get accurate values
-                if (Array.isArray(query_results) && query_results.length > 0) {
-                  const matchingResult = query_results.find(
-                    r => r.bank_name?.toLowerCase() === entry.name?.toLowerCase()
-                  );
-                  if (matchingResult) {
-                    // Convert to lakhs if values are in raw amount
-                    const mtdAmount = matchingResult.mtd_disbursed_amount || 0;
-                    const lmtdAmount = matchingResult.lmtd_disbursed_amount || 0;
-                    
-                    // If amounts are > 10000, they're likely in raw rupees, convert to lakhs
-                    value = mtdAmount > 10000 ? mtdAmount / 100000 : mtdAmount;
-                    lmtdValue = lmtdAmount > 10000 ? lmtdAmount / 100000 : lmtdAmount;
-                    
-                    // Calculate change percentage
-                    const changePct = lmtdValue > 0 ? ((value - lmtdValue) / lmtdValue * 100) : 0;
-                    const changeSign = changePct > 0 ? '+' : '';
-                    
-                    // Format the display value
-                    formattedValue = `₹${value.toFixed(2)}L (${changeSign}${changePct.toFixed(2)}%)`;
-                  }
-                }
-                
-                // Calculate max value for bar width
-                const allValues = comparison_data.map((e, i) => {
-                  if (Array.isArray(query_results) && query_results.length > 0) {
-                    const matchingResult = query_results.find(
-                      r => r.bank_name?.toLowerCase() === e.name?.toLowerCase()
-                    );
-                    if (matchingResult) {
-                      const mtdAmount = matchingResult.mtd_disbursed_amount || 0;
-                      return mtdAmount > 10000 ? mtdAmount / 100000 : mtdAmount;
-                    }
-                  }
-                  return e.mtd_lakhs !== undefined ? e.mtd_lakhs : (e.value || 0);
-                });
-                const maxValue = Math.max(...allValues) || 1;
-                const barColor = CHART_COLORS.primary[idx % CHART_COLORS.primary.length];
+                // Diverse colors per row
+                const diversePalette = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+                const barColor = diversePalette[idx % diversePalette.length];
+                const isPositive = changePct >= 0;
                 
                 return (
-                  <Box key={idx} sx={{ width: '100%' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center' }}>
-                      <Typography sx={{ fontSize: '0.95rem', color: '#1E293B', fontWeight: 800 }}>
+                  <Box 
+                    key={idx} 
+                    sx={{ 
+                      width: '100%',
+                      animation: `premiumEntrance 0.6s ease-out forwards ${idx * 0.08}s`,
+                      willChange: 'transform, opacity',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.25, alignItems: 'flex-end', gap: 2 }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography sx={{ 
+                          fontSize: { xs: '0.9rem', sm: '1.05rem' }, 
+                          color: '#0F172A', 
+                          fontWeight: 850, 
+                          mb: 0.5, 
+                          letterSpacing: '-0.01em',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
                         {entry.name}
                       </Typography>
-                      <Typography sx={{ fontSize: '1.1rem', color: barColor, fontWeight: 900, letterSpacing: '-0.02em' }}>
-                        {formattedValue || smartFormat(value)}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                          <Typography sx={{ 
+                            fontSize: { xs: '1.2rem', sm: '1.4rem' }, 
+                            color: barColor, 
+                            fontWeight: 900, 
+                            letterSpacing: '-0.03em', 
+                            lineHeight: 1 
+                          }}>
+                            {entry.formatted?.split(' ')[0] || smartFormat(value)}
+                          </Typography>
+                          {entry.formatted?.includes('(') && (
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: 0.25, 
+                              px: 1, 
+                              py: 0.25, 
+                              borderRadius: '6px',
+                              bgcolor: isPositive ? alpha('#10B981', 0.1) : alpha('#EF4444', 0.1),
+                              border: `1.2px solid ${isPositive ? alpha('#10B981', 0.2) : alpha('#EF4444', 0.2)}`,
+                            }}>
+                              {isPositive ? (
+                                <TrendingUpIcon sx={{ fontSize: { xs: 12, sm: 14 }, color: '#059669' }} />
+                              ) : (
+                                <TrendingDownIcon sx={{ fontSize: { xs: 12, sm: 14 }, color: '#DC2626' }} />
+                              )}
+                              <Typography sx={{ 
+                                fontSize: { xs: '0.65rem', sm: '0.75rem' }, 
+                                fontWeight: 900, 
+                                color: isPositive ? '#059669' : '#DC2626' 
+                              }}>
+                                {Math.abs(changePct)}%
                       </Typography>
                     </Box>
+                          )}
+                        </Box>
+                      </Box>
+                      
+                      <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                        <Typography sx={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Rank {idx + 1}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.8rem', color: '#1E293B', fontWeight: 800 }}>
+                          {percentage.toFixed(0)}% Intensity
+                        </Typography>
+                      </Box>
+                    </Box>
+                    
                     <Box sx={{ 
                       width: '100%', 
-                      height: 14, 
-                      bgcolor: '#F1F5F9', 
-                      borderRadius: 7,
+                      height: { xs: 14, sm: 18 }, 
+                      bgcolor: alpha(barColor, 0.08), 
+                      borderRadius: 9,
                       overflow: 'hidden',
-                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                      boxShadow: `inset 0 1px 3px ${alpha(barColor, 0.1)}`,
+                      position: 'relative'
                     }}>
                       <Box sx={{ 
-                        width: `${Math.min((value / maxValue) * 100, 100)}%`, 
+                        width: `${Math.min(percentage, 100)}%`, 
                         height: '100%', 
-                        background: `linear-gradient(90deg, ${barColor} 0%, ${alpha(barColor, 0.6)} 100%)`,
-                        borderRadius: 7,
-                        transition: 'width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                        boxShadow: `0 0 12px ${alpha(barColor, 0.3)}`,
+                        background: `linear-gradient(90deg, ${barColor} 0%, ${alpha(barColor, 0.7)} 100%)`,
+                        borderRadius: 9,
+                        transition: 'width 1.2s ease-out',
+                        boxShadow: `0 0 20px ${alpha(barColor, 0.4)}`,
                         position: 'relative',
                         '&::after': {
                           content: '""',
@@ -1344,7 +1416,7 @@ const SummaryCard = ({
                           right: 0,
                           bottom: 0,
                           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                          animation: 'shimmerPremium 2s infinite linear',
+                          animation: 'premiumShimmer 3s infinite linear',
                         }
                       }} />
                     </Box>
@@ -1793,6 +1865,14 @@ const SummaryCard = ({
       )}
     </Box>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison to avoid re-renders if the data hasn't changed
+  return (
+    prevProps.card === nextProps.card &&
+    prevProps.selected === nextProps.selected &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.selectionMode === nextProps.selectionMode
+  );
+});
 
 export default SummaryCard;
