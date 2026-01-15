@@ -111,6 +111,9 @@ const DataGridComponent = ({
         // Final check for numeric column (for alignment)
         const isNumber = isValueNumeric || isAmountColumn || isPercentageColumn;
         
+        // Check if this is a Productivity column (for icon rendering)
+        const isProductivity = key.toLowerCase() === 'productivity';
+        
         // Check if any value in this column has decimals
         const hasDecimalsInColumn = isNumber && columnHasDecimals(key, data);
         
@@ -122,14 +125,33 @@ const DataGridComponent = ({
           width: 140,
           flex: 1,
           minWidth: 120,
-          align: isNumber ? 'right' : 'left',
-          headerAlign: isNumber ? 'right' : 'left',
+          align: isProductivity ? 'center' : (isNumber ? 'right' : 'left'),
+          headerAlign: isProductivity ? 'center' : (isNumber ? 'right' : 'left'),
           renderCell: (params) => {
             const value = params.value;
             
             // Handle null/undefined
             if (value === null || value === undefined) {
               return '—';
+            }
+            
+            // Handle Productivity column with icons
+            if (typeof value === 'string' && key.toLowerCase() === 'productivity') {
+              const upperValue = value.toUpperCase().trim();
+              const isNonProductive = upperValue === 'ZERO PRODUCTIVITY' || upperValue === 'NONE';
+              const isProductive = upperValue === 'WORK DONE' || upperValue === 'COLL';
+              
+              if (isNonProductive || isProductive) {
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+                    <img
+                      src={isNonProductive ? '/non-productive.png' : '/productive.svg'}
+                      alt={value}
+                      style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+                    />
+                  </Box>
+                );
+              }
             }
             
             // Try to parse string numbers
@@ -242,6 +264,9 @@ const DataGridComponent = ({
             // Final check for numeric column (for alignment)
             const isNumber = isValueNumeric || isAmountColumn || isPercentageColumn;
             
+            // Check if this is a Productivity column (for icon rendering)
+            const isProductivity = key.toLowerCase() === 'productivity';
+            
             // Check if any value in this column has decimals
             const hasDecimalsInColumn = isNumber && columnHasDecimals(key, rows);
             
@@ -253,14 +278,33 @@ const DataGridComponent = ({
                 flex: 1,
                 minWidth: 140,
                 width: 180,
-                align: isNumber ? 'right' : 'left',
-                headerAlign: isNumber ? 'right' : 'left',
+                align: isProductivity ? 'center' : (isNumber ? 'right' : 'left'),
+                headerAlign: isProductivity ? 'center' : (isNumber ? 'right' : 'left'),
                 renderCell: (params) => {
                     const value = params.value;
                     
                     // Handle null/undefined
                     if (value === null || value === undefined) {
                         return '—';
+                    }
+                    
+                    // Handle Productivity column with icons
+                    if (typeof value === 'string' && key.toLowerCase() === 'productivity') {
+                        const upperValue = value.toUpperCase().trim();
+                        const isNonProductive = upperValue === 'ZERO PRODUCTIVITY' || upperValue === 'NONE';
+                        const isProductive = upperValue === 'WORK DONE' || upperValue === 'COLL';
+                        
+                        if (isNonProductive || isProductive) {
+                            return (
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+                                    <img
+                                        src={isNonProductive ? '/non-productive.png' : '/productive.svg'}
+                                        alt={value}
+                                        style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+                                    />
+                                </Box>
+                            );
+                        }
                     }
                     
                     // Try to parse string numbers
@@ -458,6 +502,10 @@ const DataGridComponent = ({
             // Right-align numeric cells
             '& .MuiDataGrid-cell--textRight': {
               justifyContent: 'flex-end',
+            },
+            // Center-align cells (for icons)
+            '& .MuiDataGrid-cell--textCenter': {
+              justifyContent: 'center',
             },
             '& .MuiDataGrid-row': {
               bgcolor: '#FFFFFF',
@@ -734,6 +782,10 @@ const DataGridComponent = ({
                 // Right-align numeric cells
                 '& .MuiDataGrid-cell--textRight': {
                   justifyContent: 'flex-end',
+                },
+                // Center-align cells (for icons)
+                '& .MuiDataGrid-cell--textCenter': {
+                  justifyContent: 'center',
                 },
                 '& .MuiDataGrid-row': {
                   bgcolor: '#FFFFFF',
