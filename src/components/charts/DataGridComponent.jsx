@@ -1,13 +1,36 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Card,
   CardContent,
   Typography,
-  Button
+  Button,
+  Toolbar,
+  IconButton,
+  Menu,
+  MenuItem,
+  Popover,
+  Stack,
+  Divider,
+  Tooltip,
+  alpha,
+  ToggleButtonGroup,
+  ToggleButton,
+  Autocomplete,
+  TextField,
+  CircularProgress
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { TableChart, FileDownload } from '@mui/icons-material';
+import { 
+  TableChart, 
+  FileDownload,
+  FormatColorFill as FormatColorFillIcon,
+  BorderColor as BorderColorIcon,
+  Clear as ClearIcon,
+  CheckCircle as CheckCircleIcon,
+  Storage as StorageIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 
 // Common acronyms that should stay uppercase in headers
 const ACRONYMS = ['MTD', 'LMTD', 'FTD', 'OTR', 'NPA', 'SMA', 'INR', 'ID', 'KYC', 'API', 'URL', 'PCT', 'YTD', 'QTD', 'EMI', 'ROI', 'POS', 'DPD', 'BANK', 'LACS'];
@@ -57,6 +80,18 @@ const columnHasDecimals = (key, dataArray) => {
   });
 };
 
+// Color palette for highlighting
+const HIGHLIGHT_COLORS = [
+  { name: 'Red', value: '#FEE2E2', text: '#991B1B' },
+  { name: 'Orange', value: '#FED7AA', text: '#9A3412' },
+  { name: 'Yellow', value: '#FEF3C7', text: '#854D0E' },
+  { name: 'Green', value: '#D1FAE5', text: '#065F46' },
+  { name: 'Blue', value: '#DBEAFE', text: '#1E40AF' },
+  { name: 'Purple', value: '#E9D5FF', text: '#6B21A8' },
+  { name: 'Pink', value: '#FCE7F3', text: '#9F1239' },
+  { name: 'Gray', value: '#F3F4F6', text: '#374151' },
+];
+
 const DataGridComponent = ({ 
   rows = [], 
   columns = [], 
@@ -68,8 +103,70 @@ const DataGridComponent = ({
   data = null, // New prop for dynamic data
   autoGenerateColumns = true, // New prop to auto-generate columns
   variant = "card", // 'card' | 'clean'
-  useInfiniteScroll = false // New prop for infinite scroll
+  useInfiniteScroll = false, // New prop for infinite scroll
+  // Formatting props from parent
+  isFormattingActive = false,
+  columnFormats: propColumnFormats = null,
+  rowFormats: propRowFormats = null,
+  onFormatColumn = null,
+  onFormatRow = null,
+  onClearColumnFormat = null,
+  onClearRowFormat = null,
+  onClearAllFormats = null,
+  // Error props
+  error = null,
+  isLockError = false
 }) => {
+  // State for column/row formatting - use props if provided, otherwise use local state
+  const [localColumnFormats, setLocalColumnFormats] = useState({}); // { columnField: { bgColor, textColor } }
+  const [localRowFormats, setLocalRowFormats] = useState({}); // { rowId: { bgColor, textColor } }
+  const [activeTab, setActiveTab] = useState('column'); // 'column' | 'row'
+  const [selectedColumn, setSelectedColumn] = useState(null);
+  const [selectedRow, setSelectedRow] = useState(null);
+  
+  // Use props if provided, otherwise use local state
+  const columnFormats = propColumnFormats !== null ? propColumnFormats : localColumnFormats;
+  const rowFormats = propRowFormats !== null ? propRowFormats : localRowFormats;
+  
+  // Use prop handlers if provided, otherwise use local handlers
+  const handleFormatColumn = onFormatColumn || ((columnField, color) => {
+    setLocalColumnFormats(prev => ({
+      ...prev,
+      [columnField]: {
+        bgColor: color.value,
+        textColor: color.text
+      }
+    }));
+  });
+  
+  const handleFormatRow = onFormatRow || ((rowId, color) => {
+    setLocalRowFormats(prev => ({
+      ...prev,
+      [rowId]: {
+        bgColor: color.value,
+        textColor: color.text
+      }
+    }));
+  });
+  
+  const handleClearColumnFormat = onClearColumnFormat || ((columnField) => {
+    setLocalColumnFormats(prev => {
+      const { [columnField]: _, ...rest } = prev;
+      return rest;
+    });
+  });
+  
+  const handleClearRowFormat = onClearRowFormat || ((rowId) => {
+    setLocalRowFormats(prev => {
+      const { [rowId]: _, ...rest } = prev;
+      return rest;
+    });
+  });
+  
+  const handleClearAllFormats = onClearAllFormats || (() => {
+    setLocalColumnFormats({});
+    setLocalRowFormats({});
+  });
   // Generate columns and rows dynamically if data is provided
   const { processedRows, processedColumns } = useMemo(() => {
     let finalRows = rows;
@@ -122,17 +219,43 @@ const DataGridComponent = ({
         return {
           field: key,
           headerName: headerName,
-          width: 140,
+          width: 150,
+          minWidth: 150,
+          maxWidth: 800,
           flex: 1,
-          minWidth: 120,
+          resizable: true,
           align: isProductivity ? 'center' : (isNumber ? 'right' : 'left'),
           headerAlign: isProductivity ? 'center' : (isNumber ? 'right' : 'left'),
           renderCell: (params) => {
             const value = params.value;
+            const rowId = params.id;
+            const columnField = params.field;
+            
+            // Get formatting for this cell (column format takes precedence over row format)
+            const columnFormat = columnFormats[columnField];
+            const rowFormat = rowFormats[rowId];
+            const cellBgColor = columnFormat?.bgColor || rowFormat?.bgColor;
+            const cellTextColor = columnFormat?.textColor || rowFormat?.textColor;
             
             // Handle null/undefined
             if (value === null || value === undefined) {
-              return '—';
+              return (
+                <Box sx={{ 
+                  width: '100%', 
+                  minHeight: '100%',
+                  bgcolor: cellBgColor,
+                  color: cellTextColor || '#94A3B8',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  py: 0.5,
+                  px: 0,
+                  overflow: 'visible !important',
+                  lineHeight: 1.5,
+                }}>
+                  —
+                </Box>
+              );
             }
             
             // Handle Productivity column with icons
@@ -143,11 +266,21 @@ const DataGridComponent = ({
               
               if (isNonProductive || isProductive) {
                 return (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start', 
+                    justifyContent: 'center', 
+                    minHeight: '100%', 
+                    width: '100%',
+                    bgcolor: cellBgColor,
+                    py: 0.5,
+                    px: 0,
+                    overflow: 'visible !important',
+                  }}>
                     <img
                       src={isNonProductive ? '/non-productive.png' : '/productive.svg'}
                       alt={value}
-                      style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+                      style={{ width: '40px', height: '40px', objectFit: 'contain', display: 'block' }}
                     />
                   </Box>
                 );
@@ -170,6 +303,44 @@ const DataGridComponent = ({
               }
             }
             
+            // Helper to wrap value in formatted Box
+            const renderFormattedValue = (displayValue) => {
+              if (cellBgColor || cellTextColor) {
+                return (
+                  <Box sx={{ 
+                    width: '100%', 
+                    minHeight: '100%',
+                    bgcolor: cellBgColor,
+                    color: cellTextColor,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'flex-start',
+                    py: 0.5,
+                    px: 0,
+                    wordBreak: 'break-word',
+                    overflow: 'visible !important',
+                    whiteSpace: 'normal',
+                    lineHeight: 1.5,
+                  }}>
+                    {displayValue}
+                  </Box>
+                );
+              }
+              return (
+                <Box sx={{
+                  width: '100%',
+                  py: 0.5,
+                  px: 0,
+                  wordBreak: 'break-word',
+                  overflow: 'visible !important',
+                  whiteSpace: 'normal',
+                  lineHeight: 1.5,
+                }}>
+                  {displayValue}
+                </Box>
+              );
+            };
+            
             // Handle numbers with proper formatting
             if (isValidNumber) {
               // If column has any decimals, format all values with 2 decimal places
@@ -179,10 +350,10 @@ const DataGridComponent = ({
               
               // Add % symbol for percentage columns
               if (isPercentageColumn) {
-                return `${numValue.toLocaleString('en-IN', formatOptions)}%`;
+                return renderFormattedValue(`${numValue.toLocaleString('en-IN', formatOptions)}%`);
               }
               // Format numbers
-              return numValue.toLocaleString('en-IN', formatOptions);
+              return renderFormattedValue(numValue.toLocaleString('en-IN', formatOptions));
             }
             
             // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
@@ -197,26 +368,26 @@ const DataGridComponent = ({
                 if (!isNaN(date.getTime())) {
                   // For month columns, show "Mon YYYY" format
                   if (key.toLowerCase().includes('month')) {
-                    return date.toLocaleDateString('en-US', { 
+                    return renderFormattedValue(date.toLocaleDateString('en-US', { 
                       month: 'short', 
                       year: 'numeric' 
-                    });
+                    }));
                   }
                   // For other dates, show full date
-                  return date.toLocaleDateString('en-US', { 
+                  return renderFormattedValue(date.toLocaleDateString('en-US', { 
                     month: 'short', 
                     day: 'numeric',
                     year: 'numeric' 
-                  });
+                  }));
                 }
               } catch (e) {
                 // If date parsing fails, return as is
-                return value;
+                return renderFormattedValue(value);
               }
             }
           }
           
-          return value;
+          return renderFormattedValue(value);
         }
       };
     });
@@ -275,17 +446,43 @@ const DataGridComponent = ({
             return {
                 field: key,
                 headerName: headerName,
+                width: 150,
+                minWidth: 150,
+                maxWidth: 800,
                 flex: 1,
-                minWidth: 140,
-                width: 180,
+                resizable: true,
                 align: isProductivity ? 'center' : (isNumber ? 'right' : 'left'),
                 headerAlign: isProductivity ? 'center' : (isNumber ? 'right' : 'left'),
                 renderCell: (params) => {
                     const value = params.value;
+                    const rowId = params.id;
+                    const columnField = params.field;
+                    
+                    // Get formatting for this cell (column format takes precedence over row format)
+                    const columnFormat = columnFormats[columnField];
+                    const rowFormat = rowFormats[rowId];
+                    const cellBgColor = columnFormat?.bgColor || rowFormat?.bgColor;
+                    const cellTextColor = columnFormat?.textColor || rowFormat?.textColor;
                     
                     // Handle null/undefined
                     if (value === null || value === undefined) {
-                        return '—';
+                        return (
+                            <Box sx={{ 
+                                width: '100%', 
+                                minHeight: '100%',
+                                bgcolor: cellBgColor,
+                                color: cellTextColor || '#94A3B8',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                justifyContent: 'flex-start',
+                                py: 0.5,
+                                px: 0,
+                                overflow: 'visible !important',
+                                lineHeight: 1.5,
+                            }}>
+                                —
+                            </Box>
+                        );
                     }
                     
                     // Handle Productivity column with icons
@@ -296,11 +493,21 @@ const DataGridComponent = ({
                         
                         if (isNonProductive || isProductive) {
                             return (
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'flex-start', 
+                                    justifyContent: 'center', 
+                                    minHeight: '100%', 
+                                    width: '100%',
+                                    bgcolor: cellBgColor,
+                                    py: 0.5,
+                                    px: 0,
+                                    overflow: 'visible !important',
+                                }}>
                                     <img
                                         src={isNonProductive ? '/non-productive.png' : '/productive.svg'}
                                         alt={value}
-                                        style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+                                        style={{ width: '40px', height: '40px', objectFit: 'contain', display: 'block' }}
                                     />
                                 </Box>
                             );
@@ -323,6 +530,44 @@ const DataGridComponent = ({
                         }
                     }
                     
+                    // Helper to wrap value in formatted Box
+                    const renderFormattedValue = (displayValue) => {
+                        if (cellBgColor || cellTextColor) {
+                            return (
+                                <Box sx={{ 
+                                    width: '100%', 
+                                    minHeight: '100%',
+                                    bgcolor: cellBgColor,
+                                    color: cellTextColor,
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    justifyContent: 'flex-start',
+                                    py: 0.5,
+                                    px: 0,
+                                    wordBreak: 'break-word',
+                                    overflow: 'visible !important',
+                                    whiteSpace: 'normal',
+                                    lineHeight: 1.5,
+                                }}>
+                                    {displayValue}
+                                </Box>
+                            );
+                        }
+                        return (
+                            <Box sx={{
+                                width: '100%',
+                                py: 0.5,
+                                px: 0,
+                                wordBreak: 'break-word',
+                                overflow: 'visible !important',
+                                whiteSpace: 'normal',
+                                lineHeight: 1.5,
+                            }}>
+                                {displayValue}
+                            </Box>
+                        );
+                    };
+                    
                     // Handle numbers with proper formatting
                     if (isValidNumber) {
                         // If column has any decimals, format all values with 2 decimal places
@@ -332,10 +577,10 @@ const DataGridComponent = ({
                         
                         // Add % symbol for percentage columns
                         if (isPercentageColumn) {
-                            return `${numValue.toLocaleString('en-IN', formatOptions)}%`;
+                            return renderFormattedValue(`${numValue.toLocaleString('en-IN', formatOptions)}%`);
                         }
                         // Format numbers
-                        return numValue.toLocaleString('en-IN', formatOptions);
+                        return renderFormattedValue(numValue.toLocaleString('en-IN', formatOptions));
                     }
                     
                     // Handle dates (ISO format like "2024-10-01T00:00:00+00:00")
@@ -348,24 +593,24 @@ const DataGridComponent = ({
                                 const date = new Date(value);
                                 if (!isNaN(date.getTime())) {
                                     if (key.toLowerCase().includes('month')) {
-                                        return date.toLocaleDateString('en-US', { 
+                                        return renderFormattedValue(date.toLocaleDateString('en-US', { 
                                             month: 'short', 
                                             year: 'numeric' 
-                                        });
+                                        }));
                                     }
-                                    return date.toLocaleDateString('en-US', { 
+                                    return renderFormattedValue(date.toLocaleDateString('en-US', { 
                                         month: 'short', 
                                         day: 'numeric',
                                         year: 'numeric' 
-                                    });
+                                    }));
                                 }
                             } catch (e) {
-                                return value;
+                                return renderFormattedValue(value);
                             }
                         }
                     }
                     
-                    return value;
+                    return renderFormattedValue(value);
                 }
             };
         });
@@ -375,7 +620,7 @@ const DataGridComponent = ({
       processedRows: finalRows,
       processedColumns: finalColumns
     };
-  }, [data, rows, columns, autoGenerateColumns]);
+  }, [data, rows, columns, autoGenerateColumns, columnFormats, rowFormats]);
 
   // Export to CSV function
   const handleExportToCSV = () => {
@@ -414,6 +659,213 @@ const DataGridComponent = ({
     }
   };
 
+  // Error state component - show when there's a lock error or other error
+  const ErrorState = () => {
+    if (!error) return null;
+    
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 400,
+          py: 6,
+          px: 3,
+          bgcolor: '#FAFBFC',
+          borderRadius: 2,
+        }}
+      >
+        {/* Animated Database Icon */}
+        <Box
+          sx={{
+            position: 'relative',
+            mb: 3,
+            animation: 'pulse 2s ease-in-out infinite',
+            '@keyframes pulse': {
+              '0%, 100%': {
+                transform: 'scale(1)',
+                opacity: 1,
+              },
+              '50%': {
+                transform: 'scale(1.1)',
+                opacity: 0.8,
+              },
+            },
+          }}
+        >
+          <Box
+            sx={{
+              position: 'relative',
+              width: 120,
+              height: 120,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {/* Rotating circles around database */}
+            <Box
+              sx={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                animation: 'rotate 3s linear infinite',
+                '@keyframes rotate': {
+                  '0%': { transform: 'rotate(0deg)' },
+                  '100%': { transform: 'rotate(360deg)' },
+                },
+              }}
+            >
+              {[0, 1, 2].map((i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    position: 'absolute',
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: '#b5c8de',
+                    top: '50%',
+                    left: '50%',
+                    transform: `translate(-50%, -50%) translateY(-60px) rotate(${i * 120}deg)`,
+                    transformOrigin: '0 60px',
+                    opacity: 0.6,
+                    animation: `fadeInOut 2s ease-in-out infinite ${i * 0.3}s`,
+                    '@keyframes fadeInOut': {
+                      '0%, 100%': { opacity: 0.3 },
+                      '50%': { opacity: 1 },
+                    },
+                  }}
+                />
+              ))}
+            </Box>
+            
+            {/* Database icon with pulsing effect */}
+            <StorageIcon
+              sx={{
+                fontSize: 80,
+                color: '#b5c8de',
+                animation: 'glow 2s ease-in-out infinite',
+                '@keyframes glow': {
+                  '0%, 100%': {
+                    filter: 'drop-shadow(0 0 8px rgba(181, 200, 222, 0.5))',
+                  },
+                  '50%': {
+                    filter: 'drop-shadow(0 0 16px rgba(181, 200, 222, 0.8))',
+                  },
+                },
+              }}
+            />
+            
+            {/* Spinner overlay */}
+            <CircularProgress
+              size={100}
+              thickness={2}
+              sx={{
+                position: 'absolute',
+                color: '#b5c8de',
+                animation: 'spin 1.5s linear infinite',
+                '@keyframes spin': {
+                  '0%': { transform: 'rotate(0deg)' },
+                  '100%': { transform: 'rotate(360deg)' },
+                },
+              }}
+            />
+          </Box>
+        </Box>
+        
+        {/* Title */}
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            color: '#1E293B',
+            mb: 1,
+            fontSize: { xs: '1.125rem', sm: '1.25rem' },
+          }}
+        >
+          Data Sync in Progress
+        </Typography>
+        
+        {/* Description */}
+        <Typography
+          variant="body2"
+          sx={{
+            color: '#64748B',
+            textAlign: 'center',
+            maxWidth: 400,
+            mb: 3,
+            lineHeight: 1.6,
+            fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+          }}
+        >
+          {isLockError
+            ? 'The database is currently processing another request. Please wait a moment and try refreshing again in 2 minutes.'
+            : 'We\'re syncing your data. This may take a few moments.'}
+        </Typography>
+        
+        {/* Refresh button with animation */}
+        <Button
+          variant="outlined"
+          startIcon={
+            <RefreshIcon
+              sx={{
+                animation: 'spin 2s linear infinite',
+                '@keyframes spin': {
+                  '0%': { transform: 'rotate(0deg)' },
+                  '100%': { transform: 'rotate(360deg)' },
+                },
+              }}
+            />
+          }
+          onClick={() => window.location.reload()}
+          sx={{
+            mt: 2,
+            px: 3,
+            py: 1.5,
+            borderColor: '#b5c8de',
+            color: '#1E293B',
+            fontWeight: 600,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontSize: '0.9375rem',
+            '&:hover': {
+              borderColor: '#8FA8C7',
+              bgcolor: 'rgba(181, 200, 222, 0.1)',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
+            },
+            transition: 'all 0.3s ease',
+          }}
+        >
+          Try Refreshing Again
+        </Button>
+        
+        {/* Countdown timer */}
+        {isLockError && (
+          <Typography
+            variant="caption"
+            sx={{
+              color: '#94A3B8',
+              mt: 3,
+              fontSize: '0.75rem',
+              fontWeight: 500,
+            }}
+          >
+            Recommended wait time: ~2 minutes
+          </Typography>
+        )}
+      </Box>
+    );
+  };
+
+  // Show error state if there's an error
+  if (error) {
+    return <ErrorState />;
+  }
+
   if (!processedRows || processedRows.length === 0) {
     return (
       <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
@@ -430,6 +882,264 @@ const DataGridComponent = ({
     }));
   }, [processedRows]);
 
+  // Compact formatting toolbar - only shows when formatting is active
+  const FormatToolbar = () => {
+    if (!isFormattingActive) return null;
+    
+    const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
+    const [rowMenuAnchor, setRowMenuAnchor] = useState(null);
+    
+    return (
+      <Box
+        sx={{
+          bgcolor: '#F8F9FA',
+          borderBottom: '1px solid #E9ECEF',
+          px: 2,
+          py: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          minHeight: 48,
+        }}
+      >
+        {/* Tab buttons for Column/Row selection */}
+        <ToggleButtonGroup
+          value={activeTab}
+          exclusive
+          onChange={(e, newTab) => {
+            if (newTab !== null) {
+              setActiveTab(newTab);
+              setSelectedColumn(null);
+              setSelectedRow(null);
+            }
+          }}
+          size="small"
+          sx={{
+            '& .MuiToggleButton-root': {
+              px: 1.5,
+              py: 0.5,
+              border: '1px solid #DEE2E6',
+              bgcolor: '#fff',
+              color: '#495057',
+              '&.Mui-selected': {
+                bgcolor: '#fff',
+                color: '#0078d7',
+                borderColor: '#0078d7',
+                borderWidth: '2px',
+                fontWeight: 600,
+                '&:hover': {
+                  bgcolor: '#F0F7FF',
+                  borderColor: '#0078d7',
+                }
+              },
+              '&:hover': {
+                bgcolor: '#F8F9FA',
+              }
+            }
+          }}
+        >
+          <ToggleButton value="column" aria-label="format column">
+            <FormatColorFillIcon sx={{ fontSize: 16, mr: 0.5 }} />
+            Column
+          </ToggleButton>
+          <ToggleButton value="row" aria-label="format row">
+            <BorderColorIcon sx={{ fontSize: 16, mr: 0.5 }} />
+            Row
+          </ToggleButton>
+        </ToggleButtonGroup>
+        
+        <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+        
+        {/* Column/Row selector */}
+        {activeTab === 'column' ? (
+          <Autocomplete
+            size="small"
+            options={processedColumns}
+            getOptionLabel={(option) => option.headerName || option.field}
+            value={selectedColumn ? processedColumns.find(c => c.field === selectedColumn) : null}
+            onChange={(e, newValue) => {
+              setSelectedColumn(newValue?.field || null);
+            }}
+            sx={{ minWidth: 200, flexGrow: 1 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Select column..."
+                variant="outlined"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: '#fff',
+                    fontSize: '0.8125rem',
+                  }
+                }}
+              />
+            )}
+            renderOption={(props, option) => {
+              const { key, ...otherProps } = props;
+              const hasFormat = columnFormats[option.field];
+              return (
+                <Box
+                  component="li"
+                  key={key}
+                  {...otherProps}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    bgcolor: hasFormat ? alpha(hasFormat.bgColor || '#3B82F6', 0.1) : 'transparent',
+                  }}
+                >
+                  <Typography variant="body2">{option.headerName || option.field}</Typography>
+                  {hasFormat && (
+                    <Box
+                      sx={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        bgcolor: hasFormat.bgColor,
+                        border: '1px solid #E9ECEF',
+                      }}
+                    />
+                  )}
+                </Box>
+              );
+            }}
+          />
+        ) : (
+          <Autocomplete
+            size="small"
+            options={rowsWithIds.slice(0, 100)}
+            getOptionLabel={(option) => {
+              const values = Object.values(option).slice(0, 2).filter(v => v !== option.id);
+              return values.join(' - ') || `Row ${option.id}`;
+            }}
+            value={selectedRow ? rowsWithIds.find(r => r.id === selectedRow) : null}
+            onChange={(e, newValue) => {
+              setSelectedRow(newValue?.id || null);
+            }}
+            sx={{ minWidth: 200, flexGrow: 1 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Select row..."
+                variant="outlined"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: '#fff',
+                    fontSize: '0.8125rem',
+                  }
+                }}
+              />
+            )}
+            renderOption={(props, option) => {
+              const { key, ...otherProps } = props;
+              const hasFormat = rowFormats[option.id];
+              const label = Object.values(option).slice(0, 2).filter(v => v !== option.id).join(' - ') || `Row ${option.id}`;
+              return (
+                <Box
+                  component="li"
+                  key={key}
+                  {...otherProps}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    bgcolor: hasFormat ? alpha(hasFormat.bgColor || '#3B82F6', 0.1) : 'transparent',
+                  }}
+                >
+                  <Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                    {label}
+                  </Typography>
+                  {hasFormat && (
+                    <Box
+                      sx={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        bgcolor: hasFormat.bgColor,
+                        border: '1px solid #E9ECEF',
+                      }}
+                    />
+                  )}
+                </Box>
+              );
+            }}
+          />
+        )}
+        
+        {/* Color swatches - shown inline when column/row is selected */}
+        {(selectedColumn || selectedRow) && (
+          <>
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              {HIGHLIGHT_COLORS.map((color) => {
+                const target = selectedColumn || selectedRow;
+                const hasFormat = selectedColumn 
+                  ? columnFormats[selectedColumn]?.bgColor === color.value
+                  : rowFormats[selectedRow]?.bgColor === color.value;
+                
+                return (
+                  <Tooltip key={color.name} title={color.name} arrow>
+                    <Box
+                      onClick={() => {
+                        if (selectedColumn) {
+                          handleFormatColumn(selectedColumn, color);
+                        } else if (selectedRow) {
+                          handleFormatRow(selectedRow, color);
+                        }
+                      }}
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 1,
+                        bgcolor: color.value,
+                        border: hasFormat ? `2px solid ${color.text}` : '2px solid #E9ECEF',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          transform: 'scale(1.15)',
+                          borderColor: color.text,
+                          boxShadow: `0 2px 8px ${alpha(color.value, 0.5)}`,
+                        }
+                      }}
+                    >
+                      {hasFormat && (
+                        <CheckCircleIcon sx={{ fontSize: 18, color: color.text }} />
+                      )}
+                    </Box>
+                  </Tooltip>
+                );
+              })}
+            </Stack>
+          </>
+        )}
+        
+        {/* Clear button */}
+        <Box sx={{ ml: 'auto' }}>
+          <Tooltip title="Clear all formatting" arrow>
+            <IconButton
+              size="small"
+              onClick={handleClearAllFormats}
+              disabled={Object.keys(columnFormats).length === 0 && Object.keys(rowFormats).length === 0}
+              sx={{
+                color: '#495057',
+                '&:hover': { bgcolor: '#E9ECEF' },
+                '&.Mui-disabled': { color: '#ADB5BD' }
+              }}
+            >
+              <ClearIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
+    );
+  };
+
   if (variant === 'clean') {
     return (
       <Box sx={{ 
@@ -440,10 +1150,15 @@ const DataGridComponent = ({
         display: 'flex',
         flexDirection: 'column',
       }}>
+        <FormatToolbar />
         <DataGrid
           rows={rowsWithIds}
           columns={processedColumns}
           getRowId={(row) => row.id}
+          getRowClassName={(params) => {
+            const rowFormat = rowFormats[params.id];
+            return rowFormat ? 'formatted-row' : '';
+          }}
           autoHeight={rowsWithIds.length <= 10}
           initialState={{
             pagination: {
@@ -487,25 +1202,47 @@ const DataGridComponent = ({
               fontSize: { xs: '0.8125rem', sm: '0.875rem' },
               padding: { xs: '12px 14px', sm: '14px 18px' },
               color: '#212529',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              overflow: 'visible !important',
+              textOverflow: 'clip',
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
               fontWeight: 400,
               minHeight: { xs: '48px', sm: '56px' },
+              maxHeight: 'none',
               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
               transition: 'background-color 0.15s ease, color 0.15s ease',
+              verticalAlign: 'top',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              flexDirection: 'column',
+              '& > div': {
+                width: '100%',
+                overflow: 'visible !important',
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
+              },
+              '&:focus': {
+                outline: '1px solid #b5c8de',
+                outlineOffset: '-1px',
+              },
             },
             '& .MuiDataGrid-cell[data-field]': {
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
             },
             // Right-align numeric cells
             '& .MuiDataGrid-cell--textRight': {
+              alignItems: 'flex-start',
               justifyContent: 'flex-end',
+              textAlign: 'right',
             },
             // Center-align cells (for icons)
             '& .MuiDataGrid-cell--textCenter': {
+              alignItems: 'center',
               justifyContent: 'center',
+              textAlign: 'center',
             },
             '& .MuiDataGrid-row': {
               bgcolor: '#FFFFFF',
@@ -522,39 +1259,40 @@ const DataGridComponent = ({
               transition: 'background-color 0.15s ease',
             },
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#F8F9FA !important',
-              borderBottom: '2px solid #E9ECEF',
+              backgroundColor: '#FFFFFF !important',
+              borderBottom: '2px solid #b5c8de',
               minHeight: { xs: '48px !important', sm: '56px !important' },
               maxHeight: { xs: '48px !important', sm: '56px !important' },
-              boxShadow: '0 1px 0 0 rgba(0, 0, 0, 0.05)',
+              boxShadow: '0 1px 0 0 rgba(181, 200, 222, 0.2)',
             },
             '& .MuiDataGrid-columnHeader': {
               padding: { xs: '12px 14px', sm: '14px 18px' },
               borderRight: '1px solid #E9ECEF',
-              backgroundColor: '#F8F9FA !important',
+              backgroundColor: '#FFFFFF !important',
               '&:last-child': {
                 borderRight: 'none',
               },
               '&:focus': {
                 outline: 'none',
-                backgroundColor: '#F8F9FA !important',
+                backgroundColor: '#F0F7FF !important',
               },
               '&:focus-within': {
-                backgroundColor: '#F8F9FA !important',
+                backgroundColor: '#F0F7FF !important',
               },
               '&:hover': {
-                backgroundColor: '#F1F3F5 !important',
+                backgroundColor: '#F0F7FF !important',
+                borderBottom: '2px solid #b5c8de',
               },
               '&.Mui-selected': {
-                backgroundColor: '#F8F9FA !important',
+                backgroundColor: '#F0F7FF !important',
               },
             },
             '& .MuiDataGrid-iconButtonContainer': {
               '& .MuiIconButton-root': {
                 color: '#6C757D !important',
                 '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                  color: '#495057 !important',
+                  backgroundColor: 'rgba(181, 200, 222, 0.1)',
+                  color: '#b5c8de !important',
                 },
               },
             },
@@ -562,17 +1300,18 @@ const DataGridComponent = ({
               color: '#6C757D !important',
             },
             '& .MuiDataGrid-columnHeaderTitleContainer': {
-              overflow: 'hidden',
+              overflow: 'visible',
             },
             '& .MuiDataGrid-columnHeaderTitle': {
-              fontWeight: 600,
-              fontSize: { xs: '0.75rem', sm: '0.8125rem' },
-              color: '#495057',
+              fontWeight: 700,
+              fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+              color: '#212529',
               letterSpacing: '0.01em',
               textTransform: 'none',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              overflow: 'visible',
+              textOverflow: 'clip',
+              whiteSpace: 'normal',
+              lineHeight: 1.3,
               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             },
             '& .MuiDataGrid-footerContainer': {
@@ -727,12 +1466,17 @@ const DataGridComponent = ({
         )}
 
         {/* Data Grid */}
-        <Box sx={{ flex: 1, p: { xs: 1, sm: 2, md: 3 }, minWidth: 0 }}>
-          <Box sx={{ width: '100%', minHeight: 200 }}>
+        <Box sx={{ flex: 1, p: { xs: 1, sm: 2, md: 3 }, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <FormatToolbar />
+          <Box sx={{ width: '100%', minHeight: 200, flex: 1 }}>
             <DataGrid
               rows={rowsWithIds}
               columns={processedColumns}
               getRowId={(row) => row.id}
+              getRowClassName={(params) => {
+                const rowFormat = rowFormats[params.id];
+                return rowFormat ? 'formatted-row' : '';
+              }}
               autoHeight={true}
               initialState={{
                 pagination: {
@@ -771,13 +1515,31 @@ const DataGridComponent = ({
                   borderRight: '1px solid #F1F3F5',
                   fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                   padding: { xs: '12px 14px', sm: '14px 18px' },
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
+                  overflow: 'visible !important',
+                  textOverflow: 'clip',
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
                   color: '#212529',
                   fontWeight: 400,
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                   transition: 'background-color 0.15s ease, color 0.15s ease',
+                  minHeight: { xs: '48px', sm: '56px' },
+                  maxHeight: 'none',
+                  verticalAlign: 'top',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  flexDirection: 'column',
+                  '& > div': {
+                    width: '100%',
+                    overflow: 'visible !important',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                  },
+                  '&:focus': {
+                    outline: '1px solid #b5c8de',
+                    outlineOffset: '-1px',
+                  },
                 },
                 // Right-align numeric cells
                 '& .MuiDataGrid-cell--textRight': {
@@ -802,41 +1564,42 @@ const DataGridComponent = ({
                   transition: 'background-color 0.15s ease',
                 },
                 '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#F8F9FA !important',
-                  borderBottom: '2px solid #E9ECEF',
-                  fontWeight: 600,
-                  fontSize: { xs: '0.75rem', sm: '0.8125rem' },
-                  minHeight: '56px !important',
-                  maxHeight: '56px !important',
-                  boxShadow: '0 1px 0 0 rgba(0, 0, 0, 0.05)',
+                  backgroundColor: '#FFFFFF !important',
+                  borderBottom: '2px solid #b5c8de',
+                  minHeight: { xs: '48px !important', sm: '56px !important' },
+                  maxHeight: { xs: '48px !important', sm: '56px !important' },
+                  boxShadow: '0 1px 0 0 rgba(181, 200, 222, 0.2)',
                 },
                 '& .MuiDataGrid-columnHeader': {
                   borderRight: '1px solid #E9ECEF',
                   padding: { xs: '12px 14px', sm: '14px 18px' },
-                  backgroundColor: '#F8F9FA !important',
+                  backgroundColor: '#FFFFFF !important',
                   '&:last-child': {
                     borderRight: 'none',
                   },
                   '&:focus': {
                     outline: 'none',
-                    backgroundColor: '#F8F9FA !important',
+                    backgroundColor: '#F0F7FF !important',
+                    borderBottom: '2px solid #b5c8de',
                   },
                   '&:focus-within': {
-                    backgroundColor: '#F8F9FA !important',
+                    backgroundColor: '#F0F7FF !important',
+                    borderBottom: '2px solid #b5c8de',
                   },
                   '&:hover': {
-                    backgroundColor: '#F1F3F5 !important',
+                    backgroundColor: '#F0F7FF !important',
+                    borderBottom: '2px solid #b5c8de',
                   },
                   '&.Mui-selected': {
-                    backgroundColor: '#F8F9FA !important',
+                    backgroundColor: '#F0F7FF !important',
                   },
                 },
                 '& .MuiDataGrid-iconButtonContainer': {
                   '& .MuiIconButton-root': {
                     color: '#6C757D !important',
                     '&:hover': {
-                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                      color: '#495057 !important',
+                      backgroundColor: 'rgba(181, 200, 222, 0.1)',
+                      color: '#b5c8de !important',
                     },
                   },
                 },
@@ -846,15 +1609,19 @@ const DataGridComponent = ({
                 '& .MuiDataGrid-columnHeaderTitleContainer': {
                   overflow: 'hidden',
                 },
+                '& .MuiDataGrid-columnHeaderTitleContainer': {
+                  overflow: 'visible',
+                },
                 '& .MuiDataGrid-columnHeaderTitle': {
-                  fontWeight: 600,
-                  color: '#495057',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  lineHeight: '1.2',
+                  fontWeight: 700,
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                  color: '#212529',
                   letterSpacing: '0.01em',
                   textTransform: 'none',
+                  overflow: 'visible',
+                  textOverflow: 'clip',
+                  whiteSpace: 'normal',
+                  lineHeight: 1.3,
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                 },
                 '& .MuiDataGrid-footerContainer': {

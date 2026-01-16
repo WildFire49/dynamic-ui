@@ -491,16 +491,16 @@ const SummaryCardsPanel = ({
           <Stack spacing={1.5}>
             {sortedCards.map((card, index) => (
               <Box key={card.id}>
-                <SummaryCard
-                  card={card}
-                  size="small"
-                  onClick={handleCardClick}
-                  onCreateWidget={onCreateWidget}
-                  onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
-                  onDelete={() => handleDelete(card.id)}
-                  showActions
-                />
-              </Box>
+                  <SummaryCard
+                    card={card}
+                    size="small"
+                    onClick={handleCardClick}
+                    onCreateWidget={onCreateWidget}
+                    onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
+                    onDelete={() => handleDelete(card.id)}
+                    showActions
+                  />
+                </Box>
             ))}
           </Stack>
         ) : (
@@ -520,22 +520,22 @@ const SummaryCardsPanel = ({
             }}
           >
             {sortedCards.map((card, index) => (
-              <Box
+                <Box
                 key={card.id}
-                sx={{
-                  height: '100%',
-                }}
-              >
-                <SummaryCard
-                  card={card}
-                  size="medium"
-                  onClick={handleCardClick}
-                  onCreateWidget={onCreateWidget}
-                  onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
-                  onDelete={() => handleDelete(card.id)}
-                  showActions
-                />
-              </Box>
+                  sx={{
+                    height: '100%',
+                  }}
+                >
+                  <SummaryCard
+                    card={card}
+                    size="medium"
+                    onClick={handleCardClick}
+                    onCreateWidget={onCreateWidget}
+                    onEdit={onEditCard ? () => onEditCard(card) : (updates) => handleEditApproved(card.id, updates)}
+                    onDelete={() => handleDelete(card.id)}
+                    showActions
+                  />
+                </Box>
             ))}
           </Box>
         )}

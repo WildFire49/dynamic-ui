@@ -65,12 +65,10 @@ import {
   Search as SearchIcon,
   Sort as SortIcon,
   GridView as GridViewIcon,
-  FileDownload as FileDownloadIcon,
   CloudDone as CloudDoneIcon,
   CloudSync as CloudSyncIcon,
   CloudOff as CloudOffIcon,
   Settings as SettingsIcon,
-  Tune as TuneIcon,
   Chat as ChatIcon,
   Send as SendIcon,
   SmartToy as SmartToyIcon,
@@ -81,7 +79,10 @@ import {
   CheckCircle as CheckCircleIcon,
   Image as ImageIcon,
   Warning as WarningIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  FormatColorFill as FormatColorFillIcon,
+  BorderColor as BorderColorIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -105,7 +106,6 @@ import AnalysisWidget from './widgets/AnalysisWidget';
 import DashboardSelector from './DashboardSelector';
 import useDashboardStore from '../store/dashboardStore';
 import { DashboardLoadingSkeleton, WidgetContentSkeleton } from './skeletons/WidgetSkeleton';
-import WidgetConfigStudio from './widgets/WidgetConfigStudio';
 import dashboardService from '../services/dashboardService';
 import { getSummaryCards } from '../services/summaryCardsService';
 import SummaryCardsPanel from './dashboard/SummaryCardsPanel';
@@ -194,7 +194,6 @@ const Dashboard = ({ initialDashboardId }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('newest'); // 'newest' or 'oldest'
   const [globalViewMode, setGlobalViewMode] = useState('table'); // 'table', 'auto', 'area', 'bar' - default to table
-  const [configStudio, setConfigStudio] = useState({ open: false, widget: null }); // Widget config studio
   const [loadingWidgets, setLoadingWidgets] = useState(new Set()); // Track widgets currently loading data
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false); // Chat drawer state
   const [chatInput, setChatInput] = useState(''); // Chat input value
@@ -209,6 +208,9 @@ const Dashboard = ({ initialDashboardId }) => {
   const [selectedWidgets, setSelectedWidgets] = useState(new Set()); // Selected widget IDs for batch operations
   const [selectedCards, setSelectedCards] = useState(new Set()); // Selected card IDs for batch operations
   const [selectionMode, setSelectionMode] = useState(false); // Enable selection mode
+  const [formattingActive, setFormattingActive] = useState({}); // { widgetId: true/false } - Track which widgets have formatting toolbar active
+  const [columnFormats, setColumnFormats] = useState({}); // { widgetId: { columnField: { bgColor, textColor } } }
+  const [rowFormats, setRowFormats] = useState({}); // { widgetId: { rowId: { bgColor, textColor } } }
   
   // Refs to prevent duplicate API calls
   const dataFetchInProgress = useRef(false);
@@ -505,6 +507,11 @@ const Dashboard = ({ initialDashboardId }) => {
               const dataResult = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
               
               if (dataResult.success && dataResult.data?.results) {
+                const fetchTime = new Date().toISOString();
+                // Update sync timestamp
+                setLastDataFetchTime(fetchTime);
+                useDashboardStore.setState({ lastSyncedAt: fetchTime });
+                
                 let successCount = 0;
                 const updatedWidgets = widgets.map(w => {
                   const widgetResult = dataResult.data.results.find(r => r.widgetId === w.id);
@@ -512,16 +519,26 @@ const Dashboard = ({ initialDashboardId }) => {
                   if (widgetResult?.success && widgetResult.data) {
                     successCount++;
                     const widgetData = {
-                      timestamp: new Date().toISOString(),
+                      timestamp: fetchTime,
                       pipelineData: widgetResult.data.pipelineData || [],
                       supportingData: widgetResult.data.supportingData || widgetResult.data.pipelineData || [],
                       dataGrid: widgetResult.data.dataGrid,
                       executionTimeMs: widgetResult.executionTimeMs,
                       rowCount: widgetResult.rowCount,
+                      error: null, // Clear any previous error
                     };
                     // Cache the data for this widget
                     setCachedData(activeId, w.id, widgetData);
                     return { ...w, ...widgetData };
+                  } else if (widgetResult && !widgetResult.success && widgetResult.error) {
+                    // Store error in widget
+                    const isLockError = widgetResult.error.includes('lock') || widgetResult.error.includes('Conflicting lock');
+                    return { 
+                      ...w, 
+                      error: widgetResult.error,
+                      isLockError,
+                      errorTimestamp: fetchTime,
+                    };
                   }
                   return w;
                 });
@@ -531,7 +548,7 @@ const Dashboard = ({ initialDashboardId }) => {
               } else {
               }
             } catch (error) {
-              ('❌ Error fetching widget data:', error);
+              console.error('❌ Error fetching widget data:', error);
             } finally {
               setLoadingWidgets(new Set());
               dataFetchInProgress.current = false;
@@ -653,8 +670,10 @@ const Dashboard = ({ initialDashboardId }) => {
 
   // Fetch widget data when switching dashboards (not for initial load - that's handled by initializeDashboard)
   // This effect only runs when activeDashboardId changes AFTER initial load
+  // ALWAYS fetches fresh data when switching tabs, but uses cache for immediate display
   const prevDashboardId = useRef(activeDashboardId);
   const fetchingDashboardId = useRef(null); // Track which dashboard is currently fetching
+  const [lastDataFetchTime, setLastDataFetchTime] = useState(null); // Track when data was last fetched
   
   useEffect(() => {
     // Skip if this is the initial load (initializeDashboard handles it)
@@ -708,46 +727,93 @@ const Dashboard = ({ initialDashboardId }) => {
 
       if (!username) return;
 
-      // Check if any widgets need data (not in cache)
+      // Check which widgets have cached data
+      const widgetsWithCache = storeWidgets.map(v => {
+        const cached = getCachedData(activeDashboardId, v.id);
+        if (cached) {
+          return { ...v, ...cached };
+        }
+        return v;
+      });
+      
+      // Show cached data immediately
+      setSavedVisualizations(widgetsWithCache);
+      
+      // Find widgets that need data (no cache)
       const widgetsNeedingData = storeWidgets.filter(v => 
         !getCachedData(activeDashboardId, v.id)
       );
       
+      // If all widgets have cache, don't call API - just use cached data
       if (widgetsNeedingData.length === 0) {
+        // All widgets have cache, no API call needed
+        fetchingDashboardId.current = null;
         return;
       }
-
-      fetchingDashboardId.current = activeDashboardId;
       
-      const widgetIds = widgetsNeedingData.map(v => v.id);
-      setLoadingWidgets(new Set(widgetIds));
+      // Only fetch data for widgets that don't have cache (first time load)
+      fetchingDashboardId.current = activeDashboardId;
+      const widgetIdsNeedingData = widgetsNeedingData.map(v => v.id);
+      
+      // Mark widgets without cache as loading
+      setLoadingWidgets(new Set(widgetIdsNeedingData));
+      
+      // Fetch widget data AND summary cards in parallel (only for widgets without cache)
+      const widgetDataPromise = dashboardService.getWidgetsData(username, connectionId, widgetIdsNeedingData);
+      const summaryCardsPromise = getSummaryCards({
+        username,
+        dashboardId: activeDashboardId,
+        connectionId,
+        existingCards: summaryCardsByDashboard?.[activeDashboardId] || [],
+      });
       
       try {
-        const result = await dashboardService.getWidgetsData(username, connectionId, widgetIds);
+        const [result, summaryCardsResponse] = await Promise.all([
+          widgetDataPromise,
+          summaryCardsPromise,
+        ]);
         
         // Only update if we're still on the same dashboard
         if (fetchingDashboardId.current !== activeDashboardId) {
           return;
         }
         
+        // Update sync timestamp only when API is called
+        const fetchTime = new Date().toISOString();
+        setLastDataFetchTime(fetchTime);
+        
+        // Update lastSyncedAt in Zustand store
+        useDashboardStore.setState({ lastSyncedAt: fetchTime });
+        
+        // Update widget data
         if (result.success && result.data?.results) {
-          // Apply cache to widgets with fetched data
           const updatedWidgets = storeWidgets.map(v => {
+            // If widget was fetched, use new data
             const widgetResult = result.data.results.find(r => r.widgetId === v.id);
             if (widgetResult?.success && widgetResult.data) {
               const widgetData = {
-                timestamp: new Date().toISOString(),
+                timestamp: fetchTime,
                 pipelineData: widgetResult.data.pipelineData || [],
                 supportingData: widgetResult.data.supportingData || widgetResult.data.pipelineData || [],
                 dataGrid: widgetResult.data.dataGrid,
                 executionTimeMs: widgetResult.executionTimeMs,
                 rowCount: widgetResult.rowCount,
+                error: null, // Clear any previous error
               };
               // Cache the data
               setCachedData(activeDashboardId, v.id, widgetData);
               return { ...v, ...widgetData };
+            } else if (widgetResult && !widgetResult.success && widgetResult.error) {
+              // Store error in widget
+              const isLockError = widgetResult.error.includes('lock') || widgetResult.error.includes('Conflicting lock');
+              return { 
+                ...v, 
+                error: widgetResult.error,
+                isLockError,
+                errorTimestamp: fetchTime,
+              };
             }
-            // Check if already cached
+            // If widget wasn't fetched (had cache), use cached data
             const cached = getCachedData(activeDashboardId, v.id);
             if (cached) return { ...v, ...cached };
             return v;
@@ -767,8 +833,13 @@ const Dashboard = ({ initialDashboardId }) => {
             return newLoading;
           });
         }
+        
+        // Update summary cards
+        if (summaryCardsResponse?.data?.summary_cards) {
+          setSummaryCardsForDashboard(activeDashboardId, summaryCardsResponse.data.summary_cards);
+        }
       } catch (error) {
-        ('❌ Error fetching widget data:', error);
+        console.error('❌ Error fetching widget data:', error);
       } finally {
         if (fetchingDashboardId.current === activeDashboardId) {
           fetchingDashboardId.current = null;
@@ -779,7 +850,7 @@ const Dashboard = ({ initialDashboardId }) => {
     };
 
     fetchDataForNewDashboard();
-  }, [activeDashboardId]);
+  }, [activeDashboardId, summaryCardsByDashboard, setSummaryCardsForDashboard]);
 
   // Note: savedVisualizations are now managed by Zustand store
   // No need to sync to localStorage as Zustand persist handles it
@@ -840,12 +911,21 @@ const Dashboard = ({ initialDashboardId }) => {
     return items;
   }, [savedVisualizations, savedAnalyses, searchQuery, sortOrder, widgetOrder]);
 
-  // Get the last updated time across all widgets
+  // Get the last updated time across all widgets or last data fetch time
   const lastGlobalUpdate = useMemo(() => {
+    // Prioritize lastDataFetchTime if available (most recent actual fetch)
+    if (lastDataFetchTime) {
+      return new Date(lastDataFetchTime);
+    }
+    // Fallback to lastSyncedAt from store
+    if (lastSyncedAt) {
+      return new Date(lastSyncedAt);
+    }
+    // Fallback to widget timestamps
     if (allItems.length === 0) return null;
     const times = allItems.map(item => new Date(item.timestamp).getTime());
     return new Date(Math.max(...times));
-  }, [allItems]);
+  }, [allItems, lastDataFetchTime, lastSyncedAt]);
 
   // Sync widget order for new items
   useEffect(() => {
@@ -969,11 +1049,16 @@ const Dashboard = ({ initialDashboardId }) => {
         const widgetResult = result.data.results[0];
         
         if (widgetResult.success && widgetResult.data) {
+          const refreshTime = new Date().toISOString();
+          // Update sync timestamp
+          setLastDataFetchTime(refreshTime);
+          useDashboardStore.setState({ lastSyncedAt: refreshTime });
+          
           const refreshedData = widgetResult.data;
           
           const updatedItem = {
             ...item,
-            timestamp: new Date().toISOString(),
+            timestamp: refreshTime,
             pipelineData: refreshedData.pipelineData || [],
             supportingData: refreshedData.supportingData || refreshedData.pipelineData || [],
             dataGrid: refreshedData.dataGrid || {
@@ -982,7 +1067,18 @@ const Dashboard = ({ initialDashboardId }) => {
             },
             executionTimeMs: widgetResult.executionTimeMs,
             rowCount: widgetResult.rowCount,
+            error: null, // Clear any previous error
           };
+          
+          // Update cache
+          setCachedData(activeDashboardId, item.id, {
+            timestamp: refreshTime,
+            pipelineData: refreshedData.pipelineData || [],
+            supportingData: refreshedData.supportingData || refreshedData.pipelineData || [],
+            dataGrid: refreshedData.dataGrid,
+            executionTimeMs: widgetResult.executionTimeMs,
+            rowCount: widgetResult.rowCount,
+          });
 
           // Update in state
           setSavedVisualizations(prev => 
@@ -997,11 +1093,26 @@ const Dashboard = ({ initialDashboardId }) => {
             timestamp: updatedItem.timestamp,
           });
 
-        } else {
+        } else if (!widgetResult.success && widgetResult.error) {
+          // Store error in widget
+          const refreshTime = new Date().toISOString();
+          const isLockError = widgetResult.error.includes('lock') || widgetResult.error.includes('Conflicting lock');
+          const updatedItem = {
+            ...item,
+            error: widgetResult.error,
+            isLockError,
+            errorTimestamp: refreshTime,
+          };
+          
+          // Update in state
+          setSavedVisualizations(prev => 
+            prev.map(v => v.id === item.id ? updatedItem : v)
+          );
         }
       } else {
       }
     } catch (error) {
+      console.error('Error refreshing widget:', error);
     } finally {
       setRefreshingWidgets(prev => ({ ...prev, [item.id]: false }));
     }
@@ -1606,19 +1717,42 @@ const Dashboard = ({ initialDashboardId }) => {
         const results = result.data.results || [];
         let successCount = 0;
         let failedCount = 0;
+        const refreshTime = new Date().toISOString();
+        
+        // Update sync timestamp
+        setLastDataFetchTime(refreshTime);
+        useDashboardStore.setState({ lastSyncedAt: refreshTime });
         
         // Update widgets with fresh data
         setSavedVisualizations(prev => prev.map(widget => {
           const widgetResult = results.find(r => r.widgetId === widget.id);
           if (widgetResult?.success && widgetResult.data) {
             successCount++;
-            // Update cache
-            setCachedData(activeDashboardId, widget.id, widgetResult.data);
-            return {
-              ...widget,
+            const widgetData = {
+              timestamp: refreshTime,
               pipelineData: widgetResult.data.pipelineData || widgetResult.data.results || [],
               supportingData: widgetResult.data.supportingData || widgetResult.data.pipelineData || [],
-              lastRefreshed: new Date().toISOString(),
+              dataGrid: widgetResult.data.dataGrid,
+              executionTimeMs: widgetResult.executionTimeMs,
+              rowCount: widgetResult.rowCount,
+              error: null, // Clear any previous error
+            };
+            // Update cache
+            setCachedData(activeDashboardId, widget.id, widgetData);
+            return {
+              ...widget,
+              ...widgetData,
+              lastRefreshed: refreshTime,
+            };
+          } else if (widgetResult && !widgetResult.success && widgetResult.error) {
+            failedCount++;
+            // Store error in widget
+            const isLockError = widgetResult.error.includes('lock') || widgetResult.error.includes('Conflicting lock');
+            return {
+              ...widget,
+              error: widgetResult.error,
+              isLockError,
+              errorTimestamp: refreshTime,
             };
           }
           failedCount++;
@@ -1629,7 +1763,7 @@ const Dashboard = ({ initialDashboardId }) => {
           totalWidgets: widgetIds.length,
           refreshedCount: successCount,
           failedCount: failedCount,
-          timestamp: new Date().toISOString(),
+          timestamp: refreshTime,
         });
 
 
@@ -1658,17 +1792,19 @@ const Dashboard = ({ initialDashboardId }) => {
     }
   };
 
-  // Format relative time for last updated
+  // Format relative time for last updated - shows "now" or "X mins ago"
   const formatLastUpdated = (timestamp) => {
     if (!timestamp) return 'Never';
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
+    const diffSecs = Math.floor(diffMs / 1000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
+    // Show "now" if less than 1 minute
+    if (diffSecs < 60) return 'now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
@@ -1810,8 +1946,6 @@ const Dashboard = ({ initialDashboardId }) => {
     draggedWidgetRef.current = null;
     setChatDropZoneActive(false);
     
-    // Don't open config studio after drag
-    // setConfigStudio({ open: false, widget: null });
   };
 
   // Chat Drag Handlers
@@ -2609,7 +2743,7 @@ const Dashboard = ({ initialDashboardId }) => {
   };
 
   // Render Table - with beautiful single record card support
-  const renderTable = (data, isFullscreen = false) => {
+  const renderTable = (data, isFullscreen = false, widgetItem = null) => {
     const keys = Object.keys(data[0] || {}).filter(k => k !== 'id' && !k.startsWith('_'));
     
     // For single-row data, show beautiful metric cards, UNLESS we are in fullscreen mode
@@ -2617,6 +2751,76 @@ const Dashboard = ({ initialDashboardId }) => {
     if (data.length === 1 && !isFullscreen) {
       return renderSingleRecordCard(data);
     }
+    
+    const widgetId = widgetItem?.id;
+    const isFormattingActive = widgetId ? formattingActive[widgetId] : false;
+    const widgetColumnFormats = widgetId ? (columnFormats[widgetId] || {}) : {};
+    const widgetRowFormats = widgetId ? (rowFormats[widgetId] || {}) : {};
+    
+    // Formatting handlers
+    const handleFormatColumn = (columnField, color) => {
+      if (!widgetId) return;
+      setColumnFormats(prev => ({
+        ...prev,
+        [widgetId]: {
+          ...(prev[widgetId] || {}),
+          [columnField]: {
+            bgColor: color.value,
+            textColor: color.text
+          }
+        }
+      }));
+    };
+    
+    const handleFormatRow = (rowId, color) => {
+      if (!widgetId) return;
+      setRowFormats(prev => ({
+        ...prev,
+        [widgetId]: {
+          ...(prev[widgetId] || {}),
+          [rowId]: {
+            bgColor: color.value,
+            textColor: color.text
+          }
+        }
+      }));
+    };
+    
+    const handleClearColumnFormat = (columnField) => {
+      if (!widgetId) return;
+      setColumnFormats(prev => {
+        const widgetFormats = prev[widgetId] || {};
+        const { [columnField]: _, ...rest } = widgetFormats;
+        return {
+          ...prev,
+          [widgetId]: rest
+        };
+      });
+    };
+    
+    const handleClearRowFormat = (rowId) => {
+      if (!widgetId) return;
+      setRowFormats(prev => {
+        const widgetFormats = prev[widgetId] || {};
+        const { [rowId]: _, ...rest } = widgetFormats;
+        return {
+          ...prev,
+          [widgetId]: rest
+        };
+      });
+    };
+    
+    const handleClearAllFormats = () => {
+      if (!widgetId) return;
+      setColumnFormats(prev => {
+        const { [widgetId]: _, ...rest } = prev;
+        return rest;
+      });
+      setRowFormats(prev => {
+        const { [widgetId]: _, ...rest } = prev;
+        return rest;
+      });
+    };
     
     return (
       <DataGridComponent
@@ -2628,6 +2832,16 @@ const Dashboard = ({ initialDashboardId }) => {
         showSaveButton={false}
         variant="clean"
         useInfiniteScroll={isFullscreen}
+        isFormattingActive={isFormattingActive}
+        columnFormats={widgetColumnFormats}
+        rowFormats={widgetRowFormats}
+        onFormatColumn={handleFormatColumn}
+        onFormatRow={handleFormatRow}
+        onClearColumnFormat={handleClearColumnFormat}
+        onClearRowFormat={handleClearRowFormat}
+        onClearAllFormats={handleClearAllFormats}
+        error={widgetItem?.error}
+        isLockError={widgetItem?.isLockError}
       />
     );
   };
@@ -2683,10 +2897,10 @@ const Dashboard = ({ initialDashboardId }) => {
       case 'pie':
         return renderPieChart(data);
       case 'table':
-        return renderTable(data, isFullscreen);
+        return renderTable(data, isFullscreen, item);
       default:
         return detectedType === 'area' ? renderAreaChart(data) : 
-               detectedType === 'bar' ? renderBarChart(data) : renderTable(data, isFullscreen);
+               detectedType === 'bar' ? renderBarChart(data) : renderTable(data, isFullscreen, item);
     }
   };
 
@@ -2790,156 +3004,392 @@ const Dashboard = ({ initialDashboardId }) => {
             }
           }}
         >
-            {/* Widget Header - Blue Gradient */}
+            {/* Widget Header - Modern & Jazz Design */}
             <Box sx={{
-              px: 2,
-              py: 1.25,
+              px: 2.5,
+              py: 1.75,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: accent.gradient,
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, #FFFFFF 100%)',
+              borderBottom: '3px solid transparent',
+              borderImage: 'linear-gradient(90deg, #b5c8de 0%, #8FA8C7 50%, #b5c8de 100%) 1',
               borderRadius: '12px 12px 0 0',
               flexShrink: 0,
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '3px',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(181, 200, 222, 0.3) 50%, transparent 100%)',
+                animation: 'shimmer 3s infinite',
+                '@keyframes shimmer': {
+                  '0%': { transform: 'translateX(-100%)' },
+                  '100%': { transform: 'translateX(100%)' },
+                },
+              },
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04), inset 0 -1px 0 rgba(181, 200, 222, 0.2)',
             }}>
-              <Box sx={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center' }}>
-                {editingTitleId === item.id ? (
-                  <ClickAwayListener onClickAway={handleSaveInlineTitle}>
-                    <InputBase
-                      autoFocus
-                      value={editingTitleValue}
-                      onChange={(e) => setEditingTitleValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveInlineTitle();
-                        if (e.key === 'Escape') handleCancelInlineEdit();
+              <Box sx={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 1.5, position: 'relative', zIndex: 1 }}>
+                {/* Modern Icon Badge */}
+                {currentViewMode === 'table' && (
+                  <Box sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '10px',
+                    // background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    // boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                  }}>
+                    <img
+                      src="/cells.png"
+                      alt="Table"
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        objectFit: 'cover',
+                        display: 'block',
                       }}
-                      sx={{
-                        fontWeight: 600,
-                        color: '#fff',
-                        fontSize: '0.875rem',
-                        lineHeight: 1.4,
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: 1,
-                        bgcolor: 'rgba(255,255,255,0.2)',
-                        border: '1px solid rgba(255,255,255,0.4)',
-                        minWidth: 200,
-                        maxWidth: '100%',
-                        '& input': {
-                          padding: 0,
-                          color: '#fff',
-                          '&::placeholder': {
-                            color: 'rgba(255,255,255,0.7)',
-                          }
-                        }
-                      }}
-                      placeholder="Enter widget title..."
                     />
-                  </ClickAwayListener>
-                ) : (
-                  <Typography 
-                    component="span"
-                    variant="subtitle1" 
-                    draggable={false}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStartEditTitle(item);
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onDragStart={(e) => e.preventDefault()}
-                    sx={{ 
-                      fontWeight: 600, 
-                      color: '#fff',
-                      fontSize: { xs: '0.8rem', md: '0.85rem' },
-                      lineHeight: 1.35,
-                      cursor: 'text',
-                      px: 0.5,
-                      py: 0.25,
-                      borderRadius: 1,
-                      userSelect: 'none',
-                      textShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                      display: 'inline-block',
-                      maxWidth: '100%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      '&:hover': {
-                        bgcolor: 'rgba(255,255,255,0.15)',
-                      }
-                    }}
-                    title={getTitle(item)}
-                  >
-                    {getTitle(item)}
-                  </Typography>
+                  </Box>
                 )}
+                {currentViewMode === 'bar' && (
+                  <Box sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
+                    flexShrink: 0,
+                  }}>
+                    <BarChartIcon sx={{ fontSize: 20, color: '#fff' }} />
+                  </Box>
+                )}
+                {currentViewMode === 'area' && (
+                  <Box sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
+                    flexShrink: 0,
+                  }}>
+                    <AreaChartIcon sx={{ fontSize: 20, color: '#fff' }} />
+                  </Box>
+                )}
+                {currentViewMode === 'pie' && (
+                  <Box sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
+                    flexShrink: 0,
+                  }}>
+                    <PieChartIcon sx={{ fontSize: 20, color: '#fff' }} />
+                  </Box>
+                )}
+                {!['table', 'bar', 'area', 'pie'].includes(currentViewMode) && (
+                  <Box sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
+                    flexShrink: 0,
+                  }}>
+                    <DashboardIcon sx={{ fontSize: 20, color: '#fff' }} />
+                  </Box>
+                )}
+                
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  {editingTitleId === item.id ? (
+                    <ClickAwayListener onClickAway={handleSaveInlineTitle}>
+                      <InputBase
+                        autoFocus
+                        value={editingTitleValue}
+                        onChange={(e) => setEditingTitleValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveInlineTitle();
+                          if (e.key === 'Escape') handleCancelInlineEdit();
+                        }}
+                        sx={{
+                          fontWeight: 800,
+                          color: '#1E293B',
+                          fontSize: { xs: '0.9375rem', md: '1.125rem' },
+                          lineHeight: 1.4,
+                          px: 1.5,
+                          py: 0.75,
+                          borderRadius: 2,
+                          bgcolor: '#FFFFFF',
+                          border: '2px solidrgb(231, 233, 236)',
+                          minWidth: 200,
+                          maxWidth: '100%',
+                          // boxShadow: '0 4px 12px rgba(181, 200, 222, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+                          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+                          transition: 'all 0.2s ease',
+                          '&:focus-within': {
+                            borderColor: '#8FA8C7',
+                            boxShadow: '0 6px 16px rgba(181, 200, 222, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                            transform: 'translateY(-1px)',
+                          },
+                          '& input': {
+                            padding: 0,
+                            color: '#1E293B',
+                            fontWeight: 800,
+                            letterSpacing: '-0.02em',
+                            '&::placeholder': {
+                              color: '#94A3B8',
+                              opacity: 0.7,
+                            }
+                          }
+                        }}
+                        placeholder="Enter widget title..."
+                      />
+                    </ClickAwayListener>
+                  ) : (
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        display: 'inline-block',
+                        maxWidth: '100%',
+                      }}
+                    >
+                      <Typography 
+                        component="span"
+                        variant="subtitle1" 
+                        draggable={false}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEditTitle(item);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onDragStart={(e) => e.preventDefault()}
+                        sx={{ 
+                          fontWeight: 800, 
+                          color: '#1E293B',
+                          fontSize: { xs: '0.9375rem', md: '1.125rem' },
+                          lineHeight: 1.4,
+                          cursor: 'text',
+                          px: 1.25,
+                          py: 0,
+                          pr: 4, // Add right padding to make room for edit icon
+                          height: 36, // Match icon height
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          letterSpacing: '-0.02em',
+                          borderRadius: 1,
+                          userSelect: 'none',
+                          background: currentViewMode === 'table' 
+                            ? 'linear-gradient(135deg, rgba(238, 241, 245, 0.2) 0%, rgba(220, 225, 232, 0.15) 50%, rgba(181, 200, 222, 0.2) 100%)'
+                            : 'linear-gradient(135deg, rgba(181, 200, 222, 0.1) 0%, transparent 100%)',
+                          border: currentViewMode === 'table' ? '1.5px solid rgba(181, 200, 222, 0.3)' : 'none',
+                          boxShadow: currentViewMode === 'table' 
+                            ? '0 2px 8px rgba(156, 192, 234, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
+                            : 'none',
+                          position: 'relative',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          '&::before': currentViewMode === 'table' ? {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
+                            borderRadius: 1.3,
+                            pointerEvents: 'none',
+                          } : {},
+                          '&:hover': {
+                            bgcolor: currentViewMode === 'table' 
+                              ? 'rgba(181, 200, 222, 0.25)'
+                              : 'rgba(152, 190, 235, 0.15)',
+                            transform: currentViewMode === 'table' ? 'translateY(-1px)' : 'translateX(2px)',
+                            boxShadow: currentViewMode === 'table' 
+                              ? '0 4px 12px rgba(181, 200, 222, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6)'
+                              : 'none',
+                            borderColor: currentViewMode === 'table' ? 'rgba(181, 200, 222, 0.5)' : 'transparent',
+                          }
+                        }}
+                        title={getTitle(item)}
+                      >
+                        {getTitle(item)}
+                      </Typography>
+                      
+                      {/* Edit Icon - Notification Badge Style at Top Right */}
+                      <Tooltip title="Click to edit title" arrow placement="top">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartEditTitle(item);
+                          }}
+                          sx={{
+                            position: 'absolute',
+                            top: -8,
+                            right: -8,
+                            width: 25,
+                            height: 25,
+                            color: '#b5c8de',
+                            bgcolor: '#FFFFFF',
+                            border: '2px solid #b5c8de',
+                            borderRadius: '50%',
+                            transition: 'all 0.2s ease',
+                            zIndex: 2,
+                            boxShadow: '0 2px 8px rgba(132, 175, 223, 0.25)',
+                            '&:hover': {
+                              color: '#8FA8C7',
+                              bgcolor: '#F0F7FF',
+                              borderColor: '#8FA8C7',
+                              transform: 'scale(1.15)',
+                              boxShadow: '0 4px 10px rgba(155, 194, 239, 0.5)',
+                            }
+                          }}
+                        >
+                          <EditIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  )}
+                </Box>
               </Box>
 
-              {/* Clean Action Buttons */}
-              <Stack 
+              {/* Action Buttons - Tab Style */}
+              <Stack
                 direction="row" 
-                spacing={0.25} 
+                spacing={0.5} 
                 alignItems="center"
                 className="widget-actions"
                 sx={{ opacity: { xs: 1, md: 0.9 }, transition: 'opacity 0.2s' }}
               >
-                {/* Refresh - Primary Action */}
-                <Tooltip title="Refresh data" arrow placement="top">
-                  <IconButton 
-                    size="small" 
-                    onClick={() => handleRefreshWidget(item)}
-                    disabled={refreshingWidgets[item.id]}
-                    sx={{ 
-                      color: '#fff', 
-                      width: 28,
-                      height: 28,
-                      '&:hover': { 
-                        bgcolor: 'rgba(255,255,255,0.2)',
+                {/* Toggle Button Group for Actions */}
+                <ToggleButtonGroup
+                  value={null}
+                  exclusive
+                  size="small"
+                  sx={{
+                    bgcolor: '#F8F9FA',
+                    borderRadius: 2,
+                    border: '1px solid #E2E8F0',
+                    p: 0.25,
+                    '& .MuiToggleButton-root': {
+                      border: 'none',
+                      px: 1.25,
+                      py: 0.5,
+                      minWidth: 32,
+                      height: 32,
+                      color: '#495057',
+                      '&:hover': {
+                        bgcolor: '#F0F7FF',
+                        color: '#b5c8de',
                       },
-                      animation: refreshingWidgets[item.id] ? 'spin 1s linear infinite' : 'none',
-                      '@keyframes spin': {
-                        '0%': { transform: 'rotate(0deg)' },
-                        '100%': { transform: 'rotate(360deg)' },
+                      '&.Mui-selected': {
+                        bgcolor: '#F0F7FF',
+                        color: '#b5c8de',
+                        '&:hover': {
+                          bgcolor: '#E0EFF7',
+                        }
                       },
-                    }}
-                  >
-                    <RefreshIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Tooltip>
+                    },
+                  }}
+                >
+                  {/* Download CSV - Excel Icon */}
+                  <Tooltip title="Download report" arrow placement="top">
+                    <ToggleButton
+                      value="download"
+                      onClick={() => handleDownloadCSV(item)}
+                    >
+                      <img
+                        src="/excel.png"
+                        alt="Download"
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          objectFit: 'contain',
+                          display: 'block',
+                        }}
+                      />
+                    </ToggleButton>
+                  </Tooltip>
 
-                {/* Fullscreen - Expand View */}
-                <Tooltip title="Expand view" arrow placement="top">
-                  <IconButton 
-                    size="small" 
-                    onClick={() => setFullscreenView({ open: true, item })} 
-                    sx={{ 
-                      color: '#fff',
-                      width: 28,
-                      height: 28,
-                      '&:hover': { 
-                        bgcolor: 'rgba(255,255,255,0.2)',
-                      }
-                    }}
-                  >
-                    <FullscreenIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Tooltip>
-                
-                {/* More Options */}
-                <Tooltip title="More options" arrow placement="top">
-                  <IconButton 
-                    size="small" 
-                    onClick={(e) => handleMenuOpen(e, item.id)}
-                    sx={{ 
-                      color: '#fff',
-                      width: 28,
-                      height: 28,
-                      '&:hover': { 
-                        bgcolor: 'rgba(255,255,255,0.2)',
-                      }
-                    }}
-                  >
-                    <MoreVertIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Tooltip>
+                  {/* Refresh */}
+                  <Tooltip title="Refresh data" arrow placement="top">
+                    <ToggleButton
+                      value="refresh"
+                      onClick={() => handleRefreshWidget(item)}
+                      disabled={refreshingWidgets[item.id]}
+                      sx={{
+                        '&.Mui-disabled': {
+                          color: '#ADB5BD',
+                        },
+                        animation: refreshingWidgets[item.id] ? 'spin 1s linear infinite' : 'none',
+                        '@keyframes spin': {
+                          '0%': { transform: 'rotate(0deg)' },
+                          '100%': { transform: 'rotate(360deg)' },
+                        },
+                      }}
+                    >
+                      <RefreshIcon sx={{ fontSize: 20 }} />
+                    </ToggleButton>
+                  </Tooltip>
+
+                  {/* Format Table - Only show for table view */}
+                  {currentViewMode === 'table' && (
+                    <Tooltip title="Format table" arrow placement="top">
+                      <ToggleButton
+                        value="format"
+                        selected={formattingActive[item.id]}
+                        onClick={() => setFormattingActive(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                      >
+                        <FormatColorFillIcon sx={{ fontSize: 20 }} />
+                      </ToggleButton>
+                    </Tooltip>
+                  )}
+
+                  {/* Fullscreen */}
+                  <Tooltip title="Expand view" arrow placement="top">
+                    <ToggleButton
+                      value="fullscreen"
+                      onClick={() => setFullscreenView({ open: true, item })}
+                    >
+                      <FullscreenIcon sx={{ fontSize: 20 }} />
+                    </ToggleButton>
+                  </Tooltip>
+                  
+                  {/* More Options */}
+                  <Tooltip title="More options" arrow placement="top">
+                    <ToggleButton
+                      value="more"
+                      onClick={(e) => handleMenuOpen(e, item.id)}
+                    >
+                      <MoreVertIcon sx={{ fontSize: 20 }} />
+                    </ToggleButton>
+                  </Tooltip>
+                </ToggleButtonGroup>
               </Stack>
 
               {/* Context Menu - Clean & Organized */}
@@ -2962,25 +3412,11 @@ const Dashboard = ({ initialDashboardId }) => {
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
                 <MenuItem 
-                  onClick={() => { handleDownloadCSV(item); handleMenuClose(); }}
-                  sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#F0FDF4' } }}
-                >
-                  <FileDownloadIcon sx={{ fontSize: 20, mr: 2, color: '#22C55E' }} /> 
-                  <Typography variant="body2" fontWeight={500}>Download CSV</Typography>
-                </MenuItem>
-                <MenuItem 
                   onClick={() => { handleStartEditTitle(item); handleMenuClose(); }}
                   sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#FEF3C7' } }}
                 >
                   <EditIcon sx={{ fontSize: 20, mr: 2, color: '#F59E0B' }} /> 
                   <Typography variant="body2" fontWeight={500}>Rename</Typography>
-                </MenuItem>
-                <MenuItem 
-                  onClick={() => { setConfigStudio({ open: true, widget: item }); handleMenuClose(); }}
-                  sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#EEF2FF' } }}
-                >
-                  <TuneIcon sx={{ fontSize: 20, mr: 2, color: '#6366F1' }} /> 
-                  <Typography variant="body2" fontWeight={500}>Configure</Typography>
                 </MenuItem>
                 <Divider sx={{ my: 1 }} />
                 <MenuItem 
@@ -3251,8 +3687,8 @@ const Dashboard = ({ initialDashboardId }) => {
                       </Typography>
                     </Box>
                   </Tooltip>
-                ) : lastSyncedAt ? (
-                  <Tooltip title={`Last synced: ${new Date(lastSyncedAt).toLocaleString()}`}>
+                ) : (lastSyncedAt || lastDataFetchTime) ? (
+                  <Tooltip title={`Last synced: ${new Date(lastDataFetchTime || lastSyncedAt).toLocaleString()}`}>
                     <Box sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -3266,25 +3702,11 @@ const Dashboard = ({ initialDashboardId }) => {
                     }}>
                       <CloudDoneIcon sx={{ fontSize: 14, color: '#10B981' }} />
                       <Typography sx={{ fontSize: '0.8rem', fontWeight: 500, color: '#10B981', whiteSpace: 'nowrap', display: { xs: 'none', sm: 'block' } }}>
-                        Synced
+                        Synced {formatLastUpdated(lastDataFetchTime || lastSyncedAt)}
                       </Typography>
                     </Box>
                   </Tooltip>
                 ) : null}
-
-                {/* Last Updated - Combined with time - Hidden on mobile */}
-                {lastGlobalUpdate && (
-                  <Typography sx={{ 
-                    fontSize: '0.8rem', 
-                    fontWeight: 500, 
-                    color: '#64748B',
-                    whiteSpace: 'nowrap',
-                    px: 1,
-                    display: { xs: 'none', md: 'block' },
-                  }}>
-                    {formatLastUpdated(lastGlobalUpdate)}
-                  </Typography>
-                )}
 
                 {/* Divider */}
                 <Box sx={{ width: 1, height: 24, bgcolor: '#E2E8F0' }} />
@@ -4094,49 +4516,13 @@ const Dashboard = ({ initialDashboardId }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Widget Configuration Studio */}
-      <WidgetConfigStudio
-        widgets={savedVisualizations}
-        selectedWidget={configStudio.widget}
-        isOpen={configStudio.open}
-        onClose={() => setConfigStudio({ open: false, widget: null })}
-        onWidgetSelect={(widget) => setConfigStudio({ open: true, widget })}
-        onSave={(updatedWidget) => {
-          // Update the widget with new configuration
-          const { viewMode, chartType, config } = updatedWidget;
-          
-          // Update view mode for this widget
-          if (viewMode) {
-            setWidgetViewModes(prev => ({ ...prev, [updatedWidget.id]: viewMode }));
-          }
-          
-          // Update the widget in saved visualizations
-          setSavedVisualizations(prev => 
-            prev.map(v => v.id === updatedWidget.id 
-              ? { ...v, viewMode, chartType, config, title: config?.title || v.title }
-              : v
-            )
-          );
-          
-          // Also update in Zustand store
-          updateVisualization(activeDashboardId, updatedWidget.id, {
-            viewMode,
-            chartType,
-            config,
-            title: config?.title || updatedWidget.title,
-          });
-          
-          // Close the studio
-          setConfigStudio({ open: false, widget: null });
-        }}
-      />
 
       {/* Refresh Results Snackbar */}
       <Snackbar
         open={!!refreshResults}
         autoHideDuration={5000}
         onClose={() => setRefreshResults(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert 
           onClose={() => setRefreshResults(null)} 

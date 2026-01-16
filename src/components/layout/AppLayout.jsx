@@ -258,7 +258,7 @@ const AppLayout = ({
                       }}
                     >
                       Logged In
-                    </Typography>
+                  </Typography>
                   </Box>
                 </Box>
                 <UserMenu />

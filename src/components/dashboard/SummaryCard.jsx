@@ -1314,7 +1314,7 @@ const SummaryCard = memo(({
                 const value = entry.mtd_lakhs || entry.value || 0;
                 const percentage = (value / maxValue) * 100;
                 const changePct = entry.change_pct || 0;
-                
+                    
                 // Diverse colors per row
                 const diversePalette = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
                 const barColor = diversePalette[idx % diversePalette.length];
