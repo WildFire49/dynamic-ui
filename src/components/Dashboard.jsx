@@ -110,6 +110,25 @@ import dashboardService from '../services/dashboardService';
 import { getSummaryCards } from '../services/summaryCardsService';
 import SummaryCardsPanel from './dashboard/SummaryCardsPanel';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+// Reusable components
+import WidgetHeader from './dashboard/WidgetHeader';
+import WidgetFooter from './dashboard/WidgetFooter';
+import WidgetContextMenu from './dashboard/WidgetContextMenu';
+import ResizeHandle from './dashboard/ResizeHandle';
+import SearchBox from './dashboard/SearchBox';
+// Common styles
+import { 
+  COLORS, 
+  GRADIENTS, 
+  SHADOWS, 
+  BORDER_RADIUS, 
+  SPACING, 
+  WIDGET_STYLES, 
+  BUTTON_STYLES,
+  TOOLBAR_STYLES,
+  CHAT_STYLES,
+  FULLSCREEN_STYLES,
+} from './dashboard/dashboardStyles';
 
 // Color palette - distinct colors for multi-series charts
 const CHART_COLORS = {
@@ -2967,17 +2986,17 @@ const Dashboard = ({ initialDashboardId }) => {
             display: 'flex',
             flexDirection: 'column',
             border: draggedItem?.id === item.id 
-              ? '2px solid #3B82F6' 
+              ? `2px solid ${COLORS.primary}` 
               : resizing?.id === item.id
-                ? '2px solid #10B981'
-                : '1px solid #E2E8F0',
-            borderRadius: '12px',
-            bgcolor: '#fff',
+                ? `2px solid ${COLORS.secondary}`
+                : `1px solid ${COLORS.border.light}`,
+            borderRadius: `${BORDER_RADIUS.widget}px`,
+            bgcolor: COLORS.background.paper,
             overflow: 'hidden',
             cursor: draggedItem ? 'grabbing' : 'grab',
             boxShadow: draggedItem?.id === item.id 
-              ? '0 12px 32px rgba(59, 130, 246, 0.25)' 
-              : '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+              ? SHADOWS.widget.dragged
+              : SHADOWS.widget.default,
             transform: draggedItem?.id === item.id 
               ? 'scale(1.02) translateY(-4px)' 
               : 'translateZ(0)',
@@ -2987,8 +3006,8 @@ const Dashboard = ({ initialDashboardId }) => {
             willChange: resizing?.id === item.id ? 'height' : 'auto',
             contain: 'layout style',
             '&:hover': {
-              boxShadow: draggedItem ? undefined : '0 4px 12px rgba(0,0,0,0.08)',
-              borderColor: '#CBD5E1',
+              boxShadow: draggedItem ? undefined : SHADOWS.widget.hover,
+              borderColor: COLORS.border.medium,
             },
             '&:active': {
               cursor: 'grabbing'
@@ -3004,518 +3023,56 @@ const Dashboard = ({ initialDashboardId }) => {
             }
           }}
         >
-            {/* Widget Header - Modern & Jazz Design */}
-            <Box sx={{
-              px: 2.5,
-              py: 1.75,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, #FFFFFF 100%)',
-              borderBottom: '3px solid transparent',
-              borderImage: 'linear-gradient(90deg, #b5c8de 0%, #8FA8C7 50%, #b5c8de 100%) 1',
-              borderRadius: '12px 12px 0 0',
-              flexShrink: 0,
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '3px',
-                background: 'linear-gradient(90deg, transparent 0%, rgba(181, 200, 222, 0.3) 50%, transparent 100%)',
-                animation: 'shimmer 3s infinite',
-                '@keyframes shimmer': {
-                  '0%': { transform: 'translateX(-100%)' },
-                  '100%': { transform: 'translateX(100%)' },
-                },
-              },
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04), inset 0 -1px 0 rgba(181, 200, 222, 0.2)',
-            }}>
-              <Box sx={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 1.5, position: 'relative', zIndex: 1 }}>
-                {/* Modern Icon Badge */}
-                {currentViewMode === 'table' && (
-                  <Box sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '10px',
-                    // background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    // boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
-                    flexShrink: 0,
-                    overflow: 'hidden',
-                  }}>
-                    <img
-                      src="/cells.png"
-                      alt="Table"
-                      style={{
-                        width: '34px',
-                        height: '34px',
-                        objectFit: 'cover',
-                        display: 'block',
-                      }}
-                    />
-                  </Box>
-                )}
-                {currentViewMode === 'bar' && (
-                  <Box sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
-                    flexShrink: 0,
-                  }}>
-                    <BarChartIcon sx={{ fontSize: 20, color: '#fff' }} />
-                  </Box>
-                )}
-                {currentViewMode === 'area' && (
-                  <Box sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
-                    flexShrink: 0,
-                  }}>
-                    <AreaChartIcon sx={{ fontSize: 20, color: '#fff' }} />
-                  </Box>
-                )}
-                {currentViewMode === 'pie' && (
-                  <Box sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
-                    flexShrink: 0,
-                  }}>
-                    <PieChartIcon sx={{ fontSize: 20, color: '#fff' }} />
-                  </Box>
-                )}
-                {!['table', 'bar', 'area', 'pie'].includes(currentViewMode) && (
-                  <Box sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #b5c8de 0%, #8FA8C7 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(181, 200, 222, 0.3)',
-                    flexShrink: 0,
-                  }}>
-                    <DashboardIcon sx={{ fontSize: 20, color: '#fff' }} />
-                  </Box>
-                )}
-                
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  {editingTitleId === item.id ? (
-                    <ClickAwayListener onClickAway={handleSaveInlineTitle}>
-                      <InputBase
-                        autoFocus
-                        value={editingTitleValue}
-                        onChange={(e) => setEditingTitleValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveInlineTitle();
-                          if (e.key === 'Escape') handleCancelInlineEdit();
-                        }}
-                        sx={{
-                          fontWeight: 800,
-                          color: '#1E293B',
-                          fontSize: { xs: '0.9375rem', md: '1.125rem' },
-                          lineHeight: 1.4,
-                          px: 1.5,
-                          py: 0.75,
-                          borderRadius: 2,
-                          bgcolor: '#FFFFFF',
-                          border: '2px solidrgb(231, 233, 236)',
-                          minWidth: 200,
-                          maxWidth: '100%',
-                          // boxShadow: '0 4px 12px rgba(181, 200, 222, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
-                          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
-                          transition: 'all 0.2s ease',
-                          '&:focus-within': {
-                            borderColor: '#8FA8C7',
-                            boxShadow: '0 6px 16px rgba(181, 200, 222, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-                            transform: 'translateY(-1px)',
-                          },
-                          '& input': {
-                            padding: 0,
-                            color: '#1E293B',
-                            fontWeight: 800,
-                            letterSpacing: '-0.02em',
-                            '&::placeholder': {
-                              color: '#94A3B8',
-                              opacity: 0.7,
-                            }
-                          }
-                        }}
-                        placeholder="Enter widget title..."
-                      />
-                    </ClickAwayListener>
-                  ) : (
-                    <Box
-                      sx={{
-                        position: 'relative',
-                        display: 'inline-block',
-                        maxWidth: '100%',
-                      }}
-                    >
-                      <Typography 
-                        component="span"
-                        variant="subtitle1" 
-                        draggable={false}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStartEditTitle(item);
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onDragStart={(e) => e.preventDefault()}
-                        sx={{ 
-                          fontWeight: 800, 
-                          color: '#1E293B',
-                          fontSize: { xs: '0.9375rem', md: '1.125rem' },
-                          lineHeight: 1.4,
-                          cursor: 'text',
-                          px: 1.25,
-                          py: 0,
-                          pr: 4, // Add right padding to make room for edit icon
-                          height: 36, // Match icon height
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          maxWidth: '100%',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          letterSpacing: '-0.02em',
-                          borderRadius: 1,
-                          userSelect: 'none',
-                          background: currentViewMode === 'table' 
-                            ? 'linear-gradient(135deg, rgba(238, 241, 245, 0.2) 0%, rgba(220, 225, 232, 0.15) 50%, rgba(181, 200, 222, 0.2) 100%)'
-                            : 'linear-gradient(135deg, rgba(181, 200, 222, 0.1) 0%, transparent 100%)',
-                          border: currentViewMode === 'table' ? '1.5px solid rgba(181, 200, 222, 0.3)' : 'none',
-                          boxShadow: currentViewMode === 'table' 
-                            ? '0 2px 8px rgba(156, 192, 234, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
-                            : 'none',
-                          position: 'relative',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          '&::before': currentViewMode === 'table' ? {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
-                            borderRadius: 1.3,
-                            pointerEvents: 'none',
-                          } : {},
-                          '&:hover': {
-                            bgcolor: currentViewMode === 'table' 
-                              ? 'rgba(181, 200, 222, 0.25)'
-                              : 'rgba(152, 190, 235, 0.15)',
-                            transform: currentViewMode === 'table' ? 'translateY(-1px)' : 'translateX(2px)',
-                            boxShadow: currentViewMode === 'table' 
-                              ? '0 4px 12px rgba(181, 200, 222, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6)'
-                              : 'none',
-                            borderColor: currentViewMode === 'table' ? 'rgba(181, 200, 222, 0.5)' : 'transparent',
-                          }
-                        }}
-                        title={getTitle(item)}
-                      >
-                        {getTitle(item)}
-                      </Typography>
-                      
-                      {/* Edit Icon - Notification Badge Style at Top Right */}
-                      <Tooltip title="Click to edit title" arrow placement="top">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartEditTitle(item);
-                          }}
-                          sx={{
-                            position: 'absolute',
-                            top: -8,
-                            right: -8,
-                            width: 25,
-                            height: 25,
-                            color: '#b5c8de',
-                            bgcolor: '#FFFFFF',
-                            border: '2px solid #b5c8de',
-                            borderRadius: '50%',
-                            transition: 'all 0.2s ease',
-                            zIndex: 2,
-                            boxShadow: '0 2px 8px rgba(132, 175, 223, 0.25)',
-                            '&:hover': {
-                              color: '#8FA8C7',
-                              bgcolor: '#F0F7FF',
-                              borderColor: '#8FA8C7',
-                              transform: 'scale(1.15)',
-                              boxShadow: '0 4px 10px rgba(155, 194, 239, 0.5)',
-                            }
-                          }}
-                        >
-                          <EditIcon sx={{ fontSize: 14 }} />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  )}
-                </Box>
-              </Box>
+            {/* Widget Header */}
+            <WidgetHeader
+              item={item}
+              currentViewMode={currentViewMode}
+              editingTitleId={editingTitleId}
+              editingTitleValue={editingTitleValue}
+              onStartEditTitle={handleStartEditTitle}
+              onSaveTitle={handleSaveInlineTitle}
+              onCancelEdit={handleCancelInlineEdit}
+              onTitleChange={setEditingTitleValue}
+              refreshingWidgets={refreshingWidgets}
+              formattingActive={formattingActive}
+              onRefresh={() => handleRefreshWidget(item)}
+              onFormatToggle={() => setFormattingActive(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+              onFullscreen={() => setFullscreenView({ open: true, item })}
+              onMenuOpen={handleMenuOpen}
+              onDownload={() => handleDownloadCSV(item)}
+            />
 
-              {/* Action Buttons - Tab Style */}
-              <Stack
-                direction="row" 
-                spacing={0.5} 
-                alignItems="center"
-                className="widget-actions"
-                sx={{ opacity: { xs: 1, md: 0.9 }, transition: 'opacity 0.2s' }}
-              >
-                {/* Toggle Button Group for Actions */}
-                <ToggleButtonGroup
-                  value={null}
-                  exclusive
-                  size="small"
-                  sx={{
-                    bgcolor: '#F8F9FA',
-                    borderRadius: 2,
-                    border: '1px solid #E2E8F0',
-                    p: 0.25,
-                    '& .MuiToggleButton-root': {
-                      border: 'none',
-                      px: 1.25,
-                      py: 0.5,
-                      minWidth: 32,
-                      height: 32,
-                      color: '#495057',
-                      '&:hover': {
-                        bgcolor: '#F0F7FF',
-                        color: '#b5c8de',
-                      },
-                      '&.Mui-selected': {
-                        bgcolor: '#F0F7FF',
-                        color: '#b5c8de',
-                        '&:hover': {
-                          bgcolor: '#E0EFF7',
-                        }
-                      },
-                    },
-                  }}
-                >
-                  {/* Download CSV - Excel Icon */}
-                  <Tooltip title="Download report" arrow placement="top">
-                    <ToggleButton
-                      value="download"
-                      onClick={() => handleDownloadCSV(item)}
-                    >
-                      <img
-                        src="/excel.png"
-                        alt="Download"
-                        style={{
-                          width: '20px',
-                          height: '20px',
-                          objectFit: 'contain',
-                          display: 'block',
-                        }}
-                      />
-                    </ToggleButton>
-                  </Tooltip>
-
-                  {/* Refresh */}
-                  <Tooltip title="Refresh data" arrow placement="top">
-                    <ToggleButton
-                      value="refresh"
-                      onClick={() => handleRefreshWidget(item)}
-                      disabled={refreshingWidgets[item.id]}
-                      sx={{
-                        '&.Mui-disabled': {
-                          color: '#ADB5BD',
-                        },
-                        animation: refreshingWidgets[item.id] ? 'spin 1s linear infinite' : 'none',
-                        '@keyframes spin': {
-                          '0%': { transform: 'rotate(0deg)' },
-                          '100%': { transform: 'rotate(360deg)' },
-                        },
-                      }}
-                    >
-                      <RefreshIcon sx={{ fontSize: 20 }} />
-                    </ToggleButton>
-                  </Tooltip>
-
-                  {/* Format Table - Only show for table view */}
-                  {currentViewMode === 'table' && (
-                    <Tooltip title="Format table" arrow placement="top">
-                      <ToggleButton
-                        value="format"
-                        selected={formattingActive[item.id]}
-                        onClick={() => setFormattingActive(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                      >
-                        <FormatColorFillIcon sx={{ fontSize: 20 }} />
-                      </ToggleButton>
-                    </Tooltip>
-                  )}
-
-                  {/* Fullscreen */}
-                  <Tooltip title="Expand view" arrow placement="top">
-                    <ToggleButton
-                      value="fullscreen"
-                      onClick={() => setFullscreenView({ open: true, item })}
-                    >
-                      <FullscreenIcon sx={{ fontSize: 20 }} />
-                    </ToggleButton>
-                  </Tooltip>
-                  
-                  {/* More Options */}
-                  <Tooltip title="More options" arrow placement="top">
-                    <ToggleButton
-                      value="more"
-                      onClick={(e) => handleMenuOpen(e, item.id)}
-                    >
-                      <MoreVertIcon sx={{ fontSize: 20 }} />
-                    </ToggleButton>
-                  </Tooltip>
-                </ToggleButtonGroup>
-              </Stack>
-
-              {/* Context Menu - Clean & Organized */}
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl) && activeMenuId === item.id}
-                onClose={handleMenuClose}
-                PaperProps={{
-                  elevation: 0,
-                  sx: {
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 3,
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
-                    mt: 1,
-                    minWidth: 200,
-                    py: 1,
-                  },
-                }}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-              >
-                <MenuItem 
-                  onClick={() => { handleStartEditTitle(item); handleMenuClose(); }}
-                  sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#FEF3C7' } }}
-                >
-                  <EditIcon sx={{ fontSize: 20, mr: 2, color: '#F59E0B' }} /> 
-                  <Typography variant="body2" fontWeight={500}>Rename</Typography>
-                </MenuItem>
-                <Divider sx={{ my: 1 }} />
-                <MenuItem 
-                  onClick={() => { handleDeleteVisualization(item.id); handleMenuClose(); }} 
-                  sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: '#FEF2F2' } }}
-                >
-                  <DeleteIcon sx={{ fontSize: 20, mr: 2, color: '#EF4444' }} /> 
-                  <Typography variant="body2" fontWeight={500} color="#EF4444">Delete</Typography>
-                </MenuItem>
-              </Menu>
-            </Box>
+            {/* Context Menu */}
+            <WidgetContextMenu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl) && activeMenuId === item.id}
+              menuId={item.id}
+              onClose={handleMenuClose}
+              onEditTitle={() => handleStartEditTitle(item)}
+              onDelete={() => handleDeleteVisualization(item.id)}
+            />
 
             {/* Widget Content */}
             <Box sx={{ 
-              flex: 1, 
+              ...WIDGET_STYLES.content,
               p: currentViewMode === 'table' ? 0 : 1,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              minHeight: 150,
-              contain: 'content',
-              willChange: 'contents',
-              transform: 'translateZ(0)',
-              '& > *': {
-                flex: 1,
-                minHeight: 0,
-              }
             }}>
               {renderVisualization(item, currentViewMode)}
             </Box>
 
-            {/* Widget Footer - Clean Status Bar */}
+            {/* Widget Footer */}
             {item.type !== 'analysis_widget' && (
-              <Box sx={{ 
-                px: 2.5, 
-                py: 1, 
-                borderTop: '1px solid #E2E8F0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                flexShrink: 0,
-              }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Box sx={{ 
-                    width: 6, 
-                    height: 6, 
-                    borderRadius: '50%', 
-                    bgcolor: recordCount > 0 ? '#22C55E' : '#94A3B8',
-                  }} />
-                  <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 500 }}>
-                    {recordCount > 0 ? `${recordCount.toLocaleString()} records` : 'No data'}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ flexShrink: 0 }}>
-                  <AccessTimeIcon sx={{ fontSize: 12, color: '#94A3B8' }} />
-                  <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    {formatLastUpdated(item.timestamp)}
-                  </Typography>
-                </Stack>
-              </Box>
+              <WidgetFooter
+                recordCount={recordCount}
+                timestamp={item.timestamp}
+                formatLastUpdated={formatLastUpdated}
+              />
             )}
             
-            {/* Resize Handle - Bottom edge (height resize only) */}
-            <Box
-              className="resize-handle"
-              onMouseDown={(e) => {
-                const element = document.getElementById(`widget-${item.id}`);
-                if (element) {
-                  const rect = element.getBoundingClientRect();
-                  handleResizeStart(e, item.id, rect.height);
-                }
-              }}
-              sx={{
-                position: 'absolute',
-                bottom: 0,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 60,
-                height: 8,
-                cursor: 'ns-resize',
-                opacity: 0,
-                transition: 'opacity 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '4px 4px 0 0',
-                '&:hover': {
-                  opacity: 1,
-                  bgcolor: 'rgba(59, 130, 246, 0.1)',
-                },
-                '&::before': {
-                  content: '""',
-                  width: 30,
-                  height: 3,
-                  bgcolor: '#9CA3AF',
-                  borderRadius: 2,
-                },
-              }}
+            {/* Resize Handle */}
+            <ResizeHandle
+              itemId={item.id}
+              onResizeStart={handleResizeStart}
             />
           </Paper>
         </Grow>
@@ -3527,7 +3084,7 @@ const Dashboard = ({ initialDashboardId }) => {
     <Box sx={{ 
       display: 'flex',
       minHeight: '100vh',
-      bgcolor: '#F5F7FA',
+      bgcolor: COLORS.background.default,
       position: 'relative',
     }}>
       {/* Main Dashboard Content - Adjusts when chat opens */}
@@ -3544,14 +3101,7 @@ const Dashboard = ({ initialDashboardId }) => {
         <DashboardSelector />
       
       {/* Toolbar - Clean Header */}
-      <Box 
-        sx={{ 
-          bgcolor: '#fff',
-          borderBottom: '1px solid #E2E8F0',
-          px: 3,
-          py: 2,
-        }}
-      >
+      <Box sx={TOOLBAR_STYLES.container}>
         <Stack 
           direction={{ xs: 'column', sm: 'row' }}
           alignItems={{ xs: 'stretch', sm: 'center' }}
@@ -3561,98 +3111,13 @@ const Dashboard = ({ initialDashboardId }) => {
         >
           {/* Left - Search */}
           <Stack direction="row" alignItems="center" spacing={2} sx={{ flex: { xs: 'none', sm: 1 }, width: { xs: '100%', sm: 'auto' } }}>
-            {/* Search Field - Matching Toolbar Style */}
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={1}
-              sx={{
-                bgcolor: '#F8FAFC',
-                borderRadius: 3,
-                p: 0.75,
-                border: '1px solid #E2E8F0',
-                flex: 1,
-                minWidth: 0,
-              }}
-            >
-              {/* Search Icon Box */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.75,
-                  px: 1.5,
-                  py: 0.75,
-                  borderRadius: 2,
-                  bgcolor: searchQuery ? '#0078d7' : '#fff',
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <SearchIcon sx={{ 
-                  fontSize: 16, 
-                  color: searchQuery ? '#fff' : '#64748B',
-                  transition: 'color 0.2s ease',
-                }} />
-              </Box>
-              
-              {/* Search Input */}
-              <InputBase
-                placeholder={`Search ${allItems.length} widget${allItems.length !== 1 ? 's' : ''}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{ 
-                  flex: 1,
-                  minWidth: { xs: 80, sm: 180 },
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  color: '#1E293B',
-                  '& input::placeholder': { color: '#94A3B8', opacity: 1, fontWeight: 400 }
-                }}
-              />
-              
-              {/* Widget Count Badge */}
-              {!searchQuery && allItems.length > 0 && (
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 1.5,
-                  py: 0.75,
-                  borderRadius: 2,
-                  bgcolor: '#fff',
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-                }}>
-                  <GridViewIcon sx={{ fontSize: 14, color: '#0078d7' }} />
-                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#0078d7' }}>
-                    {allItems.length}
-                  </Typography>
-                </Box>
-              )}
-              
-              {/* Clear Button */}
-              {searchQuery && (
-                <Box
-                  onClick={() => setSearchQuery('')}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    px: 1,
-                    py: 0.75,
-                    borderRadius: 2,
-                    bgcolor: '#FEE2E2',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    '&:hover': { bgcolor: '#FECACA' },
-                  }}
-                >
-                  <CloseIcon sx={{ fontSize: 14, color: '#EF4444' }} />
-                </Box>
-              )}
-            </Stack>
+            <SearchBox
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onClear={() => setSearchQuery('')}
+              placeholder={`Search ${allItems.length} widget${allItems.length !== 1 ? 's' : ''}...`}
+              resultCount={allItems.length}
+            />
             
             {/* Sync Status Group - Matching Toolbar Style */}
             {allItems.length > 0 && (
@@ -4007,28 +3472,14 @@ const Dashboard = ({ initialDashboardId }) => {
         fullScreen
         PaperProps={{
           elevation: 0,
-          sx: {
-            borderRadius: 0,
-            bgcolor: '#F8FAFC',
-          }
+          sx: FULLSCREEN_STYLES.paper,
         }}
         TransitionComponent={Slide}
         TransitionProps={{ direction: 'up' }}
       >
         <DialogTitle 
           component="div"
-          sx={{ 
-            px: { xs: 2, sm: 4 },
-            py: { xs: 1.5, sm: 2 }, 
-            borderBottom: '1px solid #E2E8F0',
-            display: 'flex',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            justifyContent: 'space-between',
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: { xs: 1, sm: 0 },
-            background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
-            color: '#fff',
-          }}
+          sx={FULLSCREEN_STYLES.title}
         >
           <Box sx={{ flex: 1, minWidth: 0, maxWidth: { xs: '100%', sm: '40%' } }}>
             <Typography 
