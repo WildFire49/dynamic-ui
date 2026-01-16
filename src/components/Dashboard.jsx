@@ -3266,7 +3266,7 @@ const Dashboard = ({ initialDashboardId }) => {
             <Box sx={{ width: 1, height: 24, bgcolor: '#E2E8F0', mx: 0.5 }} />
 
             {/* Sort Button */}
-            <Box
+            {/* <Box
               onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
               sx={{
                 display: 'flex',
@@ -3289,11 +3289,11 @@ const Dashboard = ({ initialDashboardId }) => {
               <Typography sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
                 {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
               </Typography>
-            </Box>
+            </Box> */}
           </Stack>
 
           {/* Right - Selection Mode Toggle */}
-          <Stack direction="row" spacing={1} alignItems="center">
+          {/* <Stack direction="row" spacing={1} alignItems="center">
             {selectionMode && (selectedWidgets.size > 0 || selectedCards.size > 0) && (
               <Chip
                 label={`${selectedWidgets.size + selectedCards.size} selected`}
@@ -3351,7 +3351,7 @@ const Dashboard = ({ initialDashboardId }) => {
             >
               {selectionMode ? 'Exit Selection' : 'Select'}
             </Button>
-          </Stack>
+          </Stack> */}
         </Stack>
       </Box>
 
