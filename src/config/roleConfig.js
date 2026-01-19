@@ -10,6 +10,7 @@ export const ROLES = {
   MIS: "RE-20920",
   ADMIN_CONFIGURATOR: "RE-20769",
   PRODUCT_LEAD: "RE-231875",
+  TESTER:"RE-76924"
 };
 
 // ============================
@@ -18,7 +19,7 @@ export const ROLES = {
 export const ROLE_CATEGORIES = {
   ADMIN_ROLES: [ROLES.SUPER_ADMIN],
   USER_ROLES: [ROLES.RECON_USER, ROLES.MIS],
-  CONFIGURATOR_ROLES: [ROLES.SUPER_ADMIN],
+  CONFIGURATOR_ROLES: [ROLES.SUPER_ADMIN, ROLES.TESTER],
   LEAD_ROLES: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
   ALL_ROLES: Object.values(ROLES),
 };
@@ -38,15 +39,16 @@ export const ROUTE_ACCESS = {
 
   // Specific route permissions
   ROUTE_PERMISSIONS: {
-    chat: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD],
+    chat: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD, ROLES.TESTER],
     dashboard: [
       ROLES.SUPER_ADMIN,
       ROLES.RECON_USER,
       ROLES.MIS,
       ROLES.PRODUCT_LEAD,
+      ROLES.TESTER,
     ],
     leads: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD], // Internal CPH - Super Admin and Product Lead only
-    configurator: [ROLES.SUPER_ADMIN], // Super Admin only
+    configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER], // Super Admin and Tester
     productConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
     creConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
     accessControl: [ROLES.SUPER_ADMIN], // Admin only
@@ -64,7 +66,7 @@ export const MENU_ITEMS = [
     label: "MiFiX.ai Chat",
     icon: "ChatIcon",
     color: "#2196f3",
-    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD],
+    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD, ROLES.TESTER],
     path: "/",
   },
   {
@@ -72,7 +74,7 @@ export const MENU_ITEMS = [
     label: "Dashboard",
     icon: "DashboardIcon",
     color: "#2196f3",
-    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD],
+    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD, ROLES.TESTER],
     path: "/dashboard",
   },
   {
@@ -88,7 +90,7 @@ export const MENU_ITEMS = [
     label: "Configurator",
     icon: "ConfiguratorIcon",
     color: "#1976d2",
-    roles: [ROLES.SUPER_ADMIN],
+    roles: [ROLES.SUPER_ADMIN, ROLES.TESTER],
     path: "/configurator",
   },
   {
@@ -126,6 +128,7 @@ export const ROLE_DISPLAY_NAMES = {
   [ROLES.MIS]: "MIS",
   [ROLES.ADMIN_CONFIGURATOR]: "Admin Configurator",
   [ROLES.PRODUCT_LEAD]: "Product Lead",
+  [ROLES.TESTER]: "Tester",
 };
 
 // ============================

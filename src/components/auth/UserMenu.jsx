@@ -50,9 +50,17 @@ const UserMenu = () => {
 
   const handleLogout = async () => {
     handleClose();
-    await logout();
-    // Redirect to home page after logout
-    router.push('/');
+    try {
+      console.log("🚪 User initiated logout");
+      await logout();
+      console.log("✅ Logout completed, redirecting...");
+      // Redirect to home page after logout
+      router.push('/');
+    } catch (error) {
+      console.error("❌ Logout error:", error);
+      // Still redirect even if logout fails
+      router.push('/');
+    }
   };
 
   if (!user) return null;

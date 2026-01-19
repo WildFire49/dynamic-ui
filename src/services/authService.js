@@ -454,7 +454,8 @@ class AuthService {
   // Get refresh token from sessionStorage
   getRefreshToken() {
     if (!this.isClient()) return null;
-    return sessionStorage.getItem("refreshToken");
+    // Refresh token is stored in localStorage (see login method line 136)
+    return localStorage.getItem("refreshToken");
   }
 
   // Change password API call
@@ -521,6 +522,13 @@ class AuthService {
       const clientId = this.getClientId();
       const secretKey = this.getSecretKey();
 
+      console.log("🔄 Starting logout process...");
+      console.log("Access token:", accessToken ? "Present" : "Missing");
+      console.log("Refresh token:", refreshToken ? "Present" : "Missing");
+      console.log("Product code:", productCode || "Missing");
+      console.log("Client ID:", clientId ? "Present" : "Missing");
+      console.log("Secret key:", secretKey ? "Present" : "Missing");
+
       // Call SSO logout API if we have the necessary credentials
       if (accessToken && refreshToken && productCode && clientId && secretKey) {
         const ssoBaseUrl =
@@ -528,6 +536,7 @@ class AuthService {
           "https://ams-uat.mifix.io/idp/sso";
 
         try {
+          console.log("📡 Calling SSO logout API...");
           const response = await fetch(`${ssoBaseUrl}/logout`, {
             method: "POST",
             headers: {
@@ -542,26 +551,33 @@ class AuthService {
             }),
           });
 
+          const responseData = await response.json().catch(() => ({}));
+          
           if (!response.ok) {
-            console.warn("SSO logout API failed, proceeding with local logout");
+            console.warn("⚠️ SSO logout API failed:", response.status, responseData);
           } else {
-            console.log("✅ SSO logout successful");
+            console.log("✅ SSO logout API successful");
           }
         } catch (error) {
-          console.warn("SSO logout API error:", error.message);
+          console.error("❌ SSO logout API error:", error.message);
+          // Continue with local logout even if API fails
         }
+      } else {
+        console.warn("⚠️ Missing credentials for SSO logout, proceeding with local logout only");
       }
 
       // Clear ALL localStorage data to ensure clean state for new login
+      console.log("🧹 Clearing localStorage...");
       localStorage.clear();
 
       // Also clear sessionStorage
+      console.log("🧹 Clearing sessionStorage...");
       sessionStorage.clear();
 
-      console.log("✅ Logged out - all local data cleared");
+      console.log("✅ Logout complete - all local data cleared");
       return { success: true };
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("❌ Logout error:", error);
       // Still clear local data even if API call fails
       localStorage.clear();
       sessionStorage.clear();
