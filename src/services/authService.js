@@ -34,10 +34,8 @@ const parseProductCodes = () => {
 // For general API calls with bearer token, use apiClient directly
 class AuthService {
   constructor() {
-    // SSO URL from env or fallback
-    this.ssoBaseURL =
-      process.env.NEXT_PUBLIC_SSO_BASE_URL ||
-      "https://ams-uat.mifix.io/idp/sso";
+    // Auth API URL from env or fallback
+    this.authBaseURL = process.env.NEXT_PUBLIC_SSO_BASE_URL;
     this.productCodes = parseProductCodes();
     // Default to first product code (MIFIX-AI)
     const defaultProduct = this.productCodes[0];
@@ -93,21 +91,18 @@ class AuthService {
     return this.secretKey;
   }
 
-  // Login API call
+  // Login API call - New API returns user data and roles directly
   async login(username, password, productCode = null) {
     // If product code provided, set it
     if (productCode) {
       this.setProductCode(productCode);
     }
     try {
-      // Use SSO endpoint for login with product-specific credentials
-      const response = await fetch(`${this.ssoBaseURL}/login`, {
+      // Use new auth endpoint - no custom headers needed
+      const response = await fetch(`${this.authBaseURL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          clientId: this.clientId,
-          secretKey: this.secretKey,
-          productCode: this.productCode,
         },
         body: JSON.stringify({
           username,
@@ -117,64 +112,52 @@ class AuthService {
 
       const data = await response.json();
 
-      // SSO API returns { status: 200, data: { message, data: { accessToken, refreshToken, ... } } }
-      const isSuccess = data.status === 200 || data.success;
-      const responseData = data.data?.data || data.data;
-
-      if (isSuccess && responseData) {
-        // Handle SSO response format (camelCase) or standard format (snake_case)
-        const accessToken =
-          responseData.accessToken || responseData.access_token;
-        const refreshToken =
-          responseData.refreshToken || responseData.refresh_token;
-        const accessTokenExpiry =
-          responseData.accessTokenExpiry || responseData.access_token_expiry;
+      // New API returns { success: true, message: "...", data: { access_token, refresh_token, user_data: {...} } }
+      if (data.success && data.data) {
+        const {
+          access_token,
+          refresh_token,
+          access_token_expiry,
+          user_id,
+          user_data,
+        } = data.data;
 
         // Store tokens in localStorage
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("accessTokenExpiry", accessTokenExpiry);
-        localStorage.setItem("refreshToken", refreshToken);
-        localStorage.setItem("username", username);
+        localStorage.setItem("accessToken", access_token);
+        localStorage.setItem("accessTokenExpiry", access_token_expiry.toString());
+        localStorage.setItem("refreshToken", refresh_token);
+        localStorage.setItem("userId", user_data.userId);
+        localStorage.setItem("username", user_data.username);
         localStorage.setItem("selectedProductCode", this.productCode);
 
-        // Call verify API to get user roles and info
-        const verifyResult = await this.verifyToken(accessToken);
+        // Store user info with roles
+        localStorage.setItem("userInfo", JSON.stringify(user_data));
 
-        if (verifyResult.success) {
-          notificationManager.success("Login successful");
-          return {
-            success: true,
-            data: {
-              ...responseData,
-              userInfo: verifyResult.data,
-            },
-            message: data.data?.message || "Login successful",
-          };
-        } else {
-          // Verify failed but login succeeded - still allow access with limited info
-          console.warn("Token verify failed, using basic user info");
-          const basicUserInfo = {
-            username: username,
-            roles: [{ roleCode: "USER", roleName: "User", roleId: "default" }],
-          };
-          localStorage.setItem("userInfo", JSON.stringify(basicUserInfo));
-          localStorage.setItem("roles", JSON.stringify(basicUserInfo.roles));
-          localStorage.setItem("roleCode", "USER");
+        // Store roles array
+        if (user_data.roles && user_data.roles.length > 0) {
+          localStorage.setItem("roles", JSON.stringify(user_data.roles));
 
-          notificationManager.success("Login successful");
-          return {
-            success: true,
-            data: {
-              ...responseData,
-              userInfo: basicUserInfo,
-            },
-            message: "Login successful",
-          };
+          // Store primary roleCode (first role)
+          const primaryRole = user_data.roles[0];
+          localStorage.setItem("roleCode", primaryRole.roleCode);
+          localStorage.setItem("roleName", primaryRole.roleName);
+          localStorage.setItem("roleId", primaryRole.roleId);
         }
+
+        notificationManager.success("Login successful");
+        return {
+          success: true,
+          data: {
+            access_token,
+            refresh_token,
+            access_token_expiry,
+            userInfo: user_data,
+          },
+          message: data.message || "Login successful",
+        };
       } else {
         // Show error notification
-        const errorMessage =
-          data.data?.message || data.message || "Login failed";
+        const errorMessage = data.message || "Login failed";
         notificationManager.error(errorMessage);
         return {
           success: false,
@@ -191,7 +174,7 @@ class AuthService {
     }
   }
 
-  // Verify token and get user info (calls SSO verify endpoint)
+  // Verify token - New API endpoint
   async verifyToken(token = null) {
     try {
       const tokenToVerify = token || localStorage.getItem("accessToken");
@@ -200,62 +183,30 @@ class AuthService {
         return { success: false, message: "No token found" };
       }
 
-      // Call SSO verify endpoint - POST with token in body
-      const response = await fetch(`${this.ssoBaseURL}/token/verify`, {
+      // Call new verify endpoint - POST with token in body
+      const response = await fetch(`${this.authBaseURL}/verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          clientId: this.clientId,
-          secretKey: this.secretKey,
-          productCode: this.productCode,
         },
         body: JSON.stringify({ token: tokenToVerify }),
       });
 
       const data = await response.json();
 
-      // SSO verify returns { status: 200, data: { message, data: { userId, username, roles, ... } } }
-      const isSuccess = data.status === 200 || data.success;
-      const userData = data.data?.data || data.data;
-
-      if (isSuccess && userData) {
-        // Store user info
-        localStorage.setItem("userInfo", JSON.stringify(userData));
-        if (userData.userId) localStorage.setItem("userId", userData.userId);
-
-        // Only update username if it's a valid username (not a UUID)
-        // UUIDs contain hyphens and are 36 characters long
-        if (userData.username && !this.isUUID(userData.username)) {
-          localStorage.setItem("username", userData.username);
-        }
-
-        // Store roles array
-        if (userData.roles && userData.roles.length > 0) {
-          localStorage.setItem("roles", JSON.stringify(userData.roles));
-
-          // Store primary roleCode (first role)
-          const primaryRole = userData.roles[0];
-          localStorage.setItem(
-            "roleCode",
-            primaryRole.roleCode || primaryRole.code
-          );
-          localStorage.setItem(
-            "roleName",
-            primaryRole.roleName || primaryRole.name
-          );
-          localStorage.setItem("roleId", primaryRole.roleId || primaryRole.id);
-        }
-
+      // New API returns { valid: true, message: "..." }
+      if (data.valid) {
+        // Token is valid, get user info from localStorage
+        const userInfo = this.getCurrentUser();
         return {
           success: true,
-          data: userData,
-          message: data.data?.message || "Token verified",
+          data: userInfo,
+          message: data.message || "Token verified",
         };
       } else {
         return {
           success: false,
-          message:
-            data.data?.message || data.message || "Token verification failed",
+          message: data.message || "Token verification failed",
         };
       }
     } catch (error) {
@@ -267,7 +218,7 @@ class AuthService {
     }
   }
 
-  // Refresh token (uses SSO refresh endpoint)
+  // Refresh token - New API endpoint
   async refreshToken() {
     try {
       // Get refresh token from localStorage
@@ -278,15 +229,13 @@ class AuthService {
         return { success: false, message: "No refresh token found" };
       }
 
-      const response = await fetch(`${this.ssoBaseURL}/token/refresh`, {
+      // New API accepts either Bearer token or refresh_token in body
+      const response = await fetch(`${this.authBaseURL}/refresh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          clientId: this.clientId,
-          secretKey: this.secretKey,
-          productCode: this.productCode,
         },
-        body: JSON.stringify({ refreshToken: refreshTokenValue }),
+        body: JSON.stringify({ refresh_token: refreshTokenValue }),
       });
 
       // Check if response is ok
@@ -303,28 +252,25 @@ class AuthService {
       }
 
       const data = await response.json();
-      const isSuccess = data.status === 200 || data.success;
-      const responseData = data.data?.data || data.data;
 
-      if (isSuccess && responseData) {
-        // Handle SSO response format (camelCase) or standard format (snake_case)
-        const accessToken =
-          responseData.accessToken || responseData.access_token;
-        const newRefreshToken =
-          responseData.refreshToken || responseData.refresh_token;
-        const accessTokenExpiry =
-          responseData.accessTokenExpiry || responseData.access_token_expiry;
+      // New API returns { success: true, message: "...", data: { access_token, refresh_token, ... } }
+      if (data.success && data.data) {
+        const {
+          access_token,
+          refresh_token,
+          access_token_expiry,
+        } = data.data;
 
         // Update tokens in localStorage
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("accessTokenExpiry", accessTokenExpiry);
-        localStorage.setItem("refreshToken", newRefreshToken);
+        localStorage.setItem("accessToken", access_token);
+        localStorage.setItem("accessTokenExpiry", access_token_expiry.toString());
+        localStorage.setItem("refreshToken", refresh_token);
 
         console.log("✅ Token refreshed successfully");
         return {
           success: true,
-          data: responseData,
-          message: data.data?.message || "Token refreshed",
+          data: data.data,
+          message: data.message || "Token refreshed",
         };
       } else {
         console.error("Token refresh failed:", data.message);
@@ -332,7 +278,7 @@ class AuthService {
         localStorage.removeItem("refreshToken");
         return {
           success: false,
-          message: data.data?.message || data.message || "Token refresh failed",
+          message: data.message || "Token refresh failed",
         };
       }
     } catch (error) {
@@ -511,39 +457,27 @@ class AuthService {
     }
   }
 
-  // Logout with SSO API call
+  // Logout - New API endpoint
   async logout() {
     if (!this.isClient()) return { success: false };
 
     try {
       const accessToken = this.getAccessToken();
       const refreshToken = this.getRefreshToken();
-      const productCode = this.getProductCode();
-      const clientId = this.getClientId();
-      const secretKey = this.getSecretKey();
 
       console.log("🔄 Starting logout process...");
       console.log("Access token:", accessToken ? "Present" : "Missing");
       console.log("Refresh token:", refreshToken ? "Present" : "Missing");
-      console.log("Product code:", productCode || "Missing");
-      console.log("Client ID:", clientId ? "Present" : "Missing");
-      console.log("Secret key:", secretKey ? "Present" : "Missing");
 
-      // Call SSO logout API if we have the necessary credentials
-      if (accessToken && refreshToken && productCode && clientId && secretKey) {
-        const ssoBaseUrl =
-          process.env.NEXT_PUBLIC_SSO_BASE_URL ||
-          "https://ams-uat.mifix.io/idp/sso";
+      // Call logout API if we have tokens
+      if (accessToken && refreshToken) {
 
         try {
-          console.log("📡 Calling SSO logout API...");
-          const response = await fetch(`${ssoBaseUrl}/logout`, {
+          console.log("📡 Calling logout API...");
+          const response = await fetch(`${this.authBaseURL}/logout`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              clientId: clientId,
-              secretKey: secretKey,
-              productCode: productCode,
               Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
@@ -554,16 +488,16 @@ class AuthService {
           const responseData = await response.json().catch(() => ({}));
           
           if (!response.ok) {
-            console.warn("⚠️ SSO logout API failed:", response.status, responseData);
+            console.warn("⚠️ Logout API failed:", response.status, responseData);
           } else {
-            console.log("✅ SSO logout API successful");
+            console.log("✅ Logout API successful");
           }
         } catch (error) {
           console.error("❌ SSO logout API error:", error.message);
           // Continue with local logout even if API fails
         }
       } else {
-        console.warn("⚠️ Missing credentials for SSO logout, proceeding with local logout only");
+        console.warn("⚠️ Missing tokens for logout, proceeding with local logout only");
       }
 
       // Clear ALL localStorage data to ensure clean state for new login

@@ -17,21 +17,27 @@ cd "$PROJECT_DIR"
 echo "📦 Fetching latest git tags..."
 git fetch --tags 2>/dev/null || true
 
-LATEST_TAG=$(git tag --sort=-v:refname | head -1)
-
-if [ -z "$LATEST_TAG" ]; then
-  echo "⚠️  No existing tags found. Starting with version 2.3.7"
-  NEW_VERSION="2.3.7"
+# Check if a version was passed as an argument
+if [ ! -z "$1" ]; then
+  NEW_VERSION="$1"
+  echo "📌 Using provided version: $NEW_VERSION"
 else
-  echo "📌 Latest tag: $LATEST_TAG"
-  
-  IFS='.' read -r -a VERSION_PARTS <<< "$LATEST_TAG"
-  MAJOR="${VERSION_PARTS[0]}"
-  MINOR="${VERSION_PARTS[1]}"
-  PATCH="${VERSION_PARTS[2]}"
-  
-  NEW_PATCH=$((PATCH + 1))
-  NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+  LATEST_TAG=$(git tag --sort=-v:refname | head -1)
+
+  if [ -z "$LATEST_TAG" ]; then
+    echo "⚠️  No existing tags found. Starting with version 2.3.7"
+    NEW_VERSION="2.3.7"
+  else
+    echo "📌 Latest tag: $LATEST_TAG"
+    
+    IFS='.' read -r -a VERSION_PARTS <<< "$LATEST_TAG"
+    MAJOR="${VERSION_PARTS[0]}"
+    MINOR="${VERSION_PARTS[1]}"
+    PATCH="${VERSION_PARTS[2]}"
+    
+    NEW_PATCH=$((PATCH + 1))
+    NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+  fi
 fi
 
 echo "🔖 New version: $NEW_VERSION"
@@ -76,7 +82,7 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" << EOF
     -e NEXT_PUBLIC_EVENT_API_URL=http://15.207.209.61:8400/executor/events \
     -e NEXT_PUBLIC_CONNECTION_ID=c132d635-7392-4856-a2ce-077f5482e88b \
     -e NEXT_PUBLIC_WORKFLOW_API_BASE_URL=http://15.207.209.61:5000 \
-    -e NEXT_PUBLIC_SSO_BASE_URL=https://ams-uat.mifix.io/idp/sso \
+    -e NEXT_PUBLIC_SSO_BASE_URL=https://mifixai-backend.mifix.io/api/v1/auth \
     -e "NEXT_PUBLIC_PRODUCT_CODES=MIFIX-AI|MiFiX AI|cli-1a1abfd3-05c8-4e28-b2aa-6c597b77163c|Zn6WlZiewaBMJCydrqm8TdlgKOX/+MoAXP+D/gG8mTo=,FED-JLG|FED JLG|cli-af6e3d1b-586e-4aa6-9786-c0d78a2cade8|D7KJ5beFnb5WxmgHk9Pb/9bEr/f9vOmK5O1BKH4kI6s=" \
     -e NEXT_PUBLIC_CHROMA_HOST=3.6.132.24 \
     -e NEXT_PUBLIC_CHROMA_PORT=8000 \

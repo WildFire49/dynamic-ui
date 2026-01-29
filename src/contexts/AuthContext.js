@@ -51,7 +51,19 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // Get user info from localStorage first
+      // Check if token is expired
+      if (authService.isTokenExpired()) {
+        console.log("Token expired, attempting to refresh...");
+        const refreshResult = await authService.refreshToken();
+        if (!refreshResult.success) {
+          console.log("Token refresh failed, logging out");
+          authService.logout();
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Get user info from localStorage (already set during login)
       const userInfo = authService.getCurrentUser();
       if (userInfo) {
         console.log(
@@ -62,30 +74,8 @@ export const AuthProvider = ({ children }) => {
         );
         setUser(userInfo);
         setIsAuthenticated(true);
-        setLoading(false);
-        return;
-      }
-
-      // If no user info in localStorage, verify token
-      console.log("No user info in localStorage, verifying token...");
-      const isValid = await authService.ensureValidToken();
-      if (!isValid) {
-        console.log("Token validation failed");
-        setLoading(false);
-        return;
-      }
-
-      // Verify token and get user info
-      const verifyResult = await authService.verifyToken();
-      if (verifyResult.success) {
-        console.log(
-          "Token verified, user authenticated:",
-          verifyResult.data?.username
-        );
-        setUser(verifyResult.data);
-        setIsAuthenticated(true);
       } else {
-        console.log("Token verification failed");
+        console.log("No user info found, logging out");
         authService.logout();
       }
     } catch (error) {
