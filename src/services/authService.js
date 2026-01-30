@@ -113,32 +113,44 @@ class AuthService {
       const data = await response.json();
 
       // New API returns { success: true, message: "...", data: { access_token, refresh_token, user_data: {...} } }
+      // OR { success: true, message: "...", data: { access_token, refresh_token, username, fullName, roles, ... } }
       if (data.success && data.data) {
         const {
           access_token,
           refresh_token,
           access_token_expiry,
           user_id,
+          username,
+          fullName,
+          roles,
           user_data,
         } = data.data;
+
+        // Handle both response formats: nested user_data OR direct fields
+        const userInfo = user_data || {
+          userId: user_id,
+          username: username,
+          fullName: fullName,
+          roles: roles,
+        };
 
         // Store tokens in localStorage
         localStorage.setItem("accessToken", access_token);
         localStorage.setItem("accessTokenExpiry", access_token_expiry.toString());
         localStorage.setItem("refreshToken", refresh_token);
-        localStorage.setItem("userId", user_data.userId);
-        localStorage.setItem("username", user_data.username);
+        localStorage.setItem("userId", userInfo.userId || user_id);
+        localStorage.setItem("username", userInfo.username || username);
         localStorage.setItem("selectedProductCode", this.productCode);
 
         // Store user info with roles
-        localStorage.setItem("userInfo", JSON.stringify(user_data));
+        localStorage.setItem("userInfo", JSON.stringify(userInfo));
 
         // Store roles array
-        if (user_data.roles && user_data.roles.length > 0) {
-          localStorage.setItem("roles", JSON.stringify(user_data.roles));
+        if (userInfo.roles && userInfo.roles.length > 0) {
+          localStorage.setItem("roles", JSON.stringify(userInfo.roles));
 
           // Store primary roleCode (first role)
-          const primaryRole = user_data.roles[0];
+          const primaryRole = userInfo.roles[0];
           localStorage.setItem("roleCode", primaryRole.roleCode);
           localStorage.setItem("roleName", primaryRole.roleName);
           localStorage.setItem("roleId", primaryRole.roleId);
@@ -151,7 +163,7 @@ class AuthService {
             access_token,
             refresh_token,
             access_token_expiry,
-            userInfo: user_data,
+            userInfo: userInfo,
           },
           message: data.message || "Login successful",
         };
