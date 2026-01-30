@@ -82,3 +82,83 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* ==================== PERFORMANCE OPTIMIZATIONS ==================== */
+
+/* Reduce forced reflows by containing layout calculations */
+.MuiPaper-root,
+.MuiCard-root,
+.MuiDrawer-paper {
+  contain: layout style;
+}
+
+/* Use content-visibility for off-screen content */
+.chat-message-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100px;
+}
+
+/* Optimize animations with GPU acceleration */
+.MuiIconButton-root,
+.MuiButton-root,
+.MuiChip-root {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Reduce paint on hover states */
+.MuiListItemButton-root,
+.MuiMenuItem-root {
+  will-change: background-color;
+}
+
+/* Optimize scrolling containers */
+.chat-container,
+.messages-container {
+  will-change: scroll-position;
+  contain: strict;
+}
+
+/* Prevent layout thrashing on input focus */
+.MuiInputBase-root {
+  contain: layout;
+}
+
+/* Optimize sidebar rendering */
+.sidebar-container {
+  contain: layout style paint;
+  content-visibility: auto;
+}
+
+/* GPU acceleration for animated elements */
+[class*="animation"],
+[class*="Grow"],
+[class*="Fade"],
+[class*="Slide"],
+[class*="Zoom"] {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Optimize chart containers */
+.recharts-wrapper {
+  contain: layout style;
+}
+
+/* Reduce repaints on skeleton loaders */
+.MuiSkeleton-root {
+  will-change: background-position;
+}
+
+/* Isolate dialog/modal rendering */
+.MuiDialog-paper,
+.MuiPopover-paper {
+  contain: layout style paint;
+  will-change: transform;
+}
+
+/* Optimize tooltip rendering */
+.MuiTooltip-tooltip {
+  will-change: transform, opacity;
+}
+

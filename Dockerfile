@@ -21,6 +21,7 @@ COPY . .
 # Disable Next.js telemetry and optimize build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV DOCKER_BUILD=true
 
 # Build the Next.js application
 # Re-use Next.js incremental cache between builds to avoid recompiling unchanged pages

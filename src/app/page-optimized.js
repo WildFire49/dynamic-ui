@@ -1,11 +1,13 @@
 "use client";
 import dynamic from "next/dynamic";
 import React, { useState, useEffect, Suspense } from "react";
+import { Box, CircularProgress, Typography } from "@mui/material";
+import ProtectedRoute from "../components/auth/ProtectedRoute";
 
-// Pure CSS loading component - NO MUI IMPORTS to avoid loading the entire bundle
+// Loading component for initial render
 const LoadingScreen = () => (
-  <div
-    style={{
+  <Box
+    sx={{
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -13,64 +15,44 @@ const LoadingScreen = () => (
       height: "100vh",
       width: "100vw",
       background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
-      position: "fixed",
-      top: 0,
-      left: 0,
-      zIndex: 9999,
     }}
   >
-    <img
+    <Box
+      component="img"
       src="/mifix-logo.png"
       alt="MiFiX AI"
-      style={{
+      sx={{
         width: 120,
         height: "auto",
-        marginBottom: 24,
+        mb: 3,
         filter: "drop-shadow(0 0 20px rgba(59, 130, 246, 0.5))",
       }}
       onError={(e) => {
         e.target.style.display = "none";
       }}
     />
-    {/* Pure CSS spinner - no MUI CircularProgress */}
-    <div
-      style={{
-        width: 40,
-        height: 40,
-        border: "3px solid rgba(59, 130, 246, 0.2)",
-        borderTop: "3px solid #3b82f6",
-        borderRadius: "50%",
-        animation: "spin 1s linear infinite",
-        marginBottom: 16,
+    <CircularProgress
+      size={40}
+      thickness={4}
+      sx={{
+        color: "#3b82f6",
+        mb: 2,
       }}
     />
-    <p
-      style={{
+    <Typography
+      variant="body1"
+      sx={{
         color: "#94a3b8",
         fontWeight: 500,
         letterSpacing: "0.05em",
-        fontSize: 16,
-        margin: 0,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
       Loading MiFiX AI...
-    </p>
-    <style jsx>{`
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `}</style>
-  </div>
+    </Typography>
+  </Box>
 );
 
-// Dynamically import the heavy chat component AND ProtectedRoute
-const ProtectedRoute = dynamic(
-  () => import("../components/auth/ProtectedRoute"),
-  { ssr: false }
-);
-
+// Dynamically import the heavy chat component
 const ChatPage = dynamic(
   () => import("../components/chat/ChatPage"),
   {
@@ -99,4 +81,3 @@ export default function HomePage() {
     </ProtectedRoute>
   );
 }
-

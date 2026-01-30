@@ -180,121 +180,46 @@ export default function MuiThemeProvider({ children }) {
   const [isClient, setIsClient] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // Fetch theme colors from API
-  const fetchThemeFromAPI = React.useCallback(async () => {
-    try {
-      const response = await fetch('/api/theme', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store', // Always fetch fresh data
-      });
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setColors(result.data);
-        // Also cache in localStorage for instant load on next visit
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('themeColors', JSON.stringify(result.data));
+  // Load theme from localStorage only (no API calls)
+  const loadThemeFromStorage = React.useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('themeColors');
+      if (saved) {
+        try {
+          setColors(JSON.parse(saved));
+        } catch (e) {
+          console.error('Failed to parse saved theme colors:', e);
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch theme from API:', error);
-      // Fallback to localStorage if API fails
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('themeColors');
-        if (saved) {
-          try {
-            setColors(JSON.parse(saved));
-          } catch (e) {
-            console.error('Failed to parse saved theme colors:', e);
-          }
-        }
-      }
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }, []);
 
-  // Load theme on mount and set up polling for updates
+  // Load theme on mount (no polling, no API calls)
   React.useEffect(() => {
     setIsClient(true);
-    
-    // Initial fetch
-    fetchThemeFromAPI();
-    
-    // Poll for updates every 30 seconds (adjust as needed)
-    const interval = setInterval(() => {
-      fetchThemeFromAPI();
-    }, 30000); // 30 seconds
-    
-    return () => clearInterval(interval);
-  }, [fetchThemeFromAPI]);
+    loadThemeFromStorage();
+  }, [loadThemeFromStorage]);
 
   // Create theme based on current colors
   const theme = React.useMemo(() => createAppTheme(colors), [colors]);
 
-  // Update a specific color (saves to API)
-  const updateColor = React.useCallback(async (key, value) => {
-    // Optimistic update
+  // Update a specific color (saves to localStorage only)
+  const updateColor = React.useCallback((key, value) => {
     const newColors = { ...colors, [key]: value };
     setColors(newColors);
     
-    // Save to API
-    try {
-      const response = await fetch('/api/theme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ colors: newColors }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        // Update with server response (in case of normalization)
-        setColors(result.data);
-        
-        // Also update localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('themeColors', JSON.stringify(result.data));
-        }
-      } else {
-        console.error('Failed to update theme:', result.error);
-        // Revert on error
-        setColors(colors);
-      }
-    } catch (error) {
-      console.error('Failed to update theme:', error);
-      // Revert on error
-      setColors(colors);
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('themeColors', JSON.stringify(newColors));
     }
   }, [colors]);
 
-  // Reset to default colors (calls API DELETE)
-  const resetColors = React.useCallback(async () => {
-    try {
-      const response = await fetch('/api/theme', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setColors(result.data);
-        
-        // Clear localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('themeColors');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to reset theme:', error);
-      // Fallback to default
-      setColors(defaultColors);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('themeColors');
-      }
+  // Reset to default colors (localStorage only)
+  const resetColors = React.useCallback(() => {
+    setColors(defaultColors);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('themeColors');
     }
   }, []);
 

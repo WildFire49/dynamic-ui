@@ -1,0 +1,20 @@
+# Browsers that we support
+# This reduces the amount of polyfills and legacy JavaScript
+
+# Modern browsers (last 2 versions)
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Safari versions
+last 2 Edge versions
+
+# Exclude old browsers to reduce bundle size
+not IE 11
+not dead
+not op_mini all
+
+# Support browsers with >0.2% market share
+> 0.2%
+
+# Support browsers that support ES6+ features
+supports es6-module
+supports async-functions
