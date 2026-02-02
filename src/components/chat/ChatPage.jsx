@@ -676,6 +676,20 @@ export default function ChatPage() {
           isBot: true,
         };
       }
+      // Handle out_of_scope response
+      else if (data.response?.type === "out_of_scope") {
+        console.log("✅ Detected out_of_scope response in handleApiResponse", data.response);
+        botMessage = {
+          type: "out_of_scope",
+          response: data.response,
+          content: {
+            response: data.response,
+          },
+          conversation_id: data.conversation_id,
+          isBot: true,
+          timestamp: new Date().toISOString(),
+        };
+      }
       // Handle scheduler response
       else if (data.response?.type === "scheduler_response") {
         botMessage = {

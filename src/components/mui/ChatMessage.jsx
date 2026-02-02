@@ -516,6 +516,152 @@ const ChatMessage = ({ message, index, onAction }) => {
       }
     }
 
+    // Check for out_of_scope type - When query is outside AI's domain
+    const isOutOfScope =
+      safeType === "out_of_scope" ||
+      safeResponse?.type === "out_of_scope" ||
+      safeContent?.response?.type === "out_of_scope";
+    
+    if (isOutOfScope) {
+      const outOfScopeContent = safeResponse?.content || safeContent?.response?.content || safeContent?.content;
+      const metadata = safeResponse?.metadata || safeContent?.response?.metadata || {};
+      
+      console.log("✅ MATCH: Rendering out_of_scope response", { outOfScopeContent, metadata });
+      
+      return (
+        <Box sx={{ width: "100%", maxWidth: "100%" }}>
+          <Card
+            sx={{
+              border: "1px solid #e3f2fd",
+              backgroundColor: "#f5f9ff",
+              borderRadius: 3,
+              overflow: "hidden",
+              boxShadow: "0 4px 12px rgba(33, 150, 243, 0.1)",
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              {/* Robot Avatar with Info Icon */}
+              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, mb: 2 }}>
+                <Box
+                  sx={{
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #bbdefb, #90caf9)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    boxShadow: "0 4px 12px rgba(33, 150, 243, 0.2)",
+                  }}
+                >
+                  <SmartToy sx={{ fontSize: { xs: 28, sm: 32 }, color: "#1976d2" }} />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 700,
+                      color: "#1565c0",
+                      fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                      mb: 0.5,
+                    }}
+                  >
+                    Outside My Expertise
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#0d47a1",
+                      fontSize: { xs: "0.875rem", sm: "0.95rem" },
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Let me explain what I can help with...
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* AI Message */}
+              <Box
+                sx={{
+                  p: { xs: 2, sm: 2.5 },
+                  backgroundColor: "white",
+                  borderRadius: 2,
+                  border: "1px solid #bbdefb",
+                  mb: 2,
+                }}
+              >
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: "#374151",
+                    lineHeight: 1.6,
+                    fontSize: { xs: "0.875rem", sm: "0.95rem" },
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    "& strong": {
+                      fontWeight: 700,
+                      color: "#1976d2",
+                    },
+                    "& ul, & ol": {
+                      marginLeft: "1.5rem",
+                      marginTop: "0.5rem",
+                      marginBottom: "0.5rem",
+                    },
+                    "& li": {
+                      marginBottom: "0.25rem",
+                    },
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: outOfScopeContent?.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                      .replace(/\n•/g, "\n<br/>•")
+                      .replace(/\n\n/g, "<br/><br/>") || "This query is outside my current scope."
+                  }}
+                />
+              </Box>
+
+              {/* Metadata - Original Query */}
+              {metadata.original_query && (
+                <Box
+                  sx={{
+                    p: { xs: 1.5, sm: 2 },
+                    backgroundColor: "#e3f2fd",
+                    borderRadius: 2,
+                    border: "1px solid #90caf9",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                    <Lightbulb sx={{ fontSize: 18, color: "#1976d2" }} />
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        fontWeight: 600,
+                        color: "#0d47a1",
+                        fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+                      }}
+                    >
+                      Your Query:
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#1565c0",
+                      fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+                      fontStyle: "italic",
+                    }}
+                  >
+                    "{metadata.original_query}"
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+      );
+    }
+
     // Check for form_schema type message (from page.js handler)
     if (message.type === "form_schema" && message.response?.schema) {
       console.log("✅ MATCH: Rendering form_schema type message");
