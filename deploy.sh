@@ -75,6 +75,7 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" << EOF
   docker run -d \
     --name dynamic-ui-container \
     -p 3500:3000 \
+    --read-only \
     --restart unless-stopped \
     -e NODE_ENV=production \
     -e NEXT_PUBLIC_API_BASE_URL=https://mifixai-backend.mifix.io\
