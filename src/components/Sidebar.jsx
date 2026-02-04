@@ -73,23 +73,7 @@ const ICON_MAP = {
   GraphIcon: GraphIcon,
 };
 
-// Additional menu items for configurator modules
-const CONFIGURATOR_ITEMS = [
-  {
-    id: "ui-configurator",
-    label: "UI Configurator",
-    path: "/configurator/ui",
-    icon: ConfiguratorIcon,
-    color: "#1976d2",
-  },
-  {
-    id: "data-configurator",
-    label: "Data Configurator",
-    path: "/configurator/retriever",
-    icon: BuildIcon,
-    color: "#48bb78",
-  },
-];
+
 
 const Sidebar = ({
   selectedTab,
@@ -201,7 +185,7 @@ const Sidebar = ({
         console.log('⚠️ [Sidebar] Navigation timeout reached, forcing reset');
         setIsNavigating(false);
         setNavigationMessage("");
-      }, 3000); // 3 second timeout as safety net
+      }, 15000); // 15 second timeout as safety net for slow loads/compilation
     }
     
     return () => {
@@ -373,7 +357,7 @@ const Sidebar = ({
       accessControl: "/access-control",
     };
 
-    const targetRoute = routeMap[item.id];
+    const targetRoute = item.path || routeMap[item.id];
     
     // If this item has a route, check if we're already there
     if (targetRoute) {

@@ -37,6 +37,7 @@ import {
   Divider,
   CircularProgress,
 } from "@mui/material";
+import { styled } from "@mui/material/styles";
 import StorageIcon from "@mui/icons-material/Storage";
 import {
   Gavel as RuleIcon,
@@ -64,7 +65,20 @@ import {
   IntegrationInstructions as ApiIcon,
   Devices as UiIcon,
   FindInPage as InspectorIcon,
+  AccountBalance as BankIcon,
+  Dashboard as DashboardIcon,
+  TrendingUp as ChartIcon,
+  ShoppingBag as ShopIcon,
+  LocationOn as MapIcon,
+  Timer as TimerIcon,
+  Bolt as ActionIcon,
+  Chat as CommunicationIcon,
+  Group as GroupIcon,
+  Settings as SettingsIcon,
+  SettingsSuggest as GearIcon,
 } from "@mui/icons-material";
+import FingerprintIcon from "@mui/icons-material/Fingerprint";
+import BuildIcon from "@mui/icons-material/Build";
 import { embeddingsApi } from "@/lib/api/embeddingsApi";
 import RouteGuard from "../../components/auth/RouteGuard";
 import NavigationLoader from "../../components/common/NavigationLoader";
@@ -115,162 +129,600 @@ const CONFIGURATOR_OPTIONS = [
   // },
 ];
 
-const AGENT_TYPES = [
+// --- Data Definitions ---
+
+const SUCCESS_STORIES = [
   {
-    id: "supervisory",
-    title: "Supervisory",
-    description: "Automated Decision\nMaking",
-    subtitle: "Continuous Oversight",
-    icon: SupervisoryIcon,
-    color: "#ffb74d",
-    gradient: "linear-gradient(135deg, #ffa726 0%, #ffb74d 100%)",
-    stats: "99.9% Uptime",
+    title: "Swift Reconciliation",
+    client: "Bank of Baroda",
+    icon: BankIcon,
+    desc: "Automated reconciliation handling millions of transactions daily with near-zero latency.",
+    impact: "10x",
+    impactLabel: "Time Reduction",
+    stat: "10M+ Txns",
+    color: "#00E5FF", // Cyan
+    tags: ["FinTech", "Automation"],
   },
   {
-    id: "retriever",
-    title: "Retriever",
-    description: "Data retrieval and SQL query generation",
-    subtitle: "Retriever Agent",
-    icon: BrainIcon,
-    color: "#4CAF50",
-    gradient: "linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)",
-    stats: "Accurate",
+    title: "Business Dashboard",
+    client: "Enterprise",
+    icon: DashboardIcon,
+    desc: "Consolidated real-time business metrics into a single source of truth for C-suite.",
+    impact: "10x",
+    impactLabel: "Fast Insights",
+    stat: "Real-time",
+    color: "#66BB6A", // Green
+    tags: ["BI", "Analytics"],
   },
   {
-    id: "action_agent",
-    title: "Action",
-    description: "Intelligent\nbusiness logic automation",
-    subtitle: "Enforcing and Monitoring",
-    icon: RuleIcon,
-    color: "#64b5f6",
-    gradient: "linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%)",
-    stats: "50+ Rules",
+    title: "Portfolio Strategy",
+    client: "Finance Sector",
+    icon: ChartIcon,
+    desc: "AI-driven portfolio generation optimizing asset allocation based on risk profiles.",
+    impact: "+24%",
+    impactLabel: "Yield Increase",
+    stat: "$500M AUM",
+    color: "#FFA726", // Orange
+    tags: ["AI", "Investment"],
   },
   {
-    id: "workflow",
-    title: "Workflow",
-    description: "Dynamic Workflows\nExecution",
-    subtitle: "Process Automation",
-    icon: RocketIcon,
-    color: "#f06292",
-    gradient: "linear-gradient(135deg, #ec407a 0%, #f06292 100%)",
-    stats: "Dynamic",
+    title: "SheFirst Platform",
+    client: "SheCommerz",
+    icon: ShopIcon,
+    desc: "E-commerce ecosystem empowering women entrepreneurs with digital tools.",
+    impact: "Faster",
+    impactLabel: "Loan Repayments",
+    stat: "Global",
+    color: "#EC407A", // Pink
+    tags: ["E-com", "Social"],
   },
   {
-    id: "communication",
-    title: "Communication",
-    description: "Communication and Notification through all Platforms",
-    subtitle: "Smart Communication",
-    icon: EventIcon,
-    color: "#D9DE35",
-    gradient:
-      "linear-gradient(135deg,rgb(198, 213, 59) 0%,rgb(118, 186, 58) 100%)",
-    stats: "Real-time",
+    title: "Field RM Tracker",
+    client: "Sales Mgmt",
+    icon: MapIcon,
+    desc: "Geo-fenced live tracking for field relationship managers improving visit efficiency.",
+    impact: "35%",
+    impactLabel: "Productivity",
+    stat: "Live Tracking",
+    color: "#AB47BC", // Purple
+    tags: ["Geo", "Sales"],
   },
   {
-    id: "validation",
-    title: "Validation",
-    description: "Data Quality Check",
-    subtitle: "Ensures Data Accuracy",
-    icon: VerifiedUserIcon,
-    color: "#fd971f",
-    gradient: "linear-gradient(135deg, #f57c00 0%, #fd971f 100%)",
-    stats: "Data Quality",
-  },
-  {
-    id: "analysis_agent",
-    title: "Analytics",
-    description: "Deep insights &\nPredictions",
-    subtitle: "Data Intelligence",
-    icon: AnalyticsIcon,
-    color: "#ba68c8",
-    gradient: "linear-gradient(135deg, #ab47bc 0%, #ba68c8 100%)",
-    stats: "Insights",
-  },
-  {
-    id: "scheduler",
-    title: "Task Scheduler",
-    description: "Automated task\norchestration",
-    subtitle: "Time Intelligence",
-    icon: ScheduleIcon,
-    color: "#81c784",
-    gradient: "linear-gradient(135deg, #66bb6a 0%, #81c784 100%)",
-    stats: "24/7 Active",
-  },
-  {
-    id: "voice_agent",
-    title: "Media",
-    description: "Processing Media &\nAudio Content",
-    subtitle: "Speech Intelligence",
-    icon: VoiceIcon,
-    color: "#4db6ac",
-    gradient: "linear-gradient(135deg, #26a69a 0%, #4db6ac 100%)",
-    stats: "NLP",
-  },
-  {
-    id: "api_integrator",
-    title: "API Integrator",
-    description: "Connect and manage\nIntegrations",
-    subtitle: "API Manager",
-    icon: ApiIcon,
-    color: "#FF5722",
-    gradient: "linear-gradient(135deg, #FF5722 0%, #F4511E 100%)",
-    stats: "Seamless",
-  },
-  {
-    id: "ui_generator",
-    title: "UI Generator",
-    description: "Dynamic UI for\nMobile & Web",
-    subtitle: "UI Builder",
-    icon: UiIcon,
-    color: "#00BCD4",
-    gradient: "linear-gradient(135deg, #00BCD4 0%, #00ACC1 100%)",
-    stats: "Responsive",
-  },
-  {
-    id: "inspector",
-    title: "Inspector",
-    description: "Monitor health &\nDetect issues",
-    subtitle: "System Monitor",
-    icon: InspectorIcon,
-    color: "#607D8B",
-    gradient: "linear-gradient(135deg, #607D8B 0%, #546E7A 100%)",
-    stats: "Real-time",
+    title: "Productivity AI",
+    client: "HR Tech",
+    icon: TimerIcon,
+    desc: "Employee analytics system identifying bottlenecks and optimizing workflow.",
+    impact: "15hr",
+    impactLabel: "Saved / Week",
+    stat: "Efficiency",
+    color: "#FF7043", // Deep Orange
+    tags: ["HR", "AI"],
   },
 ];
 
-const FloatingParticle = ({ delay = 0, size = 4, color = "#2196F3" }) => {
-  const theme = useTheme();
+const DETERMINISTIC_ENGINES = [
+  { id: "ui_engine", title: "UI Rendering Engine", icon: UiIcon, desc: "Compiles dynamic Web and Mobile components from AI specs.", color: "#29B6F6" },
+  { id: "validation_engine", title: "Validation Engine", icon: VerifiedUserIcon, desc: "Ensures code compliance and security standards.", color: "#66BB6A" },
+  { id: "workflow_engine", title: "Workflow Engine", icon: WorkflowIcon, desc: "Orchestrates complex multi-step agent processes.", color: "#FFA726" },
+  { id: "scheduler_engine", title: "Scheduler Engine", icon: ScheduleIcon, desc: "Manages scheduled jobs and timed task execution.", color: "#AB47BC" },
+  { id: "api_engine", title: "API Orchestrator", icon: ApiIcon, featured: true, desc: "Routes requests across microservice mesh.", color: "#EF5350" },
+  { id: "audit_engine", title: "Audit Engine", icon: InspectorIcon, desc: "Immutable logging of all system actions.", color: "#78909C" },
+  { id: "auth_engine", title: "Auth Engine", icon: RuleIcon, desc: "Manages identity, RBAC, and session security.", color: "#8D6E63" },
+  { id: "notification_engine", title: "Notification Engine", icon: EventIcon, desc: "Delivers real-time alerts via multiple channels.", color: "#FFCA28" },
+  { id: "analytics_engine", title: "Analytics Engine", icon: AnalyticsIcon, desc: "Tracks usage, latency, and performance metrics.", color: "#26C6DA" },
+  { id: "report_engine", title: "Reporting Engine", icon: DocumentIcon, desc: "Generates comprehensive PDF/CSV insights.", color: "#9CCC65" },
+  { id: "integration_engine", title: "Integration Engine", icon: UploadIcon, desc: "Connects seamlessly with 3rd-party APIs.", color: "#5C6BC0" },
+  { id: "rule_engine", title: "Rule Engine", icon: RuleIcon, desc: "Executes deterministic business logic matrices.", color: "#EC407A" },
+];
 
-  return (
+// Custom Image Components for Agents - Sized to 75% to prevent cutoff (contained like chat bubble)
+const RetrieverImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/seo.png"
+    alt="Retriever"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const CommunicationImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/chat-bubbles.png"
+    alt="Communication"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const ActionImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/critical-thinking.png"
+    alt="Action"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const DbArchitectImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/knowledge.png"
+    alt="DB Architect"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const SchedulerImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/schedule.png"
+    alt="Scheduler"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const OcrImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/ocr.png"
+    alt="OCR"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const UiGeneratorImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/generative-image.png"
+    alt="UI Generator"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const BiometricsImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/face-recognition.png"
+    alt="Biometrics"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const NlpImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/comment.png"
+    alt="NLP"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const ApiIntegratorImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/api.png"
+    alt="API Integrator"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const WorkflowImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/flowchart.png"
+    alt="Workflow"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const ValidationImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/validation.png"
+    alt="Validation"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const MoreAgentsImage = ({ sx, ...props }) => (
+  <Box
+    component="img"
+    src="/more-agents.png"
+    alt="More Agents"
+    sx={{ width: "75%", height: "75%", objectFit: "contain", ...sx }}
+    {...props}
+  />
+);
+const AGENT_HIERARCHY = {
+  supervisor: {
+    id: "supervisor_group",
+    title: "Supervisor Agent",
+    count: 1,
+    description:
+      "Acts as a project manager, decomposing prompts into dependency graphs.",
+    agents: [
+      {
+        id: "supervisory",
+        title: "Supervisor Agent",
+        subtitle: "Orchestrator",
+        description: "Manages the entire agentic workflow.",
+        icon: SupervisoryIcon,
+        color: "#FFA726",
+        gradient: "linear-gradient(135deg, #FFA726 0%, #FFB74D 100%)",
+      },
+    ],
+  },
+  learning: {
+    id: "learning_group",
+    title: "Learning Agent",
+    count: 1,
+    description: "Continuously improves the system via the MiFiX Brain.",
+    agents: [
+      {
+        id: "learning",
+        title: "Learning Agent",
+        subtitle: "System Improver",
+        description: "Learns from execution patterns.",
+        icon: PsychologyIcon,
+        color: "#EC407A",
+        gradient: "linear-gradient(135deg, #EC407A 0%, #F48FB1 100%)",
+      },
+    ],
+  },
+  configuration: {
+    id: "config_group",
+    title: "Configuration Agents",
+    count: 19,
+    description: "Specialists working in parallel to create system components.",
+    agents: [
+      {
+        id: "ui_gen",
+        title: "UI Generator",
+        description: "Builds interfaces",
+        icon: UiGeneratorImage,
+        color: "#29B6F6",
+      },
+      {
+        id: "workflow_conf",
+        title: "Workflow Configurator",
+        description: "Designs flows",
+        icon: WorkflowImage,
+        color: "#29B6F6",
+      },
+      {
+        id: "validation_agent",
+        title: "Validation Agent",
+        description: "Checks logic",
+        icon: ValidationImage,
+        color: "#29B6F6",
+      },
+      {
+        id: "api_integrator",
+        title: "API Integrator",
+        description: "Connects services",
+        icon: ApiIntegratorImage,
+        color: "#29B6F6",
+      },
+      {
+        id: "db_architect",
+        title: "DB Configurator",
+        description: "Models data",
+        icon: DbArchitectImage,
+        color: "#29B6F6",
+      },
+      {
+        id: "retriever_agent",
+        title: "Retriever Agent",
+        description: "Fetches Context",
+        icon: RetrieverImage,
+        color: "#29B6F6",
+      },
+      {
+        id: "scheduler_agent",
+        title: "Scheduler Agent",
+        description: "Manages Time",
+        icon: SchedulerImage,
+        color: "#29B6F6",
+      },
+      {
+        id: "action_agent",
+        title: "Action Agent",
+        description: "Executes Tasks",
+        icon: ActionImage,
+        color: "#29B6F6",
+      },
+      {
+        id: "comm_agent",
+        title: "Communication Agent",
+        description: "Handles Messaging",
+        icon: CommunicationImage,
+        color: "#29B6F6",
+      },
+      // EXTRA NODE FOR VISUAL COUNT
+      {
+         id: "more_agents",
+         title: "19+ Others",
+         description: "Specialized Agents",
+         icon: MoreAgentsImage,
+         color: "#90CAF9", // Lighter blue to differentiate
+      }
+      // ... visually represented as "19 Agents"
+    ],
+  },
+  execution: {
+    id: "exec_group",
+    title: "Execution Agents",
+    count: 11,
+    description: "Provide real-time AI capabilities as runtime services.",
+    agents: [
+      {
+        id: "ocr",
+        title: "OCR Agent",
+        description: "Extracts text",
+        icon: OcrImage,
+        color: "#66BB6A",
+      },
+      {
+        id: "biometrics",
+        title: "Biometrics",
+        description: "Verifies identity",
+        icon: BiometricsImage,
+        color: "#66BB6A",
+      },
+      {
+        id: "nlp",
+        title: "NLP Agent",
+        description: "Processes language",
+        icon: NlpImage,
+        color: "#66BB6A",
+      },
+      // ... visually represented as "11 Agents"
+    ],
+  },
+};
+
+// Flattened list for backward compatibility with upload dialog
+const AGENT_TYPES = [
+  ...AGENT_HIERARCHY.supervisor.agents,
+  ...AGENT_HIERARCHY.learning.agents,
+  ...AGENT_HIERARCHY.configuration.agents,
+  ...AGENT_HIERARCHY.execution.agents,
+].map((a) => ({
+  ...a,
+  gradient:
+    a.gradient ||
+    `linear-gradient(135deg, ${a.color} 0%, ${alpha(a.color, 0.6)} 100%)`,
+  stats: "Active",
+}));
+
+// --- Styled Components & Animations ---
+
+const BrainContainer = styled(Box)({
+  position: "relative",
+  width: "100%",
+  maxWidth: "600px",
+  margin: "0 auto",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  marginBottom: "60px",
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: "150%",
+    height: "150%",
+    background:
+      "radial-gradient(circle, rgba(0, 229, 255, 0.2) 0%, rgba(0,0,0,0) 70%)",
+    zIndex: -1,
+    animation: "breathe 4s infinite ease-in-out",
+  },
+  "@keyframes breathe": {
+    "0%, 100%": { transform: "translate(-50%, -50%) scale(1)", opacity: 0.5 },
+    "50%": { transform: "translate(-50%, -50%) scale(1.1)", opacity: 0.8 },
+  },
+});
+
+const PulseLine = styled(Box, {
+  shouldForwardProp: (prop) =>
+    !["vertical", "height", "width", "top", "left", "right", "bottom"].includes(
+      prop,
+    ),
+})(({ vertical, height, width, top, left, right, bottom }) => ({
+  position: "absolute",
+  background: vertical
+    ? "linear-gradient(180deg, rgba(0,229,255,0.1) 0%, #00E5FF 50%, rgba(0,229,255,0.1) 100%)"
+    : "linear-gradient(90deg, rgba(0,229,255,0.1) 0%, #00E5FF 50%, rgba(0,229,255,0.1) 100%)",
+  backgroundSize: vertical ? "100% 200%" : "200% 100%",
+  animation: "pulseFlow 3s linear infinite",
+  opacity: 0.6,
+  zIndex: 0,
+  ...(vertical
+    ? {
+        width: "2px",
+        height: height || "100%",
+        top: top,
+        left: left || "50%",
+        transform: "translateX(-50%)",
+      }
+    : {
+        height: "2px",
+        width: width || "100%",
+        top: top,
+        left: left,
+        right: right,
+      }),
+  "@keyframes pulseFlow": {
+    "0%": { backgroundPosition: "0% 0%" },
+    "100%": { backgroundPosition: "100% 100%" },
+  },
+  boxShadow: "0 0 8px rgba(0, 229, 255, 0.4)",
+}));
+
+const ConnectionLine = PulseLine; // Alias for backward compatibility if needed locally
+
+const GlowingCard = styled(Paper, {
+  shouldForwardProp: (prop) => prop !== "color",
+})(({ theme, color = "#2196F3" }) => ({
+  background: "rgba(10, 25, 41, 0.7)",
+  backdropFilter: "blur(20px)",
+  border: `1px solid ${alpha(color, 0.3)}`,
+  borderRadius: "16px",
+  padding: theme.spacing(3),
+  position: "relative",
+  overflow: "hidden",
+  transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+  cursor: "pointer",
+  zIndex: 1,
+  boxShadow: `0 4px 30px rgba(0, 0, 0, 0.1)`,
+  "&:hover": {
+    transform: "translateY(-8px)",
+    boxShadow: `0 20px 40px ${alpha(color, 0.2)}`,
+    border: `1px solid ${alpha(color, 0.8)}`,
+    "& .glow-effect": {
+      opacity: 1,
+    },
+  },
+}));
+
+const EngineBlock = styled(Box)(({ theme }) => ({
+  background:
+    "linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)",
+  borderRadius: "12px",
+  padding: "16px",
+  border: "1px solid rgba(255,255,255,0.08)",
+  display: "flex",
+  alignItems: "center",
+  gap: "16px",
+  transition: "all 0.3s ease",
+  position: "relative",
+  overflow: "hidden",
+  boxShadow: "0 4px 6px rgba(0,0,0,0.2)",
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "4px",
+    height: "100%",
+    background: "linear-gradient(180deg, #2979FF, #00E5FF)",
+    opacity: 0,
+    transition: "opacity 0.3s",
+  },
+  "&:hover": {
+    transform: "translateY(-4px)",
+    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
+    border: "1px solid rgba(41, 121, 255, 0.5)",
+    "&::before": { opacity: 1 },
+    "& .icon-box": {
+      color: "#00E5FF",
+      background: "rgba(0, 229, 255, 0.1)",
+      transform: "scale(1.1)",
+    },
+  },
+}));
+
+const NeuralNode = styled(Box, {
+  shouldForwardProp: (prop) => !["size", "x", "y", "delay"].includes(prop),
+})(({ size = 10, x, y, delay = 0 }) => ({
+  position: "absolute",
+  width: size,
+  height: size,
+  borderRadius: "50%",
+  background: "#00E5FF",
+  boxShadow: "0 0 15px #00E5FF",
+  top: y,
+  left: x,
+  opacity: 0.8,
+  zIndex: 10,
+  animation: `float 3s infinite ease-in-out ${delay}s`,
+  "@keyframes float": {
+    "0%, 100%": { transform: "translate(0, 0)" },
+    "50%": { transform: "translate(0, -5px)" },
+  },
+}));
+
+const PulseRing = styled(Box, {
+  shouldForwardProp: (prop) => !["delay", "color"].includes(prop),
+})(({ delay = 0, color = "#2196F3" }) => ({
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  borderRadius: "50%",
+  border: `1px solid ${alpha(color, 0.5)}`,
+  animation: `pulse-ring 3s cubic-bezier(0.215, 0.61, 0.355, 1) infinite ${delay}s`,
+  opacity: 0,
+  zIndex: 0,
+  "@keyframes pulse-ring": {
+    "0%": { width: "80%", height: "80%", opacity: 0.5, borderWidth: "2px" },
+    "100%": { width: "200%", height: "200%", opacity: 0, borderWidth: "0px" },
+  },
+}));
+
+// Floating Satellite for Network view
+const Satellite = styled(Box)(
+  ({ angle, distance = 80, size = 8, color = "#2196F3", speed = 10 }) => ({
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    width: size,
+    height: size,
+    borderRadius: "50%",
+    background: color,
+    boxShadow: `0 0 ${size * 2}px ${color}`,
+    animation: `orbit-${angle} ${speed}s linear infinite`,
+    [`@keyframes orbit-${angle}`]: {
+      "0%": {
+        transform: `rotate(${angle}deg) translateX(${distance}px) rotate(-${angle}deg)`,
+      },
+      "100%": {
+        transform: `rotate(${angle + 360}deg) translateX(${distance}px) rotate(-${angle + 360}deg)`,
+      },
+    },
+  }),
+);
+
+// Brain Visualization Component
+const MiFiXBrain = () => (
+  <BrainContainer>
+    <PulseRing delay={0} />
+    <PulseRing delay={1} />
     <Box
       sx={{
-        position: "absolute",
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: `linear-gradient(45deg, ${color}, ${alpha(color, 0.6)})`,
-        animation: `floatUp 8s infinite ease-in-out ${delay}s`,
-        "@keyframes floatUp": {
-          "0%": {
-            transform: "translateY(100vh) translateX(0px)",
-            opacity: 0,
-          },
-          "10%": {
-            opacity: 1,
-          },
-          "90%": {
-            opacity: 1,
-          },
-          "100%": {
-            transform: "translateY(-100px) translateX(50px)",
-            opacity: 0,
-          },
+        position: "relative",
+        zIndex: 2,
+        animation: "float 6s infinite ease-in-out",
+        "@keyframes float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-15px)" },
         },
       }}
-    />
-  );
-};
+    >
+      <Box
+        component="img"
+        src="/Mifix-ai.png"
+        alt="MiFiX Brain"
+        sx={{
+          width: 140,
+          height: 140,
+          borderRadius: "50%",
+          boxShadow: "0 0 50px rgba(33,150,243,0.5)",
+          background: "linear-gradient(135deg, #0d1b2a, #1b263b)",
+          p: 1,
+          border: "2px solid rgba(255,255,255,0.1)",
+        }}
+      />
+      {/* Neural Nodes overlay */}
+      <NeuralNode x="10%" y="20%" size={6} delay={0} />
+      <NeuralNode x="85%" y="15%" size={8} delay={1} />
+      <NeuralNode x="90%" y="80%" size={5} delay={2} />
+      <NeuralNode x="15%" y="75%" size={7} delay={0.5} />
+    </Box>
+  </BrainContainer>
+);
 
 const AnimatedCounter = ({ value, duration = 3000 }) => {
   const [count, setCount] = useState(0);
@@ -281,30 +733,56 @@ const AnimatedCounter = ({ value, duration = 3000 }) => {
       setCount(0);
       return;
     }
-
-    const incrementTime = Math.max(duration / end, 50); // Minimum 50ms per step
+    const incrementTime = Math.max(duration / end, 50);
     let currentCount = 0;
-
     const timer = setInterval(() => {
       currentCount += 1;
       setCount(currentCount);
       if (currentCount >= end) {
         clearInterval(timer);
-        setCount(end); // Ensure exact end value
+        setCount(end);
       }
     }, incrementTime);
-
     return () => clearInterval(timer);
   }, [value, duration]);
 
   return <span>{count}</span>;
 };
 
-// CSS-in-JS keyframes for animations
 const spinKeyframes = `
   @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+  @keyframes pistonPump {
+    0% { height: 10%; bottom: 0; opacity: 0.3; filter: blur(2px); }
+    50% { height: 90%; bottom: 0; opacity: 1; filter: blur(0px); box-shadow: 0 0 20px currentColor; }
+    100% { height: 10%; bottom: 0; opacity: 0.3; filter: blur(2px); }
+  }
+  @keyframes streamFlow {
+    0% { background-position: 0% 50%; opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { background-position: 100% 50%; opacity: 0.3; }
+  }
+  @keyframes pulseBlue {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(41, 182, 246, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(41, 182, 246, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(41, 182, 246, 0); }
+  }
+  @keyframes pulseGreen {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(102, 187, 106, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(102, 187, 106, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(102, 187, 106, 0); }
+  }
+  @keyframes dropStream {
+    0% { top: -50%; opacity: 0; }
+    50% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  @keyframes particleInject {
+    0% { transform: rotate(0deg) translateX(150px) scale(0); opacity: 0; }
+    20% { opacity: 1; transform: rotate(120deg) translateX(100px) scale(1); }
+    100% { transform: rotate(360deg) translateX(0px) scale(0); opacity: 0; }
   }
 `;
 
@@ -333,17 +811,69 @@ export default function ConfiguratorPage() {
   const [uploadStep, setUploadStep] = useState("select"); // select, preview, processing, success
   const [previewFile, setPreviewFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [highlightIndex, setHighlightIndex] = useState(0); // For auto-cycling labels
   const theme = useTheme();
+  const [knowledgeNodes, setKnowledgeNodes] = useState(0);
+  const [collectionCategories, setCollectionCategories] = useState({});
+
+  const [displayCount, setDisplayCount] = useState(0); // Animated counter
+  const [ringProgress, setRingProgress] = useState(0); // 0 to 75%
+  const [ringHue, setRingHue] = useState(180); // Cyan start
+  const [brainPulse, setBrainPulse] = useState(1); // Scale factor
+
+  // Animation Effect for Knowledge Counter and Ring
+  useEffect(() => {
+    if (knowledgeNodes > 0) {
+      let startTimestamp = null;
+      const duration = 3500; // Slower, more majestic
+      const targetCheck = 76; // Ring fills to ~75%
+      
+      const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const rawProgress = Math.min((timestamp - startTimestamp) / duration, 1);
+        
+        // Use a high-precision smooth ease for the main ring
+        // easeOutQuartic: 1 - pow(1 - t, 4)
+        const smooth = 1 - Math.pow(1 - rawProgress, 4);
+        
+        setDisplayCount(Math.floor(smooth * knowledgeNodes));
+        setRingProgress(smooth * targetCheck);
+        
+        // Strict Blue Palette: Cyan (180) -> Deep Blue (210)
+        // No purple.
+        setRingHue(180 + (smooth * 30));
+
+        // Gentle "breath" pulse - cleaner logic
+        // Scale 1.0 -> 1.08 -> 1.0
+        const pulse = rawProgress < 0.5 
+            ? 1 + (smooth * 0.16) // Up to ~1.08
+            : 1.08 - ((rawProgress - 0.5) * 2 * 0.08); // Down to 1.0
+            
+        setBrainPulse(pulse);
+        
+        if (rawProgress < 1) {
+          window.requestAnimationFrame(step);
+        }
+      };
+      
+      window.requestAnimationFrame(step);
+    }
+  }, [knowledgeNodes]);
 
   useEffect(() => {
     setMounted(true);
+    // Cycle highlights every 3 seconds
+    const interval = setInterval(() => {
+      setHighlightIndex((prev) => prev + 1);
+    }, 2500);
+    return () => clearInterval(interval);
   }, []);
 
   // Detect pathname changes to reset navigation state
   useEffect(() => {
     // If pathname changed and we're navigating, the navigation completed
     if (pathname !== prevPathnameRef.current && isNavigating) {
-      console.log('✅ Navigation completed, resetting loader');
+      console.log("✅ Navigation completed, resetting loader");
       setIsNavigating(false);
       setNavigationMessage("");
     }
@@ -355,14 +885,14 @@ export default function ConfiguratorPage() {
     // Safety timeout: reset navigation state after 3 seconds
     let timeoutId;
     if (isNavigating) {
-      console.log('⏱️ Navigation timeout started (3s safety net)');
+      console.log("⏱️ Navigation timeout started (3s safety net)");
       timeoutId = setTimeout(() => {
-        console.log('⚠️ Navigation timeout reached, forcing reset');
+        console.log("⚠️ Navigation timeout reached, forcing reset");
         setIsNavigating(false);
         setNavigationMessage("");
       }, 3000); // 3 second timeout as safety net
     }
-    
+
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -378,31 +908,43 @@ export default function ConfiguratorPage() {
   const loadCollections = async () => {
     try {
       setLoading(true);
-      const response = await embeddingsApi.listCollections();
-      setCollections(response.collections || []);
-
-      // Only show info if collections endpoint is not available
-      if (
-        response.collections &&
-        response.collections.length === 0 &&
-        response.count === 0
-      ) {
-        console.info(
-          "Collections API endpoint not available or returned empty"
-        );
+      // Fetch from Chroma Explorer Proxy
+      const res = await fetch('https://chroma-db-explorer.vercel.app/api/chroma/api/v2/tenants/default_tenant/databases/default_database/collections?host=3.6.132.24&port=8000', {
+         headers: {
+            'accept': 'application/json, text/plain, */*'
+         }
+      });
+      
+      if (!res.ok) {
+          console.warn("Chroma API failed");
+          setCollections([]);
+          setKnowledgeNodes(0);
+          return;
       }
+
+      const data = await res.json();
+      setCollections(data); 
+      setKnowledgeNodes(data.length); 
+
+      // Calculate categories for display
+      const categories = {};
+      data.forEach(c => {
+         let kind = "General";
+         if (c.name.includes("query_learning")) kind = "Learning";
+         else if (c.name.includes("knowledgerag")) kind = "RAG";
+         else if (c.name.includes("onboarding")) kind = "Flows";
+         else if (c.name.includes("budhi")) kind = "Agents";
+         else if (c.name.includes("rules")) kind = "Rules";
+         else if (c.name.includes("communication")) kind = "Comms";
+         
+         categories[kind] = (categories[kind] || 0) + 1;
+      });
+      setCollectionCategories(categories);
+
     } catch (error) {
       console.error("Error loading collections:", error);
-      // Set empty collections instead of showing error
       setCollections([]);
-      // Only show error snackbar for unexpected errors, not API endpoint issues
-      if (error.status !== 500 && error.status !== 404) {
-        setSnackbar({
-          open: true,
-          message: `Failed to load collections: ${error.message}`,
-          severity: "warning",
-        });
-      }
+      setKnowledgeNodes(0);
     } finally {
       setLoading(false);
     }
@@ -426,7 +968,7 @@ export default function ConfiguratorPage() {
 
   const handleRemoveFile = (indexToRemove) => {
     const updatedFiles = selectedFiles.filter(
-      (_, index) => index !== indexToRemove
+      (_, index) => index !== indexToRemove,
     );
     setSelectedFiles(updatedFiles);
 
@@ -437,7 +979,7 @@ export default function ConfiguratorPage() {
     } else if (previewFile && indexToRemove === 0 && updatedFiles.length > 0) {
       // If we removed the preview file, set a new one if available
       const nextPdfFile = updatedFiles.find(
-        (file) => file.type === "application/pdf"
+        (file) => file.type === "application/pdf",
       );
       if (nextPdfFile) {
         setPreviewFile(nextPdfFile);
@@ -528,7 +1070,7 @@ export default function ConfiguratorPage() {
         selectedAgent.id,
         "chromadb",
         1000,
-        200
+        200,
       );
 
       clearInterval(progressInterval);
@@ -608,850 +1150,1813 @@ export default function ConfiguratorPage() {
           minHeight: "100vh",
           position: "relative",
           overflow: "hidden",
-          background: `linear-gradient(135deg, 
-          ${alpha("#0d1b2a", 0.55)} 0%, 
-          ${alpha("#1b263b", 0.7)} 25%,
-          ${alpha("#1e3a5f", 0.75)} 50%,
-          ${alpha("#2d4f73", 0.2)} 75%,
-          ${alpha("#0d1b2a", 0.15)} 100%
-        )`,
+          background: "#020617", // Deep Navy Base
         }}
       >
-        {/* Video Background */}
-        <Box
-          component="video"
-          autoPlay
-          muted
-          loop
-          sx={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            zIndex: -2,
-            opacity: 0.4,
-            filter: "brightness(0.9) contrast(1.1) blur(1px)",
-            transform: "scale(1.1)", // Slight zoom to avoid edge artifacts
-          }}
-        >
-          <source
-            src="/vecteezy_data-neural-network-ai-technology-cloud-computing-bits_21723025.mp4"
-            type="video/mp4"
+        {/* Cinematic Background Wrapper */}
+        <Box sx={{ position: "fixed", inset: 0, zIndex: 0 }}>
+          {/* Tech Grid Overlay */}
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `
+                  linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), 
+                  linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+                `,
+              backgroundSize: "50px 50px",
+              opacity: 0.3,
+              zIndex: 1,
+            }}
           />
-          Your browser does not support the video tag.
+
+          {/* Ambient Blue Glows */}
+          <Box
+            sx={{
+              position: "absolute",
+              top: "-10%",
+              right: "-10%",
+              width: "50%",
+              height: "50%",
+              background:
+                "radial-gradient(circle, rgba(41, 121, 255, 0.15) 0%, transparent 70%)",
+              filter: "blur(60px)",
+              zIndex: 1,
+            }}
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: "-10%",
+              left: "-10%",
+              width: "50%",
+              height: "50%",
+              background:
+                "radial-gradient(circle, rgba(0, 229, 255, 0.1) 0%, transparent 70%)",
+              filter: "blur(60px)",
+              zIndex: 1,
+            }}
+          />
+
+          {/* Main Gradient Overlay for Readability */}
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, rgba(2,6,23,0.95) 0%, rgba(10, 25, 41, 0.85) 50%, rgba(2,6,23,0.98) 100%)",
+              zIndex: 2,
+            }}
+          />
+
+          <Box
+            component="video"
+            autoPlay
+            muted
+            loop
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              opacity: 0.4, // Subtle visibility
+              filter: "hue-rotate(190deg) saturate(1.2) contrast(1.1)", // Shift to Blue/Cyan
+              zIndex: 0,
+            }}
+          >
+            <source
+              src="/vecteezy_data-neural-network-ai-technology-cloud-computing-bits_21723025.mp4"
+              type="video/mp4"
+            />
+          </Box>
         </Box>
 
-        {/* Dark Blue Overlay */}
-        <Box
-          sx={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            background: `linear-gradient(135deg, 
-            ${alpha("#0f1419", 0.8)} 0%, 
-            ${alpha("#1a2332", 0.75)} 25%,
-            ${alpha("#1e3a5f", 0.7)} 50%,
-            ${alpha("#2d4f73", 0.75)} 75%,
-            ${alpha("#0f1419", 0.8)} 100%
-          )`,
-            zIndex: -1,
-            animation: "breathe 12s ease-in-out infinite",
-            "@keyframes breathe": {
-              "0%": {
-                opacity: 0.7,
-              },
-              "50%": {
-                opacity: 0.85,
-              },
-              "100%": {
-                opacity: 0.7,
-              },
-            },
-          }}
-        />
-        {/* Floating Background Particles */}
-        {mounted &&
-          [...Array(12)].map((_, i) => (
-            <FloatingParticle
-              key={i}
-              delay={i * 0.5}
-              size={3 + (i % 4) + 1}
-              color={AGENT_TYPES[i % AGENT_TYPES.length].color}
-            />
-          ))}
-
-        <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
+        <Container
+          maxWidth="xl"
+          sx={{ position: "relative", zIndex: 10, pb: 12 }}
+        >
           {/* Back Button */}
           <Fade in={mounted} timeout={800}>
-            <Box sx={{ pt: 4, pb: 2 }}>
+            <Box sx={{ pt: 4, pb: 4 }}>
               <Button
                 startIcon={<ArrowBackIcon />}
                 onClick={() => router.push("/")}
                 sx={{
-                  color: "white",
-                  background: alpha("#0d1b2a", 0.6),
-                  backdropFilter: "blur(20px)",
-                  border: `1px solid ${alpha("#64b5f6", 0.3)}`,
-                  borderRadius: 3,
+                  color: "#94a3b8",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderRadius: "30px",
                   px: 3,
-                  py: 1.5,
-                  fontWeight: 600,
-                  textTransform: "none",
-                  boxShadow: `0 8px 25px ${alpha("#000", 0.2)}`,
                   "&:hover": {
-                    background: alpha("#1b263b", 0.8),
-                    transform: "translateY(-2px)",
-                    boxShadow: `0 12px 35px ${alpha("#64b5f6", 0.3)}`,
-                    border: `1px solid ${alpha("#64b5f6", 0.5)}`,
+                    background: "rgba(255,255,255,0.1)",
+                    color: "white",
+                    borderColor: "rgba(255,255,255,0.2)",
                   },
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
               >
-                Back to Chat
+                Back to Command Center
               </Button>
             </Box>
           </Fade>
 
-          {/* Hero Section */}
-          <Box sx={{ pt: 4, pb: 6, textAlign: "center" }}>
-            <Fade in={mounted} timeout={1000}>
-              <Box>
-                <Box sx={{ mb: 3, position: "relative" }}>
-                  <Zoom in={mounted} timeout={1500}>
+          {/* SECTION 1: HERO HEADER */}
+          <Fade in={mounted} timeout={1000}>
+
+            <Box sx={{ textAlign: "center", mt: 6, mb: 8 }}>
+              {/* Header Title Removed */}
+
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  mb: 6,
+                  background: "rgba(15, 23, 42, 0.6)",
+                  backdropFilter: "blur(10px)",
+                  borderRadius: "16px",
+                  border: "1px solid rgba(0, 229, 255, 0.2)",
+                  boxShadow: "0 0 20px rgba(0, 229, 255, 0.1)",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Design Section */}
+                <Box
+                  sx={{
+                    px: 4,
+                    py: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    background:
+                      "linear-gradient(90deg, rgba(41, 182, 246, 0.1), transparent)",
+                    borderRight: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      p: 1,
+                      borderRadius: "54%",
+                      background: "rgba(41, 182, 246, 0.2)",
+                      color: "#29B6F6",
+                    }}
+                  >
+                    <BuildIcon fontSize="small" />
+                  </Box>
+                  <Box sx={{ textAlign: "left" }}>
+                    <Typography
+                      sx={{
+                        color: "#fff",
+                        fontWeight: 800,
+                        fontSize: "0.95rem",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      CONFIGURE
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: "#29B6F6",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      WITH 31 INTELLIGENT AGENTS
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Arrow Indicator */}
+                <Box sx={{ px: 1, color: "rgba(255,255,255,0.3)" }}>
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </Box>
+
+                {/* Deliver Section */}
+                <Box
+                  sx={{
+                    px: 4,
+                    py: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    background:
+                      "linear-gradient(270deg, rgba(102, 187, 106, 0.1), transparent)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      p: 1,
+                      borderRadius: "50%",
+                      background: "rgba(102, 187, 106, 0.2)",
+                      color: "#66BB6A",
+                    }}
+                  >
+                    <RocketIcon fontSize="small" />
+                  </Box>
+                  <Box sx={{ textAlign: "left" }}>
+                    <Typography
+                      sx={{
+                        color: "#fff",
+                        fontWeight: 800,
+                        fontSize: "0.95rem",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      DELIVER
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: "#66BB6A",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      VIA 12 ROBUST ENGINES
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Bottom Connection Socket */}
+                <Box sx={{
+                    position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
+                    width: "40px", height: "4px",
+                    background: "#00E5FF",
+                    boxShadow: "0 0 10px #00E5FF"
+                }} />
+              </Box>
+            </Box>
+          </Fade>
+
+          {/* SECTION 3: THE STUDIO (Architects) */}
+          <Fade in={mounted} timeout={1500}>
+            <Box sx={{ mb: 16, position: "relative" }}>
+              {/* Top Connector (Toggle -> Brain) */}
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "-48px", // Connects to the socket above
+                  height: "48px",
+                  width: "2px",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  overflow: "hidden"
+                }}
+              >
+                  <Box sx={{
+                      position: "absolute", top: 0, left: 0, right: 0, height: "100%",
+                      background: "linear-gradient(180deg, #00E5FF, transparent)",
+                      animation: "dropStream 1.5s infinite linear"
+                  }} />
+              </Box>
+
+                  {/* THE INTELLIGENCE CORE: BRAIN (TOP) */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    mb: 0,
+                    mt: -10, // Pull up to reduce gap
+                    position: "relative",
+                    zIndex: 10,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#00E5FF",
+                      letterSpacing: "0.4em",
+                      fontWeight: 700,
+                      mb: 5, // Reduced margin
+                      textTransform: "uppercase",
+                      fontSize: "0.8rem",
+                      textShadow: "0 0 20px rgba(0, 229, 255, 0.5)",
+                    }}
+                  >
+                    The Intelligence Core
+                  </Typography>
+
+                  {/* NEURAL REACTOR CORE */}
+                  <Box
+                    sx={{
+                      position: "relative",
+                      width: "260px",
+                      height: "260px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {/* Rotating Tech Rings (CSS) */}
+                    {/* Rotating Tech Rings (CSS) */}
+                    <Box sx={{
+                        position: "absolute", inset: -20, border: "1px dashed rgba(0, 229, 255, 0.3)", borderRadius: "50%",
+                        animation: "spin 20s linear infinite"
+                    }} />
+                    
+                    {/* Knowledge Replenishment Ring (Fills up) */}
+                    {/* Knowledge Replenishment Ring (Animated Fill) */}
+                    {/* Knowledge Replenishment Ring (Animated Fill + Hue Shift) */}
+                    <Box sx={{
+                        position: "absolute", inset: -14, 
+                        borderRadius: "50%",
+                        // Strictly Blue Gradient: Cyan to Blue
+                        background: `conic-gradient(from 0deg, hsl(${ringHue}, 100%, 50%) ${ringProgress}%, transparent ${ringProgress}%)`,
+                        mask: "radial-gradient(transparent 64%, black 65%)",
+                        WebkitMask: "radial-gradient(transparent 64%, black 65%)",
+                        boxShadow: `0 0 ${ringProgress}px hsl(${ringHue}, 100%, 50%)`, // Glow grows with progress
+                        transition: "all 0.05s linear",
+                    }} />
+
+                    {/* Leading Edge Spark */}
+                    <Box sx={{
+                        position: "absolute",
+                        top: 0, left: "50%", bottom: 0, width: "2px",
+                        transform: `rotate(${ringProgress * 3.6}deg)`,
+                        transformOrigin: "bottom center",
+                        height: "50%",
+                        zIndex: 5,
+                        opacity: ringProgress > 0 ? 1 : 0,
+                    }}>
+                        <Box sx={{
+                            width: "8px", height: "8px", borderRadius: "50%",
+                            background: "#fff",
+                            boxShadow: `0 0 15px #fff, 0 0 30px hsl(${ringHue}, 100%, 50%)`,
+                            position: "absolute", top: -4, left: -3
+                        }} />
+                    </Box>
+
+                    {/* Incoming Knowledge Particles */}
+                    {[...Array(6)].map((_, i) => (
+                        <Box key={i} sx={{
+                            position: "absolute",
+                            width: "4px", height: "4px", background: "#fff",
+                            borderRadius: "50%",
+                            boxShadow: "0 0 8px white",
+                            top: "50%", left: "50%",
+                            animation: `particleInject 2s infinite ease-in`,
+                            animationDelay: `${i * 0.3}s`,
+                            transformOrigin: `${140 + Math.random() * 40}px 0` // Orbit radius
+                        }} />
+                    ))}
+
+                    <Box sx={{
+                        position: "absolute", inset: -10, border: "1px solid rgba(0, 229, 255, 0.1)", borderRadius: "50%",
+                        borderLeftColor: "#00E5FF", borderRightColor: "#00E5FF",
+                        animation: "spin 15s linear infinite reverse"
+                    }} />
+
+                    {/* LIVE KNOWLEDGE COUNTER (Floating UI) */}
+                    <Box sx={{
+                        position: "absolute",
+                        top: "20%", right: -240,
+                        display: "flex", alignItems: "center",
+                        "@media (max-width: 900px)": { display: "none" } // Hide on small screens
+                    }}>
+                        {/* Connecting Line to Brain */}
+                        <Box sx={{ 
+                            width: "80px", height: "1px", 
+                            background: "linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.5))", 
+                            mr: 2 
+                        }} />
+                        
+                        <Box sx={{ textAlign: "left" }}>
+                             <Typography variant="caption" sx={{ 
+                                 color: "#94a3b8", fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", 
+                                 display: "flex", alignItems: "center", mb: 0.5
+                             }}>
+                                <Box sx={{ width: 6, height: 6, borderRadius: "50%", background: "#00E5FF", mr: 1, boxShadow: "0 0 5px #00E5FF" }} />
+                                Active Knowledge Bases
+                             </Typography>
+                             <Typography sx={{ 
+                                 fontFamily: "monospace", 
+                                 fontSize: "2rem", 
+                                 fontWeight: 700, 
+                                 color: "#fff",
+                                 textShadow: "0 0 15px rgba(0, 229, 255, 0.4)",
+                                 lineHeight: 1
+                             }}>
+                                 {displayCount.toLocaleString()}
+                             </Typography>
+                             <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap", maxWidth: "200px" }}>
+                                {Object.entries(collectionCategories).slice(0, 4).map(([name, count]) => (
+                                    <Box key={name} sx={{ 
+                                        px: 0.8, py: 0.2, borderRadius: "4px", 
+                                        background: "rgba(0, 229, 255, 0.1)", border: "1px solid rgba(0, 229, 255, 0.2)",
+                                        fontSize: "0.55rem", color: "#00E5FF"
+                                    }}>
+                                        {name}: {count}
+                                    </Box>
+                                ))}
+                             </Box>
+                         </Box>
+                    </Box>
+
+                    {/* Main Video Container */}
                     <Box
                       sx={{
-                        width: 120,
-                        height: 120,
+                        width: "100%",
+                        height: "100%",
                         borderRadius: "50%",
-                        background:
-                          "linear-gradient(135deg, #DA5EB9 0%, #F9F6F9 50%, #D18DDD 100%)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        mx: "auto",
-                        mb: 4,
-                        boxShadow: `0 20px 40px ${alpha("#082F4F", 0.3)}`,
-                        animation: "pulse 3s infinite ease-in-out",
-                        "@keyframes pulse": {
-                          "0%": {
-                            transform: "scale(1)",
-                            boxShadow: `0 20px 40px ${alpha("#AB71B0", 0.3)}`,
-                          },
-                          "50%": {
-                            transform: "scale(1.05)",
-                            boxShadow: `0 25px 50px ${alpha("#2196F3", 0.4)}`,
-                          },
-                          "100%": {
-                            transform: "scale(1)",
-                            boxShadow: `0 20px 40px ${alpha("#2196F3", 0.3)}`,
-                          },
-                        },
+                        overflow: "hidden",
+                        boxShadow: "0 0 50px rgba(0, 229, 255, 0.2), inset 0 0 20px rgba(0,0,0,0.8)",
+                        border: "1px solid rgba(0, 229, 255, 0.5)",
+                        background: "#000",
+                        position: "relative",
+                        zIndex: 2
                       }}
                     >
                       <Box
-                        component="img"
-                        src="/Mifix-ai.png"
-                        alt="MiFiX AI Logo"
+                        component="video"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        src="/MiFix-Brain.mp4"
+                        onTimeUpdate={(e) => {
+                          if (e.target.currentTime >= 4) {
+                            e.target.currentTime = 0;
+                          }
+                        }}
                         sx={{
                           width: "100%",
                           height: "100%",
                           objectFit: "cover",
+                          transform: "scale(1.2)",
+                          opacity: 0.9
                         }}
                       />
+                      {/* Scanline Overlay */}
+                      <Box sx={{
+                          position: "absolute", inset: 0, 
+                          background: "linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0, 229, 255, 0.1) 50%)",
+                          backgroundSize: "100% 4px",
+                          pointerEvents: "none"
+                      }} />
                     </Box>
-                  </Zoom>
-                </Box>
 
-                <Typography
-                  variant="h2"
-                  component="h1"
-                  sx={{
-                    fontWeight: 900,
-                    textTransform: "none",
-                    mb: 2,
-                    background:
-                      "linear-gradient(135deg,rgb(255, 255, 255) 0%,rgba(182, 30, 38, 0.28) 30%,rgb(242, 245, 248) 60%, #ba68c8 100%)",
-                    backgroundClip: "text",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    fontSize: { xs: "2.5rem", md: "3.5rem", lg: "4rem" },
-                    letterSpacing: "-0.02em",
-                    textShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                    filter: "drop-shadow(0 2px 4px rgba(255,255,255,0.1))",
-                  }}
-                >
-                  MiFiX.ai
-                </Typography>
+                    {/* Connecting Nodes (Decorative) */}
+                    <Box sx={{ position: "absolute", bottom: -10, width: "2px", height: "20px", background: "#00E5FF" }} />
+                  </Box>
 
-                <Typography
-                  variant="h4"
-                  component="h2"
-                  sx={{
-                    fontWeight: 300,
-                    mb: 3,
-                    color: "#e3f2fd",
-                    fontSize: { xs: "1.5rem", md: "2rem" },
-                    opacity: 0.9,
-                    textShadow: "0 2px 8px rgba(0,0,0,0.5)",
-                  }}
-                >
-                  Intelligent Agent Orchestration
-                </Typography>
+                  {/* JIGSAW CONNECTION SPINE */}
+                  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", zIndex: 11 }}>
+                      
+                      {/* 1. Upper Spine (Brain to Text) */}
+                      <Box sx={{ width: "2px", height: "60px", background: "rgba(255, 255, 255, 0.1)", position: "relative", overflow: "hidden" }}>
+                           <Box sx={{
+                              position: "absolute", top: 0, left: 0, right: 0, height: "100%",
+                              background: "linear-gradient(180deg, transparent, #00E5FF, transparent)",
+                              animation: "dropStream 1.5s infinite linear"
+                          }} />
+                      </Box>
 
-                <Stack
-                  direction={{ xs: "column", md: "row" }}
-                  spacing={{ xs: 2, md: 4 }}
-                  justifyContent="center"
-                  alignItems="center"
-                  sx={{ mb: 5 }}
-                >
-                  {[
-                    {
-                      text: "Self-evolving AI Brain",
-                      icon: (
-                        <PsychologyIcon
-                          sx={{ fontSize: 28, color: "#64b5f6" }}
-                        />
-                      ),
-                    },
-                    {
-                      text: "Autonomous Orchestration",
-                      icon: (
-                        <RocketIcon sx={{ fontSize: 28, color: "#ba68c8" }} />
-                      ),
-                    },
-                    {
-                      text: "Specialized Agents",
-                      icon: (
-                        <WorkflowIcon sx={{ fontSize: 28, color: "#4db6ac" }} />
-                      ),
-                    },
-                  ].map((item, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.5,
-                        opacity: 0.9,
-                      }}
-                    >
-                      {item.icon}
-                      <Typography
-                        variant="subtitle1"
-                        sx={{
-                          color: "#e2e8f0",
-                          fontWeight: 500,
-                          fontSize: "1.1rem",
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        {item.text}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Stack>
-
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: "#94a3b8",
-                    mb: 4,
-                    maxWidth: 600,
-                    mx: "auto",
-                    textAlign: "center",
-                    fontSize: "1.1rem",
-                  }}
-                >
-                  Experience true adaptive intelligence where the system learns,
-                  adapts, and executes complex business tasks autonomously.
-                </Typography>
-
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={2}
-                  justifyContent="center"
-                  sx={{ mb: 6 }}
-                >
-                  <Slide in={mounted} direction="up" timeout={800}>
-                    <Tooltip title="Explore AI Brain Collections" arrow>
-                      <Button
-                        variant="contained"
-                        size="large"
-                        startIcon={<BrainIcon />}
-                        onClick={() => setBrainDialog(true)}
-                        sx={{
-                          px: 4,
-                          py: 1.5,
-                          borderRadius: 3,
-                          background:
-                            "linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%)",
-                          boxShadow: `0 8px 25px ${alpha("#42a5f5", 0.4)}`,
-                          backdropFilter: "blur(10px)",
-                          border: `1px solid ${alpha("#64b5f6", 0.3)}`,
-                          "&:hover": {
-                            background:
-                              "linear-gradient(135deg, #1e88e5 0%, #42a5f5 100%)",
-                            transform: "translateY(-2px)",
-                            boxShadow: `0 12px 35px ${alpha("#42a5f5", 0.5)}`,
-                          },
-                          transition: "all 0.3s ease",
-                        }}
-                      >
-                        Explore AI Brain
-                      </Button>
-                    </Tooltip>
-                  </Slide>
-
-                  <Slide in={mounted} direction="up" timeout={1000}>
-                    <Tooltip title="Refresh Knowledge Collections" arrow>
-                      <Button
-                        variant="outlined"
-                        size="large"
-                        startIcon={<SpeedIcon />}
-                        onClick={loadCollections}
-                        disabled={loading}
-                        sx={{
-                          px: 4,
-                          py: 1.5,
-                          borderRadius: 3,
-                          borderWidth: 2,
-                          borderColor: "#64b5f6",
-                          color: "#64b5f6",
-                          backdropFilter: "blur(10px)",
-                          background: alpha("#0d1b2a", 0.3),
-                          "&:hover": {
-                            borderWidth: 2,
-                            borderColor: "#42a5f5",
-                            background: alpha("#64b5f6", 0.1),
-                            transform: "translateY(-2px)",
-                          },
-                          transition: "all 0.3s ease",
-                        }}
-                      >
-                        {loading ? "Syncing..." : "Refresh Collections"}
-                      </Button>
-                    </Tooltip>
-                  </Slide>
-                </Stack>
-
-                {/* Stats Row */}
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
-                  <Grid container spacing={4} sx={{ maxWidth: 800 }}>
-                    {[
-                      {
-                        label: "AI Agents",
-                        value: Object.keys(AGENT_TYPES).length.toString(),
-                        icon: RocketIcon,
-                      },
-                      {
-                        label: "Data Accuracty",
-                        value: "99%",
-                        suffix: "%",
-                        icon: StorageIcon,
-                      },
-                      {
-                        label: "Uptime",
-                        value: "99.9",
-                        suffix: "%",
-                        icon: SpeedIcon,
-                      },
-                    ].map((stat, index) => (
-                      <Grid item xs={12} sm={4} key={index}>
-                        <Grow in={mounted} timeout={1500 + index * 200}>
-                          <Paper
-                            elevation={0}
+                      {/* 2. Integrated Text Node */}
+                      <Box sx={{ 
+                          textAlign: "center", 
+                          backdropFilter: "blur(12px)",
+                          background: "rgba(10, 15, 30, 0.6)",
+                          border: "1px solid rgba(255, 255, 255, 0.1)",
+                          borderRadius: "12px",
+                          px: 4, py: 1.5,
+                          boxShadow: "0 0 30px rgba(0,0,0,0.5)",
+                          display: "flex", flexDirection: "column", alignItems: "center",
+                          position: "relative"
+                      }}>
+                          {/* Node Connectors */}
+                          <Box sx={{ position: "absolute", top: -4, width: 8, height: 8, borderRadius: "50%", background: "#00E5FF", boxShadow: "0 0 10px #00E5FF" }} />
+                          
+                          <Typography
+                            variant="h4"
                             sx={{
-                              p: 3,
-                              textAlign: "center",
-                              background: alpha("#0d1b2a", 0.6),
-                              backdropFilter: "blur(15px)",
-                              borderRadius: 3,
-                              border: `1px solid ${alpha("#64b5f6", 0.2)}`,
-                              boxShadow: `0 8px 32px ${alpha("#000", 0.2)}`,
+                              color: "white",
+                              fontWeight: 800,
+                              fontSize: "1.8rem",
+                              letterSpacing: "-0.01em",
+                              textShadow: "0 0 20px rgba(0, 229, 255, 0.5)",
+                              lineHeight: 1
                             }}
                           >
-                            <stat.icon
-                              sx={{ fontSize: 32, color: "#64b5f6", mb: 1 }}
-                            />
-                            <Typography
-                              variant="h4"
-                              sx={{ fontWeight: 700, color: "white" }}
-                            >
-                              <AnimatedCounter value={stat.value} />
-                              {stat.suffix || ""}
+                            MiFiX.ai Brain
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#94a3b8",
+                              letterSpacing: "0.2em",
+                              textTransform: "uppercase",
+                              fontSize: "0.65rem",
+                              mt: 0.5,
+                              fontWeight: 600
+                            }}
+                          >
+                            Self-Evolving Knowledge Base
+                          </Typography>
+
+                          <Box sx={{ position: "absolute", bottom: -4, width: 8, height: 8, borderRadius: "50%", background: "#00E5FF", boxShadow: "0 0 10px #00E5FF" }} />
+                      </Box>
+
+                      {/* 3. Lower Spine (Text to Supervisor) */}
+                      <Box sx={{ width: "2px", height: "50px", background: "rgba(255, 255, 255, 0.1)", position: "relative", overflow: "hidden" }}>
+                           <Box sx={{
+                              position: "absolute", top: 0, left: 0, right: 0, height: "100%",
+                              background: "linear-gradient(180deg, transparent, #00E5FF, transparent)",
+                              animation: "dropStream 1.5s infinite linear",
+                              animationDelay: "0.5s" 
+                          }} />
+                      </Box>
+
+                  </Box>
+                </Box>
+
+              {/* LEVEL 1: SUPERVISOR */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  mb: 8,
+                  position: "relative",
+                  zIndex: 2,
+                }}
+              >
+                <Box sx={{ position: "relative" }}>
+                  
+                  {/* SUPERVISOR CARD - PREMIUM GLASS */}
+                  <Box
+                    onClick={() =>
+                      handleAgentSelect(AGENT_HIERARCHY.supervisor.agents[0])
+                    }
+                    sx={{
+                      width: "340px",
+                      position: "relative",
+                      cursor: "pointer",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      "&:hover": { transform: "translateY(-5px)", boxShadow: "0 20px 40px -10px rgba(255, 167, 38, 0.2)" },
+                    }}
+                  >
+                     {/* Top Signal Receiver Port */}
+                     <Box sx={{
+                         width: "40px", height: "4px", background: "#FFA726",
+                         mx: "auto", mb: "2px",
+                         boxShadow: "0 0 10px #FFA726"
+                     }} />
+
+                     {/* Glass Body */}
+                     <Paper
+                       elevation={0}
+                       sx={{
+                           p: 3,
+                           background: "rgba(10, 25, 41, 0.7)",
+                           backdropFilter: "blur(16px)",
+                           border: "1px solid rgba(255, 255, 255, 0.08)",
+                           borderRadius: "16px",
+                           display: "flex",
+                           alignItems: "center",
+                           boxShadow: "0 10px 30px -10px rgba(0,0,0,0.5)",
+                           position: "relative",
+                           overflow: "hidden"
+                       }}
+                     >
+                        {/* Glow Accent */}
+                        <Box sx={{
+                            position: "absolute", top: 0, left: 0, width: "4px", height: "100%",
+                            background: "#FFA726",
+                            boxShadow: "0 0 15px #FFA726"
+                        }} />
+
+                        {/* Avatar */}
+                        <Box
+                          sx={{
+                            width: "70px",
+                            height: "70px",
+                            borderRadius: "12px",
+                            background: "linear-gradient(135deg, rgba(255, 167, 38, 0.1), rgba(255, 167, 38, 0.05))",
+                            border: "1px solid rgba(255, 167, 38, 0.3)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            mr: 2.5
+                          }}
+                        >
+                          <Box component="img" src="/supervisory.png" alt="Supervisor" sx={{ width: "80%", height: "80%", objectFit: "contain" }} />
+                        </Box>
+
+                        {/* Text Info */}
+                        <Box>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: "white", lineHeight: 1.2 }}>
+                                Supervisory Agent
                             </Typography>
-                            <Typography variant="body2" sx={{ color: "white" }}>
-                              {stat.label}
+                            <Typography variant="caption" sx={{ color: "#94a3b8", fontSize: "0.7rem", letterSpacing: "0.5px" }}>
+                                SYSTEM ORCHESTRATOR
                             </Typography>
-                          </Paper>
-                        </Grow>
-                      </Grid>
-                    ))}
-                  </Grid>
+                            
+                            {/* Live Badge */}
+                            <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+                                <Box sx={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", mr: 1, boxShadow: "0 0 6px #10B981" }} />
+                                <Typography variant="caption" sx={{ color: "#10B981", fontWeight: 700, fontSize: "0.6rem", letterSpacing: "0.1em" }}>
+                                    ONLINE
+                                </Typography>
+                            </Box>
+                        </Box>
+                     </Paper>
+                  </Box>
+
+                  {/* Connection Point DOT (Bottom) */}
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      bottom: "-4px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: "6px",
+                      height: "6px",
+                      background: "#FFA726",
+                      borderRadius: "50%",
+                      boxShadow: "0 0 10px #FFA726",
+                      zIndex: 3,
+                    }}
+                  />
+                  {/* SVG CONNECTIONS & FEEDBACK LOOPS */}
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: "calc(100% + 4px)", // Starts exactly at the bottom dot
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: "100vw",
+                      maxWidth: "1600px",
+                      height: "400px",
+                      pointerEvents: "none",
+                      zIndex: 0,
+                    }}
+                  >
+                    <svg
+                      width="100%"
+                      height="100%"
+                      viewBox="0 0 1600 400"
+                      preserveAspectRatio="xMidYMin slice"
+                      style={{ overflow: "visible" }}
+                      shapeRendering="geometricPrecision"
+                    >
+                      <defs>
+                        <linearGradient
+                          id="downstreamGrad"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop offset="0%" stopColor="#FFA726" stopOpacity="0.8" />
+                          <stop offset="100%" stopColor="#29B6F6" stopOpacity="0.5" />
+                        </linearGradient>
+                        <linearGradient
+                          id="upstreamGrad"
+                          x1="0"
+                          y1="1"
+                          x2="0"
+                          y2="0"
+                        >
+                          <stop offset="0%" stopColor="#F06292" stopOpacity="0.8" />
+                          <stop offset="100%" stopColor="#00E5FF" stopOpacity="0.5" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* 1. Downstream Flows (Supervisor -> Agents) */}
+                      {/* Left Path */}
+                      <path
+                        d="M 800 0 C 800 60, 400 60, 400 120"
+                        stroke="url(#downstreamGrad)"
+                        strokeWidth="1.5"
+                        fill="none"
+                        opacity="0.8"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      {/* Right Path */}
+                      <path
+                        d="M 800 0 C 800 60, 1200 60, 1200 120"
+                        stroke="url(#downstreamGrad)"
+                        strokeWidth="1.5"
+                        fill="none"
+                        opacity="0.8"
+                        vectorEffect="non-scaling-stroke"
+                      />
+
+                      {/* 2. Downstream Particles */}
+                      <circle r="3" fill="#FFA726">
+                        <animateMotion
+                          dur="3s"
+                          repeatCount="indefinite"
+                          path="M 800 0 C 800 60, 400 60, 400 120"
+                          keyPoints="0;1"
+                          keyTimes="0;1"
+                          calcMode="linear"
+                        />
+                      </circle>
+                      <circle r="3" fill="#FFA726">
+                        <animateMotion
+                          dur="3s"
+                          repeatCount="indefinite"
+                          path="M 800 0 C 800 60, 1200 60, 1200 120"
+                          keyPoints="0;1"
+                          keyTimes="0;1"
+                          calcMode="linear"
+                        />
+                      </circle>
+
+                      {/* 3. FEEDBACK LOOPS (Agents -> Brain) */}
+                      {/* Left Return Loop */}
+                      <path
+                        d="M 400 120 C 300 200, 100 0, 800 -120"
+                        stroke="url(#upstreamGrad)"
+                        strokeWidth="1"
+                        strokeDasharray="4,4"
+                        fill="none"
+                        opacity="0.3"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      {/* Right Return Loop */}
+                      <path
+                        d="M 1200 120 C 1300 200, 1500 0, 800 -120"
+                        stroke="url(#upstreamGrad)"
+                        strokeWidth="1"
+                        strokeDasharray="4,4"
+                        fill="none"
+                        opacity="0.3"
+                        vectorEffect="non-scaling-stroke"
+                      />
+
+                      {/* 4. Feedback Particles */}
+                      <circle r="2" fill="#F06292">
+                        <animateMotion
+                          dur="5s"
+                          repeatCount="indefinite"
+                          path="M 400 120 C 300 200, 100 0, 800 -120"
+                        />
+                      </circle>
+                      <circle r="2" fill="#F06292">
+                        <animateMotion
+                          dur="5s"
+                          repeatCount="indefinite"
+                          path="M 1200 120 C 1300 200, 1500 0, 800 -120"
+                        />
+                      </circle>
+                    </svg>
+                  </Box>
                 </Box>
               </Box>
-            </Fade>
-          </Box>
 
-          {/* Configurator Options Section */}
-          <Box sx={{ py: 6 }}>
-            <Fade in={mounted} timeout={1200}>
-              <Typography
-                variant="h4"
-                component="h3"
+              {/* LEVEL 2: NETWORK CLUSTERS */}
+              {/* LEVEL 2: NETWORK CLUSTERS */}
+              {/* LEVEL 2: NETWORK CLUSTERS */}
+              {/* LEVEL 2: NETWORK CLUSTERS */}
+              {/* LEVEL 2: NETWORK CLUSTERS */}
+              <Box
                 sx={{
-                  textAlign: "center",
-                  mb: 6,
-                  fontWeight: 700,
-                  color: "#e3f2fd",
-                  textShadow: "0 2px 8px rgba(0,0,0,0.5)",
-                }}
-              >
-                Configuration Tools
-              </Typography>
-            </Fade>
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                px: { xs: 2, sm: 4, md: 6 },
-                mb: 8,
-              }}
-            >
-              <Grid
-                container
-                spacing={{ xs: 2, sm: 3, md: 4 }}
-                justifyContent="center"
-                alignItems="stretch"
-                sx={{ maxWidth: 1400, width: "100%" }}
-              >
-                {CONFIGURATOR_OPTIONS.map((option, index) => {
-                  const IconComponent = option.icon;
-                  const isHovered = hoveredOption === option.id;
-
-                  return (
-                    <Grid
-                      item
-                      xs={12}
-                      sm={6}
-                      md={4}
-                      key={option.id}
-                      sx={{ display: "flex" }}
-                    >
-                      <Grow
-                        in={mounted}
-                        timeout={1000 + index * 200}
-                        style={{ width: "100%", display: "flex" }}
-                      >
-                        <Card
-                          onMouseEnter={() => setHoveredOption(option.id)}
-                          onMouseLeave={() => setHoveredOption(null)}
-                          onClick={() => {
-                            if (option.route) {
-                              console.log(`🚀 Navigating to: ${option.route}`);
-                              setIsNavigating(true);
-                              setNavigationMessage(
-                                `Loading ${option.title}...`
-                              );
-                              
-                              // Use try-catch for navigation
-                              try {
-                              router.push(option.route);
-                              } catch (error) {
-                                console.error('❌ Navigation error:', error);
-                                // Reset navigation state on error
-                                setIsNavigating(false);
-                                setNavigationMessage("");
-                                setSnackbar({
-                                  open: true,
-                                  message: "Navigation failed. Please try again.",
-                                  severity: "error",
-                                });
-                              }
-                            } else {
-                              // For knowledge upload, show agent selection
-                              setUploadDialogOpen(true);
-                            }
-                          }}
-                          sx={{
-                            width: "100%",
-                            height: 300,
-                            minHeight: 300,
-                            maxHeight: 300,
-                            background: alpha("#0d1b2a", 0.8),
-                            backdropFilter: "blur(20px)",
-                            borderRadius: 4,
-                            border: `2px solid ${alpha(option.color, 0.3)}`,
-                            position: "relative",
-                            overflow: "hidden",
-                            cursor: "pointer",
-                            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                            boxShadow: `0 8px 32px ${alpha("#000", 0.3)}`,
-                            "&:hover": {
-                              transform: "translateY(-12px) scale(1.02)",
-                              boxShadow: `0 25px 50px ${alpha(
-                                option.color,
-                                0.4
-                              )}`,
-                              border: `2px solid ${option.color}`,
-                              background: alpha("#1b263b", 0.9),
-                            },
-                            "&::before": {
-                              content: '""',
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: 4,
-                              background: option.gradient,
-                              opacity: 0.8,
-                            },
-                          }}
-                        >
-                          <CardContent
-                            sx={{
-                              p: 4,
-                              height: "100%",
-                              display: "flex",
-                              flexDirection: "column",
-                            }}
-                          >
-                            {/* Icon */}
-                            <Box
-                              sx={{
-                                mb: 2,
-                                display: "flex",
-                                justifyContent: "center",
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  width: 80,
-                                  height: 80,
-                                  borderRadius: "50%",
-                                  background: option.gradient,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  transition: "all 0.3s ease",
-                                  transform: isHovered
-                                    ? "scale(1.1) rotate(5deg)"
-                                    : "scale(1)",
-                                  boxShadow: `0 8px 25px ${alpha(
-                                    option.color,
-                                    0.3
-                                  )}`,
-                                }}
-                              >
-                                <IconComponent
-                                  sx={{ fontSize: 40, color: "white" }}
-                                />
-                              </Box>
-                            </Box>
-
-                            {/* Content */}
-                            <Box sx={{ textAlign: "center", flexGrow: 1 }}>
-                              <Typography
-                                variant="h5"
-                                sx={{
-                                  mb: 1,
-                                  fontWeight: 700,
-                                  color: "#e3f2fd",
-                                }}
-                              >
-                                {option.title}
-                              </Typography>
-
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: option.color,
-                                  fontWeight: 600,
-                                  display: "block",
-                                  mb: 2,
-                                  textTransform: "uppercase",
-                                  letterSpacing: 1,
-                                }}
-                              >
-                                {option.subtitle}
-                              </Typography>
-
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  mb: 2,
-                                  lineHeight: 1.6,
-                                  color: "#b3e5fc",
-                                }}
-                              >
-                                {option.description}
-                              </Typography>
-
-                              {/* Features */}
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  flexWrap: "wrap",
-                                  gap: 0.5,
-                                  justifyContent: "center",
-                                }}
-                              >
-                                {option.features.map((feature, idx) => (
-                                  <Chip
-                                    key={idx}
-                                    label={feature}
-                                    size="small"
-                                    sx={{
-                                      fontSize: "0.7rem",
-                                      height: 22,
-                                      background: alpha(option.color, 0.1),
-                                      color: option.color,
-                                      border: `1px solid ${alpha(
-                                        option.color,
-                                        0.2
-                                      )}`,
-                                    }}
-                                  />
-                                ))}
-                              </Box>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grow>
-                    </Grid>
-                  );
-                })}
-              </Grid>
-            </Box>
-          </Box>
-
-          {/* Agent Cards Section */}
-          <Box sx={{ py: 6 }}>
-            <Fade in={mounted} timeout={1200}>
-              <Typography
-                variant="h4"
-                component="h3"
-                sx={{
-                  textAlign: "center",
-                  mb: 6,
-                  fontWeight: 700,
-                  color: "#e3f2fd",
-                  textShadow: "0 2px 8px rgba(0,0,0,0.5)",
-                }}
-              >
-                Our AI Agents
-              </Typography>
-            </Fade>
-
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                px: { xs: 2, sm: 4, md: 6 },
-              }}
-            >
-              <Grid
-                container
-                spacing={{ xs: 3, sm: 4, md: 5 }}
-                justifyContent="center"
-                alignItems="stretch"
-                sx={{
-                  maxWidth: {
-                    xs: "100%",
-                    sm: "800px",
-                    md: "1000px",
-                    lg: "1200px",
+                  position: "relative",
+                  pt: 10,
+                  pb: 10,
+                  "@keyframes popIn": {
+                    "0%": {
+                      opacity: 0,
+                      transform: "translate(-50%, -50%) scale(0)",
+                    },
+                    "80%": { transform: "translate(-50%, -50%) scale(1.1)" },
+                    "100%": {
+                      opacity: 1,
+                      transform: "translate(-50%, -50%) scale(1)",
+                    },
                   },
-                  width: "100%",
                 }}
               >
-                {AGENT_TYPES.map((agent, index) => {
-                  const IconComponent = agent.icon;
-                  const isHovered = hoveredCard === agent.id;
-
-                  return (
-                    <Grid
-                      item
-                      xs={12}
-                      sm={6}
-                      md={4}
-                      lg={4}
-                      xl={4}
-                      key={agent.id}
+                <Grid
+                  container
+                  spacing={4}
+                  alignItems="flex-start"
+                  justifyContent="center"
+                >
+                  {/* CONFIGURATION CLOUD (Left Side) - ROW LAYOUT for Header */}
+                  <Grid item xs={12} md={6}>
+                    <Box
                       sx={{
+                        height: "600px",
                         display: "flex",
-                        justifyContent: "center",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        position: "relative",
+                        pr: 2,
                       }}
                     >
-                      <Grow in={mounted} timeout={1000 + index * 200}>
-                        <Card
-                          onMouseEnter={() => setHoveredCard(agent.id)}
-                          onMouseLeave={() => setHoveredCard(null)}
-                          sx={{
-                            width: { xs: "280px", sm: "290px", md: "300px" },
-                            height: 340,
-                            minHeight: 340,
-                            maxHeight: 340,
-                            background: alpha("#0d1b2a", 0.8),
-                            backdropFilter: "blur(20px)",
-                            borderRadius: 4,
-                            border: `2px solid ${alpha(agent.color, 0.3)}`,
-                            position: "relative",
-                            overflow: "hidden",
-                            cursor: "pointer",
-                            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                            boxShadow: `0 8px 32px ${alpha("#000", 0.3)}`,
-                            "&:hover": {
-                              transform: "translateY(-12px) scale(1.02)",
-                              boxShadow: `0 25px 50px ${alpha(
-                                agent.color,
-                                0.4
-                              )}`,
-                              border: `2px solid ${agent.color}`,
-                              background: alpha("#1b263b", 0.9),
-                              "&::before": {
-                                opacity: 1,
-                              },
-                            },
-                            "&::before": {
-                              content: '""',
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: 4,
-                              background: agent.gradient,
-                              opacity: 0.8,
-                              transition: "opacity 0.3s ease",
-                            },
+                      {/* HEADER MOVED TO BOTTOM LEFT TO AVOID OVERLAP */}
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          color: "#29B6F6",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: 2,
+                          position: "absolute",
+                          bottom: "40px",
+                          left: "20px",
+                          width: "200px",
+                          textAlign: "left",
+                          zIndex: 10,
+                          mb:-9,
+                        }}
+                      >
+                        Configuration Agents
+                      </Typography>
+
+                      <Box
+                        sx={{
+                          position: "relative",
+                          width: "500px",
+                          height: "600px",
+                        }}
+                      >
+                        <svg
+                          width="100%"
+                          height="100%"
+                          viewBox="0 0 500 600"
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            overflow: "visible",
+                            pointerEvents: "none",
+                            zIndex: 0,
                           }}
                         >
-                          <CardActionArea
-                            onClick={() => handleAgentSelect(agent)}
-                            sx={{ height: "100%", p: 0 }}
-                          >
-                            <CardContent
-                              sx={{
-                                p: 3,
-                                height: "100%",
-                                display: "flex",
-                                flexDirection: "column",
-                              }}
+                          <defs>
+                            <linearGradient
+                              id="configGrad"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
                             >
-                              {/* Icon Container */}
+                              <stop
+                                offset="0%"
+                                stopColor="#FFA726"
+                                stopOpacity="0.8"
+                              />
+                              <stop
+                                offset="100%"
+                                stopColor="#29B6F6"
+                                stopOpacity="0.4"
+                              />
+                            </linearGradient>
+                          </defs>
+
+                          {/* HUB - Shifted Right to 320 to reduce middle gap */}
+                          {/* MASTER TRUNK: Matches new Hub at 320 */}
+                          <path
+                            d="M 600 -380 C 500 -100, 320 50, 320 250"
+                            stroke="url(#configGrad)"
+                            strokeWidth="4"
+                            fill="none"
+                            opacity="0.7"
+                            strokeLinecap="round"
+                          />
+                          <circle r="6" fill="#FFA726" cx="600" cy="-380">
+                            <animate
+                              attributeName="r"
+                              values="6;8;6"
+                              dur="2s"
+                              repeatCount="indefinite"
+                            />
+                          </circle>
+                          <circle r="4" fill="#29B6F6">
+                            <animateMotion
+                              dur="3s"
+                              repeatCount="indefinite"
+                              path="M 600 -380 C 500 -100, 420 50, 420 250"
+                            />
+                          </circle>
+
+                          {/* HUB at 320, 250 */}
+                          <circle
+                            cx="320"
+                            cy="250"
+                            r="8"
+                            fill="#29B6F6"
+                            opacity="0.5"
+                          >
+                            <animate
+                              attributeName="r"
+                              values="8;12;8"
+                              dur="3s"
+                              repeatCount="indefinite"
+                            />
+                          </circle>
+
+                          {/* BRANCHES */}
+                          {AGENT_HIERARCHY.configuration.agents.map(
+                            (agent, i) => {
+                              // Spread spread LEFT (100 to 260 degrees) - STAGGERED
+                              const total =
+                                AGENT_HIERARCHY.configuration.agents.length;
+                              const spread = 150 * (Math.PI / 180);
+                              const start = 105 * (Math.PI / 180);
+                              const step = total > 1 ? spread / (total - 1) : 0;
+                              const angle = start + step * i;
+                              // SYNCED WITH NODES
+                              const radius = 180 + 90 * (i % 2); 
+                              const cx = 320; 
+                              const cy = 250;
+                              const x = cx + Math.cos(angle) * radius * 1.6; // Wider spread matched
+                              const y = cy + Math.sin(angle) * radius * 1.0;
+
+                              return (
+                                <g key={i}>
+                                  <path
+                                    d={`M 320 250 Q ${(320 + x) / 2} ${(250 + y) / 2 + 20}, ${x} ${y}`}
+                                    stroke="url(#configGrad)"
+                                    strokeWidth="1.5"
+                                    fill="none"
+                                    opacity="0.5"
+                                  />
+                                  <circle r="2" fill="#29B6F6">
+                                    <animateMotion
+                                      dur={`${2 + (i % 3)}s`}
+                                      repeatCount="indefinite"
+                                      path={`M 320 250 Q ${(320 + x) / 2} ${(250 + y) / 2 + 20}, ${x} ${y}`}
+                                    />
+                                  </circle>
+                                </g>
+                              );
+                            },
+                          )}
+                        </svg>
+
+                        {AGENT_HIERARCHY.configuration.agents.map(
+                          (agent, i) => {
+                            // Spread spread LEFT (100 to 260 degrees) - STAGGERED
+                            const total =
+                              AGENT_HIERARCHY.configuration.agents.length;
+                            // Select random-ish non-adjacent agents to avoid label overlap
+                            const activeIdx = highlightIndex % total;
+                            const isActive = [
+                              activeIdx,
+                              (activeIdx + Math.floor(total / 3)) % total,
+                              (activeIdx + Math.floor((2 * total) / 3)) % total,
+                            ].includes(i);
+
+                            const spread = 150 * (Math.PI / 180);
+                            const start = 105 * (Math.PI / 180);
+                            const step = total > 1 ? spread / (total - 1) : 0;
+                            const angle = start + step * i;
+                            // Increased spacing radius to separate agents further
+                            const radius = 180 + 90 * (i % 2); // Ring 1: 180, Ring 2: 270
+                            const cx = 320; // New Hub X
+                            const cy = 250;
+                            const x = cx + Math.cos(angle) * radius * 1.6; // Wider spread
+                            const y = cy + Math.sin(angle) * radius * 1.0;
+
+                            const xP = (x / 500) * 100;
+                            const yP = (y / 600) * 100;
+
+                            return (
                               <Box
+                                key={agent.id}
+                                onClick={() => handleAgentSelect(agent)}
                                 sx={{
-                                  mb: 2,
+                                  position: "absolute",
+                                  left: `${xP}%`,
+                                  top: `${yP}%`,
+                                  transform: "translate(-50%, -50%)",
                                   display: "flex",
-                                  justifyContent: "center",
+                                  flexDirection: "column", // STACK VERTICALLY
+                                  alignItems: "center",
+                                  zIndex: isActive ? 50 : 20, // High Z for active
+                                  cursor: "pointer",
+                                  animation: `popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards`,
+                                  animationDelay: `${i * 0.1}s`,
+                                  "&:hover .bubble": {
+                                    transform: "scale(1.2)",
+                                    bgcolor: "#29B6F6",
+                                    color: "black",
+                                    boxShadow: "0 0 20px #29B6F6",
+                                  },
+                                  "&:hover .label": {
+                                    opacity: 1,
+                                    transform: "translate(-50%, 0)",
+                                    color: "white",
+                                    textShadow: "0 0 10px #29B6F6",
+                                    borderColor: "#29B6F6",
+                                  },
+
+                                  // ACTIVE STATE
+                                  "& .bubble": isActive
+                                    ? {
+                                        animation: "pulseBlue 2s infinite",
+                                      }
+                                    : {},
+                                  "& .label": {
+                                    opacity: isActive ? 1 : 0,
+                                    transform: isActive
+                                      ? "translate(-50%, 0)"
+                                      : "translate(-50%, -10px)",
+                                    transition: "all 0.5s ease",
+                                    pointerEvents: "none", // Prevent tooltip hovering issues
+                                  },
                                 }}
                               >
                                 <Box
+                                  className="bubble"
                                   sx={{
-                                    width: 80,
-                                    height: 80,
+                                    width: "56px",
+                                    height: "56px",
                                     borderRadius: "50%",
-                                    background: agent.gradient,
+                                    overflow: "hidden", // CLIP IMAGES
+                                    background: "rgba(10, 25, 41, 0.95)",
+                                    border: "1px solid #29B6F6",
+                                    boxShadow:
+                                      "0 0 15px rgba(41, 182, 246, 0.3)",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
+                                    color: "#29B6F6",
                                     transition: "all 0.3s ease",
-                                    transform: isHovered
-                                      ? "scale(1.1) rotate(5deg)"
-                                      : "scale(1)",
-                                    boxShadow: `0 8px 25px ${alpha(
-                                      agent.color,
-                                      0.3
-                                    )}`,
+                                    position: "relative",
+                                    zIndex: 2,
                                   }}
                                 >
-                                  <IconComponent
-                                    sx={{
-                                      fontSize: 40,
-                                      color: "white",
-                                    }}
-                                  />
+                                  <agent.icon sx={{ fontSize: 28 }} />
                                 </Box>
-                              </Box>
-
-                              {/* Content */}
-                              <Box sx={{ textAlign: "center", flexGrow: 1 }}>
                                 <Typography
-                                  variant="h6"
-                                  component="h3"
-                                  sx={{
-                                    mb: 1,
-                                    fontWeight: 700,
-                                    color: "#e3f2fd",
-                                  }}
-                                >
-                                  {agent.title}
-                                </Typography>
-
-                                <Typography
+                                  className="label"
                                   variant="caption"
                                   sx={{
-                                    color: agent.color,
-                                    fontWeight: 600,
-                                    display: "block",
-                                    mb: 2,
-                                    textTransform: "uppercase",
-                                    letterSpacing: 1,
+                                    position: "absolute",
+                                    top: "65px", // FLOAT BELOW
+                                    left: "50%",
+                                    transform: "translate(-50%, -10px)", // Start offset
+                                    width: "max-content", // ADAPT TO TEXT
+                                    maxWidth: "140px",
+                                    color: "#e2e8f0",
+                                    fontSize: "0.85rem",
+                                    fontWeight: 700,
+                                    textAlign: "center",
+                                    lineHeight: 1.2,
+                                    background: "rgba(15, 23, 42, 0.9)",
+                                    px: 1.5,
+                                    py: 0.5,
+                                    borderRadius: 2,
+                                    border: "1px solid rgba(41, 182, 246, 0.3)",
+                                    backdropFilter: "blur(4px)",
+                                    zIndex: 1,
                                   }}
                                 >
-                                  {agent.subtitle}
-                                </Typography>
-
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    mb: 3,
-                                    lineHeight: 1.6,
-                                    color: "#b3e5fc",
-                                    opacity: 0.9,
-                                  }}
-                                >
-                                  {agent.description}
+                                  {agent.title.replace(" Agent", "")}
                                 </Typography>
                               </Box>
+                            );
+                          },
+                        )}
+                      </Box>
+                    </Box>
+                  </Grid>
 
-                              {/* Stats Badge */}
+                  {/* EXECUTION GRID (Right Side) - ROW LAYOUT for Header */}
+                  <Grid item xs={12} md={6}>
+                    <Box
+                      sx={{
+                        height: "600px",
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                        position: "relative",
+                        pl: 2,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          position: "relative",
+                          width: "500px",
+                          height: "600px",
+                        }}
+                      >
+                        <svg
+                          width="100%"
+                          height="100%"
+                          viewBox="0 0 500 600"
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            overflow: "visible",
+                            pointerEvents: "none",
+                            zIndex: 0,
+                          }}
+                        >
+                          <defs>
+                            <linearGradient
+                              id="execGrad"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="0%"
+                                stopColor="#FFA726"
+                                stopOpacity="0.8"
+                              />
+                              <stop
+                                offset="100%"
+                                stopColor="#66BB6A"
+                                stopOpacity="0.4"
+                              />
+                            </linearGradient>
+                          </defs>
+
+                          {/* HUB - Shifted Left to 180 to reduce middle gap */}
+                          {/* MASTER TRUNK: Matches new Hub at 180 */}
+                          <path
+                            d="M -100 -380 C 0 -100, 180 50, 180 250"
+                            stroke="url(#execGrad)"
+                            strokeWidth="4"
+                            fill="none"
+                            opacity="0.7"
+                            strokeLinecap="round"
+                          />
+                          <circle r="6" fill="#FFA726" cx="-100" cy="-380">
+                            <animate
+                              attributeName="r"
+                              values="6;8;6"
+                              dur="2s"
+                              repeatCount="indefinite"
+                            />
+                          </circle>
+                          <circle r="4" fill="#66BB6A">
+                            <animateMotion
+                              dur="3s"
+                              delay="1s"
+                              repeatCount="indefinite"
+                              path="M -100 -380 C 0 -100, 180 50, 180 250"
+                            />
+                          </circle>
+
+                          {/* HUB at 180, 250 */}
+                          <circle
+                            cx="180"
+                            cy="250"
+                            r="8"
+                            fill="#66BB6A"
+                            opacity="0.5"
+                          >
+                            <animate
+                              attributeName="r"
+                              values="8;12;8"
+                              dur="3s"
+                              repeatCount="indefinite"
+                            />
+                          </circle>
+
+                          {/* BRANCHES */}
+                          {AGENT_HIERARCHY.execution.agents.map((agent, i) => {
+                            // Spread spread RIGHT (-80 to 80 degrees) - STAGGERED
+                            const total =
+                              AGENT_HIERARCHY.execution.agents.length;
+                            const spread = 150 * (Math.PI / 180);
+                            const start = -75 * (Math.PI / 180);
+                            const step = total > 1 ? spread / (total - 1) : 0;
+                            const angle = start + step * i;
+                            // SYNCED WITH NODES
+                            const radius = 180 + 90 * (i % 2); 
+                            const cx = 180; 
+                            const cy = 250;
+                            const x = cx + Math.cos(angle) * radius * 1.6; // Wider spread matched
+                            const y = cy + Math.sin(angle) * radius * 1.0;
+
+                            return (
+                              <g key={i}>
+                                <path
+                                  d={`M 180 250 Q ${(180 + x) / 2} ${(250 + y) / 2 + 20}, ${x} ${y}`}
+                                  stroke="url(#execGrad)"
+                                  strokeWidth="1.5"
+                                  fill="none"
+                                  opacity="0.5"
+                                />
+                                <circle r="2" fill="#66BB6A">
+                                  <animateMotion
+                                    dur={`${2.5 + (i % 3)}s`}
+                                    repeatCount="indefinite"
+                                    path={`M 180 250 Q ${(180 + x) / 2} ${(250 + y) / 2 + 20}, ${x} ${y}`}
+                                  />
+                                </circle>
+                              </g>
+                            );
+                          })}
+                        </svg>
+
+                        {AGENT_HIERARCHY.execution.agents.map((agent, i) => {
+                          // Spread spread RIGHT (-80 to 80 degrees) - STAGGERED
+                          const total = AGENT_HIERARCHY.execution.agents.length;
+                          // Non-adjacent active selection
+                          const activeIdx = highlightIndex % total;
+                          const isActive = [
+                            activeIdx,
+                            (activeIdx + Math.floor(total / 3)) % total,
+                            (activeIdx + Math.floor((2 * total) / 3)) % total,
+                          ].includes(i);
+
+                          const spread = 150 * (Math.PI / 180);
+                          const start = -75 * (Math.PI / 180);
+                          const step = total > 1 ? spread / (total - 1) : 0;
+                          const angle = start + step * i;
+                          // Increased spacing
+                          const radius = 180 + 90 * (i % 2); 
+                          const cx = 180; // New Hub X
+                          const cy = 250;
+                          const x = cx + Math.cos(angle) * radius * 1.6; // Wider spread
+                          const y = cy + Math.sin(angle) * radius * 1.0;
+
+                          const xP = (x / 500) * 100;
+                          const yP = (y / 600) * 100;
+
+                          return (
+                            <Box
+                              key={agent.id}
+                              onClick={() => handleAgentSelect(agent)}
+                              sx={{
+                                position: "absolute",
+                                left: `${xP}%`,
+                                top: `${yP}%`,
+                                transform: "translate(-50%, -50%)",
+                                display: "flex",
+                                flexDirection: "column", // STACK VERTICALLY
+                                alignItems: "center",
+                                zIndex: isActive ? 50 : 20, // High Z
+                                cursor: "pointer",
+                                animation: `popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards`,
+                                animationDelay: `${i * 0.1 + 0.5}s`,
+                                "&:hover .box": {
+                                  transform: "scale(1.2)",
+                                  bgcolor: "#66BB6A",
+                                  color: "black",
+                                  boxShadow: "0 0 20px #66BB6A",
+                                },
+                                "&:hover .label": {
+                                  opacity: 1,
+                                  transform: "translate(-50%, 0)",
+                                  color: "white",
+                                },
+
+                                // ACTIVE STATE
+                                "& .box": isActive
+                                  ? {
+                                      animation: "pulseGreen 2s infinite",
+                                    }
+                                  : {},
+                                "& .label": {
+                                  opacity: isActive ? 1 : 0,
+                                  transform: isActive
+                                    ? "translate(-50%, 0)"
+                                    : "translate(-50%, -10px)",
+                                  transition: "all 0.5s ease",
+                                  pointerEvents: "none",
+                                },
+                              }}
+                            >
                               <Box
+                                className="box"
                                 sx={{
+                                  width: "56px",
+                                  height: "56px",
+                                  borderRadius: "50%",
+                                  overflow: "hidden", // CLIP IMAGES
+                                  background: "rgba(10, 25, 41, 0.95)",
+                                  border: "1px solid #66BB6A",
+                                  boxShadow:
+                                    "0 0 15px rgba(102, 187, 106, 0.3)",
                                   display: "flex",
+                                  alignItems: "center",
                                   justifyContent: "center",
+                                  color: "#66BB6A",
+                                  transition: "all 0.2s ease",
+                                  position: "relative",
+                                  zIndex: 2,
                                 }}
                               >
-                                <Chip
-                                  label={agent.stats}
-                                  size="small"
-                                  sx={{
-                                    background: alpha(agent.color, 0.1),
-                                    color: agent.color,
-                                    fontWeight: 600,
-                                    border: `1px solid ${alpha(
-                                      agent.color,
-                                      0.2
-                                    )}`,
-                                  }}
-                                />
+                                <agent.icon sx={{ fontSize: 28 }} />
                               </Box>
-                            </CardContent>
-                          </CardActionArea>
-                        </Card>
-                      </Grow>
-                    </Grid>
-                  );
-                })}
-              </Grid>
+                              <Typography
+                                className="label"
+                                variant="caption"
+                                sx={{
+                                  position: "absolute",
+                                  top: "65px", // FLOAT BELOW
+                                  left: "50%",
+                                  transform: "translate(-50%, -10px)", // Start offset
+                                  width: "max-content", // ADAPT TO TEXT
+                                  maxWidth: "140px",
+                                  color: "#e2e8f0",
+                                  fontSize: "0.85rem",
+                                  fontWeight: 700,
+                                  textAlign: "center",
+                                  lineHeight: 1.2,
+                                  background: "rgba(15, 23, 42, 0.9)",
+                                  px: 1.5,
+                                  py: 0.5,
+                                  borderRadius: 2,
+                                  border: "1px solid rgba(102, 187, 106, 0.3)",
+                                  zIndex: 1,
+                                }}
+                              >
+                                {agent.title.replace(" Engine", "")}
+                              </Typography>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+
+                      {/* HEADER MOVED TO BOTTOM RIGHT TO AVOID OVERLAP */}
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          color: "#66BB6A",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: 2,
+                          position: "absolute",
+                          bottom: "40px",
+                          right: "40px",
+                          width: "180px",
+                          textAlign: "right",
+                          zIndex: 10,
+                          mb:-9,
+                        }}
+                      >
+                        Execution Agents
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              {/* <Box
+                sx={{
+                  position: "absolute",
+                  bottom: "-100px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                }}
+              >
+                <ConnectionLine vertical height="100px" />
+              </Box> */}
             </Box>
-          </Box>
+          </Fade>
+
+          {/* SECTION 4: THE BUILDERS (Engines) */}
+          <Fade in={mounted} timeout={1800}>
+            <Box sx={{ mb: 16, position: "relative" }}>
+              <Typography
+                variant="h3"
+                sx={{
+                  textAlign: "center",
+                  color: "white",
+                  fontWeight: 800,
+                  mb: 1,
+                }}
+              >
+                Execution Core
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{ textAlign: "center", color: "#64748b", mb: 8 }}
+              >
+                12 Deterministic Engines Powering the Solution
+              </Typography>
+
+              {/* UNIFIED ENGINE CORE LAYOUT */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  maxWidth: "1400px",
+                  mx: "auto",
+                  gap: 3,
+                  position: "relative",
+                  p: 4,
+                  // GLOBAL PERSPECTIVE
+                  perspective: "1000px"
+                }}
+              >
+                 {/* 1. GLOBAL BACKGROUND MACHINE (The "Wow" Factor) */}
+                 <Box sx={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none", opacity: 0.1 }}>
+                     {/* Massive Central Gear */}
+                     <SettingsIcon sx={{
+                         position: "absolute", top: "50%", left: "50%", 
+                         fontSize: "800px", color: "#64748b",
+                         transform: "translate(-50%, -50%)",
+                         animation: "spin 60s linear infinite"
+                     }} />
+                     {/* Secondary Interlocking Gears */}
+                     <GearIcon sx={{
+                         position: "absolute", top: "10%", right: "10%", 
+                         fontSize: "400px", color: "#475569",
+                         animation: "spin 40s linear infinite reverse"
+                     }} />
+                     <SettingsIcon sx={{
+                         position: "absolute", bottom: "10%", left: "10%", 
+                         fontSize: "500px", color: "#475569",
+                         animation: "spin 50s linear infinite reverse"
+                     }} />
+                 </Box>
+
+                 {/* Connection cables layer */}
+                 <Box sx={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+                      {/* Main Power Rail */}
+                      <Box sx={{
+                          position: "absolute", top: "50%", left: "2%", right: "2%", height: "4px",
+                          background: "linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.2), rgba(255,255,255,0.05))",
+                          boxShadow: "0 0 20px rgba(0,229,255,0.1)",
+                          borderRadius: "4px"
+                      }} />
+                 </Box>
+
+                {DETERMINISTIC_ENGINES.map((engine, index) => (
+                    <Grow in={mounted} timeout={1500 + index * 100} key={engine.id}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          width: "300px",
+                          height: "160px",
+                          position: "relative",
+                          overflow: "visible", // For glow effects
+                          borderRadius: "16px",
+                          // SLEEK GLASSMORPHISM
+                          background: `linear-gradient(145deg, ${alpha(engine.color, 0.1)} 0%, rgba(15, 23, 42, 0.8) 100%)`,
+                          border: "1px solid rgba(255, 255, 255, 0.08)",
+                          backdropFilter: "blur(12px)",
+                          display: "flex",
+                          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                          zIndex: 1,
+                          
+                          "&:hover": {
+                            transform: "translateY(-8px) scale(1.02)",
+                            border: `1px solid ${alpha(engine.color, 0.6)}`,
+                            boxShadow: `0 20px 40px -10px ${alpha(engine.color, 0.3)}`,
+                            zIndex: 10,
+                            "& .maglev-piston": { boxShadow: `0 0 20px ${engine.color}` }
+                          },
+
+                          // Fiber Optic Connections
+                          "&::before": index % 4 !== 0 ? {
+                              content: '""', position: "absolute", left: "-24px", top: "50%", width: "24px", height: "2px",
+                              background: `linear-gradient(90deg, ${alpha(engine.color, 0.5)}, ${alpha(engine.color, 0.1)})`,
+                              zIndex: -1,
+                              boxShadow: `0 0 10px ${alpha(engine.color, 0.4)}`
+                          } : {},
+
+                          "&::after": index < 8 ? {
+                               content: '""', position: "absolute", bottom: "-24px", left: "50%", width: "2px", height: "24px",
+                               background: `linear-gradient(180deg, ${alpha(engine.color, 0.5)}, ${alpha(engine.color, 0.1)})`,
+                               zIndex: -1,
+                               transform: "translateX(-50%)",
+                               boxShadow: `0 0 10px ${alpha(engine.color, 0.4)}`
+                          } : {},
+                        }}
+                      > 
+                         {/* Connection Nodes */}
+                         {index % 4 !== 0 && <Box sx={{ 
+                             position: "absolute", left: -3, top: "calc(50% - 3px)", width: 6, height: 6, 
+                             borderRadius: "50%", background: engine.color, boxShadow: `0 0 10px ${engine.color}` 
+                         }} />}
+
+                         {/* LEFT: INFO & STATUS */}
+                         <Box sx={{ flex: 1, p: 3, display: "flex", flexDirection: "column", zIndex: 2, justifyContent: "center" }}>
+                            
+                            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                                <engine.icon sx={{ color: engine.color, fontSize: 32, filter: `drop-shadow(0 0 10px ${engine.color})` }} />
+                            </Box>
+                            
+                            <Typography variant="h6" sx={{ 
+                                fontWeight: 800, color: "white", fontSize: "1.1rem", mb: 1,
+                                letterSpacing: 0.5, textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                                textTransform: "uppercase"
+                            }}>
+                                {engine.title.replace(" Engine", "").replace(" Orchestrator", "")}
+                            </Typography>
+                            
+                            <Typography variant="body2" sx={{ color: "#cbd5e1", fontSize: "0.85rem", lineHeight: 1.5, opacity: 0.9 }}>
+                                {engine.desc}
+                            </Typography>
+
+                         </Box>
+
+                         {/* RIGHT: MAGLEV PISTON CHAMBER */}
+                         <Box sx={{ 
+                             width: "48px", 
+                             background: "rgba(0,0,0,0.2)",
+                             borderLeft: "1px solid rgba(255,255,255,0.05)",
+                             position: "relative",
+                             display: "flex", justifyContent: "center", alignItems: "center"
+                         }}>
+                             {/* The Glass Tube */}
+                             <Box sx={{
+                                 width: "8px", height: "80%",
+                                 borderRadius: "4px",
+                                 background: "rgba(255,255,255,0.05)",
+                                 boxShadow: "inset 0 0 10px rgba(0,0,0,0.5)",
+                                 position: "relative"
+                             }}>
+                                 {/* Floating Maglev Piston */}
+                                 <Box className="maglev-piston" sx={{
+                                     position: "absolute", left: -2, right: -2, height: "12px",
+                                     borderRadius: "4px",
+                                     background: engine.color,
+                                     boxShadow: `0 0 15px ${engine.color}`,
+                                     animation: `pistonPump ${2 + Math.random()}s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate`
+                                 }} />
+                             </Box>
+                         </Box>
+
+                      </Paper>
+                    </Grow>
+                ))}
+              </Box>
+            </Box>
+          </Fade>
+
+          {/* SECTION 5: REAL WORLD IMPACT (Success Stories) - Premium Design */}
+          <Fade in={mounted} timeout={2200}>
+            <Box
+              sx={{
+                mb: 12,
+                position: "relative",
+                py: 10,
+                overflow: "hidden",
+                // Animated gradient background
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 229, 255, 0.08) 0%, transparent 70%)",
+                  animation: "breatheGlow 8s ease-in-out infinite",
+                },
+                "@keyframes breatheGlow": {
+                  "0%, 100%": { opacity: 0.5, transform: "scale(1)" },
+                  "50%": { opacity: 1, transform: "scale(1.1)" },
+                },
+                // Floating particles
+                "@keyframes floatParticle": {
+                  "0%, 100%": {
+                    transform: "translateY(0) translateX(0)",
+                    opacity: 0.3,
+                  },
+                  "25%": {
+                    transform: "translateY(-20px) translateX(10px)",
+                    opacity: 0.8,
+                  },
+                  "50%": {
+                    transform: "translateY(-10px) translateX(-5px)",
+                    opacity: 0.5,
+                  },
+                  "75%": {
+                    transform: "translateY(-30px) translateX(5px)",
+                    opacity: 0.7,
+                  },
+                },
+                "@keyframes shimmer": {
+                  "0%": { backgroundPosition: "-200% 0" },
+                  "100%": { backgroundPosition: "200% 0" },
+                },
+                "@keyframes cardFloat": {
+                  "0%, 100%": { transform: "translateY(0)" },
+                  "50%": { transform: "translateY(-8px)" },
+                },
+                "@keyframes iconPulse": {
+                  "0%, 100%": { boxShadow: "0 0 20px rgba(0, 229, 255, 0.4)" },
+                  "50%": { boxShadow: "0 0 40px rgba(0, 229, 255, 0.8)" },
+                },
+                "@keyframes borderGlow": {
+                  "0%, 100%": { borderColor: "rgba(0, 229, 255, 0.2)" },
+                  "50%": { borderColor: "rgba(0, 229, 255, 0.5)" },
+                },
+              }}
+            >
+              {/* Floating Particles Background */}
+              {[...Array(12)].map((_, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    position: "absolute",
+                    width: 4 + (i % 3) * 2,
+                    height: 4 + (i % 3) * 2,
+                    borderRadius: "50%",
+                    background: i % 2 === 0 ? "#00E5FF" : "#66BB6A",
+                    left: `${8 + i * 8}%`,
+                    top: `${20 + (i % 4) * 20}%`,
+                    animation: `floatParticle ${4 + (i % 3)}s ease-in-out infinite`,
+                    animationDelay: `${i * 0.3}s`,
+                    filter: "blur(1px)",
+                    zIndex: 0,
+                  }}
+                />
+              ))}
+
+
+              {/* Header */}
+              <Box sx={{ textAlign: "center", mb: 8, position: "relative", zIndex: 2 }}>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      fontWeight: 800,
+                      color: "white",
+                      letterSpacing: -1,
+                      mb: 2,
+                      textShadow: "0 0 40px rgba(0, 229, 255, 0.3)",
+                    }}
+                  >
+                    Real-World Impact
+                  </Typography>
+                  <Box
+                    sx={{
+                      width: "80px",
+                      height: "6px",
+                      background: "linear-gradient(90deg, #00E5FF, #00B8D4)",
+                      mx: "auto",
+                      borderRadius: "3px",
+                      boxShadow: "0 0 15px rgba(0, 229, 255, 0.5)",
+                    }}
+                  />
+              </Box>
+
+              {/* PERFECTLY ALIGNED GRID */}
+              {/* PERFECTLY ALIGNED FLEX LAYOUT */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: 4, // 32px gap
+                  maxWidth: "1400px",
+                  mx: "auto",
+                  px: 2,
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                {SUCCESS_STORIES.map((story, index) => (
+                   <Grow in={mounted} timeout={1000 + index * 200} key={index}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          width: "380px", // FIXED WIDTH
+                          height: "420px", // Taller for better layout
+                          position: "relative",
+                          overflow: "hidden",
+                          borderRadius: "32px", // Softer corners
+                          background: "#0F172A", // Deep Slate
+                          border: "1px solid rgba(255, 255, 255, 0.05)",
+                          display: "flex",
+                          flexDirection: "column",
+                          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                          cursor: "pointer",
+                          m: 0,
+                          flexShrink: 0,
+                          
+                          "&:hover": {
+                              transform: "translateY(-12px) scale(1.02)",
+                              boxShadow: `0 20px 50px -10px ${story.color}40`, // Colored Shadow
+                              border: `1px solid ${story.color}60`,
+                              "& .icon-bg": { transform: "scale(15) rotate(15deg)", opacity: 0.1 },
+                              "& .floating-icon": { transform: "scale(1.2) rotate(-10deg) translateY(-5px)" }
+                          }
+                        }}
+                      >
+                          {/* 1. Creative Dynamic Header */}
+                          <Box sx={{
+                              height: "140px",
+                              position: "relative",
+                              overflow: "hidden",
+                              background: `linear-gradient(135deg, ${story.color}15 0%, transparent 100%)`,
+                              borderBottom: "1px solid rgba(255,255,255,0.05)",
+                              p: 3,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start"
+                          }}>
+                              {/* Giant Expanding Background Icon (Decorative) */}
+                              <story.icon className="icon-bg" sx={{
+                                  position: "absolute",
+                                  right: "-20px", top: "-20px",
+                                  fontSize: "140px",
+                                  color: story.color,
+                                  opacity: 0.05,
+                                  transition: "all 0.6s ease",
+                                  zIndex: 0
+                              }} />
+
+                              {/* Stat Chip */}
+                              <Box sx={{
+                                  backdropFilter: "blur(10px)",
+                                  background: "rgba(0,0,0,0.4)",
+                                  border: `1px solid ${story.color}40`,
+                                  borderRadius: "12px",
+                                  px: 1.5, py: 0.5,
+                                  zIndex: 1,
+                                  display: "flex", alignItems: "center", gap: 1
+                              }}>
+                                  <Box sx={{ width: 6, height: 6, borderRadius: "50%", background: story.color }} />
+                                  <Typography variant="caption" sx={{ color: "white", fontWeight: 700, letterSpacing: 0.5 }}>
+                                      {story.stat}
+                                  </Typography>
+                              </Box>
+
+                              {/* Floating 3D Icon Badge */}
+                              <Box className="floating-icon" sx={{
+                                  width: "64px", height: "64px",
+                                  borderRadius: "20px",
+                                  background: `linear-gradient(135deg, ${story.color} 0%, #1e293b 100%)`, // Solid gradient
+                                  boxShadow: `0 10px 20px -5px ${story.color}60`,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  color: "white",
+                                  zIndex: 2,
+                                  transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
+                              }}>
+                                  <story.icon sx={{ fontSize: 32 }} />
+                              </Box>
+                          </Box>
+
+                          {/* 2. Content Body */}
+                          <Box sx={{ p: 3, pt: 2, flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
+                              
+                              {/* Client Label */}
+                              <Typography variant="caption" sx={{ color: story.color, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", mb: 1 }}>
+                                  {story.client}
+                              </Typography>
+
+                              {/* Title */}
+                              <Typography variant="h5" sx={{ 
+                                  color: "white", fontWeight: 700, mb: 2, lineHeight: 1.2,
+                                  fontSize: "1.35rem"
+                              }}>
+                                  {story.title}
+                              </Typography>
+
+                              {/* Description */}
+                              <Typography variant="body2" sx={{ 
+                                  color: "#94a3b8", mb: 3, lineHeight: 1.6, flex: 1
+                              }}>
+                                  {story.desc}
+                              </Typography>
+
+                              {/* 3. Impact Footer */}
+                             <Box sx={{
+                                  mt: "auto",
+                                  pt: 2,
+                                  borderTop: "1px dashed rgba(255,255,255,0.1)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between"
+                             }}>
+                                  <Box>
+                                      <Typography variant="h3" sx={{ 
+                                          fontWeight: 800, color: "white", 
+                                          fontSize: "2rem", letterSpacing: -1,
+                                          background: `linear-gradient(90deg, white, ${story.color})`,
+                                          WebkitBackgroundClip: "text",
+                                          WebkitTextFillColor: "transparent"
+                                      }}>
+                                          {story.impact}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>
+                                          {story.impactLabel}
+                                      </Typography>
+                                  </Box>
+                                  
+                                  {/* Arrow Button */}
+                                  <Box sx={{
+                                      width: 40, height: 40, borderRadius: "50%",
+                                      border: "1px solid rgba(255,255,255,0.1)",
+                                      display: "flex", alignItems: "center", justifyContent: "center",
+                                      color: story.color,
+                                      transition: "all 0.2s"
+                                  }}>
+                                      <ArrowBackIcon sx={{ transform: "rotate(180deg)" }} />
+                                  </Box>
+                             </Box>
+                          </Box>
+                      </Paper>
+                   </Grow>
+                ))}
+              </Box>
+            </Box>
+          </Fade>
         </Container>
 
         {/* Upload Dialog */}
@@ -1536,7 +3041,7 @@ export default function ConfiguratorPage() {
                     p: 6,
                     background: `linear-gradient(135deg, ${alpha(
                       "#0d1b2a",
-                      0.9
+                      0.9,
                     )} 0%, ${alpha("#1b263b", 0.85)} 100%)`,
                     position: "relative",
                   }}
@@ -1551,13 +3056,13 @@ export default function ConfiguratorPage() {
                       bottom: 0,
                       backgroundImage: `radial-gradient(circle at 20% 50%, ${alpha(
                         selectedAgent?.color || "#2196F3",
-                        0.03
+                        0.03,
                       )} 0%, transparent 50%), radial-gradient(circle at 80% 20%, ${alpha(
                         selectedAgent?.color || "#2196F3",
-                        0.03
+                        0.03,
                       )} 0%, transparent 50%), radial-gradient(circle at 40% 80%, ${alpha(
                         selectedAgent?.color || "#2196F3",
-                        0.02
+                        0.02,
                       )} 0%, transparent 50%)`,
                       zIndex: 0,
                     }}
@@ -1771,11 +3276,11 @@ export default function ConfiguratorPage() {
                         background: dragActive
                           ? `linear-gradient(135deg, ${alpha(
                               "#1b263b",
-                              0.95
+                              0.95,
                             )}, ${alpha("#2d4f73", 0.8)})`
                           : `linear-gradient(135deg, ${alpha(
                               "#1b263b",
-                              0.9
+                              0.9,
                             )}, ${alpha("#0d1b2a", 0.95)})`,
                         border: dragActive
                           ? `2px solid ${selectedAgent?.color}`
@@ -1783,11 +3288,11 @@ export default function ConfiguratorPage() {
                         boxShadow: dragActive
                           ? `0 35px 50px ${alpha(
                               selectedAgent?.color || "#ccc",
-                              0.15
+                              0.15,
                             )}, 0 0 0 1px ${alpha("#1b263b", 0.2)} inset`
                           : `0 8px 32px ${alpha(
                               "#000",
-                              0.2
+                              0.2,
                             )}, 0 0 0 1px ${alpha("#1b263b", 0.1)} inset`,
                         transition:
                           "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
@@ -1798,10 +3303,10 @@ export default function ConfiguratorPage() {
                           transform: "translateY(-8px) scale(1.01)",
                           boxShadow: `0 32px 64px ${alpha(
                             selectedAgent?.color || "#000",
-                            0.12
+                            0.12,
                           )}, 0 0 0 1px ${alpha(
                             selectedAgent?.color || "#64b5f6",
-                            0.2
+                            0.2,
                           )} inset`,
                           border: `2px solid ${selectedAgent?.color}`,
                           "& .upload-icon": {
@@ -1820,7 +3325,7 @@ export default function ConfiguratorPage() {
                           bottom: 0,
                           background: `radial-gradient(circle at center, ${alpha(
                             selectedAgent?.color || "#2196F3",
-                            0.03
+                            0.03,
                           )}, transparent 70%)`,
                           opacity: dragActive ? 1 : 0,
                           transition: "opacity 0.3s ease",
@@ -1863,7 +3368,7 @@ export default function ConfiguratorPage() {
                             mb: 4,
                             boxShadow: `0 16px 32px ${alpha(
                               selectedAgent?.color || "#2196F3",
-                              0.25
+                              0.25,
                             )}, 0 0 0 4px ${alpha("#64b5f6", 0.3)} inset`,
                             transform: dragActive
                               ? "scale(1.1) rotate(10deg)"
@@ -1961,7 +3466,7 @@ export default function ConfiguratorPage() {
                               sx={{
                                 background: `linear-gradient(135deg, ${alpha(
                                   type.color,
-                                  0.08
+                                  0.08,
                                 )}, ${alpha(type.color, 0.12)})`,
                                 color: type.color,
                                 border: `1px solid ${alpha(type.color, 0.2)}`,
@@ -1975,12 +3480,12 @@ export default function ConfiguratorPage() {
                                 "&:hover": {
                                   background: `linear-gradient(135deg, ${alpha(
                                     type.color,
-                                    0.15
+                                    0.15,
                                   )}, ${alpha(type.color, 0.2)})`,
                                   transform: "translateY(-2px) scale(1.05)",
                                   boxShadow: `0 8px 20px ${alpha(
                                     type.color,
-                                    0.25
+                                    0.25,
                                   )}`,
                                 },
                               }}
@@ -2001,7 +3506,7 @@ export default function ConfiguratorPage() {
                     p: 6,
                     background: `linear-gradient(135deg, ${alpha(
                       "#0d1b2a",
-                      0.9
+                      0.9,
                     )} 0%, ${alpha("#1b263b", 0.85)} 100%)`,
                   }}
                 >
@@ -2035,11 +3540,11 @@ export default function ConfiguratorPage() {
                               overflow: "hidden",
                               border: `2px solid ${alpha(
                                 selectedAgent?.color || "#ccc",
-                                0.1
+                                0.1,
                               )}`,
                               background: `linear-gradient(135deg, ${alpha(
                                 "#1b263b",
-                                0.8
+                                0.8,
                               )} 0%, ${alpha("#2d4f73", 0.6)} 100%)`,
                               backdropFilter: "blur(10px)",
                               transition:
@@ -2048,11 +3553,11 @@ export default function ConfiguratorPage() {
                                 transform: "translateY(-4px) scale(1.02)",
                                 boxShadow: `0 20px 40px ${alpha(
                                   selectedAgent?.color || "#000",
-                                  0.12
+                                  0.12,
                                 )}`,
                                 border: `2px solid ${alpha(
                                   selectedAgent?.color || "#ccc",
-                                  0.3
+                                  0.3,
                                 )}`,
                               },
                             }}
@@ -2084,7 +3589,7 @@ export default function ConfiguratorPage() {
                                       file.type === "application/pdf"
                                         ? "#2196F3"
                                         : selectedAgent?.color || "#2196F3",
-                                      0.3
+                                      0.3,
                                     )}`,
                                   }}
                                 >
@@ -2218,7 +3723,7 @@ export default function ConfiguratorPage() {
                         sx={{
                           borderColor: alpha(
                             selectedAgent?.color || "#ccc",
-                            0.5
+                            0.5,
                           ),
                           color: selectedAgent?.color || "#2196F3",
                           px: 4,
@@ -2231,12 +3736,12 @@ export default function ConfiguratorPage() {
                             borderColor: selectedAgent?.color || "#2196F3",
                             background: alpha(
                               selectedAgent?.color || "#2196F3",
-                              0.05
+                              0.05,
                             ),
                             transform: "translateY(-2px)",
                             boxShadow: `0 8px 20px ${alpha(
                               selectedAgent?.color || "#2196F3",
-                              0.15
+                              0.15,
                             )}`,
                           },
                           transition: "all 0.3s ease",
@@ -2327,7 +3832,7 @@ export default function ConfiguratorPage() {
                               uploadProgress > index * 25 ? "white" : "#b3e5fc",
                           }}
                         />
-                      )
+                      ),
                     )}
                   </Stack>
                 </Box>
@@ -2446,7 +3951,7 @@ export default function ConfiguratorPage() {
                   borderRadius: 3,
                   boxShadow: `0 6px 20px ${alpha(
                     selectedAgent?.color || "#2196F3",
-                    0.3
+                    0.3,
                   )}`,
                   "&:hover": {
                     background: selectedAgent?.gradient,
@@ -2454,7 +3959,7 @@ export default function ConfiguratorPage() {
                     transform: "translateY(-3px)",
                     boxShadow: `0 8px 25px ${alpha(
                       selectedAgent?.color || "#2196F3",
-                      0.4
+                      0.4,
                     )}`,
                   },
                   "&:disabled": {
@@ -2668,7 +4173,7 @@ export default function ConfiguratorPage() {
                             borderRadius: 3,
                             border: `2px solid ${alpha(
                               getAgentTypeColor(collection.name),
-                              0.2
+                              0.2,
                             )}`,
                             background: alpha("#0d1b2a", 0.6),
                             backdropFilter: "blur(10px)",
@@ -2678,10 +4183,10 @@ export default function ConfiguratorPage() {
                               transform: "translateY(-4px)",
                               boxShadow: `0 12px 25px ${alpha(
                                 getAgentTypeColor(collection.name),
-                                0.15
+                                0.15,
                               )}`,
                               border: `2px solid ${getAgentTypeColor(
-                                collection.name
+                                collection.name,
                               )}`,
                             },
                             "&::before": {
@@ -2708,7 +4213,7 @@ export default function ConfiguratorPage() {
                               label={formatCollectionName(collection.name)}
                               sx={{
                                 backgroundColor: getAgentTypeColor(
-                                  collection.name
+                                  collection.name,
                                 ),
                                 color: "white",
                                 fontWeight: 600,
