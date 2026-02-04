@@ -1337,6 +1337,25 @@ export default function ConfiguratorPage() {
             <Box sx={{ textAlign: "center", mt: 6, mb: 8 }}>
               {/* Header Title Removed */}
 
+
+              <Typography
+                variant="h1"
+                sx={{
+                  fontWeight: 900,
+                  fontSize: { xs: "3rem", md: "5rem" },
+                  mb: 4,
+                  letterSpacing: -2,
+                  background:
+                    "linear-gradient(135deg, #FFF 30%, #29B6F6 90%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  textShadow: "0 0 40px rgba(41, 182, 246, 0.3)",
+                  animation: "fadeInUp 1s ease-out",
+                }}
+              >
+                MiFiX.ai
+              </Typography>
+
               <Box
                 sx={{
                   display: "inline-flex",
