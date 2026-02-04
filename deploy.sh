@@ -77,7 +77,7 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" << EOF
     -p 3500:3000 \
     --restart unless-stopped \
     -e NODE_ENV=production \
-    -e NEXT_PUBLIC_API_BASE_URL=https://supervisory-dev.mifix.io \
+    -e NEXT_PUBLIC_API_BASE_URL=https://mifixai-backend.mifix.io\
     -e NEXT_PUBLIC_UPLOAD_API_URL=https://supervisory-dev.mifix.io/upload \
     -e NEXT_PUBLIC_EVENT_API_URL=http://15.207.209.61:8400/executor/events \
     -e NEXT_PUBLIC_CONNECTION_ID=c132d635-7392-4856-a2ce-077f5482e88b \

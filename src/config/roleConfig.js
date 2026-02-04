@@ -51,6 +51,8 @@ export const ROUTE_ACCESS = {
     configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER], // Super Admin and Tester
     productConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
     creConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
+    workflow_configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER],
+    retriever_configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER],
     accessControl: [ROLES.SUPER_ADMIN], // Admin only
     settings: [ROLES.SUPER_ADMIN], // Admin only
     userManagement: [ROLES.SUPER_ADMIN], // Admin only
@@ -86,12 +88,20 @@ export const MENU_ITEMS = [
     path: "/leads",
   },
   {
-    id: "configurator",
-    label: "Configurator",
+    id: "workflow_configurator",
+    label: "Workflow Configurator",
+    icon: "ConfiguratorIcon",
+    color: "#210c82ff",
+    roles: [ROLES.SUPER_ADMIN, ROLES.TESTER],
+    path: "/configurator/ui",
+  },
+   {
+    id: "retriever_configurator",
+    label: "Retriever Configurator",
     icon: "ConfiguratorIcon",
     color: "#1976d2",
     roles: [ROLES.SUPER_ADMIN, ROLES.TESTER],
-    path: "/configurator",
+    path: "/configurator/retriever",
   },
   {
     id: "productConfigurator",
