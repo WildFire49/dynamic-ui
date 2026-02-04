@@ -161,7 +161,7 @@ const SUCCESS_STORIES = [
     desc: "AI-driven portfolio generation optimizing asset allocation based on risk profiles.",
     impact: "+24%",
     impactLabel: "Yield Increase",
-    stat: "$500M AUM",
+    stat: "500Cr AUM",
     color: "#FFA726", // Orange
     tags: ["AI", "Investment"],
   },
@@ -749,6 +749,79 @@ const AnimatedCounter = ({ value, duration = 3000 }) => {
   return <span>{count}</span>;
 };
 
+const PistonJoint = styled(Box, {
+  shouldForwardProp: (prop) =>
+    prop !== "vertical" && prop !== "color" && prop !== "delay",
+})(({ vertical, color }) => ({
+  position: "absolute",
+  zIndex: 0,
+  background: alpha(color, 0.2), // Increased visibility
+  overflow: "hidden",
+  border: `1px solid ${alpha(color, 0.4)}`, // Brighter border
+  // Glass effect for the tube
+  backdropFilter: "blur(4px)",
+  boxShadow: `inset 0 0 10px ${alpha(color, 0.3)}, 0 0 10px ${alpha(
+    color,
+    0.2,
+  )}`, // Outer glow
+  ...(vertical
+    ? {
+        bottom: "-26px", // Span the gap
+        left: "50%",
+        width: "16px",
+        height: "26px",
+        transform: "translateX(-50%)",
+        borderTop: "none",
+        borderBottom: "none",
+      }
+    : {
+        left: "-26px", // Span the gap
+        top: "50%",
+        width: "26px",
+        height: "16px",
+        transform: "translateY(-50%)",
+        borderLeft: "none",
+        borderRight: "none",
+      }),
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    // Brighter gradient center
+    background: `linear-gradient(${
+      vertical ? 180 : 90
+    }deg, ${color}, #ffffff, ${color})`,
+    // Intensified Glow
+    boxShadow: `0 0 20px ${color}, 0 0 40px ${color}`,
+    borderRadius: "2px",
+    opacity: 1, // Full opacity
+    ...(vertical
+      ? {
+          left: "2px",
+          right: "2px",
+          height: "40%",
+          top: "30%",
+          // FASTER ANIMATION (0.9s)
+          animation: `pumpV 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate`,
+        }
+      : {
+          top: "2px",
+          bottom: "2px",
+          width: "40%",
+          left: "30%",
+          // FASTER ANIMATION (0.9s)
+          animation: `pumpH 0.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate`,
+        }),
+  },
+  "@keyframes pumpH": {
+    "0%": { transform: "translateX(-120%) scaleX(0.8)" },
+    "100%": { transform: "translateX(120%) scaleX(0.8)" },
+  },
+  "@keyframes pumpV": {
+    "0%": { transform: "translateY(-120%) scaleY(0.8)" },
+    "100%": { transform: "translateY(120%) scaleY(0.8)" },
+  },
+}));
+
 const spinKeyframes = `
   @keyframes spin {
     from { transform: rotate(0deg); }
@@ -1320,7 +1393,7 @@ export default function ConfiguratorPage() {
                         letterSpacing: 0.5,
                       }}
                     >
-                      WITH 31 INTELLIGENT AGENTS
+                      WITH 32 INTELLIGENT AGENTS
                     </Typography>
                   </Box>
                 </Box>
@@ -2517,6 +2590,166 @@ export default function ConfiguratorPage() {
             </Box>
           </Fade>
 
+          {/* CONNECTING DATA STREAMS: AGENTS -> ENGINES */}
+          <Fade in={mounted} timeout={1700}>
+            <Box
+              sx={{
+                position: "relative",
+                height: "180px",
+                width: "100%",
+                overflow: "hidden",
+                mt: -10, // Pull up to overlap with agents
+                mb: -2, // Pull down to overlap with engines title
+                zIndex: 0,
+                pointerEvents: "none",
+              }}
+            >
+              <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 1440 180"
+                preserveAspectRatio="none"
+                style={{ position: "absolute", top: 0, left: 0 }}
+              >
+                <defs>
+                  <linearGradient id="streamGradLeft" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#29B6F6" stopOpacity="0" />
+                    <stop offset="50%" stopColor="#29B6F6" stopOpacity="0.6" />
+                    <stop offset="100%" stopColor="#29B6F6" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient
+                    id="streamGradRight"
+                    x1="1"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor="#66BB6A" stopOpacity="0" />
+                    <stop offset="50%" stopColor="#66BB6A" stopOpacity="0.6" />
+                    <stop offset="100%" stopColor="#66BB6A" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Left Stream (from Config Agents) */}
+                <path
+                  d="M 360 0 C 360 80, 680 80, 720 180"
+                  stroke="url(#streamGradLeft)"
+                  strokeWidth="3"
+                  fill="none"
+                  opacity="0.8"
+                >
+                  <animate
+                    attributeName="stroke-dasharray"
+                    from="0, 1000"
+                    to="1000, 0"
+                    dur="3s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.4;0.8;0.4"
+                    dur="4s"
+                    repeatCount="indefinite"
+                  />
+                </path>
+                {/* Secondary Left Stream */}
+                <path
+                  d="M 420 10 C 420 90, 700 90, 720 180"
+                  stroke="url(#streamGradLeft)"
+                  strokeWidth="1"
+                  fill="none"
+                  opacity="0.4"
+                >
+                  <animate
+                    attributeName="stroke-dasharray"
+                    from="0, 800"
+                    to="800, 0"
+                    dur="4.5s"
+                    repeatCount="indefinite"
+                  />
+                </path>
+
+                {/* Right Stream (from Execution Agents) */}
+                <path
+                  d="M 1080 0 C 1080 80, 760 80, 720 180"
+                  stroke="url(#streamGradRight)"
+                  strokeWidth="3"
+                  fill="none"
+                  opacity="0.8"
+                >
+                  <animate
+                    attributeName="stroke-dasharray"
+                    from="0, 1000"
+                    to="1000, 0"
+                    dur="3s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.4;0.8;0.4"
+                    dur="4s"
+                    repeatCount="indefinite"
+                  />
+                </path>
+                {/* Secondary Right Stream */}
+                <path
+                  d="M 1020 10 C 1020 90, 740 90, 720 180"
+                  stroke="url(#streamGradRight)"
+                  strokeWidth="1"
+                  fill="none"
+                  opacity="0.4"
+                >
+                  <animate
+                    attributeName="stroke-dasharray"
+                    from="0, 800"
+                    to="800, 0"
+                    dur="4.5s"
+                    repeatCount="indefinite"
+                  />
+                </path>
+
+                {/* Central Gathering Point (Pulse) */}
+                <circle cx="720" cy="180" r="0">
+                  <animate
+                    attributeName="r"
+                    values="0;40;0"
+                    dur="2s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.8;0"
+                    dur="2s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="fill"
+                    values="#29B6F6;#66BB6A"
+                    dur="2s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+
+                {/* Data Packets flowing down */}
+                <circle r="4" fill="#fff">
+                  <animateMotion
+                    dur="1.5s"
+                    repeatCount="indefinite"
+                    path="M 360 0 C 360 80, 680 80, 720 180"
+                  />
+                </circle>
+                <circle r="4" fill="#fff">
+                  <animateMotion
+                    dur="1.5s"
+                    begin="0.75s"
+                    repeatCount="indefinite"
+                    path="M 1080 0 C 1080 80, 760 80, 720 180"
+                  />
+                </circle>
+              </svg>
+            </Box>
+          </Fade>
+
           {/* SECTION 4: THE BUILDERS (Engines) */}
           <Fade in={mounted} timeout={1800}>
             <Box sx={{ mb: 16, position: "relative" }}>
@@ -2587,110 +2820,299 @@ export default function ConfiguratorPage() {
                  </Box>
 
                 {DETERMINISTIC_ENGINES.map((engine, index) => (
-                    <Grow in={mounted} timeout={1500 + index * 100} key={engine.id}>
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          width: "300px",
-                          height: "160px",
-                          position: "relative",
-                          overflow: "visible", // For glow effects
-                          borderRadius: "16px",
-                          // SLEEK GLASSMORPHISM
-                          background: `linear-gradient(145deg, ${alpha(engine.color, 0.1)} 0%, rgba(15, 23, 42, 0.8) 100%)`,
-                          border: "1px solid rgba(255, 255, 255, 0.08)",
-                          backdropFilter: "blur(12px)",
-                          display: "flex",
-                          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                          zIndex: 1,
-                          
-                          "&:hover": {
-                            transform: "translateY(-8px) scale(1.02)",
-                            border: `1px solid ${alpha(engine.color, 0.6)}`,
-                            boxShadow: `0 20px 40px -10px ${alpha(engine.color, 0.3)}`,
-                            zIndex: 10,
-                            "& .maglev-piston": { boxShadow: `0 0 20px ${engine.color}` }
+                  <Grow
+                    in={mounted}
+                    timeout={1500 + index * 100}
+                    key={engine.id}
+                  >
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        width: "300px",
+                        height: "160px",
+                        position: "relative",
+                        overflow: "visible", // For glow effects
+                        borderRadius: "16px",
+                        // SLEEK GLASSMORPHISM
+                        background: `linear-gradient(145deg, ${alpha(
+                          engine.color,
+                          0.1,
+                        )} 0%, rgba(15, 23, 42, 0.8) 100%)`,
+                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                        backdropFilter: "blur(12px)",
+                        display: "flex",
+                        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                        zIndex: 1,
+
+                        "&:hover": {
+                          transform: "translateY(-8px) scale(1.02)",
+                          border: `1px solid ${alpha(engine.color, 0.6)}`,
+                          boxShadow: `0 20px 40px -10px ${alpha(
+                            engine.color,
+                            0.3,
+                          )}`,
+                          zIndex: 10,
+                          "& .maglev-piston": {
+                            boxShadow: `0 0 20px ${engine.color}`,
                           },
+                        },
+                      }}
+                    >
+                      {/* CONNECTING PISTONS (Horizontal) */}
+                      {index % 4 !== 0 && (
+                        <PistonJoint
+                          color={engine.color}
+                          delay={index * 0.2}
+                        />
+                      )}
 
-                          // Fiber Optic Connections
-                          "&::before": index % 4 !== 0 ? {
-                              content: '""', position: "absolute", left: "-24px", top: "50%", width: "24px", height: "2px",
-                              background: `linear-gradient(90deg, ${alpha(engine.color, 0.5)}, ${alpha(engine.color, 0.1)})`,
-                              zIndex: -1,
-                              boxShadow: `0 0 10px ${alpha(engine.color, 0.4)}`
-                          } : {},
+                      {/* CONNECTING PISTONS (Vertical) - Linking rows */}
+                      {index < 8 && (
+                        <PistonJoint
+                          vertical
+                          color={engine.color}
+                          delay={index * 0.3}
+                        />
+                      )}
 
-                          "&::after": index < 8 ? {
-                               content: '""', position: "absolute", bottom: "-24px", left: "50%", width: "2px", height: "24px",
-                               background: `linear-gradient(180deg, ${alpha(engine.color, 0.5)}, ${alpha(engine.color, 0.1)})`,
-                               zIndex: -1,
-                               transform: "translateX(-50%)",
-                               boxShadow: `0 0 10px ${alpha(engine.color, 0.4)}`
-                          } : {},
+                      {/* Connection Nodes (Visual Anchors) */}
+                      {index % 4 !== 0 && (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            left: -4,
+                            top: "calc(50% - 4px)",
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: "#1e293b",
+                            border: `2px solid ${engine.color}`,
+                            boxShadow: `0 0 10px ${engine.color}`,
+                            zIndex: 2,
+                          }}
+                        />
+                      )}
+                      {index < 8 && (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            bottom: -4,
+                            left: "calc(50% - 4px)",
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: "#1e293b",
+                            border: `2px solid ${engine.color}`,
+                            boxShadow: `0 0 10px ${engine.color}`,
+                            zIndex: 2,
+                          }}
+                        />
+                      )}
+
+                      {/* LEFT: INFO & STATUS */}
+                      <Box
+                        sx={{
+                          flex: 1,
+                          p: 3,
+                          display: "flex",
+                          flexDirection: "column",
+                          zIndex: 2,
+                          justifyContent: "center",
                         }}
-                      > 
-                         {/* Connection Nodes */}
-                         {index % 4 !== 0 && <Box sx={{ 
-                             position: "absolute", left: -3, top: "calc(50% - 3px)", width: 6, height: 6, 
-                             borderRadius: "50%", background: engine.color, boxShadow: `0 0 10px ${engine.color}` 
-                         }} />}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            mb: 2,
+                          }}
+                        >
+                          <engine.icon
+                            sx={{
+                              color: engine.color,
+                              fontSize: 32,
+                              filter: `drop-shadow(0 0 10px ${engine.color})`,
+                            }}
+                          />
+                        </Box>
 
-                         {/* LEFT: INFO & STATUS */}
-                         <Box sx={{ flex: 1, p: 3, display: "flex", flexDirection: "column", zIndex: 2, justifyContent: "center" }}>
-                            
-                            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                                <engine.icon sx={{ color: engine.color, fontSize: 32, filter: `drop-shadow(0 0 10px ${engine.color})` }} />
-                            </Box>
-                            
-                            <Typography variant="h6" sx={{ 
-                                fontWeight: 800, color: "white", fontSize: "1.1rem", mb: 1,
-                                letterSpacing: 0.5, textShadow: "0 2px 4px rgba(0,0,0,0.5)",
-                                textTransform: "uppercase"
-                            }}>
-                                {engine.title.replace(" Engine", "").replace(" Orchestrator", "")}
-                            </Typography>
-                            
-                            <Typography variant="body2" sx={{ color: "#cbd5e1", fontSize: "0.85rem", lineHeight: 1.5, opacity: 0.9 }}>
-                                {engine.desc}
-                            </Typography>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 800,
+                            color: "white",
+                            fontSize: "1.1rem",
+                            mb: 1,
+                            letterSpacing: 0.5,
+                            textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {engine.title
+                            .replace(" Engine", "")
+                            .replace(" Orchestrator", "")}
+                        </Typography>
 
-                         </Box>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#cbd5e1",
+                            fontSize: "0.85rem",
+                            lineHeight: 1.5,
+                            opacity: 0.9,
+                          }}
+                        >
+                          {engine.desc}
+                        </Typography>
+                      </Box>
 
-                         {/* RIGHT: MAGLEV PISTON CHAMBER */}
-                         <Box sx={{ 
-                             width: "48px", 
-                             background: "rgba(0,0,0,0.2)",
-                             borderLeft: "1px solid rgba(255,255,255,0.05)",
-                             position: "relative",
-                             display: "flex", justifyContent: "center", alignItems: "center"
-                         }}>
-                             {/* The Glass Tube */}
-                             <Box sx={{
-                                 width: "8px", height: "80%",
-                                 borderRadius: "4px",
-                                 background: "rgba(255,255,255,0.05)",
-                                 boxShadow: "inset 0 0 10px rgba(0,0,0,0.5)",
-                                 position: "relative"
-                             }}>
-                                 {/* Floating Maglev Piston */}
-                                 <Box className="maglev-piston" sx={{
-                                     position: "absolute", left: -2, right: -2, height: "12px",
-                                     borderRadius: "4px",
-                                     background: engine.color,
-                                     boxShadow: `0 0 15px ${engine.color}`,
-                                     animation: `pistonPump ${2 + Math.random()}s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate`
-                                 }} />
-                             </Box>
-                         </Box>
-
-                      </Paper>
-                    </Grow>
+                      {/* RIGHT: MAGLEV PISTON CHAMBER */}
+                      <Box
+                        sx={{
+                          width: "48px",
+                          background: "rgba(0,0,0,0.2)",
+                          borderLeft: "1px solid rgba(255,255,255,0.05)",
+                          position: "relative",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        {/* The Glass Tube */}
+                        <Box
+                          sx={{
+                            width: "8px",
+                            height: "80%",
+                            borderRadius: "4px",
+                            background: "rgba(255,255,255,0.05)",
+                            boxShadow: "inset 0 0 10px rgba(0,0,0,0.5)",
+                            position: "relative",
+                          }}
+                        >
+                          {/* Floating Maglev Piston */}
+                          <Box
+                            className="maglev-piston"
+                            sx={{
+                              position: "absolute",
+                              left: -2,
+                              right: -2,
+                              height: "12px",
+                              borderRadius: "4px",
+                              background: engine.color,
+                              boxShadow: `0 0 15px ${engine.color}`,
+                              animation: `pistonPump ${
+                                2 + Math.random()
+                              }s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate`,
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    </Paper>
+                  </Grow>
                 ))}
               </Box>
             </Box>
           </Fade>
 
-          {/* SECTION 5: REAL WORLD IMPACT (Success Stories) - Premium Design */}
+          {/* CONNECTING STREAM: ENGINES -> OUTCOMES */}
+          <Fade in={mounted} timeout={2000}>
+            <Box
+              sx={{
+                position: "relative",
+                height: "120px",
+                width: "100%",
+                overflow: "hidden",
+                pointerEvents: "none",
+                zIndex: 0,
+                mt: -4,
+                mb: -4, // Overlap
+              }}
+            >
+              <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 1440 120"
+                preserveAspectRatio="none"
+                style={{ position: "absolute", inset: 0 }}
+              >
+                <defs>
+                  <linearGradient
+                    id="outcomeFlow"
+                    x1="0.5"
+                    y1="0"
+                    x2="0.5"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor="#29B6F6" stopOpacity="0" />
+                    <stop
+                      offset="50%"
+                      stopColor="#00E5FF"
+                      stopOpacity="0.8"
+                    />{" "}
+                    {/* Increased opacity */}
+                    <stop offset="100%" stopColor="#00E5FF" stopOpacity="0" />
+                  </linearGradient>
+                  <filter id="glow-stream">
+                    <feGaussianBlur
+                      stdDeviation="2"
+                      result="coloredBlur"
+                    />
+                    <feMerge>
+                      <feMergeNode in="coloredBlur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                {/* Multiple Flow Lines converging - THICKER & VISIBLE */}
+                {[0.2, 0.4, 0.6, 0.8].map((pos, i) => (
+                  <path
+                    key={i}
+                    d={`M ${pos * 1440} 0 C ${
+                      pos * 1440
+                    } 60, 720 40, 720 120`}
+                    stroke="url(#outcomeFlow)"
+                    strokeWidth="4" /* Thicker strokes */
+                    fill="none"
+                    opacity="0.8" /* Higher opacity */
+                    filter="url(#glow-stream)" /* Added Glow */
+                  >
+                    <animate
+                      attributeName="stroke-dasharray"
+                      from="0, 500"
+                      to="500, 0"
+                      dur={`${3 + i}s`}
+                      repeatCount="indefinite"
+                    />
+                  </path>
+                ))}
+
+                {/* Central Funnel Pulse */}
+                <circle
+                  cx="720"
+                  cy="120"
+                  r="20"
+                  fill="url(#outcomeFlow)"
+                  opacity="0.6"
+                >
+                  <animate
+                    attributeName="r"
+                    values="20;60;20"
+                    dur="4s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.6;0;0.6"
+                    dur="4s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              </svg>
+            </Box>
+          </Fade>
+
+          {/* SECTION 5: OUTCOMES (Success Stories) - Premium Design */}
           <Fade in={mounted} timeout={2200}>
             <Box
               sx={{
@@ -2781,7 +3203,7 @@ export default function ConfiguratorPage() {
                       textShadow: "0 0 40px rgba(0, 229, 255, 0.3)",
                     }}
                   >
-                    Real-World Impact
+                    Products Built with MiFiX Studio
                   </Typography>
                   <Box
                     sx={{
