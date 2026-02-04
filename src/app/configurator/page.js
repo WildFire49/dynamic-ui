@@ -134,7 +134,7 @@ const CONFIGURATOR_OPTIONS = [
 const SUCCESS_STORIES = [
   {
     title: "Swift Reconciliation",
-    client: "Bank of Baroda",
+    client: "PESU 1",
     icon: BankIcon,
     desc: "Automated reconciliation handling millions of transactions daily with near-zero latency.",
     impact: "10x",
@@ -2529,7 +2529,7 @@ export default function ConfiguratorPage() {
                   mb: 1,
                 }}
               >
-                Execution Core
+                Execution Engines
               </Typography>
               <Typography
                 variant="h6"
