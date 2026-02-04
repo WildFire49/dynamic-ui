@@ -37,6 +37,7 @@ import WelcomeIntroCard from "./WelcomeIntroCard";
 import DataSyncingCard from "./DataSyncingCard";
 import NoDataCard from "./NoDataCard";
 import ResponseFormatErrorCard from "./ResponseFormatErrorCard";
+import CreditLimitCard from "./CreditLimitCard";
 
 // Define keyframe animations
 const slideInRight = keyframes`
@@ -525,6 +526,15 @@ const ChatMessage = ({ message, index, onAction }) => {
     if (isOutOfScope) {
       const outOfScopeContent = safeResponse?.content || safeContent?.response?.content || safeContent?.content;
       const metadata = safeResponse?.metadata || safeContent?.response?.metadata || {};
+
+      // Check for token limit
+      const isTokenLimit = 
+        (typeof outOfScopeContent === 'string' && outOfScopeContent.includes("Token Limit")) ||
+        (metadata?.reason && metadata.reason.includes("Token Limit"));
+
+      if (isTokenLimit) {
+        return <CreditLimitCard message={outOfScopeContent} metadata={metadata} />;
+      }
       
       console.log("✅ MATCH: Rendering out_of_scope response", { outOfScopeContent, metadata });
       
