@@ -76,6 +76,7 @@ import {
   Group as GroupIcon,
   Settings as SettingsIcon,
   SettingsSuggest as GearIcon,
+  Agriculture as AgriIcon,
 } from "@mui/icons-material";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import BuildIcon from "@mui/icons-material/Build";
@@ -147,7 +148,7 @@ const SUCCESS_STORIES = [
     title: "Business Dashboard",
     client: "Enterprise",
     icon: DashboardIcon,
-    desc: "Consolidated real-time business metrics into a single source of truth for C-suite.",
+    desc: "Beautiful dynamic dashboard providing lightning-fast insights and a single source of truth.",
     impact: "10x",
     impactLabel: "Fast Insights",
     stat: "Real-time",
@@ -177,10 +178,10 @@ const SUCCESS_STORIES = [
     tags: ["E-com", "Social"],
   },
   {
-    title: "Field RM Tracker",
+    title: "Field RM Companion",
     client: "Sales Mgmt",
     icon: MapIcon,
-    desc: "Geo-fenced live tracking for field relationship managers improving visit efficiency.",
+    desc: "Geo-fenced live tracking for field RMs that also guides on what needs to be done next, improving visit efficiency.",
     impact: "35%",
     impactLabel: "Productivity",
     stat: "Live Tracking",
@@ -188,15 +189,15 @@ const SUCCESS_STORIES = [
     tags: ["Geo", "Sales"],
   },
   {
-    title: "Productivity AI",
-    client: "HR Tech",
-    icon: TimerIcon,
-    desc: "Employee analytics system identifying bottlenecks and optimizing workflow.",
+    title: "Individual Farmer Finance",
+    client: "Agri Sector",
+    icon: AgriIcon,
+    desc: "Facilitating RBG-FF (Rural Banking Group – Individual Farmer Finance) via STP for seamless farmer underwriting and loan disbursements.",
     impact: "15hr",
     impactLabel: "Saved / Week",
     stat: "Efficiency",
     color: "#FF7043", // Deep Orange
-    tags: ["HR", "AI"],
+    tags: ["Agri", "Finance"],
   },
 ];
 

@@ -84,18 +84,17 @@ const CreditLimitCard = ({ message, metadata }) => {
               />
             </Box>
 
-            <Typography
-              variant="h6"
-              sx={{ color: "#1e293b", fontWeight: 700, fontSize: "1.1rem" }}
-            >
-              Daily Limit Reached
-            </Typography>
+
 
             <Typography
               variant="body2"
               sx={{ color: "#64748b", mb: 2, lineHeight: 1.5 }}
             >
-              You've hit your daily interaction cap. Please recharge to continue.
+              {(message || "")
+                .replace(/🚫/g, "")
+                .replace(/\*\*/g, "")
+                .trim() ||
+                "You've hit your daily interaction cap. Please recharge to continue."}
             </Typography>
 
             {/* Usage Meter */}
