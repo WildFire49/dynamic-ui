@@ -2,24 +2,49 @@
 
 set -e
 
+# Default Configuration (AWS EC2)
 SSH_KEY="$HOME/Downloads/LLM-Keypair.pem"
-EC2_HOST="13.204.31.131"
-EC2_USER="ec2-user"
+HOST="13.204.31.131"
+USER="ec2-user"
+API_BASE_URL="https://mifixai-backend.mifix.io"
 DOCKER_IMAGE_NAME="buddhi-ai"
 DOCKER_REGISTRY="newstreet"
 DOCKER_TAG_PREFIX="mifix-ai-ui-v"
 PROJECT_DIR="/Users/vaishakh/Code/dynamic-ui"
 
-echo "🚀 Starting deployment process..."
+# Parse strict arguments
+IS_VULTR=false
+PROVIDED_VERSION=""
+
+for arg in "$@"
+do
+    if [ "$arg" == "--vultr" ]; then
+        IS_VULTR=true
+    elif [ -z "$PROVIDED_VERSION" ]; then
+        PROVIDED_VERSION="$arg"
+    fi
+done
+
+# Override for Vultr if flag is present
+if [ "$IS_VULTR" = true ]; then
+    echo "🌐 Target: Vultr VPS"
+    HOST="139.84.155.70"
+    USER="root"
+    API_BASE_URL="https://dashboard-ai-backend.mifix.io"
+else
+    echo "🌐 Target: AWS EC2"
+fi
+
+echo "🚀 Starting deployment process to $USER@$HOST..."
 
 cd "$PROJECT_DIR"
 
 echo "📦 Fetching latest git tags..."
 git fetch --tags 2>/dev/null || true
 
-# Check if a version was passed as an argument
-if [ ! -z "$1" ]; then
-  NEW_VERSION="$1"
+# Version determination logic
+if [ ! -z "$PROVIDED_VERSION" ]; then
+  NEW_VERSION="$PROVIDED_VERSION"
   echo "📌 Using provided version: $NEW_VERSION"
 else
   LATEST_TAG=$(git tag --sort=-v:refname | head -1)
@@ -56,9 +81,9 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   --push \
   .
 
-echo "🔐 Connecting to EC2 instance: $EC2_USER@$EC2_HOST"
+echo "🔐 Connecting to Server: $USER@$HOST"
 
-ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" << EOF
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$USER@$HOST" << EOF
   set -e
   
   echo "🛑 Stopping existing container..."
@@ -78,7 +103,7 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" << EOF
     --read-only \
     --restart unless-stopped \
     -e NODE_ENV=production \
-    -e NEXT_PUBLIC_API_BASE_URL=https://mifixai-backend.mifix.io\
+    -e NEXT_PUBLIC_API_BASE_URL=$API_BASE_URL \
     -e NEXT_PUBLIC_UPLOAD_API_URL=https://supervisory-dev.mifix.io/upload \
     -e NEXT_PUBLIC_EVENT_API_URL=http://15.207.209.61:8400/executor/events \
     -e NEXT_PUBLIC_CONNECTION_ID=c132d635-7392-4856-a2ce-077f5482e88b \
@@ -102,9 +127,9 @@ echo ""
 echo "✅ Deployment completed successfully!"
 echo "🔖 Version: $NEW_VERSION"
 echo "🐳 Docker Tag: $DOCKER_TAG"
-echo "🌐 Application URL: http://$EC2_HOST:3500"
+echo "🌐 Application URL: http://$HOST:3500"
 echo ""
 echo "📋 Useful commands:"
-echo "  - View logs: ssh -i $SSH_KEY $EC2_USER@$EC2_HOST 'docker logs -f dynamic-ui-container'"
-echo "  - Check status: ssh -i $SSH_KEY $EC2_USER@$EC2_HOST 'docker ps'"
-echo "  - Restart: ssh -i $SSH_KEY $EC2_USER@$EC2_HOST 'docker restart dynamic-ui-container'"
+echo "  - View logs: ssh -i $SSH_KEY $USER@$HOST 'docker logs -f dynamic-ui-container'"
+echo "  - Check status: ssh -i $SSH_KEY $USER@$HOST 'docker ps'"
+echo "  - Restart: ssh -i $SSH_KEY $USER@$HOST 'docker restart dynamic-ui-container'"
