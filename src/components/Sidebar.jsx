@@ -19,7 +19,6 @@ import {
   Button,
   Paper,
   Chip,
-  Fade,
   Skeleton,
   Tooltip,
   useMediaQuery,
@@ -386,607 +385,565 @@ const Sidebar = ({
     }
   };
 
+  // Group menu items into categories for visual organization
+  const groupedMenuItems = React.useMemo(() => {
+    const mainIds = ["chat", "dashboard"];
+    const configuratorIds = ["workflow_configurator", "retriever_configurator", "productConfigurator", "creConfigurator"];
+    const adminIds = ["accessControl"];
+
+    const main = menuItems.filter(item => mainIds.includes(item.id));
+    const modules = menuItems.filter(item => !mainIds.includes(item.id) && !configuratorIds.includes(item.id) && !adminIds.includes(item.id));
+    const configurators = menuItems.filter(item => configuratorIds.includes(item.id));
+    const admin = menuItems.filter(item => adminIds.includes(item.id));
+
+    const groups = [];
+    if (main.length) groups.push({ label: null, items: main });
+    if (modules.length) groups.push({ label: "Modules", items: modules });
+    if (configurators.length) groups.push({ label: "Configurators", items: configurators });
+    if (admin.length) groups.push({ label: "Admin", items: admin });
+    return groups;
+  }, [menuItems]);
+
   const drawerContent = (
     <Box
       sx={{
-        minHeight: "100%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
-        pb: 6,
-        backgroundColor: "#fafbfc",
+        background: "linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      {/* Header */}
-      <Box sx={{ p: 3, textAlign: "center", position: "relative" }}>
+
+      {/* Header / Logo */}
+      <Box sx={{ px: 2.5, pt: 2.5, pb: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
         <Box
           sx={{
-            animation: "fadeInScale 0.5s ease-out",
-            "@keyframes fadeInScale": {
-              "0%": {
-                opacity: 0,
-                transform: "scale(0.8)",
-              },
-              "100%": {
-                opacity: 1,
-                transform: "scale(1)",
-              },
-            },
+            width: 48,
+            height: 48,
+            borderRadius: 2.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+            overflow: "hidden",
+            background: "linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%)",
+            border: "1px solid rgba(37, 99, 235, 0.12)",
+            flexShrink: 0,
           }}
         >
-          <Box
-            sx={{
-              width: 86,
-              height: 86,
-              borderRadius: 2,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 12px",
-              position: "relative",
-              overflow: "hidden",
-              background:
-                "linear-gradient(135deg, rgba(47, 143, 239, 0.05) 0%, rgba(255, 255, 255, 0.1) 100%)",
-              border: "1px solid rgba(47, 143, 239, 0.1)",
-              boxShadow: "0 4px 16px rgba(47, 143, 239, 0.1)",
-            }}
-          >
-            <Image
-              src="/Mifix-ai.png"
-              alt="MiFiX AI"
-              width={89}
-              height={89}
-              style={{ objectFit: "cover" }}
-            />
-          </Box>
-          {/* <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 600,
-              textAlign: "center",
-              marginBottom: 0.5,
-              color: "#1a1a1a",
-            }}
-          >
-            MiFiX AI
-          </Typography> */}
+          <Image
+            src="/Mifix-ai.png"
+            alt="MiFiX AI"
+            width={48}
+            height={48}
+            style={{ objectFit: "cover" }}
+          />
+        </Box>
+        <Box>
           <Typography
-            variant="caption"
             sx={{
-              color: "#000000FF",
-              fontSize: "0.95rem",
-              fontWeight:"700"
+              fontSize: "1.05rem",
+              fontWeight: 700,
+              color: "#111827",
+              letterSpacing: "-0.01em",
+              lineHeight: 1.2,
             }}
           >
             MiFiX.ai
           </Typography>
+          <Typography
+            sx={{
+              fontSize: "0.7rem",
+              fontWeight: 500,
+              color: "#9CA3AF",
+              letterSpacing: "0.02em",
+            }}
+          >
+            Intelligent Platform
+          </Typography>
         </Box>
       </Box>
 
-      <Divider />
-
-      {/* Menu Items */}
-      <Box sx={{ mt: 4, px: 3 }}>
-        <Box sx={{ mb: 1.5 }}>
+      {/* Scrollable content area */}
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          px: 2,
+          pb: 2,
+          scrollbarWidth: "none",
+          "&::-webkit-scrollbar": { display: "none" },
+        }}
+        onScroll={handleScroll}
+      >
+        {/* Quick Links heading */}
+        <Box sx={{ px: 0.5, pt: 1, pb: 1 }}>
           <Typography
-            variant="subtitle1"
-            sx={{ fontWeight: 600, color: "text.primary", fontSize: "0.9rem" }}
+            sx={{
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              color: "#9CA3AF",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
           >
             Quick Links
           </Typography>
-          <Typography
-            variant="caption"
-            sx={{ color: "text.secondary", fontSize: "0.75rem" }}
-          >
-            Navigate to different sections
-          </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          {menuItems.map((item, index) => {
-            const Icon = item.icon;
-            const isSelected = selectedTab === item.id;
-
-            return (
-              <Paper
-                key={item.id}
-                elevation={isSelected ? 2 : 0}
-                onClick={() => handleMenuClick(item)}
+        {/* Grouped Navigation */}
+        {groupedMenuItems.map((group, groupIndex) => (
+          <Box key={groupIndex} sx={{ mb: 1.5 }}>
+            {group.label && (
+              <Typography
                 sx={{
-                  width: "100%",
-                  p: 1.5,
-                  border: `1px solid ${isSelected ? item.color : "#e2e8f0"}`,
-                  borderRadius: 2,
-                  cursor: "pointer",
-                  backgroundColor: isSelected ? `${item.color}08` : "#ffffff",
-                  transition: "all 0.2s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  animation: `slideInLeft 0.3s ease-out ${index * 0.1}s both`,
-                  "@keyframes slideInLeft": {
-                    "0%": {
-                      opacity: 0,
-                      transform: "translateX(-20px)",
-                    },
-                    "100%": {
-                      opacity: 1,
-                      transform: "translateX(0)",
-                    },
-                  },
-                  "&:hover": {
-                    backgroundColor: isSelected ? `${item.color}15` : "#f8fafc",
-                    borderColor: item.color,
-                    transform: "translateX(2px)",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                  },
+                  fontSize: "0.65rem",
+                  fontWeight: 600,
+                  color: "#B0B8C9",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  px: 0.5,
+                  pt: groupIndex > 0 ? 0.5 : 0,
+                  pb: 0.5,
                 }}
               >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                {group.label}
+              </Typography>
+            )}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+              {group.items.map((item, index) => {
+                const Icon = item.icon;
+                const isSelected = selectedTab === item.id || pathname === item.path;
+
+                return (
                   <Box
+                    key={item.id}
+                    onClick={() => handleMenuClick(item)}
                     sx={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 1.5,
-                      bgcolor: `${item.color}15`,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
+                      gap: 1.5,
+                      px: 1.5,
+                      py: 1.2,
+                      borderRadius: 2.5,
+                      cursor: "pointer",
+                      position: "relative",
+                      transition: "background 0.15s ease, border-color 0.15s ease",
+                      background: isSelected
+                        ? `linear-gradient(135deg, ${item.color}14 0%, ${item.color}08 100%)`
+                        : "transparent",
+                      border: isSelected
+                        ? `1px solid ${item.color}30`
+                        : "1px solid transparent",
+                      boxShadow: isSelected
+                        ? `0 1px 4px ${item.color}10`
+                        : "none",
+                      "&:hover": {
+                        background: isSelected
+                          ? `linear-gradient(135deg, ${item.color}1a 0%, ${item.color}0d 100%)`
+                          : "rgba(0,0,0,0.04)",
+                      },
                     }}
                   >
-                    <Icon sx={{ color: item.color, fontSize: 16 }} />
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: isSelected ? 600 : 500,
-                      color: "text.primary",
-                      fontSize: "0.85rem",
-                    }}
-                  >
-                    {item.label}
-                  </Typography>
-                </Box>
-                <ArrowIcon
-                  sx={{
-                    fontSize: 16,
-                    color: isSelected ? item.color : "#64748b",
-                  }}
-                />
-              </Paper>
-            );
-          })}
-        </Box>
-      </Box>
-
-      <Box sx={{ mb: 2 }} />
-
-      <Divider />
-
-      {/* Recent Section: Chat or Analyses */}
-      <Box sx={{ display: "flex", flexDirection: "column" }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #e1e5e9" }}>
-          <Typography
-            variant="h6"
-            sx={{
-              color: "#2c3e50",
-              fontWeight: 700,
-              fontSize: "1rem",
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            {mode === "dashboard" ? (
-              <>
-                <DashboardIcon sx={{ fontSize: 20, color: "#3498db" }} />
-                Saved Insights
-              </>
-            ) : (
-              <>
-                <ChatIcon sx={{ fontSize: 20, color: "#3498db" }} />
-                Chat History
-              </>
-            )}
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              color: "#7f8c8d",
-              fontSize: "0.75rem",
-            }}
-          >
-            {mode === "dashboard"
-              ? `${analyses.length} in ${activeDashboard?.name || 'Dashboard'}`
-              : `${conversations.length} conversation${
-                  conversations.length !== 1 ? "s" : ""
-                }`}
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            px: 2,
-            py: 1,
-          }}
-          onScroll={handleScroll}
-        >
-          {mode === "dashboard" ? (
-            analysisLoading && analyses.length === 0 ? (
-              <Box sx={{ p: 2 }}>
-                {[...Array(3)].map((_, i) => (
-                  <Box key={i} sx={{ mb: 2 }}>
-                    <Skeleton
-                      variant="rectangular"
-                      width="100%"
-                      height={60}
-                      sx={{ borderRadius: 2, mb: 1 }}
-                    />
-                  </Box>
-                ))}
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1.5,
-                  py: 1,
-                }}
-              >
-                {analyses.map((item, index) => (
-                  <Fade
-                    in={true}
-                    timeout={300 + index * 100}
-                    key={item.id || `${item.title}-${index}`}
-                  >
-                    <Paper
-                      elevation={0}
-                      onClick={() => {
-                        // Scroll to the widget in the dashboard
-                        const widgetElement = document.getElementById(`widget-${item.id}`);
-                        if (widgetElement) {
-                          widgetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          // Add a highlight effect
-                          widgetElement.style.boxShadow = '0 0 0 3px #3B82F6';
-                          setTimeout(() => {
-                            widgetElement.style.boxShadow = '';
-                          }, 2000);
-                        }
-                        if (onSelectAnalysis) {
-                          onSelectAnalysis(item.id);
-                        }
-                        // Close mobile drawer after selecting analysis
-                        if (isMobile && onMobileClose) {
-                          onMobileClose();
-                        }
-                      }}
-                      sx={{
-                        p: 2.5,
-                        borderRadius: 3,
-                        backgroundColor: "#ffffff",
-                        cursor: "pointer",
-                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                        border: "1px solid #e8ecf0",
-                        position: "relative",
-                        overflow: "hidden",
-                        "&:hover": {
-                          backgroundColor: "#f8fafc",
-                          borderColor: "#3498db",
-                          transform: "translateY(-2px)",
-                          boxShadow: "0 8px 25px rgba(52, 152, 219, 0.15)",
-                        },
-                        "&:active": {
-                          transform: "translateY(0px)",
-                        },
-                      }}
-                    >
+                    {/* Active indicator bar */}
+                    {isSelected && (
                       <Box
                         sx={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          justifyContent: "space-between",
-                          mb: 1,
+                          position: "absolute",
+                          left: 0,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          width: 3,
+                          height: "60%",
+                          borderRadius: "0 4px 4px 0",
+                          background: item.color,
                         }}
-                      >
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 1.5,
-                            flex: 1,
-                            minWidth: 0,
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              minWidth: 32,
-                              borderRadius: "50%",
-                              background:
-                                "linear-gradient(135deg, #3498db, #2980b9)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: "white",
-                              fontSize: "0.75rem",
-                              fontWeight: 700,
-                              boxShadow: "0 4px 12px rgba(52, 152, 219, 0.3)",
-                              marginTop: "2px",
-                            }}
-                          >
-                            {index + 1}
-                          </Box>
-                          <Box
-                            sx={{ minWidth: 0, flex: 1, overflow: "hidden" }}
-                          >
-                            <Tooltip title={item.question || item.title || "Saved Analysis"}>
-                              <Typography
-                                variant="subtitle2"
-                                sx={{
-                                  fontSize: "0.85rem",
-                                  fontWeight: 600,
-                                  color: "#2c3e50",
-                                  lineHeight: 1.3,
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: "vertical",
-                                  overflow: "hidden",
-                                }}
-                              >
-                                {item.question || item.title || "Saved Analysis"}
-                              </Typography>
-                            </Tooltip>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontSize: "0.75rem",
-                                color: "#7f8c8d",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 0.5,
-                                mt: 0.5,
-                              }}
-                            >
-                              {item.timestamp
-                                ? formatToIST(item.timestamp)
-                                : "—"}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        <Chip
-                          label="Saved"
-                          size="small"
-                          sx={{
-                            height: 20,
-                            minWidth: 50,
-                            fontSize: "0.65rem",
-                            fontWeight: 500,
-                            backgroundColor: "#e8f5e8",
-                            color: "#27ae60",
-                            border: "none",
-                            ml: 1,
-                            flexShrink: 0,
-                            "& .MuiChip-label": {
-                              px: 1,
-                            },
-                          }}
-                        />
-                      </Box>
-                    </Paper>
-                  </Fade>
-                ))}
-
-                {analysisLoadingMore && (
-                  <Box
-                    sx={{ display: "flex", justifyContent: "center", py: 2 }}
-                  >
-                    <CircularProgress size={20} sx={{ color: "#3498db" }} />
-                  </Box>
-                )}
-
-                {analyses.length === 0 && !analysisLoading && (
-                  <Box sx={{ textAlign: "center", py: 6, px: 2 }}>
-                    <DashboardIcon
-                      sx={{ fontSize: 48, color: "#bdc3c7", mb: 2 }}
-                    />
-                    <Typography
-                      variant="body2"
+                      />
+                    )}
+                    <Box
                       sx={{
-                        color: "#7f8c8d",
-                        fontSize: "0.9rem",
-                        fontWeight: 500,
-                        mb: 1,
+                        width: 34,
+                        height: 34,
+                        minWidth: 34,
+                        borderRadius: 2,
+                        background: isSelected
+                          ? `linear-gradient(135deg, ${item.color} 0%, ${item.color}cc 100%)`
+                          : `${item.color}12`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "background 0.15s ease",
                       }}
                     >
-                      No insights in {activeDashboard?.name || 'this dashboard'}
-                    </Typography>
+                      <Icon
+                        sx={{
+                          color: isSelected ? "#fff" : item.color,
+                          fontSize: 17,
+                        }}
+                      />
+                    </Box>
                     <Typography
-                      variant="caption"
-                      sx={{ color: "#95a5a6", fontSize: "0.75rem" }}
+                      sx={{
+                        fontSize: "0.82rem",
+                        fontWeight: isSelected ? 600 : 500,
+                        color: isSelected ? "#111827" : "#4B5563",
+                        flex: 1,
+                        lineHeight: 1.3,
+                      }}
                     >
-                      Save visualizations from chat to see them here
+                      {item.label}
                     </Typography>
+                    <ArrowIcon
+                      sx={{
+                        fontSize: 14,
+                        color: isSelected ? item.color : "#D1D5DB",
+                        opacity: isSelected ? 1 : 0.5,
+                      }}
+                    />
                   </Box>
-                )}
-              </Box>
-            )
-          ) : // Chat mode content (original)
-          loading && conversations.length === 0 ? (
-            <Box sx={{ p: 2 }}>
+                );
+              })}
+            </Box>
+          </Box>
+        ))}
+
+        {/* Divider between nav and history */}
+        <Box sx={{ py: 1 }}>
+          <Divider sx={{ borderColor: "rgba(0,0,0,0.06)" }} />
+        </Box>
+
+        {/* Recent Section: Chat or Analyses */}
+        <Box sx={{ px: 0.5, pb: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box>
+            <Typography
+              sx={{
+                fontSize: "0.68rem",
+                fontWeight: 600,
+                color: "#9CA3AF",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+              }}
+            >
+              {mode === "dashboard" ? (
+                <>
+                  <DashboardIcon sx={{ fontSize: 13 }} />
+                  Saved Insights
+                </>
+              ) : (
+                <>
+                  <ChatIcon sx={{ fontSize: 13 }} />
+                  Chat History
+                </>
+              )}
+            </Typography>
+          </Box>
+          <Chip
+            label={
+              mode === "dashboard"
+                ? `${analyses.length}`
+                : `${conversations.length}`
+            }
+            size="small"
+            sx={{
+              height: 18,
+              minWidth: 24,
+              fontSize: "0.6rem",
+              fontWeight: 600,
+              backgroundColor: "#EEF2FF",
+              color: "#2563EB",
+              "& .MuiChip-label": { px: 0.8 },
+            }}
+          />
+        </Box>
+
+        {/* History items */}
+        {mode === "dashboard" ? (
+          analysisLoading && analyses.length === 0 ? (
+            <Box sx={{ py: 1 }}>
               {[...Array(3)].map((_, i) => (
-                <Box key={i} sx={{ mb: 2 }}>
-                  <Skeleton
-                    variant="rectangular"
-                    width="100%"
-                    height={60}
-                    sx={{ borderRadius: 2, mb: 1 }}
-                  />
-                </Box>
+                <Skeleton
+                  key={i}
+                  variant="rounded"
+                  width="100%"
+                  height={52}
+                  sx={{ borderRadius: 2.5, mb: 1, opacity: 0.5 }}
+                />
               ))}
             </Box>
           ) : (
-            <Box
-              sx={{ display: "flex", flexDirection: "column", gap: 1.5, py: 1 }}
-            >
-              {conversations.map((conversation, index) => (
-                <Fade
-                  in={true}
-                  timeout={300 + index * 100}
-                  key={conversation.id}
-                >
-                  <Paper
-                    elevation={0}
-                    onClick={() => loadConversation(conversation.id)}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+              {analyses.map((item, index) => (
+                  <Box
+                    key={item.id || `${item.title}-${index}`}
+                    onClick={() => {
+                      const widgetElement = document.getElementById(`widget-${item.id}`);
+                      if (widgetElement) {
+                        widgetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        widgetElement.style.boxShadow = '0 0 0 3px #3B82F6';
+                        setTimeout(() => { widgetElement.style.boxShadow = ''; }, 2000);
+                      }
+                      if (onSelectAnalysis) onSelectAnalysis(item.id);
+                      if (isMobile && onMobileClose) onMobileClose();
+                    }}
                     sx={{
-                      p: 2.5,
-                      borderRadius: 3,
-                      backgroundColor: "#ffffff",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.5,
+                      px: 1.5,
+                      py: 1.4,
+                      borderRadius: 2.5,
                       cursor: "pointer",
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      border: "1px solid #e8ecf0",
-                      position: "relative",
-                      overflow: "hidden",
+                      background: "#ffffff",
+                      border: "1px solid rgba(0,0,0,0.06)",
+                      transition: "background 0.15s ease, border-color 0.15s ease",
                       "&:hover": {
-                        backgroundColor: "#f8fafc",
-                        borderColor: "#3498db",
-                        transform: "translateY(-2px)",
-                        boxShadow: "0 8px 25px rgba(52, 152, 219, 0.15)",
-                      },
-                      "&:active": {
-                        transform: "translateY(0px)",
+                        background: "#f8faff",
+                        borderColor: "rgba(37, 99, 235, 0.15)",
                       },
                     }}
                   >
                     <Box
                       sx={{
+                        width: 32,
+                        height: 32,
+                        minWidth: 32,
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
                         display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        mb: 1,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
                       }}
                     >
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 1.5,
-                          flex: 1,
-                          minWidth: 0,
-                        }}
-                      >
-                        <Box
+                      {index + 1}
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                      <Tooltip title={item.question || item.title || "Saved Analysis"}>
+                        <Typography
                           sx={{
-                            width: 32,
-                            height: 32,
-                            minWidth: 32,
-                            borderRadius: "50%",
-                            background:
-                              "linear-gradient(135deg, #3498db, #2980b9)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
-                            fontSize: "0.75rem",
-                            fontWeight: 700,
-                            boxShadow: "0 4px 12px rgba(52, 152, 219, 0.3)",
-                            marginTop: "2px",
+                            fontSize: "0.8rem",
+                            fontWeight: 600,
+                            color: "#1F2937",
+                            lineHeight: 1.3,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
                           }}
                         >
-                          {index + 1}
-                        </Box>
-                        <Box sx={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
-                          <Typography
-                            variant="subtitle2"
-                            sx={{
-                              fontSize: "0.9rem",
-                              fontWeight: 600,
-                              color: "#2c3e50",
-                              lineHeight: 1.2,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {conversation.title || `Conversation ${index + 1}`}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              fontSize: "0.75rem",
-                              color: "#7f8c8d",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 0.5,
-                              mt: 0.5,
-                            }}
-                          >
-                            {formatTimeAgo(conversation.updated_at)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Chip
-                        label="Recent"
-                        size="small"
+                          {item.question || item.title || "Saved Analysis"}
+                        </Typography>
+                      </Tooltip>
+                      <Typography
                         sx={{
-                          height: 20,
-                          minWidth: 50,
-                          fontSize: "0.65rem",
-                          fontWeight: 500,
-                          backgroundColor: "#e8f5e8",
-                          color: "#27ae60",
-                          border: "none",
-                          ml: 1,
-                          flexShrink: 0,
-                          "& .MuiChip-label": {
-                            px: 1,
-                          },
+                          fontSize: "0.68rem",
+                          color: "#9CA3AF",
+                          mt: 0.2,
                         }}
-                      />
+                      >
+                        {item.timestamp ? formatToIST(item.timestamp) : "—"}
+                      </Typography>
                     </Box>
-                  </Paper>
-                </Fade>
+                    <Chip
+                      label="Saved"
+                      size="small"
+                      sx={{
+                        height: 18,
+                        fontSize: "0.6rem",
+                        fontWeight: 600,
+                        backgroundColor: "#ECFDF5",
+                        color: "#059669",
+                        "& .MuiChip-label": { px: 0.8 },
+                        flexShrink: 0,
+                      }}
+                    />
+                  </Box>
               ))}
 
-              {loadingMore && (
+              {analysisLoadingMore && (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                  <CircularProgress size={20} sx={{ color: "#3498db" }} />
+                  <CircularProgress size={18} sx={{ color: "#2563EB" }} />
                 </Box>
               )}
 
-              {conversations.length === 0 && !loading && (
-                <Box sx={{ textAlign: "center", py: 6, px: 2 }}>
-                  <ChatIcon sx={{ fontSize: 48, color: "#bdc3c7", mb: 2 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "#7f8c8d",
-                      fontSize: "0.9rem",
-                      fontWeight: 500,
-                      mb: 1,
-                    }}
-                  >
-                    No conversations yet
+              {analyses.length === 0 && !analysisLoading && (
+                <Box
+                  sx={{
+                    textAlign: "center",
+                    py: 4,
+                    px: 2,
+                    borderRadius: 3,
+                    background: "rgba(0,0,0,0.02)",
+                    border: "1px dashed rgba(0,0,0,0.08)",
+                  }}
+                >
+                  <DashboardIcon sx={{ fontSize: 36, color: "#D1D5DB", mb: 1 }} />
+                  <Typography sx={{ color: "#6B7280", fontSize: "0.82rem", fontWeight: 500, mb: 0.5 }}>
+                    No insights yet
                   </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "#95a5a6", fontSize: "0.75rem" }}
-                  >
-                    Start a new chat to see your history here
+                  <Typography sx={{ color: "#9CA3AF", fontSize: "0.72rem" }}>
+                    Save visualizations from chat
                   </Typography>
                 </Box>
               )}
             </Box>
-          )}
-        </Box>
+          )
+        ) : loading && conversations.length === 0 ? (
+          <Box sx={{ py: 1 }}>
+            {[...Array(3)].map((_, i) => (
+              <Skeleton
+                key={i}
+                variant="rounded"
+                width="100%"
+                height={52}
+                sx={{ borderRadius: 2.5, mb: 1, opacity: 0.5 }}
+              />
+            ))}
+          </Box>
+        ) : (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+            {conversations.map((conversation, index) => (
+                <Box
+                  key={conversation.id}
+                  onClick={() => loadConversation(conversation.id)}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.5,
+                    px: 1.5,
+                    py: 1.4,
+                    borderRadius: 2.5,
+                    cursor: "pointer",
+                    background: "#ffffff",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    transition: "background 0.15s ease, border-color 0.15s ease",
+                    "&:hover": {
+                      background: "#f8faff",
+                      borderColor: "rgba(37, 99, 235, 0.15)",
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      minWidth: 32,
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {index + 1}
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                    <Typography
+                      sx={{
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        color: "#1F2937",
+                        lineHeight: 1.3,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {conversation.title || `Conversation ${index + 1}`}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: "0.68rem",
+                        color: "#9CA3AF",
+                        mt: 0.2,
+                      }}
+                    >
+                      {formatTimeAgo(conversation.updated_at)}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label="Recent"
+                    size="small"
+                    sx={{
+                      height: 18,
+                      fontSize: "0.6rem",
+                      fontWeight: 600,
+                      backgroundColor: "#ECFDF5",
+                      color: "#059669",
+                      "& .MuiChip-label": { px: 0.8 },
+                      flexShrink: 0,
+                    }}
+                  />
+                </Box>
+            ))}
+
+            {loadingMore && (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                <CircularProgress size={18} sx={{ color: "#2563EB" }} />
+              </Box>
+            )}
+
+            {conversations.length === 0 && !loading && (
+              <Box
+                sx={{
+                  textAlign: "center",
+                  py: 4,
+                  px: 2,
+                  borderRadius: 3,
+                  background: "rgba(0,0,0,0.02)",
+                  border: "1px dashed rgba(0,0,0,0.08)",
+                }}
+              >
+                <ChatIcon sx={{ fontSize: 36, color: "#D1D5DB", mb: 1 }} />
+                <Typography sx={{ color: "#6B7280", fontSize: "0.82rem", fontWeight: 500, mb: 0.5 }}>
+                  No conversations yet
+                </Typography>
+                <Typography sx={{ color: "#9CA3AF", fontSize: "0.72rem" }}>
+                  Start a chat to see history
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
       </Box>
 
-      <Divider />
-
-      {/* Footer */}
-      {/* <Box sx={{ p: 2, textAlign: 'center' }}>
-       <NewStreetLogo />
-      </Box> */}
+      {/* Footer branding */}
+      <Box
+        sx={{
+          px: 2.5,
+          py: 1.5,
+          borderTop: "1px solid rgba(0,0,0,0.05)",
+          background: "rgba(255,255,255,0.6)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 1,
+        }}
+      >
+        <Box
+          sx={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: "#22C55E",
+            boxShadow: "0 0 0 2px rgba(34, 197, 94, 0.2)",
+          }}
+        />
+        <Typography sx={{ fontSize: "0.68rem", color: "#9CA3AF", fontWeight: 500 }}>
+          System Online
+        </Typography>
+      </Box>
     </Box>
   );
 
@@ -994,7 +951,7 @@ const Sidebar = ({
     <Box
       component="nav"
       sx={{
-        width: { md: 320 },
+        width: { md: 300 },
         flexShrink: { md: 0 },
       }}
     >
@@ -1004,19 +961,19 @@ const Sidebar = ({
         open={mobileOpen}
         onClose={onMobileClose}
         ModalProps={{
-          keepMounted: true, // Better open performance on mobile
+          keepMounted: true,
         }}
         sx={{
           display: { xs: "block", md: "none" },
           "& .MuiDrawer-paper": {
-            width: 320,
+            width: 300,
             boxSizing: "border-box",
-            backgroundColor: "#fafbfc",
-            borderRight: "1px solid #e1e5e9",
-            boxShadow: "2px 0 8px rgba(0,0,0,0.08)",
+            background: "linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%)",
+            borderRight: "none",
+            boxShadow: "4px 0 24px rgba(0,0,0,0.08), 1px 0 0 rgba(0,0,0,0.04)",
             height: "100%",
             maxHeight: "100dvh",
-            overflowY: "auto",
+            overflow: "hidden",
             WebkitOverflowScrolling: "touch",
           },
         }}
@@ -1030,15 +987,16 @@ const Sidebar = ({
         sx={{
           display: { xs: "none", md: "block" },
           "& .MuiDrawer-paper": {
-            width: 320,
+            width: 300,
             boxSizing: "border-box",
-            backgroundColor: "#fafbfc",
-            borderRight: "1px solid #e1e5e9",
-            boxShadow: "2px 0 8px rgba(0,0,0,0.08)",
+            background: "linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%)",
+            borderRight: "none",
+            boxShadow: "1px 0 0 rgba(0,0,0,0.04), 4px 0 16px rgba(0,0,0,0.03)",
             position: "fixed",
             top: 0,
             left: 0,
             height: "100vh",
+            overflow: "hidden",
           },
         }}
         open

@@ -528,6 +528,7 @@ const SummaryCardsPanel = ({
                 >
                   <SummaryCard
                     card={card}
+                    cardIndex={index}
                     size="medium"
                     onClick={handleCardClick}
                     onCreateWidget={onCreateWidget}

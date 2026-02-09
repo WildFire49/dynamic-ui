@@ -203,9 +203,12 @@ export const getSummaryCards = async ({
                 ? item.data.cardData
                 : item.data;
 
-            // Merge all data sources
+            // Merge all data sources - include card_id/type from the result item
             return {
               ...cardPayload,
+              id: cardPayload.id || item.card_id || item.id,
+              type: cardPayload.type || item.type,
+              title: cardPayload.title || item.data?.title,
               _pipelineData: item.data.pipelineData || item.pipelineData || cardPayload.pipelineData,
               _dataGrid: item.data.dataGrid || item.dataGrid || cardPayload.dataGrid,
               query_results: cardPayload.query_results || item.data.query_results,

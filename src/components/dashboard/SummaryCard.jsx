@@ -12,73 +12,6 @@ import {
   Pie,
   Tooltip as RechartsTooltip,
 } from 'recharts';
-
-/**
- * Format number to Indian currency (Lakhs/Crores)
- */
-const formatIndianCurrency = (value) => {
-  if (!value) return value;
-  
-  // If already formatted with ₹ or L/Cr, return as is
-  if (typeof value === 'string' && (value.includes('₹') || value.includes('L') || value.includes('Cr'))) {
-    return value;
-  }
-  
-  const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : value;
-  
-  if (isNaN(num)) return value;
-  
-  // Convert to Lakhs or Crores
-  if (num >= 10000000) { // 1 Crore = 10 Million
-    return `₹${(num / 10000000).toFixed(2)}Cr`;
-  } else if (num >= 100000) { // 1 Lakh = 100 Thousand
-    return `₹${(num / 100000).toFixed(2)}L`;
-  } else if (num >= 1000) {
-    return `₹${(num / 1000).toFixed(2)}K`;
-  }
-  return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-};
-
-/**
- * Smart format - handles currency, percentages, and plain numbers
- */
-const smartFormat = (value) => {
-  if (value === null || value === undefined) return value;
-  
-  const str = String(value);
-  
-  // Already formatted
-  if (str.includes('₹') || str.includes('L') || str.includes('Cr')) {
-    return str;
-  }
-  
-  // Check if it's a percentage
-  if (str.includes('%')) {
-    return str;
-  }
-  
-  // Try to parse as number
-  const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
-  if (isNaN(num)) return value;
-
-  // Handle percentages (small numbers that might be percentages if they are in specific contexts, 
-  // but here we rely on explicit % or context. If just a number < 100, we treat as number unless explicit)
-  // Reverting strict percentage check to avoid confusing small counts with percentages.
-  // Using explicit unit check if possible, but here we just format numbers.
-
-  // Check if it looks like currency (has M, K, or large number)
-  if (str.includes('M') || str.includes('K') || num > 1000) {
-    // Convert M to Indian format
-    if (str.includes('M')) {
-      const numM = parseFloat(str.replace('M', '')) * 1000000;
-      return formatIndianCurrency(numM);
-    }
-    return formatIndianCurrency(num);
-  }
-  
-  // Regular number formatting
-  return num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-};
 import {
   Box,
   Typography,
@@ -88,396 +21,6 @@ import {
   Checkbox,
   alpha,
 } from '@mui/material';
-
-// New Beautiful CXO Components for Single & Multi Metrics
-
-const CXOSingleMetric = ({ data, color, title, icon: Icon }) => {
-  const displayValue = data.formatted || smartFormat(data.value);
-  const displayLabel = data.name || data.label || '';
-  
-  // Use a darker, more high-contrast version of the theme color for text
-  const darkColor = alpha(color, 1);
-  const deepColor = alpha(color, 1); // We'll use this for the main text to ensure readability
-  
-  return (
-    <Box
-      sx={{
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        width: '100%',
-        p: { xs: 2, sm: 3 },
-        overflow: 'hidden',
-        background: `linear-gradient(135deg, ${alpha(color, 0.04)} 0%, ${alpha(color, 0.12)} 100%)`,
-        borderRadius: 4,
-        border: `1px solid ${alpha(color, 0.15)}`,
-        minHeight: { xs: 180, sm: 200, md: 240 },
-        boxShadow: `inset 0 0 40px ${alpha(color, 0.05)}`,
-      }}
-    >
-      {/* Premium Animated Background Elements */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: -100,
-          right: -100,
-          width: 300,
-          height: 300,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(color, 0.15)} 0%, transparent 70%)`,
-          animation: 'pulsePremium 6s infinite ease-in-out',
-          '@keyframes pulsePremium': {
-            '0%, 100%': { transform: 'scale(1) translate(0, 0)', opacity: 0.3 },
-            '50%': { transform: 'scale(1.3) translate(-20px, 20px)', opacity: 0.6 },
-          },
-        }}
-      />
-      
-      {/* Floating Sparkles - More Dynamic */}
-      {[...Array(5)].map((_, i) => (
-      <Box
-          key={i}
-        sx={{
-          position: 'absolute',
-            width: i % 2 === 0 ? 6 : 4,
-            height: i % 2 === 0 ? 6 : 4,
-          borderRadius: '50%',
-            bgcolor: color,
-            opacity: 0.4,
-            top: `${10 + Math.random() * 80}%`,
-            left: `${10 + Math.random() * 80}%`,
-            animation: `floatPremium ${4 + i}s infinite ease-in-out`,
-            animationDelay: `${i * 0.5}s`,
-            '@keyframes floatPremium': {
-              '0%, 100%': { transform: 'translate(0, 0) scale(1)', opacity: 0.2 },
-              '50%': { transform: `translate(${Math.sin(i) * 20}px, ${Math.cos(i) * 20}px) scale(1.5)`, opacity: 0.5 },
-          },
-        }}
-      />
-      ))}
-      
-      {/* Icon Bubble - More Premium */}
-      <Box
-        sx={{
-          mb: 2.5,
-          p: 2.5,
-          borderRadius: '28px',
-          background: `linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.8)} 100%)`,
-          boxShadow: `0 20px 40px -8px ${alpha(color, 0.4)}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1,
-          animation: 'bounceIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        }}
-      >
-        <Icon sx={{ fontSize: 36, color: '#FFFFFF' }} />
-      </Box>
-
-      {/* Metric Value - Darker and more readable */}
-      <Typography
-        sx={{
-          fontSize: { xs: '3rem', md: '4.5rem' },
-          fontWeight: 900,
-          // Removed transparency for better readability as requested
-          color: color, 
-          lineHeight: 1,
-          mb: 2,
-          textAlign: 'center',
-          zIndex: 1,
-          letterSpacing: '-0.06em',
-          textShadow: `0 4px 12px ${alpha(color, 0.15)}`,
-          animation: 'valueEntrance 1s ease-out forwards',
-          '@keyframes valueEntrance': {
-            '0%': { transform: 'translateY(20px) scale(0.9)', opacity: 0 },
-            '100%': { transform: 'translateY(0) scale(1)', opacity: 1 },
-          }
-        }}
-      >
-        {displayValue}
-      </Typography>
-
-      {/* Label - High Contrast */}
-      {displayLabel && (
-        <Box
-          sx={{
-            zIndex: 1,
-            px: 2.5,
-            py: 1,
-            borderRadius: '16px',
-            bgcolor: '#FFFFFF',
-            border: `1.5px solid ${alpha(color, 0.3)}`,
-            boxShadow: `0 8px 16px -4px ${alpha(color, 0.1)}`,
-            animation: 'labelEntrance 1.2s ease-out forwards 0.3s',
-            '@keyframes labelEntrance': {
-              '0%': { transform: 'translateY(10px)', opacity: 0 },
-              '100%': { transform: 'translateY(0)', opacity: 1 },
-            }
-          }}
-        >
-          <Typography
-            sx={{
-              fontWeight: 800,
-              fontSize: '0.9rem',
-              color: alpha(color, 0.9), // Darker text for readability
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
-            {displayLabel}
-          </Typography>
-        </Box>
-      )}
-    </Box>
-  );
-};
-
-const CXOMultiMetric = ({ data, color }) => {
-  // Check if data is a flat list or grouped rows
-  // If it's flattened rows, we'll see repeating names like "Bank Name"
-  const isFlattenedRows = data.filter(d => d.name === 'Bank Name' || d.name === 'Region' || d.name === 'Name').length > 1;
-
-  if (isFlattenedRows) {
-    // Group the flattened data back into "entities"
-    const entities = [];
-    let currentEntity = null;
-    
-    data.forEach(item => {
-      if (item.name === 'Bank Name' || item.name === 'Region' || item.name === 'Name' || item.name === 'Entity') {
-        if (currentEntity) entities.push(currentEntity);
-        currentEntity = { name: item.value, metrics: [] };
-      } else if (currentEntity) {
-        currentEntity.metrics.push(item);
-      }
-    });
-    if (currentEntity) entities.push(currentEntity);
-
-  return (
-      <Box sx={{ 
-        width: '100%', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: entities.length <= 2 ? { xs: 3, sm: 4 } : 2, 
-        py: 0.5,
-        flex: 1,
-        justifyContent: 'center'
-      }}>
-        {entities.map((entity, idx) => {
-          const palette = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
-          const itemColor = palette[idx % palette.length];
-          
-          return (
-            <Box 
-              key={idx}
-              sx={{
-                p: { xs: 2, sm: 2.25, md: 2.5 },
-                borderRadius: 5,
-                bgcolor: alpha(itemColor, 0.03),
-                border: '1px solid',
-                borderColor: alpha(itemColor, 0.1),
-                boxShadow: `0 10px 25px -10px ${alpha(itemColor, 0.12)}`,
-                animation: `slideInPremium 0.5s ease-out forwards ${idx * 0.08}s`,
-                position: 'relative',
-                willChange: 'transform, opacity',
-                overflow: 'hidden',
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  transform: 'translateY(-4px) scale(1.01)',
-                  boxShadow: `0 15px 35px -12px ${alpha(itemColor, 0.2)}`,
-                  borderColor: alpha(itemColor, 0.3),
-                  bgcolor: alpha(itemColor, 0.05),
-                }
-              }}
-            >
-              {/* Modern Glass Accent */}
-              <Box sx={{ 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                width: 6, 
-                height: '100%', 
-                background: `linear-gradient(180deg, ${itemColor} 0%, ${alpha(itemColor, 0.4)} 100%)`,
-              }} />
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: { xs: 1.5, sm: 2 }, ml: 0.5 }}>
-                <Typography sx={{ 
-                  fontSize: { xs: '0.8rem', sm: '0.85rem', md: '0.95rem' }, 
-                  fontWeight: 900, 
-                  color: itemColor, 
-                  textTransform: 'uppercase', 
-                  letterSpacing: '0.06em',
-                  bgcolor: alpha(itemColor, 0.1),
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: '8px'
-                }}>
-                  {entity.name}
-                </Typography>
-                <Box sx={{ flex: 1, height: '1.5px', bgcolor: alpha(itemColor, 0.1), borderRadius: 1 }} />
-              </Box>
-              
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: { xs: 1.5, sm: 2, md: 2.5 }, ml: 0.5 }}>
-                {entity.metrics.map((metric, mIdx) => {
-                  const isPrimary = metric.name.toLowerCase().includes('mtd');
-                  
-                  return (
-                    <Box key={mIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                      <Typography sx={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        {metric.name.replace('Disbursed Amount', 'Disbursed')}
-                      </Typography>
-                      <Typography sx={{ 
-                        fontSize: isPrimary 
-                          ? { xs: '1.25rem', sm: '1.4rem', md: '1.6rem' } 
-                          : { xs: '1.1rem', sm: '1.2rem', md: '1.3rem' }, 
-                        color: isPrimary ? '#0F172A' : '#475569', 
-                        fontWeight: 900,
-                        lineHeight: 1,
-                        letterSpacing: '-0.03em'
-                      }}>
-                        {metric.formatted}
-                      </Typography>
-                      
-                      {/* Comparison visual indicator */}
-                      <Box sx={{ height: 10, bgcolor: alpha(itemColor, 0.05), borderRadius: 5, overflow: 'hidden', mt: 0.5 }}>
-                        <Box sx={{ 
-                          width: mIdx === 0 ? '100%' : '75%', 
-                          height: '100%',
-                          bgcolor: mIdx === 0 ? itemColor : alpha(itemColor, 0.3),
-                          borderRadius: 5,
-                          position: 'relative',
-                          '&::after': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                            animation: 'premiumShimmer 3s infinite linear',
-                          }
-                        }} />
-                      </Box>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Box>
-          );
-        })}
-      </Box>
-    );
-  }
-
-  // Fallback to standard list view if not groupable
-  return (
-    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2.5, py: 1 }}>
-      {data.map((entry, idx) => {
-         const allValues = data.map(e => (typeof e.value === 'number' ? e.value : parseFloat(String(e.value).replace(/[^0-9.-]/g, '')) || 0));
-         const maxValue = Math.max(...allValues, 1);
-         const numericValue = typeof entry.value === 'number' ? entry.value : parseFloat(String(entry.value).replace(/[^0-9.-]/g, '')) || 0;
-         const percentage = maxValue > 0 ? (numericValue / maxValue) * 100 : 0;
-         
-         const palette = ['#4F46E5', '#10B981', '#F59E0B', '#EC4899', '#3B82F6', '#8B5CF6'];
-         const itemColor = palette[idx % palette.length];
-
-         return (
-          <Box 
-            key={idx} 
-            sx={{ 
-              position: 'relative',
-              p: 2.5,
-              borderRadius: 5,
-              bgcolor: '#FFFFFF',
-              border: '1px solid',
-              borderColor: alpha(itemColor, 0.15),
-              boxShadow: `0 6px 16px ${alpha(itemColor, 0.08)}`,
-              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              '&:hover': {
-                transform: 'translateX(10px) scale(1.02)',
-                boxShadow: `0 12px 28px ${alpha(itemColor, 0.15)}`,
-                borderColor: alpha(itemColor, 0.35),
-              },
-              overflow: 'hidden',
-              animation: `slideInList 0.5s ease-out forwards ${idx * 0.08}s`,
-              willChange: 'transform, opacity',
-              '@keyframes slideInList': {
-                '0%': { transform: 'translateX(-30px)', opacity: 0 },
-                '100%': { transform: 'translateX(0)', opacity: 1 },
-              }
-            }}
-          >
-            {/* Background Decoration */}
-                <Box sx={{ 
-              position: 'absolute', 
-              top: 0, 
-              right: 0, 
-              width: '40%', 
-              height: '100%', 
-              background: `linear-gradient(90deg, transparent, ${alpha(itemColor, 0.04)})`,
-              zIndex: 0 
-            }} />
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, position: 'relative', zIndex: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-                <Box sx={{ 
-                  width: 44, 
-                  height: 44, 
-                  borderRadius: '16px', 
-                  bgcolor: itemColor, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: 900,
-                  fontSize: '1.1rem',
-                  boxShadow: `0 8px 16px -4px ${alpha(itemColor, 0.4)}`,
-                }}>
-                  {idx + 1}
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#1E293B', lineHeight: 1.2 }}>
-                    {entry.name || entry.label}
-                  </Typography>
-                </Box>
-              </Box>
-              <Typography sx={{ fontSize: '1.4rem', fontWeight: 900, color: itemColor, letterSpacing: '-0.04em' }}>
-                {entry.formatted || smartFormat(entry.value)}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ position: 'relative', height: 10, bgcolor: alpha(itemColor, 0.1), borderRadius: 5, overflow: 'hidden' }}>
-              <Box sx={{ 
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                width: `${percentage}%`,
-                background: `linear-gradient(90deg, ${itemColor}, ${alpha(itemColor, 0.6)})`,
-                borderRadius: 5,
-                transition: 'width 1.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                boxShadow: `0 0 15px ${alpha(itemColor, 0.4)}`,
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
-                  animation: 'premiumShimmer 2.5s infinite linear',
-                }
-              }} />
-            </Box>
-          </Box>
-        );
-      })}
-    </Box>
-  );
-};
-
 import {
   Warning as WarningIcon,
   TrendingUp as TrendingUpIcon,
@@ -501,115 +44,317 @@ import {
 } from '@mui/icons-material';
 import MoneyIcon from '@mui/icons-material/Money';
 
+// ─── Helpers ──────────────────────────────────────────
+
+const formatIndianCurrency = (value) => {
+  if (!value) return value;
+  if (typeof value === 'string' && (value.includes('₹') || value.includes('L') || value.includes('Cr'))) return value;
+  const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : value;
+  if (isNaN(num)) return value;
+  if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)}Cr`;
+  if (num >= 100000) return `₹${(num / 100000).toFixed(2)}L`;
+  if (num >= 1000) return `₹${(num / 1000).toFixed(2)}K`;
+  return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+};
+
+const smartFormat = (value) => {
+  if (value === null || value === undefined) return value;
+  const str = String(value);
+  if (str.includes('₹') || str.includes('L') || str.includes('Cr') || str.includes('%')) return str;
+  const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
+  if (isNaN(num)) return value;
+  if (str.includes('M')) return formatIndianCurrency(parseFloat(str.replace('M', '')) * 1000000);
+  if (str.includes('K') || num > 1000) return formatIndianCurrency(num);
+  return num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+
+// ─── Visual Theme System ──────────────────────────────
+// 6 unique card themes that cycle per card index
+
+const CARD_THEMES = [
+  {
+    name: 'ocean',
+    primary: '#0078d7',
+    secondary: '#00a6ff',
+    accent: '#e6f3ff',
+    gradient: 'linear-gradient(135deg, #0078d7 0%, #00a6ff 100%)',
+    bgPattern: 'radial-gradient(circle at 90% 10%, rgba(0,120,215,0.06) 0%, transparent 50%)',
+    barColors: ['#0078d7', '#00a6ff', '#4dc3ff'],
+  },
+  {
+    name: 'emerald',
+    primary: '#059669',
+    secondary: '#10B981',
+    accent: '#ecfdf5',
+    gradient: 'linear-gradient(135deg, #059669 0%, #34D399 100%)',
+    bgPattern: 'radial-gradient(circle at 10% 90%, rgba(5,150,105,0.06) 0%, transparent 50%)',
+    barColors: ['#059669', '#10B981', '#34D399'],
+  },
+  {
+    name: 'amber',
+    primary: '#D97706',
+    secondary: '#F59E0B',
+    accent: '#fffbeb',
+    gradient: 'linear-gradient(135deg, #D97706 0%, #FBBF24 100%)',
+    bgPattern: 'radial-gradient(circle at 85% 85%, rgba(217,119,6,0.06) 0%, transparent 50%)',
+    barColors: ['#D97706', '#F59E0B', '#FBBF24'],
+  },
+  {
+    name: 'rose',
+    primary: '#DC2626',
+    secondary: '#EF4444',
+    accent: '#fef2f2',
+    gradient: 'linear-gradient(135deg, #DC2626 0%, #F87171 100%)',
+    bgPattern: 'radial-gradient(circle at 15% 15%, rgba(220,38,38,0.06) 0%, transparent 50%)',
+    barColors: ['#DC2626', '#EF4444', '#F87171'],
+  },
+  {
+    name: 'indigo',
+    primary: '#4338CA',
+    secondary: '#6366F1',
+    accent: '#eef2ff',
+    gradient: 'linear-gradient(135deg, #4338CA 0%, #818CF8 100%)',
+    bgPattern: 'radial-gradient(circle at 80% 20%, rgba(67,56,202,0.06) 0%, transparent 50%)',
+    barColors: ['#4338CA', '#6366F1', '#818CF8'],
+  },
+  {
+    name: 'teal',
+    primary: '#0D9488',
+    secondary: '#14B8A6',
+    accent: '#f0fdfa',
+    gradient: 'linear-gradient(135deg, #0D9488 0%, #5EEAD4 100%)',
+    bgPattern: 'radial-gradient(circle at 50% 50%, rgba(13,148,136,0.06) 0%, transparent 50%)',
+    barColors: ['#0D9488', '#14B8A6', '#5EEAD4'],
+  },
+];
+
+// ─── Icon Map ──────────────────────────────────────────
+
 const ICON_MAP = {
-  Warning: WarningIcon,
-  TrendingUp: TrendingUpIcon,
-  TrendingDown: TrendingDownIcon,
-  CompareArrows: CompareArrowsIcon,
-  Compare: CompareArrowsIcon,
-  ShowChart: ShowChartIcon,
-  TableChart: TableChartIcon,
-  Table: TableChartIcon,
-  Lightbulb: LightbulbIcon,
-  Info: InfoIcon,
-  CheckCircle: CheckCircleIcon,
-  Money: MoneyIcon,
-  Star: StarIcon,
-  Timeline: TimelineIcon,
-  AlertIcon: ErrorIcon,
-  ChartBar: BarChartIcon,
+  Warning: WarningIcon, TrendingUp: TrendingUpIcon, TrendingDown: TrendingDownIcon,
+  CompareArrows: CompareArrowsIcon, Compare: CompareArrowsIcon, ShowChart: ShowChartIcon,
+  TableChart: TableChartIcon, Table: TableChartIcon, Lightbulb: LightbulbIcon,
+  Info: InfoIcon, CheckCircle: CheckCircleIcon, Money: MoneyIcon,
+  Star: StarIcon, Timeline: TimelineIcon, AlertIcon: ErrorIcon, ChartBar: BarChartIcon,
 };
 
 const URGENCY_CONFIG = {
-  critical: {
-    color: '#EF4444',
-    bgColor: '#FEF2F2',
-    borderColor: '#FCA5A5',
-    label: 'Critical',
-  },
-  high: {
-    color: '#F59E0B',
-    bgColor: '#FFFBEB',
-    borderColor: '#FCD34D',
-    label: 'High',
-  },
-  medium: {
-    color: '#3B82F6',
-    bgColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
-    label: 'Medium',
-  },
-  low: {
-    color: '#0D9488',
-    bgColor: '#F0FDFA',
-    borderColor: '#5EEAD4',
-    label: 'Low',
-  },
-  info: {
-    color: '#6366F1',
-    bgColor: '#EEF2FF',
-    borderColor: '#A5B4FC',
-    label: 'Info',
-  },
+  critical: { color: '#EF4444', bgColor: '#FEF2F2', borderColor: '#FCA5A5', label: 'Critical' },
+  high: { color: '#F59E0B', bgColor: '#FFFBEB', borderColor: '#FCD34D', label: 'High' },
+  medium: { color: '#3B82F6', bgColor: '#EFF6FF', borderColor: '#BFDBFE', label: 'Medium' },
+  low: { color: '#0D9488', bgColor: '#F0FDFA', borderColor: '#5EEAD4', label: 'Low' },
+  info: { color: '#6366F1', bgColor: '#EEF2FF', borderColor: '#A5B4FC', label: 'Info' },
 };
 
-// Uniform card height for consistent layout - taller for better graph visibility
-const CARD_TYPE_STYLES = {
-  metric: { minHeight: { xs: 140, sm: 160, md: 180 } },
-  alert: { minHeight: { xs: 140, sm: 160, md: 180 } },
-  comparison: { minHeight: { xs: 160, sm: 180, md: 200 } },
-  trend: { minHeight: { xs: 140, sm: 160, md: 180 } },
-  table_summary: { minHeight: { xs: 160, sm: 180, md: 200 } },
-  insight: { minHeight: { xs: 140, sm: 160, md: 180 } },
-  info: { minHeight: { xs: 140, sm: 160, md: 180 } },
+// ─── CXO Single Metric (Clean) ────────────────────────
+
+const CXOSingleMetric = ({ data, theme, title, icon: Icon }) => {
+  const displayValue = data.formatted || smartFormat(data.value);
+  const displayLabel = data.name || data.label || '';
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        width: '100%',
+        p: { xs: 2, sm: 3 },
+        background: `linear-gradient(145deg, ${alpha(theme.primary, 0.04)} 0%, ${alpha(theme.primary, 0.10)} 100%)`,
+        borderRadius: 4,
+        border: `1px solid ${alpha(theme.primary, 0.12)}`,
+        minHeight: { xs: 180, sm: 200, md: 240 },
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Subtle accent circle */}
+      <Box sx={{
+        position: 'absolute', top: -60, right: -60,
+        width: 200, height: 200, borderRadius: '50%',
+        background: `radial-gradient(circle, ${alpha(theme.primary, 0.08)} 0%, transparent 70%)`,
+        pointerEvents: 'none',
+      }} />
+
+      {/* Icon */}
+      <Box
+        sx={{
+          mb: 2, p: 2, borderRadius: 3,
+          background: theme.gradient,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1,
+        }}
+      >
+        <Icon sx={{ fontSize: 32, color: '#FFFFFF' }} />
+      </Box>
+
+      {/* Value */}
+      <Typography
+        sx={{
+          fontSize: { xs: '2.75rem', md: '4rem' },
+          fontWeight: 900,
+          color: theme.primary,
+          lineHeight: 1, mb: 2,
+          textAlign: 'center', zIndex: 1,
+          letterSpacing: '-0.04em',
+        }}
+      >
+        {displayValue}
+      </Typography>
+
+      {/* Label */}
+      {displayLabel && (
+        <Box sx={{
+          zIndex: 1, px: 2.5, py: 0.75,
+          borderRadius: 3, bgcolor: '#FFFFFF',
+          border: `1.5px solid ${alpha(theme.primary, 0.2)}`,
+        }}>
+          <Typography sx={{
+            fontWeight: 700, fontSize: '0.85rem',
+            color: theme.primary,
+            textTransform: 'uppercase', letterSpacing: '0.04em',
+          }}>
+            {displayLabel}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
 };
 
-// Beautiful gradient colors for charts - Vibrant & Diverse premium theme
-const CHART_COLORS = {
-  primary: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'],
-  success: ['#10B981', '#34D399', '#6EE7B7'],
-  warning: ['#F59E0B', '#FBBF24', '#FCD34D'],
-  danger: ['#EF4444', '#F87171', '#FCA5A5'],
-  purple: ['#8B5CF6', '#A78BFA', '#C4B5FD'],
+// ─── CXO Multi Metric (Clean) ─────────────────────────
+
+const CXOMultiMetric = ({ data, theme }) => {
+  const isFlattenedRows = data.filter(d => d.name === 'Bank Name' || d.name === 'Region' || d.name === 'Name').length > 1;
+
+  if (isFlattenedRows) {
+    const entities = [];
+    let currentEntity = null;
+    data.forEach(item => {
+      if (item.name === 'Bank Name' || item.name === 'Region' || item.name === 'Name' || item.name === 'Entity') {
+        if (currentEntity) entities.push(currentEntity);
+        currentEntity = { name: item.value, metrics: [] };
+      } else if (currentEntity) {
+        currentEntity.metrics.push(item);
+      }
+    });
+    if (currentEntity) entities.push(currentEntity);
+
+    return (
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: entities.length <= 2 ? 3 : 2, py: 0.5, flex: 1, justifyContent: 'center' }}>
+        {entities.map((entity, idx) => {
+          const palette = CARD_THEMES.map(t => t.primary);
+          const itemColor = palette[idx % palette.length];
+          return (
+            <Box key={idx} sx={{
+              p: { xs: 2, sm: 2.25 }, borderRadius: 4,
+              bgcolor: alpha(itemColor, 0.03),
+              border: `1px solid ${alpha(itemColor, 0.1)}`,
+              position: 'relative', overflow: 'hidden',
+              '&:hover': { bgcolor: alpha(itemColor, 0.05), borderColor: alpha(itemColor, 0.2) },
+            }}>
+              <Box sx={{ position: 'absolute', top: 0, left: 0, width: 5, height: '100%', background: theme.gradient }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5, ml: 0.5 }}>
+                <Typography sx={{
+                  fontSize: '0.85rem', fontWeight: 800, color: itemColor,
+                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                  bgcolor: alpha(itemColor, 0.08), px: 1.5, py: 0.4, borderRadius: 2,
+                }}>
+                  {entity.name}
+                </Typography>
+                <Box sx={{ flex: 1, height: 1, bgcolor: alpha(itemColor, 0.08) }} />
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, ml: 0.5 }}>
+                {entity.metrics.map((metric, mIdx) => {
+                  const isPrimary = metric.name.toLowerCase().includes('mtd');
+                  return (
+                    <Box key={mIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography sx={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {metric.name.replace('Disbursed Amount', 'Disbursed')}
+                      </Typography>
+                      <Typography sx={{
+                        fontSize: isPrimary ? { xs: '1.2rem', md: '1.5rem' } : { xs: '1.05rem', md: '1.2rem' },
+                        color: isPrimary ? '#0F172A' : '#475569', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em',
+                      }}>
+                        {metric.formatted}
+                      </Typography>
+                      <Box sx={{ height: 6, bgcolor: alpha(itemColor, 0.08), borderRadius: 3, overflow: 'hidden', mt: 0.25 }}>
+                        <Box sx={{ width: mIdx === 0 ? '100%' : '70%', height: '100%', bgcolor: mIdx === 0 ? itemColor : alpha(itemColor, 0.4), borderRadius: 3 }} />
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  }
+
+  // Standard list view
+  return (
+    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2, py: 1 }}>
+      {data.map((entry, idx) => {
+        const allValues = data.map(e => (typeof e.value === 'number' ? e.value : parseFloat(String(e.value).replace(/[^0-9.-]/g, '')) || 0));
+        const maxValue = Math.max(...allValues, 1);
+        const numericValue = typeof entry.value === 'number' ? entry.value : parseFloat(String(entry.value).replace(/[^0-9.-]/g, '')) || 0;
+        const percentage = maxValue > 0 ? (numericValue / maxValue) * 100 : 0;
+        const itemColor = CARD_THEMES[idx % CARD_THEMES.length].primary;
+
+        return (
+          <Box key={idx} sx={{
+            p: 2, borderRadius: 3, bgcolor: '#FFFFFF',
+            border: `1px solid ${alpha(itemColor, 0.12)}`,
+            overflow: 'hidden', position: 'relative',
+            '&:hover': { borderColor: alpha(itemColor, 0.3) },
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 36, height: 36, borderRadius: 2.5, bgcolor: itemColor,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 800, fontSize: '0.95rem',
+                }}>
+                  {idx + 1}
+                </Box>
+                <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#1E293B' }}>
+                  {entry.name || entry.label}
+                </Typography>
+              </Box>
+              <Typography sx={{ fontSize: '1.2rem', fontWeight: 900, color: itemColor, letterSpacing: '-0.03em' }}>
+                {entry.formatted || smartFormat(entry.value)}
+              </Typography>
+            </Box>
+            <Box sx={{ height: 8, bgcolor: alpha(itemColor, 0.08), borderRadius: 4, overflow: 'hidden' }}>
+              <Box sx={{
+                width: `${percentage}%`, height: '100%',
+                background: `linear-gradient(90deg, ${itemColor}, ${alpha(itemColor, 0.6)})`,
+                borderRadius: 4,
+              }} />
+            </Box>
+          </Box>
+        );
+      })}
+    </Box>
+  );
 };
 
-// Comparison Bar Chart Component - Premium visual
-const ComparisonChart = ({ data, color }) => {
+// ─── Comparison Chart ──────────────────────────────────
+
+const ComparisonChart = ({ data, theme }) => {
   const chartData = useMemo(() => {
     if (!data?.entity1 || !data?.entity2) return [];
     return [
-      { name: data.entity1.name, value: data.entity1.value, formatted: data.entity1.formatted, fill: '#4F46E5' },
-      { name: data.entity2.name, value: data.entity2.value, formatted: data.entity2.formatted, fill: '#10B981' },
+      { name: data.entity1.name, value: data.entity1.value, formatted: data.entity1.formatted, fill: theme.primary },
+      { name: data.entity2.name, value: data.entity2.value, formatted: data.entity2.formatted, fill: theme.secondary },
     ];
-  }, [data]);
+  }, [data, theme]);
 
   if (chartData.length === 0) return null;
-
   const maxValue = Math.max(...chartData.map(d => d.value));
-
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <Box sx={{ 
-          bgcolor: 'rgba(15, 23, 42, 0.95)', 
-          p: 1.5, 
-          border: '1px solid rgba(255,255,255,0.1)', 
-          borderRadius: 3,
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
-          backdropFilter: 'blur(12px)'
-        }}>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.6)', mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {data.name}
-          </Typography>
-          <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, color: '#FFFFFF' }}>
-            {data.formatted || smartFormat(data.value)}
-          </Typography>
-        </Box>
-      );
-    }
-    return null;
-  };
 
   return (
     <Box sx={{ width: '100%', flex: 1, minHeight: 120, mt: 1 }}>
@@ -617,73 +362,58 @@ const ComparisonChart = ({ data, color }) => {
         <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }} barCategoryGap="30%">
           <XAxis type="number" hide domain={[0, maxValue * 1.1]} />
           <YAxis type="category" dataKey="name" hide />
-          <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 12 }} />
-          <Bar dataKey="value" radius={[0, 16, 16, 0]} barSize={40} animationDuration={1500} animationBegin={200}>
+          <RechartsTooltip
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <Box sx={{ bgcolor: 'rgba(15,23,42,0.95)', p: 1.5, borderRadius: 2 }}>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', mb: 0.5, textTransform: 'uppercase' }}>{d.name}</Typography>
+                  <Typography sx={{ fontSize: '1rem', fontWeight: 900, color: '#fff' }}>{d.formatted || smartFormat(d.value)}</Typography>
+                </Box>
+              );
+            }}
+            cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 8 }}
+          />
+          <Bar dataKey="value" radius={[0, 12, 12, 0]} barSize={36}>
             {chartData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={index === 0 ? "url(#premiumGradientPrimary)" : "url(#premiumGradientSuccess)"} 
-                style={{
-                  filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.15))',
-                }}
-              />
+              <Cell key={index} fill={entry.fill} />
             ))}
           </Bar>
-          <defs>
-            <linearGradient id="premiumGradientPrimary" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#4F46E5" />
-              <stop offset="100%" stopColor="#818CF8" />
-            </linearGradient>
-            <linearGradient id="premiumGradientSuccess" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#10B981" />
-              <stop offset="100%" stopColor="#34D399" />
-            </linearGradient>
-          </defs>
         </BarChart>
       </ResponsiveContainer>
     </Box>
   );
 };
 
-// Background decorations for "jazz and oomph"
-const CardBackground = ({ type, color }) => {
-  const decorations = {
-    metric: (
-      <>
-        <Box sx={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.12)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', bottom: -30, left: -30, width: 140, height: 140, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.08)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', top: '20%', right: '10%', width: 4, height: 4, borderRadius: '50%', bgcolor: color, opacity: 0.2, animation: 'floatPremium 4s infinite ease-in-out' }} />
-        <Box sx={{ position: 'absolute', bottom: '20%', left: '15%', width: 6, height: 6, borderRadius: '50%', bgcolor: color, opacity: 0.15, animation: 'floatPremium 6s infinite ease-in-out 1s' }} />
-      </>
-    ),
-    comparison: (
-      <>
-        <Box sx={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '100%', background: `linear-gradient(135deg, ${alpha(color, 0.05)} 0%, transparent 100%)`, pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', bottom: -50, right: -50, width: 200, height: 200, borderRadius: '50%', border: `2px dashed ${alpha(color, 0.1)}`, pointerEvents: 'none' }} />
-        <svg style={{ position: 'absolute', right: 0, bottom: 0, width: 180, height: 120, opacity: 0.06, pointerEvents: 'none' }} viewBox="0 0 100 100" preserveAspectRatio="none">
-          <path d="M0 100 Q 50 0 100 100" fill={color} />
-        </svg>
-      </>
-    ),
-    alert: (
-      <>
-        <Box sx={{ position: 'absolute', top: 0, left: 0, width: 6, height: '100%', bgcolor: color, opacity: 0.9 }} />
-        <Box sx={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: `radial-gradient(circle at top right, ${alpha(color, 0.18)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', top: 20, right: 20, width: 40, height: 40, borderRadius: '50%', border: `1px solid ${alpha(color, 0.1)}`, animation: 'pulsePremium 4s infinite ease-in-out' }} />
-      </>
-    ),
-    table_summary: (
-      <>
-        <Box sx={{ position: 'absolute', top: -60, right: -60, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${alpha(color, 0.08)} 0%, transparent 70%)`, pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', bottom: 20, right: 20, width: 80, height: 80, borderRadius: '50%', border: `1px solid ${alpha(color, 0.05)}`, pointerEvents: 'none' }} />
-      </>
-    ),
-  };
-  return decorations[type] || decorations.metric;
-};
+// ─── Card Background Patterns (per theme) ─────────────
+
+const CardBackground = ({ theme, cardType }) => (
+  <>
+    <Box sx={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      background: theme.bgPattern, pointerEvents: 'none', zIndex: 0,
+    }} />
+    {/* Accent stripe for alerts */}
+    {cardType === 'alert' && (
+      <Box sx={{ position: 'absolute', top: 0, left: 0, width: 5, height: '100%', background: theme.gradient, zIndex: 0 }} />
+    )}
+    {/* Corner accent for metrics */}
+    {(cardType === 'metric' || cardType === 'info') && (
+      <Box sx={{
+        position: 'absolute', top: -30, right: -30, width: 120, height: 120,
+        borderRadius: '50%', border: `2px solid ${alpha(theme.primary, 0.06)}`,
+        pointerEvents: 'none', zIndex: 0,
+      }} />
+    )}
+  </>
+);
+
+// ─── Main Component ───────────────────────────────────
 
 const SummaryCard = memo(({
   card,
+  cardIndex = 0,
   variant = 'default',
   size = 'medium',
   selectable = false,
@@ -699,87 +429,54 @@ const SummaryCard = memo(({
   onToggleSelection = () => {},
 }) => {
   const {
-    id,
-    card_type = 'metric',
-    urgency = 'info',
-    title,
-    description,
-    primary_value,
-    primary_label,
-    secondary_value,
-    secondary_label,
-    trend,
-    trend_value,
-    icon = 'Info',
-    color,
-    action_text,
-    comparison_data,
-    metric_unit,
-    formatted_primary_value,
-    formatted_secondary_value,
-    top_entries,
-    bottom_entries,
-    info_data,
-    query_results,
-    _pipelineData,
-    _dataGrid,
-    sort_by,
-    sort_order,
+    id, card_type = 'metric', urgency = 'info', title, description,
+    primary_value, primary_label, secondary_value, secondary_label,
+    trend, trend_value, icon = 'Info', color,
+    action_text, comparison_data, metric_unit,
+    formatted_primary_value, formatted_secondary_value,
+    top_entries, bottom_entries, info_data, query_results,
+    _pipelineData, _dataGrid, sort_by, sort_order,
   } = card;
-  
+
+  // Pick theme based on card index for unique visuals
+  const theme = CARD_THEMES[cardIndex % CARD_THEMES.length];
+
   const toNumeric = (value) => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (typeof value === 'string') {
-      const cleaned = value.replace(/[^0-9.-]/g, '');
-      const parsed = Number(cleaned);
+      const parsed = Number(value.replace(/[^0-9.-]/g, ''));
       return Number.isFinite(parsed) ? parsed : null;
     }
     return null;
   };
 
   const prettifyLabel = (label = '') =>
-    label
-      .toString()
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+    label.toString().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-  // Helper to safely format values based on metric unit
   const getSafeDisplayValue = (val, formattedVal, unit) => {
     const numericVal = toNumeric(val);
-
-    if (unit === 'count' && numericVal !== null) {
-      return numericVal.toLocaleString('en-IN');
-    }
-
-    if (unit === 'currency' && numericVal !== null && !formattedVal) {
-      return formatIndianCurrency(numericVal);
-    }
-
+    if (unit === 'count' && numericVal !== null) return numericVal.toLocaleString('en-IN');
+    if (unit === 'currency' && numericVal !== null && !formattedVal) return formatIndianCurrency(numericVal);
     if (formattedVal) return formattedVal;
     if (numericVal !== null) return smartFormat(numericVal);
     return smartFormat(val) || val;
   };
 
-  // Smart formatting for values with unit awareness
-  // For comparison cards, recalculate primary_value from query_results if available
+  // Recalculate primary_value for comparison cards
   let correctedPrimaryValue = primary_value;
   let correctedFormattedPrimaryValue = formatted_primary_value;
-  
   if (card_type === 'comparison' && Array.isArray(query_results) && query_results.length > 0) {
-    // Sum up MTD amounts from query_results
     const totalMtd = query_results.reduce((sum, result) => {
       const mtdAmount = result.mtd_disbursed_amount || 0;
-      // Convert to lakhs if value is in raw rupees
       const mtdLakhs = mtdAmount > 10000 ? mtdAmount / 100000 : mtdAmount;
       return sum + mtdLakhs;
     }, 0);
-    
     if (totalMtd > 0) {
       correctedPrimaryValue = totalMtd.toFixed(2);
       correctedFormattedPrimaryValue = `₹${totalMtd.toFixed(2)}L`;
     }
   }
-  
+
   const displayPrimaryValue = getSafeDisplayValue(correctedPrimaryValue, correctedFormattedPrimaryValue, metric_unit);
   const displaySecondaryValue = getSafeDisplayValue(secondary_value, formatted_secondary_value, metric_unit);
   const displayTrendValue = trend_value;
@@ -794,88 +491,45 @@ const SummaryCard = memo(({
 
   const resolvedInfoData = useMemo(() => {
     if (!Array.isArray(rawInfoSource) || rawInfoSource.length === 0) return [];
-
-    // If entries already contain name/value, respect them
-    if (
-      rawInfoSource.every(
-        (entry) =>
-          entry &&
-          typeof entry === 'object' &&
-          ('name' in entry || 'label' in entry || 'title' in entry)
-      )
-    ) {
-      return rawInfoSource.map((entry) => ({
-        name: entry.name || entry.label || entry.title || prettifyLabel(entry.field || entry.key || ''),
-        value: entry.value ?? entry.count ?? entry.total ?? entry.formatted ?? null,
-        formatted:
-          entry.formatted ||
-          (entry.value !== undefined ? smartFormat(entry.value) : entry.value) ||
-          entry.count ||
-          entry.total ||
-          '—',
+    if (rawInfoSource.every(e => e && typeof e === 'object' && ('name' in e || 'label' in e || 'title' in e))) {
+      return rawInfoSource.map((e) => ({
+        name: e.name || e.label || e.title || prettifyLabel(e.field || e.key || ''),
+        value: e.value ?? e.count ?? e.total ?? e.formatted ?? null,
+        formatted: e.formatted || (e.value !== undefined ? smartFormat(e.value) : e.value) || e.count || e.total || '—',
       }));
     }
-
-    // Convert row-based data into info entries
     return rawInfoSource.flatMap((row) => {
       if (!row || typeof row !== 'object') return [];
       return Object.entries(row)
         .filter(([key]) => key !== 'id' && !key.startsWith('_'))
-        .map(([key, value]) => {
-          const formattedValue =
-            value === null || value === undefined ? 'No data' : smartFormat(value);
-          return {
-            name: prettifyLabel(key),
-            value,
-            formatted: formattedValue,
-          };
-        });
+        .map(([key, value]) => ({
+          name: prettifyLabel(key),
+          value,
+          formatted: value === null || value === undefined ? 'No data' : smartFormat(value),
+        }));
     });
   }, [rawInfoSource]);
 
   const hasInfoData = resolvedInfoData.length > 0;
-
   const IconComponent = ICON_MAP[icon] || InfoIcon;
   const urgencyConfig = URGENCY_CONFIG[urgency] || URGENCY_CONFIG.info;
-  
-  // Apply muted color mapping directly
-  const rawColor = color || urgencyConfig.color;
-  const colorMap = {
-    '#22C55E': '#059669', '#10B981': '#0D9488',
-    '#FACC15': '#D97706', '#F59E0B': '#B45309',
-    '#ffff00': '#D97706', '#FFFF00': '#D97706',
-    '#EF4444': '#DC2626', '#ff0000': '#DC2626', '#FF0000': '#DC2626',
-    '#3B82F6': '#2563EB', '#0000ff': '#2563EB', '#0000FF': '#2563EB',
-    '#008000': '#059669', '#ffa500': '#D97706', '#FFA500': '#D97706',
-    '#8B5CF6': '#7C3AED', '#EC4899': '#DB2777',
-  };
-  const cardColor = colorMap[rawColor] || rawColor;
-  const cardStyles = CARD_TYPE_STYLES[card_type] || {};
+  const isCXOView = (card_type === 'info' || card_type === 'metric') && hasInfoData;
+  const showTypeLabel = ['alert', 'table_summary'].includes(card_type);
 
   const sizeStyles = {
     small: { p: 1.5, titleSize: '0.8rem', valueSize: '1.25rem' },
     medium: { p: 2, titleSize: '0.9rem', valueSize: '1.5rem' },
     large: { p: 2.5, titleSize: '1rem', valueSize: '1.75rem' },
   };
-
   const currentSize = sizeStyles[size] || sizeStyles.medium;
 
   const handleClick = (e) => {
     e.stopPropagation();
-    
-    if (selectable && onSelect) {
-      onSelect(id, !selected);
-    } else if (onClick) {
-      onClick(card);
-    } else {
-    }
+    if (selectable && onSelect) onSelect(id, !selected);
+    else if (onClick) onClick(card);
   };
 
-  // Determine if we should show the card type label
-  // User requested: "dont show comparison as widget in title... table summary alert is fine"
-  const showTypeLabel = ['alert', 'table_summary'].includes(card_type);
-
-  const isCXOView = (card_type === 'info' || card_type === 'metric') && hasInfoData;
+  // ─── Render ───────────────────────────────────────
 
   return (
     <Box
@@ -883,699 +537,325 @@ const SummaryCard = memo(({
       sx={{
         position: 'relative',
         p: { xs: 2, sm: 2.5, md: 3 },
-        borderRadius: 6,
+        borderRadius: 5,
         bgcolor: '#FFFFFF',
-        background: isCXOView 
-          ? `linear-gradient(145deg, #FFFFFF 0%, ${alpha(cardColor, 0.03)} 100%)`
-          : 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
+        background: isCXOView
+          ? `linear-gradient(145deg, #FFFFFF 0%, ${theme.accent} 100%)`
+          : 'linear-gradient(145deg, #FFFFFF 0%, #FAFBFC 100%)',
         border: '1px solid',
-        borderColor: selected ? cardColor : 'rgba(226, 232, 240, 0.7)',
+        borderColor: selected ? theme.primary : 'rgba(226, 232, 240, 0.8)',
         cursor: selectable || onClick ? 'pointer' : 'default',
-        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: selected 
-          ? `0 20px 40px -12px ${alpha(cardColor, 0.25)}` 
-          : '0 4px 20px -2px rgba(0,0,0,0.03), 0 12px 30px -4px rgba(0,0,0,0.04)',
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+        boxShadow: selected
+          ? `0 8px 24px -6px ${alpha(theme.primary, 0.2)}`
+          : '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        ...cardStyles,
+        minHeight: { xs: 140, sm: 160, md: 180 },
         '&:hover': {
-          transform: 'translateY(-8px) scale(1.01)',
-          boxShadow: `0 30px 60px -12px ${alpha(cardColor, 0.18)}, 0 18px 36px -18px rgba(0,0,0,0.08)`,
-          borderColor: alpha(cardColor, 0.5),
-          '& .card-actions': {
-            opacity: 1,
-            transform: 'translateY(0)',
-          }
-        },
-        animation: 'fadeInPremium 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-        '@keyframes fadeInPremium': {
-          '0%': { opacity: 0, transform: 'translateY(30px) scale(0.98)' },
-          '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
-        },
-        '@keyframes floatPremium': {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-15px)' },
-        },
-        '@keyframes pulsePremium': {
-          '0%, 100%': { transform: 'scale(1)', opacity: 0.1 },
-          '50%': { transform: 'scale(1.1)', opacity: 0.2 },
-        },
-        '@keyframes premiumEntrance': {
-          '0%': { transform: 'translateX(-20px)', opacity: 0 },
-          '100%': { transform: 'translateX(0)', opacity: 1 },
-        },
-        '@keyframes slideInPremium': {
-          '0%': { transform: 'translateY(20px)', opacity: 0 },
-          '100%': { transform: 'translateY(0)', opacity: 1 },
-        },
-        '@keyframes premiumShimmer': {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(100%)' },
+          boxShadow: `0 8px 28px -4px ${alpha(theme.primary, 0.12)}, 0 4px 12px rgba(0,0,0,0.04)`,
+          borderColor: alpha(theme.primary, 0.3),
+          '& .card-actions': { opacity: 1 },
         },
       }}
     >
-      <CardBackground type={card_type} color={cardColor} />
+      <CardBackground theme={theme} cardType={card_type} />
 
       {/* Selection checkbox */}
       {selectionMode && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            zIndex: 10,
-          }}
-        >
+        <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
           <Checkbox
             checked={isSelected}
-            onChange={(e) => {
-              e.stopPropagation();
-              onToggleSelection(id);
-            }}
-            sx={{
-              color: alpha(cardColor, 0.5),
-              '&.Mui-checked': {
-                color: cardColor,
-              },
-              '& .MuiSvgIcon-root': {
-                fontSize: 24,
-              },
-            }}
+            onChange={(e) => { e.stopPropagation(); onToggleSelection(id); }}
+            sx={{ color: alpha(theme.primary, 0.5), '&.Mui-checked': { color: theme.primary } }}
           />
         </Box>
       )}
 
-      {/* Selection indicator (legacy) */}
+      {/* Legacy selection indicator */}
       {selectable && !selectionMode && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 16,
-            right: 16,
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            border: `2px solid ${selected ? cardColor : '#CBD5E1'}`,
-            bgcolor: selected ? cardColor : 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease',
-            zIndex: 2,
-          }}
-        >
-          {selected && <CheckCircleIcon sx={{ fontSize: 16, color: '#fff' }} />}
+        <Box sx={{
+          position: 'absolute', top: 14, right: 14, width: 22, height: 22,
+          borderRadius: '50%', border: `2px solid ${selected ? theme.primary : '#CBD5E1'}`,
+          bgcolor: selected ? theme.primary : 'transparent',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2,
+        }}>
+          {selected && <CheckCircleIcon sx={{ fontSize: 14, color: '#fff' }} />}
         </Box>
       )}
 
-      {/* Header with icon and urgency badge */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5, position: 'relative', zIndex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-          {/* Hide header icon in CXO view to avoid redundancy */}
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, position: 'relative', zIndex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
           {!isCXOView && (
-          <Box
-            sx={{
-              width: { xs: 48, sm: 56 },
-              height: { xs: 48, sm: 56 },
-              borderRadius: 3,
-              background: `linear-gradient(135deg, ${cardColor} 0%, ${alpha(cardColor, 0.8)} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: `0 8px 16px ${alpha(cardColor, 0.2)}`,
-            }}
-          >
-            <IconComponent sx={{ fontSize: { xs: 26, sm: 30 }, color: '#FFFFFF' }} />
-          </Box>
+            <Box sx={{
+              width: { xs: 44, sm: 48 }, height: { xs: 44, sm: 48 },
+              borderRadius: 3, background: theme.gradient,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <IconComponent sx={{ fontSize: { xs: 24, sm: 26 }, color: '#FFFFFF' }} />
+            </Box>
           )}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-             {/* Title with Info Icon - Centered with Icon */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography
-                  sx={{
-                  fontSize: { xs: '1.25rem', sm: '1.4rem' },
-                  fontWeight: 800,
-                  color: '#0F172A',
-                  lineHeight: 1.2,
-                  letterSpacing: '-0.02em',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  flex: 1,
-                  }}
-              >
-                  {title}
+              <Typography sx={{
+                fontSize: { xs: '1.15rem', sm: '1.3rem' }, fontWeight: 800,
+                color: '#0F172A', lineHeight: 1.2, letterSpacing: '-0.02em',
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', flex: 1,
+              }}>
+                {title}
               </Typography>
               {description && (
-                <Tooltip 
-                  title={description} 
-                  arrow 
-                  placement="top"
-                  sx={{
-                    '& .MuiTooltip-tooltip': {
-                      bgcolor: '#1E293B',
-                      fontSize: '0.75rem',
-                      maxWidth: 280,
-                      p: 1.5,
-                    },
-                  }}
-                >
-                  <IconButton
-                    size="small"
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      color: alpha(cardColor, 0.7),
-                      '&:hover': {
-                        bgcolor: alpha(cardColor, 0.1),
-                        color: cardColor,
-                      },
-                    }}
-                  >
-                    <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+                <Tooltip title={description} arrow placement="top">
+                  <IconButton size="small" sx={{
+                    width: 22, height: 22, color: alpha(theme.primary, 0.6),
+                    '&:hover': { bgcolor: alpha(theme.primary, 0.08), color: theme.primary },
+                  }}>
+                    <InfoOutlinedIcon sx={{ fontSize: 16 }} />
                   </IconButton>
                 </Tooltip>
               )}
             </Box>
-            
-            {/* Urgency Badge below title if needed */}
             {urgency === 'critical' && (
-                <Chip
-                label={urgencyConfig.label}
-                size="small"
-                sx={{
-                    height: 20,
-                    fontSize: '0.65rem',
-                    fontWeight: 700,
-                    bgcolor: '#FEE2E2',
-                    color: urgencyConfig.color,
-                    border: '1px solid',
-                    borderColor: '#FECACA',
-                    px: 0.5,
-                    '& .MuiChip-label': { px: 0.5 },
-                }}
-                />
+              <Chip label={urgencyConfig.label} size="small" sx={{
+                height: 20, fontSize: '0.65rem', fontWeight: 700,
+                bgcolor: '#FEE2E2', color: '#EF4444',
+                border: '1px solid #FECACA',
+              }} />
             )}
           </Box>
         </Box>
       </Box>
 
-      {/* Metrics - Widget Style */}
+      {/* Content */}
       {(primary_value || secondary_value || comparison_data || top_entries || bottom_entries || hasInfoData) && (
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: 2.5, 
-          mt: 1, 
-          position: 'relative', 
-          zIndex: 1, 
-          flex: 1, 
-          justifyContent: (card_type === 'metric' || card_type === 'alert' || card_type === 'info') ? 'center' : 'flex-start' 
+        <Box sx={{
+          display: 'flex', flexDirection: 'column', gap: 2, mt: 0.5,
+          position: 'relative', zIndex: 1, flex: 1,
+          justifyContent: (card_type === 'metric' || card_type === 'alert' || card_type === 'info') ? 'center' : 'flex-start',
         }}>
-          {/* CXO Style Rendering for Info and Metric cards with data */}
+          {/* CXO View */}
           {isCXOView ? (
             resolvedInfoData.length === 1 ? (
-              <CXOSingleMetric 
-                data={resolvedInfoData[0]} 
-                color={cardColor} 
-                title={title} 
-                icon={IconComponent} 
-              />
+              <CXOSingleMetric data={resolvedInfoData[0]} theme={theme} title={title} icon={IconComponent} />
             ) : (
-              <CXOMultiMetric 
-                data={resolvedInfoData} 
-                color={cardColor} 
-              />
+              <CXOMultiMetric data={resolvedInfoData} theme={theme} />
             )
+
+          /* Table Summary - Top Entries */
           ) : card_type === 'table_summary' && top_entries && top_entries.length > 0 ? (
-            /* Table Summary Card - Top Entries with premium styling */
-            <Box sx={{ 
-              width: '100%', 
-              mt: 0, 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: top_entries.length <= 3 ? { xs: 4, sm: 5 } : 2.5, 
-              flex: 1, 
-              justifyContent: 'center',
-              py: 1
-            }}>
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: top_entries.length <= 3 ? 3 : 2, flex: 1, justifyContent: 'center', py: 0.5 }}>
               {top_entries.map((entry, idx) => {
-                const isSparse = top_entries.length <= 3;
                 const maxValue = Math.max(...top_entries.map(e => e.value), 1);
                 const percentage = (entry.value / maxValue) * 100;
-                
-                // Diverse color palette for each entry
-                const diversePalette = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
-                const rankColor = diversePalette[idx % diversePalette.length];
+                const rankTheme = CARD_THEMES[idx % CARD_THEMES.length];
 
                 return (
-                <Tooltip key={idx} title={`${entry.fullName || entry.name}: ${entry.formatted}`} arrow placement="top" enterDelay={200}>
-                      <Box 
-                    sx={{ 
-                      cursor: 'default',
-                      animation: `premiumEntrance 0.6s ease-out forwards ${idx * 0.08}s`,
-                      width: '100%',
-                      willChange: 'transform, opacity',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'center', gap: { xs: 1.5, sm: 3 } }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2.5 }, flex: 1, minWidth: 0 }}>
-                        <Box sx={{ 
-                          width: isSparse ? { xs: 32, sm: 40 } : 28,
-                          height: isSparse ? { xs: 32, sm: 40 } : 28,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          bgcolor: rankColor,
-                          color: '#FFFFFF',
-                          borderRadius: '14px',
-                          fontWeight: 900,
-                          fontSize: isSparse ? { xs: '0.9rem', sm: '1.1rem' } : '0.85rem',
-                          boxShadow: `0 8px 20px -4px ${alpha(rankColor, 0.4)}`,
-                          position: 'relative',
-                          flexShrink: 0,
-                          '&::after': {
-                            content: idx === 0 ? '"👑"' : '""',
-                            position: 'absolute',
-                            top: -14,
-                            right: -14,
-                            fontSize: { xs: '1rem', sm: '1.2rem' },
-                          }
-                        }}>
-                          {entry.rank}
+                  <Tooltip key={idx} title={`${entry.fullName || entry.name}: ${entry.formatted}`} arrow placement="top" enterDelay={300}>
+                    <Box sx={{ width: '100%' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
+                          <Box sx={{
+                            width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            bgcolor: rankTheme.primary, color: '#fff', borderRadius: 2.5,
+                            fontWeight: 800, fontSize: '0.9rem', flexShrink: 0,
+                          }}>
+                            {entry.rank}
+                          </Box>
+                          <Typography sx={{
+                            fontSize: '0.95rem', color: '#0F172A', fontWeight: 700,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1,
+                          }}>
+                            {entry.name}
+                          </Typography>
                         </Box>
-                        <Typography sx={{ 
-                          fontSize: isSparse ? { xs: '0.9rem', sm: '1.1rem' } : '0.95rem', 
-                          color: '#0F172A', 
-                          fontWeight: 800,
-                          letterSpacing: '-0.01em',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          flex: 1
+                        <Typography sx={{
+                          fontSize: '1.15rem', color: rankTheme.primary,
+                          fontWeight: 900, letterSpacing: '-0.02em', flexShrink: 0,
                         }}>
-                          {entry.name}
+                          {entry.formatted || smartFormat(entry.value)}
                         </Typography>
                       </Box>
-                      <Typography sx={{ 
-                        fontSize: isSparse ? { xs: '1.1rem', sm: '1.4rem' } : '1.1rem', 
-                        color: rankColor, 
-                        fontWeight: 900,
-                        fontVariantNumeric: 'tabular-nums',
-                        letterSpacing: '-0.03em',
-                        flexShrink: 0,
-                        textAlign: 'right'
-                      }}>
-                        {entry.formatted || smartFormat(entry.value)}
-                      </Typography>
+                      <Box sx={{ width: '100%', height: 10, bgcolor: alpha(rankTheme.primary, 0.08), borderRadius: 5, overflow: 'hidden' }}>
+                        <Box sx={{
+                          width: `${percentage}%`, height: '100%',
+                          background: `linear-gradient(90deg, ${rankTheme.primary}, ${rankTheme.secondary})`,
+                          borderRadius: 5,
+                        }} />
+                      </Box>
                     </Box>
-                    <Box sx={{ 
-                      width: '100%', 
-                      height: isSparse ? { xs: 12, sm: 16 } : 10, 
-                      bgcolor: alpha(rankColor, 0.06), 
-                      borderRadius: 10,
-                      overflow: 'hidden',
-                      position: 'relative',
-                      boxShadow: `inset 0 1px 3px ${alpha(rankColor, 0.1)}`
-                    }}>
-                      <Box sx={{ 
-                        width: `${percentage}%`, 
-                        height: '100%', 
-                        background: `linear-gradient(90deg, ${rankColor} 0%, ${alpha(rankColor, 0.7)} 100%)`,
-                        borderRadius: 10,
-                        transition: 'width 1.2s ease-out',
-                        boxShadow: `0 0 20px ${alpha(rankColor, 0.35)}`,
-                        position: 'relative',
-                        '&::after': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                          animation: 'premiumShimmer 2.5s infinite linear',
-                        },
-                      }} />
-                    </Box>
-                  </Box>
-                </Tooltip>
-              )})}
+                  </Tooltip>
+                );
+              })}
             </Box>
+
+          /* Table Summary - Bottom Entries */
           ) : card_type === 'table_summary' && bottom_entries && bottom_entries.length > 0 ? (
-            /* Table Summary Card - Bottom Entries (Zero Performers) */
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 1.5, 
-              flex: 1, 
-              justifyContent: 'center', 
-              py: 0.5 
-            }}>
-              {bottom_entries.slice(0, 5).map((entry, idx) => {
-                const isSparse = bottom_entries.length <= 2;
-                return (
-                <Box 
-                  key={idx} 
-                  sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    py: isSparse ? 2 : 1.5,
-                    px: 2.5,
-                    bgcolor: alpha(cardColor, 0.05),
-                    borderRadius: 4,
-                    border: '1px solid',
-                    borderColor: alpha(cardColor, 0.1),
-                    transition: 'all 0.3s ease-out',
-                    animation: `slideInList 0.4s ease-out forwards ${idx * 0.05}s`,
-                    willChange: 'transform, opacity',
-                    '&:hover': { 
-                      transform: 'translateX(8px)', 
-                      bgcolor: alpha(cardColor, 0.1),
-                      borderColor: alpha(cardColor, 0.2)
-                    }
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                     <Box sx={{ 
-                         width: isSparse ? 32 : 28, 
-                         height: isSparse ? 32 : 28, 
-                         borderRadius: '50%', 
-                         bgcolor: '#FFFFFF', 
-                         display: 'flex', 
-                         alignItems: 'center', 
-                         justifyContent: 'center',
-                         fontSize: isSparse ? '0.9rem' : '0.8rem',
-                         fontWeight: 900,
-                         color: cardColor,
-                         boxShadow: `0 4px 8px ${alpha(cardColor, 0.1)}`
-                     }}>
-                         {entry.rank || idx + 1}
-                     </Box>
-                     <Typography sx={{ fontSize: isSparse ? '1.1rem' : '0.95rem', color: '#1E293B', fontWeight: 800 }}>
-                        {entry.name}
-                     </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, justifyContent: 'center', py: 0.5 }}>
+              {bottom_entries.slice(0, 5).map((entry, idx) => (
+                <Box key={idx} sx={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  py: 1.5, px: 2, bgcolor: alpha(theme.primary, 0.04),
+                  borderRadius: 3, border: `1px solid ${alpha(theme.primary, 0.08)}`,
+                  '&:hover': { bgcolor: alpha(theme.primary, 0.07) },
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{
+                      width: 28, height: 28, borderRadius: '50%', bgcolor: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.8rem', fontWeight: 800, color: theme.primary,
+                      border: `1px solid ${alpha(theme.primary, 0.15)}`,
+                    }}>
+                      {entry.rank || idx + 1}
+                    </Box>
+                    <Typography sx={{ fontSize: '0.9rem', color: '#1E293B', fontWeight: 700 }}>
+                      {entry.name}
+                    </Typography>
                   </Box>
-                  <Chip 
-                    label={entry.value === 0 ? 'No Activity' : entry.formatted} 
+                  <Chip
+                    label={entry.value === 0 ? 'No Activity' : entry.formatted}
                     size="small"
-                    sx={{ 
-                      height: isSparse ? 28 : 24,
-                      bgcolor: cardColor, 
-                      color: '#FFFFFF', 
-                      fontWeight: 900,
-                      fontSize: isSparse ? '0.8rem' : '0.75rem',
-                      borderRadius: 2,
-                      boxShadow: `0 4px 10px ${alpha(cardColor, 0.3)}`,
-                      px: 0.5
-                    }} 
+                    sx={{
+                      height: 24, bgcolor: theme.primary, color: '#fff',
+                      fontWeight: 800, fontSize: '0.72rem', borderRadius: 2,
+                    }}
                   />
                 </Box>
-              )})}
+              ))}
             </Box>
+
+          /* Comparison - Array Format */
           ) : card_type === 'comparison' && Array.isArray(comparison_data) && comparison_data.length > 0 ? (
-            /* Comparison Card - Cross-Entity Comparison Premium */
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: comparison_data.length <= 2 ? 4 : 2.5, 
-              flex: 1, 
-              justifyContent: 'center', 
-              py: 1
-            }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: comparison_data.length <= 2 ? 3 : 2, flex: 1, justifyContent: 'center', py: 0.5 }}>
               {comparison_data.map((entry, idx) => {
                 const maxValue = Math.max(...comparison_data.map(e => e.mtd_lakhs || e.value || 0), 1);
                 const value = entry.mtd_lakhs || entry.value || 0;
                 const percentage = (value / maxValue) * 100;
                 const changePct = entry.change_pct || 0;
-                    
-                // Diverse colors per row
-                const diversePalette = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
-                const barColor = diversePalette[idx % diversePalette.length];
+                const barTheme = CARD_THEMES[idx % CARD_THEMES.length];
                 const isPositive = changePct >= 0;
-                
+
                 return (
-                  <Box 
-                    key={idx} 
-                    sx={{ 
-                      width: '100%',
-                      animation: `premiumEntrance 0.6s ease-out forwards ${idx * 0.08}s`,
-                      willChange: 'transform, opacity',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.25, alignItems: 'flex-end', gap: 2 }}>
+                  <Box key={idx} sx={{ width: '100%' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'flex-end', gap: 2 }}>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ 
-                          fontSize: { xs: '0.9rem', sm: '1.05rem' }, 
-                          color: '#0F172A', 
-                          fontWeight: 850, 
-                          mb: 0.5, 
-                          letterSpacing: '-0.01em',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                        <Typography sx={{
+                          fontSize: { xs: '0.85rem', sm: '0.95rem' }, color: '#0F172A',
+                          fontWeight: 800, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
-                        {entry.name}
-                      </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                          <Typography sx={{ 
-                            fontSize: { xs: '1.2rem', sm: '1.4rem' }, 
-                            color: barColor, 
-                            fontWeight: 900, 
-                            letterSpacing: '-0.03em', 
-                            lineHeight: 1 
-                          }}>
+                          {entry.name}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{ fontSize: { xs: '1.1rem', sm: '1.3rem' }, color: barTheme.primary, fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1 }}>
                             {entry.formatted?.split(' ')[0] || smartFormat(value)}
                           </Typography>
                           {entry.formatted?.includes('(') && (
-                            <Box sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: 0.25, 
-                              px: 1, 
-                              py: 0.25, 
-                              borderRadius: '6px',
-                              bgcolor: isPositive ? alpha('#10B981', 0.1) : alpha('#EF4444', 0.1),
-                              border: `1.2px solid ${isPositive ? alpha('#10B981', 0.2) : alpha('#EF4444', 0.2)}`,
+                            <Box sx={{
+                              display: 'flex', alignItems: 'center', gap: 0.25, px: 0.75, py: 0.25, borderRadius: 1.5,
+                              bgcolor: isPositive ? alpha('#10B981', 0.08) : alpha('#EF4444', 0.08),
                             }}>
-                              {isPositive ? (
-                                <TrendingUpIcon sx={{ fontSize: { xs: 12, sm: 14 }, color: '#059669' }} />
-                              ) : (
-                                <TrendingDownIcon sx={{ fontSize: { xs: 12, sm: 14 }, color: '#DC2626' }} />
-                              )}
-                              <Typography sx={{ 
-                                fontSize: { xs: '0.65rem', sm: '0.75rem' }, 
-                                fontWeight: 900, 
-                                color: isPositive ? '#059669' : '#DC2626' 
-                              }}>
+                              {isPositive ? <TrendingUpIcon sx={{ fontSize: 12, color: '#059669' }} /> : <TrendingDownIcon sx={{ fontSize: 12, color: '#DC2626' }} />}
+                              <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: isPositive ? '#059669' : '#DC2626' }}>
                                 {Math.abs(changePct)}%
-                      </Typography>
-                    </Box>
+                              </Typography>
+                            </Box>
                           )}
                         </Box>
                       </Box>
-                      
-                      <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-                        <Typography sx={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Rank {idx + 1}
-                        </Typography>
-                        <Typography sx={{ fontSize: '0.8rem', color: '#1E293B', fontWeight: 800 }}>
-                          {percentage.toFixed(0)}% Intensity
-                        </Typography>
-                      </Box>
+                      <Typography sx={{ fontSize: '0.6rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>
+                        #{idx + 1}
+                      </Typography>
                     </Box>
-                    
-                    <Box sx={{ 
-                      width: '100%', 
-                      height: { xs: 14, sm: 18 }, 
-                      bgcolor: alpha(barColor, 0.08), 
-                      borderRadius: 9,
-                      overflow: 'hidden',
-                      boxShadow: `inset 0 1px 3px ${alpha(barColor, 0.1)}`,
-                      position: 'relative'
-                    }}>
-                      <Box sx={{ 
-                        width: `${Math.min(percentage, 100)}%`, 
-                        height: '100%', 
-                        background: `linear-gradient(90deg, ${barColor} 0%, ${alpha(barColor, 0.7)} 100%)`,
-                        borderRadius: 9,
-                        transition: 'width 1.2s ease-out',
-                        boxShadow: `0 0 20px ${alpha(barColor, 0.4)}`,
-                        position: 'relative',
-                        '&::after': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                          animation: 'premiumShimmer 3s infinite linear',
-                        }
+                    <Box sx={{ width: '100%', height: 12, bgcolor: alpha(barTheme.primary, 0.06), borderRadius: 6, overflow: 'hidden' }}>
+                      <Box sx={{
+                        width: `${Math.min(percentage, 100)}%`, height: '100%',
+                        background: `linear-gradient(90deg, ${barTheme.primary}, ${barTheme.secondary})`,
+                        borderRadius: 6,
                       }} />
                     </Box>
                   </Box>
                 );
               })}
             </Box>
+
+          /* Info Card with data */
           ) : card_type === 'info' && hasInfoData ? (
-            /* Info Card - Enhanced with Progress Bars */
-            <Box sx={{ 
-              width: '100%', 
-              mt: 0, 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 2, 
-              flex: 1, 
-              justifyContent: 'center',
-              py: 0
-            }}>
-              {/* Primary Value Display for Info Cards */}
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, justifyContent: 'center' }}>
               {primary_value !== undefined && primary_value !== null && (
-                <Box sx={{ mb: 1.5 }}>
-                   <Typography sx={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                     {primary_label || 'Total'}
-                   </Typography>
-                   <Typography sx={{ fontSize: '2.25rem', fontWeight: 800, color: cardColor, lineHeight: 1, letterSpacing: '-0.03em' }}>
-                     {displayPrimaryValue}
-                   </Typography>
-                </Box>
-              )}
-
-              {resolvedInfoData.slice(0, 5).map((entry, idx) => {
-                 const isSparse = resolvedInfoData.length <= 2;
-                 // Calculate max value for progress bars
-                 const allValues = resolvedInfoData.map(e => (typeof e.value === 'number' ? e.value : toNumeric(e.value) || 0));
-                 const maxValue = Math.max(...allValues, 1);
-                 const numericValue = typeof entry.value === 'number' ? entry.value : toNumeric(entry.value) || 0;
-                 const percentage = maxValue > 0 ? (numericValue / maxValue) * 100 : 0;
-                 
-                 // Handle name display - prefer label for info cards
-                 const displayName = entry.name || entry.label || (typeof entry.value === 'string' ? entry.value : `Item ${idx + 1}`);
-                 const displayValue = entry.formatted || (typeof entry.value === 'number' ? smartFormat(entry.value) : entry.value);
-
-                 // Colorful palette for each bank/entry - distinct vibrant colors
-                 const progressColors = [
-                   '#3B82F6', // Blue
-                   '#10B981', // Green
-                   '#F59E0B', // Amber
-                   '#EF4444', // Red
-                   '#8B5CF6', // Purple
-                   '#EC4899', // Pink
-                   '#14B8A6', // Teal
-                   '#F97316', // Orange
-                 ];
-                 const entryColor = progressColors[idx % progressColors.length];
-
-                 return (
-                <Box key={idx} sx={{ cursor: 'default' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: isSparse ? 1.25 : 0.75, alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: isSparse ? 2 : 1.5 }}>
-                       {/* Bullet point with unique color */}
-                      <Box sx={{ 
-                        width: isSparse ? 14 : 10, 
-                        height: isSparse ? 14 : 10, 
-                        borderRadius: '50%', 
-                        bgcolor: entryColor,
-                        opacity: 0.9 
-                      }} />
-                      <Typography sx={{ fontSize: isSparse ? '1rem' : '0.9rem', color: '#334155', fontWeight: 600 }}>
-                        {displayName}
-                      </Typography>
-                    </Box>
-                    <Typography sx={{ fontSize: isSparse ? '1.1rem' : '0.9rem', color: entryColor, fontWeight: 700 }}>
-                      {displayValue}
-                    </Typography>
-                  </Box>
-                  {/* Progress Bar only if we have numeric value */}
-                  {typeof entry.value === 'number' && (
-                    <Box sx={{ 
-                      width: '100%', 
-                      height: isSparse ? 20 : 10, 
-                      bgcolor: alpha(entryColor, 0.15), 
-                      borderRadius: isSparse ? 10 : 5,
-                      overflow: 'hidden',
-                    }}>
-                      <Box sx={{ 
-                        width: `${percentage}%`, 
-                        height: '100%', 
-                        bgcolor: entryColor,
-                        borderRadius: isSparse ? 10 : 5,
-                        transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                        opacity: 0.85
-                      }} />
-                    </Box>
-                  )}
-                </Box>
-              )})}
-            </Box>
-          ) : card_type === 'alert' && hasInfoData ? (
-            /* Alert Card - List View */
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: resolvedInfoData.length <= 2 ? 4 : 1.5, 
-              flex: 1, 
-              justifyContent: resolvedInfoData.length <= 3 ? 'space-evenly' : 'space-between', 
-              py: resolvedInfoData.length <= 2 ? 1 : 0.5 
-            }}>
-              {resolvedInfoData.slice(0, 5).map((entry, idx) => {
-                 const isSparse = resolvedInfoData.length <= 2;
-                 // Handle data variations for alerts
-                 const displayValue = entry.formatted || (typeof entry.value === 'number' ? smartFormat(entry.value) : '');
-                 
-                 // Intelligent name detection
-                 let displayName = entry.name || entry.label;
-                 // If value is string and label is generic (like "FO Name") or missing, use value as name
-                 if (typeof entry.value === 'string' && (!displayName || displayName === 'FO Name' || displayName === 'Label')) {
-                     displayName = entry.value;
-                 }
-                 
-                 return (
-                <Box key={idx} sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  py: isSparse ? 1.5 : 1,
-                  px: 2,
-                  borderRadius: 2,
-                  bgcolor: '#FEF2F2',
-                  border: '1px solid #FECACA',
-                  transition: 'all 0.2s',
-                  '&:hover': { transform: 'translateX(4px)', bgcolor: '#FEE2E2' }
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <WarningIcon sx={{ fontSize: isSparse ? 22 : 18, color: '#EF4444' }} />
-                    <Typography sx={{ fontSize: isSparse ? '1rem' : '0.9rem', color: '#991B1B', fontWeight: 600 }}>
-                      {displayName}
-                    </Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: isSparse ? '1rem' : '0.9rem', color: '#EF4444', fontWeight: 700 }}>
-                    {displayValue}
+                <Box sx={{ mb: 1 }}>
+                  <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 700, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {primary_label || 'Total'}
+                  </Typography>
+                  <Typography sx={{ fontSize: '2rem', fontWeight: 800, color: theme.primary, lineHeight: 1, letterSpacing: '-0.03em' }}>
+                    {displayPrimaryValue}
                   </Typography>
                 </Box>
-              )})}
+              )}
+              {resolvedInfoData.slice(0, 5).map((entry, idx) => {
+                const allValues = resolvedInfoData.map(e => (typeof e.value === 'number' ? e.value : toNumeric(e.value) || 0));
+                const maxValue = Math.max(...allValues, 1);
+                const numericValue = typeof entry.value === 'number' ? entry.value : toNumeric(entry.value) || 0;
+                const percentage = maxValue > 0 ? (numericValue / maxValue) * 100 : 0;
+                const entryTheme = CARD_THEMES[idx % CARD_THEMES.length];
+
+                return (
+                  <Box key={idx}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5, alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: entryTheme.primary }} />
+                        <Typography sx={{ fontSize: '0.88rem', color: '#334155', fontWeight: 600 }}>
+                          {entry.name || entry.label || `Item ${idx + 1}`}
+                        </Typography>
+                      </Box>
+                      <Typography sx={{ fontSize: '0.88rem', color: entryTheme.primary, fontWeight: 700 }}>
+                        {entry.formatted || (typeof entry.value === 'number' ? smartFormat(entry.value) : entry.value)}
+                      </Typography>
+                    </Box>
+                    {typeof entry.value === 'number' && (
+                      <Box sx={{ width: '100%', height: 7, bgcolor: alpha(entryTheme.primary, 0.1), borderRadius: 4, overflow: 'hidden' }}>
+                        <Box sx={{ width: `${percentage}%`, height: '100%', bgcolor: entryTheme.primary, borderRadius: 4 }} />
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })}
             </Box>
+
+          /* Alert Card with data */
+          ) : card_type === 'alert' && hasInfoData ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, justifyContent: 'center', py: 0.5 }}>
+              {resolvedInfoData.slice(0, 5).map((entry, idx) => {
+                const displayValue = entry.formatted || (typeof entry.value === 'number' ? smartFormat(entry.value) : '');
+                let displayName = entry.name || entry.label;
+                if (typeof entry.value === 'string' && (!displayName || displayName === 'FO Name' || displayName === 'Label')) {
+                  displayName = entry.value;
+                }
+                return (
+                  <Box key={idx} sx={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    py: 1, px: 1.5, borderRadius: 2.5,
+                    bgcolor: '#FEF2F2', border: '1px solid #FECACA',
+                    '&:hover': { bgcolor: '#FEE2E2' },
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <WarningIcon sx={{ fontSize: 18, color: '#EF4444' }} />
+                      <Typography sx={{ fontSize: '0.88rem', color: '#991B1B', fontWeight: 600 }}>{displayName}</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: '0.88rem', color: '#EF4444', fontWeight: 700 }}>{displayValue}</Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+
+          /* Comparison - Object Format */
           ) : comparison_data && comparison_data.entity1 && comparison_data.entity2 ? (
-            /* Comparison Card - Object Format */
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, justifyContent: 'space-evenly' }}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <Box>
-                  <Typography
-                    sx={{
-                      fontSize: '1.5rem',
-                      fontWeight: 700,
-                      color: '#1E40AF',
-                      lineHeight: 1,
-                      letterSpacing: '-0.02em'
-                    }}
-                  >
+                  <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: theme.primary, lineHeight: 1, letterSpacing: '-0.02em' }}>
                     {comparison_data.entity1?.formatted || smartFormat(comparison_data.entity1?.value)}
                   </Typography>
                   <Typography sx={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600, mt: 0.5, textTransform: 'uppercase' }}>
@@ -1583,15 +863,7 @@ const SummaryCard = memo(({
                   </Typography>
                 </Box>
                 <Box sx={{ textAlign: 'right' }}>
-                  <Typography
-                    sx={{
-                      fontSize: '1.25rem',
-                      fontWeight: 600,
-                      color: '#3B82F6',
-                      lineHeight: 1,
-                      letterSpacing: '-0.02em'
-                    }}
-                  >
+                  <Typography sx={{ fontSize: '1.25rem', fontWeight: 600, color: theme.secondary, lineHeight: 1, letterSpacing: '-0.02em' }}>
                     {comparison_data.entity2?.formatted || smartFormat(comparison_data.entity2?.value)}
                   </Typography>
                   <Typography sx={{ fontSize: '0.7rem', color: '#94A3B8', fontWeight: 600, mt: 0.5, textTransform: 'uppercase' }}>
@@ -1599,139 +871,54 @@ const SummaryCard = memo(({
                   </Typography>
                 </Box>
               </Box>
-              <ComparisonChart data={comparison_data} color="#1E40AF" />
+              <ComparisonChart data={comparison_data} theme={theme} />
               {comparison_data.difference_percent && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 0.5,
-                    py: 0.75,
-                    px: 1,
-                    mt: 0.5,
-                    bgcolor: '#EFF6FF',
-                    borderRadius: 2,
-                    border: '1px dashed #BFDBFE'
-                  }}
-                >
-                  <TrendingUpIcon sx={{ fontSize: 16, color: '#1E40AF' }} />
-                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#1E40AF' }}>
+                <Box sx={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5,
+                  py: 0.75, px: 1, bgcolor: theme.accent, borderRadius: 2, border: `1px dashed ${alpha(theme.primary, 0.2)}`,
+                }}>
+                  <TrendingUpIcon sx={{ fontSize: 14, color: theme.primary }} />
+                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: theme.primary }}>
                     {comparison_data.winner} leads by {comparison_data.difference_percent > 100 ? `${(comparison_data.difference_percent / 100).toFixed(0)}x` : `${comparison_data.difference_percent.toFixed(0)}%`}
                   </Typography>
                 </Box>
               )}
             </Box>
-          ) : (
-            /* Standard Metric Layout - Highlighted & Centered */
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              height: '100%',
-              flex: 1,
-              py: 2
-            }}>
-              {primary_value && (
-                <Box sx={{ 
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-                  bgcolor: alpha(cardColor, 0.04),
-                  borderRadius: 4,
-                  py: 4,
-                  px: 3,
-                  border: `1px dashed ${alpha(cardColor, 0.2)}`,
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}>
-                  {/* Subtle background decoration for the highlight box */}
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: -20, 
-                    right: -20, 
-                    width: 80, 
-                    height: 80, 
-                    borderRadius: '50%', 
-                    background: `radial-gradient(circle, ${alpha(cardColor, 0.1)} 0%, transparent 70%)`, 
-                    pointerEvents: 'none' 
-                  }} />
 
-                  <Typography
-                    sx={{
-                      fontSize: { xs: '2.75rem', sm: '3.5rem' },
-                      fontWeight: 800,
-                      color: urgency === 'critical' ? '#EF4444' : urgency === 'high' ? '#F59E0B' : '#0F172A',
-                      lineHeight: 1,
-                      letterSpacing: '-0.04em',
-                      background: urgency === 'high' ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' : 'none',
-                      WebkitBackgroundClip: urgency === 'high' ? 'text' : 'none',
-                      WebkitTextFillColor: urgency === 'high' ? 'transparent' : 'initial',
-                      mb: 2,
-                      textAlign: 'center'
-                    }}
-                  >
+          /* Standard Metric */
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', flex: 1, py: 2 }}>
+              {primary_value && (
+                <Box sx={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  width: '100%', bgcolor: alpha(theme.primary, 0.04), borderRadius: 4,
+                  py: 3, px: 3, border: `1px dashed ${alpha(theme.primary, 0.15)}`,
+                }}>
+                  <Typography sx={{
+                    fontSize: { xs: '2.5rem', sm: '3rem' }, fontWeight: 800,
+                    color: urgency === 'critical' ? '#EF4444' : urgency === 'high' ? '#F59E0B' : '#0F172A',
+                    lineHeight: 1, letterSpacing: '-0.04em', mb: 1.5, textAlign: 'center',
+                  }}>
                     {displayPrimaryValue}
                   </Typography>
-                  
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
                     {primary_label && (
-                        <Chip
-                          label={primary_label}
-                          sx={{
-                            fontSize: '0.85rem',
-                            fontWeight: 700,
-                            color: '#1E40AF',
-                            bgcolor: '#DBEAFE',
-                            borderRadius: 6,
-                            height: 32,
-                            border: '1px solid #93C5FD',
-                            px: 0.5,
-                            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.1)',
-                            '& .MuiChip-label': { px: 1.5 }
-                          }}
-                        />
+                      <Chip label={primary_label} sx={{
+                        fontSize: '0.8rem', fontWeight: 700, color: theme.primary,
+                        bgcolor: theme.accent, borderRadius: 2, height: 30,
+                        border: `1px solid ${alpha(theme.primary, 0.15)}`,
+                      }} />
                     )}
                     {trend && (
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.25,
-                          bgcolor: trend === 'up' ? '#ECFDF5' : trend === 'down' ? '#FEF2F2' : '#F1F5F9',
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 2,
-                          height: 32,
-                          border: `1px solid ${trend === 'up' ? '#A7F3D0' : trend === 'down' ? '#FECACA' : '#E2E8F0'}`
-                        }}
-                      >
-                        {trend === 'up' ? (
-                          <TrendingUpIcon sx={{ 
-                            fontSize: 16, 
-                            color: '#059669',
-                            animation: 'bounceUp 2s infinite ease-in-out',
-                            '@keyframes bounceUp': {
-                              '0%, 100%': { transform: 'translateY(0)' },
-                              '50%': { transform: 'translateY(-3px)' },
-                            }
-                          }} />
-                        ) : trend === 'down' ? (
-                          <TrendingDownIcon sx={{ 
-                            fontSize: 16, 
-                            color: '#DC2626',
-                            animation: 'bounceDown 2s infinite ease-in-out',
-                            '@keyframes bounceDown': {
-                              '0%, 100%': { transform: 'translateY(0)' },
-                              '50%': { transform: 'translateY(3px)' },
-                            }
-                          }} />
-                        ) : null}
+                      <Box sx={{
+                        display: 'flex', alignItems: 'center', gap: 0.25,
+                        bgcolor: trend === 'up' ? '#ECFDF5' : trend === 'down' ? '#FEF2F2' : '#F1F5F9',
+                        px: 1, py: 0.5, borderRadius: 2, height: 30,
+                        border: `1px solid ${trend === 'up' ? '#A7F3D0' : trend === 'down' ? '#FECACA' : '#E2E8F0'}`,
+                      }}>
+                        {trend === 'up' ? <TrendingUpIcon sx={{ fontSize: 14, color: '#059669' }} /> : trend === 'down' ? <TrendingDownIcon sx={{ fontSize: 14, color: '#DC2626' }} /> : null}
                         {displayTrendValue && (
-                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: trend === 'up' ? '#059669' : trend === 'down' ? '#DC2626' : '#475569' }}>
+                          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: trend === 'up' ? '#059669' : trend === 'down' ? '#DC2626' : '#475569' }}>
                             {displayTrendValue}
                           </Typography>
                         )}
@@ -1740,25 +927,12 @@ const SummaryCard = memo(({
                   </Box>
                 </Box>
               )}
-
               {secondary_value && !comparison_data && (
                 <Box sx={{ textAlign: 'right' }}>
-                  <Typography
-                    sx={{
-                      fontSize: '1.25rem',
-                      fontWeight: 600,
-                      color: '#64748B',
-                      lineHeight: 1,
-                      mb: 0.25,
-                    }}
-                  >
+                  <Typography sx={{ fontSize: '1.25rem', fontWeight: 600, color: '#64748B', lineHeight: 1, mb: 0.25 }}>
                     {displaySecondaryValue}
                   </Typography>
-                  {secondary_label && (
-                    <Typography sx={{ fontSize: '0.7rem', color: '#9CA3AF', fontWeight: 500 }}>
-                      {secondary_label}
-                    </Typography>
-                  )}
+                  {secondary_label && <Typography sx={{ fontSize: '0.7rem', color: '#9CA3AF', fontWeight: 500 }}>{secondary_label}</Typography>}
                 </Box>
               )}
             </Box>
@@ -1769,94 +943,33 @@ const SummaryCard = memo(({
       {/* Action buttons */}
       {showActions && (
         <Box
-          sx={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            display: 'flex',
-            gap: 0.5,
-            opacity: 0,
-            transform: 'translateY(-5px)',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            '.MuiBox-root:hover > &': { 
-              opacity: 1,
-              transform: 'translateY(0)'
-            },
-            zIndex: 2,
-          }}
           className="card-actions"
+          sx={{
+            position: 'absolute', top: 10, right: 10,
+            display: 'flex', gap: 0.5,
+            opacity: 0, transition: 'opacity 0.15s ease', zIndex: 2,
+          }}
         >
           {onCreateWidget && (
-            <Tooltip title="Create Widget from this insight" arrow placement="top">
-              <IconButton
-                size="small"
-                onClick={(e) => { e.stopPropagation(); onCreateWidget(card); }}
-                sx={{ 
-                  width: 28,
-                  height: 28,
-                  bgcolor: 'rgba(255,255,255,0.9)', 
-                  backdropFilter: 'blur(4px)',
-                  border: '1px solid #E2E8F0',
-                  color: '#64748B',
-                  '&:hover': { 
-                    bgcolor: '#EFF6FF', 
-                    color: '#3B82F6',
-                    borderColor: '#BFDBFE',
-                    transform: 'scale(1.1)'
-                  },
-                  transition: 'all 0.2s',
-                }}
-              >
+            <Tooltip title="Create Widget" arrow placement="top">
+              <IconButton size="small" onClick={(e) => { e.stopPropagation(); onCreateWidget(card); }}
+                sx={{ width: 28, height: 28, bgcolor: 'rgba(255,255,255,0.95)', border: '1px solid #E2E8F0', color: '#64748B', '&:hover': { bgcolor: '#EFF6FF', color: '#3B82F6', borderColor: '#BFDBFE' } }}>
                 <AddIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>
           )}
           {onEdit && (
             <Tooltip title="Edit" arrow placement="top">
-              <IconButton
-                size="small"
-                onClick={(e) => { e.stopPropagation(); onEdit(card); }}
-                sx={{ 
-                  width: 28,
-                  height: 28,
-                  bgcolor: 'rgba(255,255,255,0.9)', 
-                  backdropFilter: 'blur(4px)',
-                  border: '1px solid #E2E8F0',
-                  color: '#64748B',
-                  '&:hover': { 
-                    bgcolor: '#F8FAFC', 
-                    color: '#334155',
-                    borderColor: '#CBD5E1',
-                    transform: 'scale(1.1)'
-                  },
-                  transition: 'all 0.2s',
-                }}
-              >
+              <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(card); }}
+                sx={{ width: 28, height: 28, bgcolor: 'rgba(255,255,255,0.95)', border: '1px solid #E2E8F0', color: '#64748B', '&:hover': { bgcolor: '#F8FAFC', color: '#334155', borderColor: '#CBD5E1' } }}>
                 <EditIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>
           )}
           {onDelete && (
             <Tooltip title="Remove" arrow placement="top">
-              <IconButton
-                size="small"
-                onClick={(e) => { e.stopPropagation(); onDelete(id); }}
-                sx={{ 
-                  width: 28,
-                  height: 28,
-                  bgcolor: 'rgba(255,255,255,0.9)', 
-                  backdropFilter: 'blur(4px)',
-                  border: '1px solid #E2E8F0',
-                  color: '#64748B',
-                  '&:hover': { 
-                    bgcolor: '#FEF2F2', 
-                    color: '#EF4444',
-                    borderColor: '#FECACA',
-                    transform: 'scale(1.1)'
-                  },
-                  transition: 'all 0.2s',
-                }}
-              >
+              <IconButton size="small" onClick={(e) => { e.stopPropagation(); onDelete(id); }}
+                sx={{ width: 28, height: 28, bgcolor: 'rgba(255,255,255,0.95)', border: '1px solid #E2E8F0', color: '#64748B', '&:hover': { bgcolor: '#FEF2F2', color: '#EF4444', borderColor: '#FECACA' } }}>
                 <CloseIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>
@@ -1866,9 +979,9 @@ const SummaryCard = memo(({
     </Box>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison to avoid re-renders if the data hasn't changed
   return (
     prevProps.card === nextProps.card &&
+    prevProps.cardIndex === nextProps.cardIndex &&
     prevProps.selected === nextProps.selected &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.selectionMode === nextProps.selectionMode

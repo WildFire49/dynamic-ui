@@ -60,7 +60,7 @@ const AppLayout = ({
         display: 'flex', 
         flexDirection: 'column',
         marginLeft: { xs: 0, md:'0px' },
-        width: { xs: '100%', md: 'calc(100% - 320px)' },
+        width: { xs: '100%', md: 'calc(100% - 300px)' },
         maxWidth: '100%',
         overflowX: 'hidden',
         height: '100%'
