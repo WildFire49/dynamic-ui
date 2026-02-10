@@ -3,20 +3,9 @@
  * Handles API calls for dashboard summary cards generation, approval, and retrieval
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+import { getAuthHeaders } from "@/services/apiClient";
 
-/**
- * Get authorization headers from localStorage
- */
-const getAuthHeaders = () => {
-  const token =
-    localStorage.getItem("token") || localStorage.getItem("accessToken");
-  return {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 /**
  * Generate summary cards for a dashboard
@@ -113,6 +102,7 @@ export const getSummaryCards = async ({
   cardIds = [],
   regenerateSql = false,
   existingCards = [],
+  onMetadataReady,
 }) => {
   const headers = getAuthHeaders();
   let metadataCards = Array.isArray(existingCards)

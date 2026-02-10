@@ -29,6 +29,7 @@ import {
   History,
   Close,
   Delete,
+  AccountTree as WorkflowIcon,
 } from "@mui/icons-material";
 import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
 import uiConfiguratorService from "@/services/uiConfiguratorService";
@@ -47,7 +48,7 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
       id: 1,
       type: "system",
       content:
-        "👋 Welcome to MiFiX UI Builder! Describe the component you want to create, and I'll generate it for you.\n\nExample: 'Create a loan application with name, amount, and tenure'",
+        "👋 Welcome to MiFiX Workflow Builder! Describe the workflow you want to create, and I'll generate it for you.\n\nExample: 'Create a workflow for loan application with name, amount, and tenure'",
       timestamp: new Date(),
     },
   ]);
@@ -286,7 +287,7 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
         id: 1,
         type: "system",
         content:
-          "👋 Welcome to UI Component Builder! Describe the form you want to create, and I'll generate it for you.\n\nExample: 'Create a loan application form with name, amount, and tenure'",
+          "👋 Welcome to Worfklow Builder! Describe the component you want to create, and I'll generate it for you.\n\nExample: 'Create a loan application form with name, amount, and tenure'",
         timestamp: new Date(),
       },
     ]);
@@ -497,11 +498,11 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
             justifyContent: "space-between",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <AutoAwesome sx={{ color: "#9c27b0", fontSize: 24 }} />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 3}}>
+            <WorkflowIcon sx={{ color: "#2562b2ff", fontSize: 28 }} />
             <Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                UI Component Builder
+                Component Builder
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Generate Components using natural language

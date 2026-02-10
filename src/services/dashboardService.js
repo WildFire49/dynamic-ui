@@ -1,5 +1,7 @@
 "use client";
 
+import { getAuthHeaders } from "@/services/apiClient";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://supervisory-dev.mifix.io";
 
@@ -38,7 +40,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/user/${username}`,
         {
           method: "GET",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
         }
       );
 
@@ -133,7 +135,7 @@ class DashboardService {
 
       const response = await fetch(`${API_BASE_URL}/api/v1/dashboard/sync`, {
         method: "POST",
-        headers: this.getHeaders(),
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -174,7 +176,7 @@ class DashboardService {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/dashboard`, {
         method: "POST",
-        headers: this.getHeaders(),
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           username,
           name: dashboard.name,
@@ -220,7 +222,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/${dashboardId}`,
         {
           method: "PUT",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             name: updates.name,
@@ -268,7 +270,7 @@ class DashboardService {
         )}`,
         {
           method: "DELETE",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
         }
       );
 
@@ -310,7 +312,7 @@ class DashboardService {
         )}`,
         {
           method: "GET",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
         }
       );
 
@@ -378,7 +380,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/${dashboardId}/widget`,
         {
           method: "POST",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify(widgetPayload),
         }
       );
@@ -420,7 +422,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/${dashboardId}/widget/${widgetId}`,
         {
           method: "PUT",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             title: updates.title,
@@ -471,7 +473,7 @@ class DashboardService {
         )}`,
         {
           method: "DELETE",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
         }
       );
 
@@ -513,7 +515,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/widget/move`,
         {
           method: "POST",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             widgetId,
@@ -559,7 +561,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/${dashboardId}/widgets/reorder`,
         {
           method: "PUT",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             widgetOrder,
@@ -601,7 +603,7 @@ class DashboardService {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/dashboard/active`, {
         method: "PUT",
-        headers: this.getHeaders(),
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           username,
           dashboardId,
@@ -649,7 +651,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/${dashboardId}/widget/${widgetId}/refresh`,
         {
           method: "POST",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             connectionId,
@@ -698,7 +700,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/${dashboardId}/refresh`,
         {
           method: "POST",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             connectionId,
@@ -747,7 +749,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/widgets/data`,
         {
           method: "POST",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             connectionId,
@@ -814,7 +816,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/summary-cards/${dashboardId}/create-from-question`,
         {
           method: "POST",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             question,
@@ -867,7 +869,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/summary-cards/${dashboardId}/${cardId}`,
         {
           method: "PATCH",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             username,
             ...updates,
@@ -939,7 +941,7 @@ class DashboardService {
       });
       const response = await fetch(`${API_BASE_URL}/api/v1/dashboard/edit`, {
         method: "POST",
-        headers: this.getHeaders(),
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           dashboardId,
           username,
@@ -1011,7 +1013,7 @@ class DashboardService {
         `${API_BASE_URL}/api/v1/dashboard/summary-cards/${dashboardId}/generate-from-query`,
         {
           method: "POST",
-          headers: this.getHeaders(),
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             query,
             dashboardId,
@@ -1061,7 +1063,7 @@ class DashboardService {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/dashboard/health`, {
         method: "GET",
-        headers: this.getHeaders(),
+        headers: getAuthHeaders(),
       });
 
       const data = await response.json();
@@ -1086,22 +1088,6 @@ class DashboardService {
     }
   }
 
-  /**
-   * Get auth headers
-   */
-  getHeaders() {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("accessToken")
-        : null;
-    const headers = {
-      "Content-Type": "application/json",
-    };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    return headers;
-  }
 }
 
 const dashboardService = new DashboardService();

@@ -4,25 +4,10 @@
  */
 
 import { API_BASE_URL, CHROMA_BASE_URL } from "@/lib/config";
+import { getAuthHeaders } from "@/services/apiClient";
 
 const EMBEDDINGS_BASE_URL = `${API_BASE_URL}/api/v1/embeddings`;
 const CHROMA_API_URL = CHROMA_BASE_URL; // Direct connection to Chroma DB
-
-/**
- * Get authentication headers with bearer token
- * @returns {Object} Headers object with authorization
- */
-const getAuthHeaders = () => {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  const headers = {};
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-};
 
 class EmbeddingsApiError extends Error {
   constructor(message, status, response) {
@@ -114,9 +99,10 @@ export const embeddingsApi = {
     formData.append("chunk_size", chunkSize.toString());
     formData.append("chunk_overlap", chunkOverlap.toString());
 
+    const { "Content-Type": _, ...uploadHeaders } = getAuthHeaders();
     const response = await fetch(`${EMBEDDINGS_BASE_URL}/embed-files`, {
       method: "POST",
-      headers: getAuthHeaders(),
+      headers: uploadHeaders,
       body: formData,
     });
 
@@ -133,10 +119,7 @@ export const embeddingsApi = {
       console.log('Fetching collections from ChromaDB via proxy');
       const response = await fetch('/api/chroma/collections', {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {

@@ -284,4 +284,13 @@ class ApiClient {
 // Create singleton instance
 const apiClient = new ApiClient();
 
+/**
+ * Standalone auth headers getter — import this in services that need
+ * raw fetch but still want centralised token injection.
+ *
+ *   import { getAuthHeaders } from '@/services/apiClient';
+ */
+export const getAuthHeaders = (additionalHeaders = {}) =>
+  apiClient.getHeaders(additionalHeaders);
+
 export default apiClient;

@@ -1989,7 +1989,7 @@ const UIConfiguratorPage = () => {
               }}
             >
               <Tab label="Component Library" />
-              <Tab label="UI Builder" iconPosition="start" />
+              <Tab label="Workflow Builder" iconPosition="start" />
             </Tabs>
           </Box>
 
@@ -2050,7 +2050,7 @@ const UIConfiguratorPage = () => {
                       variant="body2"
                       sx={styles.emptyStateDescription}
                     >
-                      Start building your first component using the UI Builder
+                      Start building your first workflow using the Workflow Builder
                       to get started
                     </Typography>
                     <Button

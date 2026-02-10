@@ -107,6 +107,7 @@ import DashboardSelector from './DashboardSelector';
 import useDashboardStore from '../store/dashboardStore';
 import { DashboardLoadingSkeleton, WidgetContentSkeleton } from './skeletons/WidgetSkeleton';
 import dashboardService from '../services/dashboardService';
+import { getAuthHeaders } from '../services/apiClient';
 import { getSummaryCards } from '../services/summaryCardsService';
 import SummaryCardsPanel from './dashboard/SummaryCardsPanel';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
@@ -215,14 +216,15 @@ const Dashboard = ({ initialDashboardId }) => {
   const [globalViewMode, setGlobalViewMode] = useState('table'); // 'table', 'auto', 'area', 'bar' - default to table
   const [loadingWidgets, setLoadingWidgets] = useState(new Set()); // Track widgets currently loading data
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false); // Chat drawer state
-  const [chatInput, setChatInput] = useState(''); // Chat input value
+  const [chatInput, setChatInput] = useState(''); // Chat input value (used only for submit/clear, not per-keystroke)
+  const chatInputRef = useRef(null); // Ref for the actual input DOM element to avoid re-renders on typing
   const [chatMessages, setChatMessages] = useState([]); // Chat messages
   const [isChatLoading, setIsChatLoading] = useState(false); // Chat loading state
   const [draggedWidgetForChat, setDraggedWidgetForChat] = useState(null); // Widget being dragged to chat
   const [chatDropZoneActive, setChatDropZoneActive] = useState(false); // Drop zone highlight
   const [attachedWidget, setAttachedWidget] = useState(null); // Widget attached to chat input
   const [widgetCreationMode, setWidgetCreationMode] = useState(null); // { mode: 'create' | 'edit', card: cardObject } - for card-based widget creation
-  const [outputType, setOutputType] = useState('widget'); // 'widget', 'card', or 'both' - for dashboard edit API
+  const [outputType, setOutputType] = useState('card'); // 'widget', 'card', or 'both' - for dashboard edit API
   const [pullToRefreshEnabled, setPullToRefreshEnabled] = useState(true); // Enable pull-to-refresh on mobile
   const [selectedWidgets, setSelectedWidgets] = useState(new Set()); // Selected widget IDs for batch operations
   const [selectedCards, setSelectedCards] = useState(new Set()); // Selected card IDs for batch operations
@@ -1285,9 +1287,7 @@ const Dashboard = ({ initialDashboardId }) => {
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}/api/v1/dashboard/edit`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -1479,15 +1479,18 @@ const Dashboard = ({ initialDashboardId }) => {
 
   // Handle chat message submission
   const handleChatSubmit = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
-    
-    const userMessage = chatInput.trim();
+    const inputValue = chatInputRef.current?.value || chatInput;
+    if (!inputValue.trim() || isChatLoading) return;
+
+    const userMessage = inputValue.trim();
     const widgetContext = attachedWidget ? { widgetId: attachedWidget.id, widgetTitle: attachedWidget.title } : null;
     const creationMode = widgetCreationMode;
-    
+
     // Check for batch update mode (multiple selections)
     const hasBatchSelection = selectedWidgets.size > 1 || selectedCards.size > 1;
-    
+
+    // Clear input via ref (no re-render) and state
+    if (chatInputRef.current) chatInputRef.current.value = '';
     setChatInput('');
     setAttachedWidget(null); // Clear attached widget after sending
     
@@ -1583,9 +1586,7 @@ const Dashboard = ({ initialDashboardId }) => {
         // Call batch edit API
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8001'}/api/v1/dashboard/edit`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             dashboardId: activeDashboardId,
             connectionId: connectionId,
@@ -4548,16 +4549,17 @@ const Dashboard = ({ initialDashboardId }) => {
                       }}
                     >
                       <ToggleButton value="widget">
-                        <BarChartIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                        Widget
-                      </ToggleButton>
-                      <ToggleButton value="card">
+                        <ToggleButton value="card">
                         <GridViewIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                        Card
+                        Summary Card
                       </ToggleButton>
-                      <ToggleButton value="both">
+                        <BarChartIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                        Tabular Widget
+                      </ToggleButton>
+                      
+                      {/* <ToggleButton value="both">
                         Both
-                      </ToggleButton>
+                      </ToggleButton> */}
                     </ToggleButtonGroup>
                   )}
                 </Box>
@@ -4739,15 +4741,15 @@ const Dashboard = ({ initialDashboardId }) => {
                       },
                     }}
                   >
+                     <ToggleButton value="card">
+                      Summary Card
+                    </ToggleButton>
                     <ToggleButton value="widget">
-                      Widget
+                      Tabular Widget
                     </ToggleButton>
-                    <ToggleButton value="card">
-                      Card
-                    </ToggleButton>
-                    <ToggleButton value="both">
+                    {/* <ToggleButton value="both">
                       Both
-                    </ToggleButton>
+                    </ToggleButton> */}
                   </ToggleButtonGroup>
                 </Box>
               )}
@@ -4770,8 +4772,8 @@ const Dashboard = ({ initialDashboardId }) => {
               >
                 <InputBase
                   placeholder={attachedWidget ? `What would you like to do with "${attachedWidget.title}"?` : "Ask me to edit your dashboard..."}
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
+                  inputRef={chatInputRef}
+                  defaultValue=""
                   disabled={isChatLoading}
                   multiline
                   maxRows={4}
@@ -4781,8 +4783,8 @@ const Dashboard = ({ initialDashboardId }) => {
                       handleChatSubmit();
                     }
                   }}
-                  sx={{ 
-                    flex: 1, 
+                  sx={{
+                    flex: 1,
                     fontSize: '0.85rem',
                     '& textarea::placeholder': { color: '#9CA3AF' },
                     '& .MuiInputBase-input': {
@@ -4790,18 +4792,18 @@ const Dashboard = ({ initialDashboardId }) => {
                     }
                   }}
                 />
-                <IconButton 
+                <IconButton
                   onClick={handleChatSubmit}
-                  disabled={!chatInput.trim() || isChatLoading}
-                  sx={{ 
-                    bgcolor: chatInput.trim() && !isChatLoading ? '#3B82F6' : '#E5E7EB',
-                    color: chatInput.trim() && !isChatLoading ? '#fff' : '#9CA3AF',
+                  disabled={isChatLoading}
+                  sx={{
+                    bgcolor: !isChatLoading ? '#3B82F6' : '#E5E7EB',
+                    color: !isChatLoading ? '#fff' : '#9CA3AF',
                     ml: 1,
                     width: 36,
                     height: 36,
                     transition: 'all 0.2s',
                     '&:hover': {
-                      bgcolor: chatInput.trim() && !isChatLoading ? '#2563EB' : '#E5E7EB',
+                      bgcolor: !isChatLoading ? '#2563EB' : '#E5E7EB',
                     },
                     '&.Mui-disabled': {
                       bgcolor: '#E5E7EB',

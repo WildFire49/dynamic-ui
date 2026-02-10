@@ -3,23 +3,9 @@
  * Provides functions to interact with the data analysis endpoints
  */
 
+import { getAuthHeaders } from "@/services/apiClient";
+
 const BASE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/data-analysis`;
-
-/**
- * Get authentication headers with bearer token
- * @returns {Object} Headers object with authorization
- */
-const getAuthHeaders = () => {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  const headers = {};
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-};
 
 class DataAnalysisApiError extends Error {
   constructor(message, status, response) {
@@ -61,9 +47,10 @@ export const dataAnalysisApi = {
       formData.append("context", context);
     }
 
+    const { "Content-Type": _, ...uploadHeaders } = getAuthHeaders();
     const response = await fetch(`${BASE_URL}/upload/${connectionId}`, {
       method: "POST",
-      headers: getAuthHeaders(),
+      headers: uploadHeaders,
       body: formData,
     });
 
@@ -98,10 +85,7 @@ export const dataAnalysisApi = {
   analyzeData: async (connectionId, documentKey, question, context = "") => {
     const response = await fetch(`${BASE_URL}/analyze/${connectionId}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         document_key: documentKey,
         question,
@@ -181,10 +165,7 @@ export const dataAnalysisApi = {
   queryCachedDocument: async (documentKey, sql, limit = 100) => {
     const response = await fetch(`${BASE_URL}/cache/query`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         document_key: documentKey,
         sql,

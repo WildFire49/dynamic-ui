@@ -45,6 +45,7 @@ import { keyframes } from "@emotion/react";
 // Critical components - fixed import paths for new location
 import { useAuth } from "../../contexts/AuthContext";
 import authService from "../../services/authService";
+import { getAuthHeaders } from "../../services/apiClient";
 import { API_BASE_URL, CHAT_ENDPOINT } from "../../lib/config";
 
 // Utilities - fixed import paths
@@ -159,24 +160,6 @@ const MemoizedChatMessage = memo(
 );
 
 MemoizedChatMessage.displayName = "MemoizedChatMessage";
-
-/**
- * Get authentication headers with bearer token
- * @returns {Object} Headers object with authorization
- */
-const getAuthHeaders = () => {
-  const token =
-    typeof window !== "undefined" ? authService.getAccessToken() : null;
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-};
 
 export default function ChatPage() {
   const { user } = useAuth();

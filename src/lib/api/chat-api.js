@@ -1,24 +1,7 @@
 // Chat API Integration Service
 // Handles communication with backend chat API and manages conversation state
 import { API_BASE_URL, CHAT_ENDPOINT } from "@/lib/config";
-
-/**
- * Get authentication headers with bearer token
- * @returns {Object} Headers object with authorization
- */
-const getAuthHeaders = () => {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-};
+import { getAuthHeaders } from "@/services/apiClient";
 
 /**
  * Handle SSE streaming response
