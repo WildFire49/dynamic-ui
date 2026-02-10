@@ -57,9 +57,20 @@ class ApiClient {
         message: `HTTP ${response.status}: ${response.statusText}`,
       }));
 
-      // If unauthorized and not a retry, attempt token refresh
-      if (response.status === 401 && !isRetry) {
-        console.log("401 Unauthorized - attempting token refresh...");
+      // Check if token issue (replaced, expired, or invalid)
+      const detailMsg =
+        errorData.detail && typeof errorData.detail === "string"
+          ? errorData.detail.toLowerCase()
+          : "";
+      const isTokenIssue =
+        detailMsg.includes("token has been replaced") ||
+        detailMsg.includes("token expired") ||
+        detailMsg.includes("token invalid") ||
+        detailMsg.includes("please login again");
+
+      // If unauthorized (401) or token issue, attempt token refresh
+      if ((response.status === 401 || isTokenIssue) && !isRetry) {
+        console.log(`Token issue detected (${response.status}: ${errorData.detail || 'Unauthorized'}) - attempting refresh...`);
 
         // Dynamically import authService to avoid circular dependency
         const authService = (await import("./authService")).default;
@@ -186,7 +197,14 @@ class ApiClient {
         ...options,
       });
 
-      return this.handleResponse(response);
+      const result = await this.handleResponse(response, options.__isRetry);
+
+      if (result && result.__shouldRetry) {
+        console.log("Retrying PUT request with new token...");
+        return this.put(endpoint, data, { ...options, __isRetry: true });
+      }
+
+      return result;
     } catch (error) {
       console.error(`PUT ${endpoint} failed:`, error);
       throw error;
@@ -212,7 +230,14 @@ class ApiClient {
         ...options,
       });
 
-      return this.handleResponse(response);
+      const result = await this.handleResponse(response, options.__isRetry);
+
+      if (result && result.__shouldRetry) {
+        console.log("Retrying PATCH request with new token...");
+        return this.patch(endpoint, data, { ...options, __isRetry: true });
+      }
+
+      return result;
     } catch (error) {
       console.error(`PATCH ${endpoint} failed:`, error);
       throw error;
@@ -236,7 +261,14 @@ class ApiClient {
         ...options,
       });
 
-      return this.handleResponse(response);
+      const result = await this.handleResponse(response, options.__isRetry);
+
+      if (result && result.__shouldRetry) {
+        console.log("Retrying DELETE request with new token...");
+        return this.delete(endpoint, { ...options, __isRetry: true });
+      }
+
+      return result;
     } catch (error) {
       console.error(`DELETE ${endpoint} failed:`, error);
       throw error;
@@ -273,7 +305,14 @@ class ApiClient {
         ...options,
       });
 
-      return this.handleResponse(response);
+      const result = await this.handleResponse(response, options.__isRetry);
+
+      if (result && result.__shouldRetry) {
+        console.log("Retrying UPLOAD request with new token...");
+        return this.upload(endpoint, formData, { ...options, __isRetry: true });
+      }
+
+      return result;
     } catch (error) {
       console.error(`UPLOAD ${endpoint} failed:`, error);
       throw error;

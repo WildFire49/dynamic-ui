@@ -195,14 +195,31 @@ class UIConfiguratorService {
   }
 
   /**
+   * Delete a component from the library
+   * @param {string} componentId - Component/Form ID
+   * @returns {Promise<boolean>} Success status
+   */
+  async deleteComponent(componentId) {
+    try {
+      await apiClient.delete(
+        `${UI_CONFIGURATOR_BASE}/schemas/${componentId}`
+      );
+      return true;
+    } catch (error) {
+      console.error("Error deleting component:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete a workflow
    * @param {string} workflowId - Workflow ID
    * @returns {Promise<boolean>} Success status
    */
-  async deleteWorkflow(workflowId) {
+  async deleteWorkflow(workflowId, userId) {
     try {
       await apiClient.delete(
-        `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}`
+        `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}?user_id=${userId}`
       );
       return true;
     } catch (error) {

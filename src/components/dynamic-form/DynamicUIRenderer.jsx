@@ -26,7 +26,7 @@ import {
  * 2. API response with nested schema
  */
 const DynamicUIRenderer = React.memo(
-  ({ data, onSubmit, onContinue, hideMetadata = false }) => {
+  ({ data, onSubmit, onContinue, hideMetadata = false, skipNavigation = false }) => {
     const theme = useTheme();
     const [formData, setFormData] = useState({});
 
@@ -321,6 +321,7 @@ const DynamicUIRenderer = React.memo(
             formSchema={schema}
             onSubmit={handleFormSubmit}
             onContinue={handleContinue}
+            skipNavigation={skipNavigation}
           />
         ) : (
           <Alert severity="warning" sx={{ borderRadius: "12px" }}>

@@ -41,7 +41,7 @@ import { useAIFormGenerator } from "@/hooks/useAIFormGenerator";
  * Generates forms using natural language with conversation history
  * @param {Function} onAddToCanvas - Callback to add generated form to canvas
  */
-const AIComponentBuilder = ({ onAddToCanvas }) => {
+const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
   // UI State
   const [messages, setMessages] = useState([
     {
@@ -58,6 +58,7 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
   // Refs
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Custom Hooks
   const {
@@ -93,6 +94,17 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Scroll textarea to top and place cursor at start when input is set programmatically
+  const setInputAndScrollToStart = useCallback((value) => {
+    setInput(value);
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.scrollTop = 0;
+        inputRef.current.setSelectionRange(0, 0);
+      }
+    }, 0);
+  }, []);
 
   /**
    * Format date for display
@@ -215,6 +227,26 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
         prompt,
         // Success callback
         (responseData) => {
+          // Handle workflow creation
+          if (responseData.action === "create_workflow" || responseData.canvas_state) {
+            addMessage({
+              type: "workflow_created",
+              content: responseData.message || "Workflow has been generated!",
+              workflowData: responseData,
+            });
+
+            // Load workflow onto canvas
+            if (onWorkflowGenerated) {
+              onWorkflowGenerated(responseData);
+            }
+
+            // Refresh history if new conversation
+            if (responseData.conversation_id && !conversationId) {
+              loadHistory();
+            }
+            return;
+          }
+
           addMessage({
             type: "form_schema",
             content: responseData.message || "✅ Form generated successfully!",
@@ -440,7 +472,7 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
               variant="outlined"
               size="small"
               onClick={() => {
-                setInput(`Edit the ${message.formId} form: `);
+                setInputAndScrollToStart(`Edit the ${message.formId} form: `);
               }}
               sx={{
                 textTransform: "none",
@@ -466,6 +498,46 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
               field" or "Change submit button text")
             </Typography>
           )}
+        </Box>
+      );
+    }
+
+    if (message.type === "workflow_created") {
+      const wd = message.workflowData;
+      const nodeCount = wd.canvas_state?.nodes?.length || 0;
+      return (
+        <Box sx={{ mb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              p: 1.5,
+              bgcolor: alpha("#4caf50", 0.1),
+              borderRadius: 2,
+              border: `1px solid ${alpha("#4caf50", 0.3)}`,
+            }}
+          >
+            <CheckCircle sx={{ color: "#4caf50", fontSize: 20 }} />
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {message.content}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {nodeCount} components added to canvas
+              </Typography>
+            </Box>
+            <Chip
+              label={wd.workflow_name || "Workflow"}
+              size="small"
+              sx={{
+                fontSize: "0.7rem",
+                height: 20,
+                bgcolor: alpha("#4caf50", 0.15),
+                color: "#2e7d32",
+              }}
+            />
+          </Box>
         </Box>
       );
     }
@@ -604,11 +676,18 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
           <TextField
             fullWidth
             multiline
-            maxRows={4}
+            minRows={2}
+            maxRows={6}
+            inputRef={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Describe the form you want to create..."
+            onBlur={() => {
+              if (inputRef.current) {
+                inputRef.current.scrollTop = 0;
+              }
+            }}
+            placeholder="Describe the workflow you are imagining..."
             disabled={loading}
             size="small"
             sx={{
@@ -624,6 +703,9 @@ const AIComponentBuilder = ({ onAddToCanvas }) => {
                 "&.Mui-focused fieldset": {
                   borderColor: "#1976d2",
                 },
+              },
+              "& textarea": {
+                scrollbarWidth: "thin",
               },
             }}
           />

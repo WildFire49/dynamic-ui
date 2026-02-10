@@ -34,25 +34,30 @@ export const useAIFormGenerator = () => {
         formId: currentFormId,
       });
 
-      if (response.success && response.data?.schema) {
+      // Handle both form generation and workflow creation responses
+      const isWorkflow = response.action === 'create_workflow' || response.data?.canvas_state;
+      const isFormSchema = response.success && response.data?.schema;
+
+      if (isFormSchema || isWorkflow) {
         // Update conversation ID if this is a new conversation
-        if (response.data.conversation_id && !conversationId) {
-          setConversationId(response.data.conversation_id);
+        const convId = response.conversation_id || response.data?.conversation_id;
+        if (convId && !conversationId) {
+          setConversationId(convId);
         }
 
-        // Update current form ID
-        if (response.data.form_id) {
+        // Update current form ID (only for form responses)
+        if (response.data?.form_id) {
           setCurrentFormId(response.data.form_id);
         }
 
         // Call success callback
         if (onSuccess) {
-          onSuccess(response.data);
+          onSuccess({ ...response.data, action: response.action, message: response.message });
         }
 
         return response.data;
       } else {
-        throw new Error(response.data?.message || 'Form generation failed');
+        throw new Error(response.data?.message || response.message || 'Form generation failed');
       }
     } catch (err) {
       const errorMessage = err.message || 'Failed to generate form';

@@ -358,7 +358,7 @@ const getStyles = (theme) => ({
   },
 });
 
-const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = false }) => {
+const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = false, skipNavigation = false }) => {
   const theme = useTheme();
   const styles = getStyles(theme);
   const [formData, setFormData] = useState({});
@@ -522,19 +522,19 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
     // Mark as submitted
     setIsSubmitted(true);
     
-    // Handle submitApi configuration
-    if (formSchema.submitApi) {
+    // Handle submitApi configuration (skip navigation in workflow test mode)
+    if (formSchema.submitApi && !skipNavigation) {
       const { onSuccess } = formSchema.submitApi;
-      
+
       // Handle navigation action
       if (onSuccess?.action === 'navigate' && onSuccess?.path) {
         console.log("🔀 Will navigate to:", onSuccess.path, "after 2 seconds");
-        
+
         // Show success message if provided
         if (onSuccess.message) {
           console.log("✅", onSuccess.message);
         }
-        
+
         // Wait 2 seconds before navigating to show completion screen
         setTimeout(() => {
           // Navigate based on openInNewTab flag

@@ -86,6 +86,7 @@ import FormPreviewNode from "@/components/configurator/FormPreviewNode";
 import AIComponentBuilder from "@/components/configurator/AIComponentBuilder";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import uiConfiguratorService from "@/services/uiConfiguratorService";
+import authService from "@/services/authService";
 import PageHeader from "@/components/layout/PageHeader";
 import Image from "next/image";
 
@@ -859,6 +860,8 @@ const UIConfiguratorPage = () => {
   const [workflowsLoading, setWorkflowsLoading] = useState(false);
   const [workflowMenuAnchor, setWorkflowMenuAnchor] = useState(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [deleteComponentDialog, setDeleteComponentDialog] = useState({ open: false, componentId: null, componentName: "" });
+  const [deleteWorkflowDialog, setDeleteWorkflowDialog] = useState({ open: false, workflowId: null, workflowName: "" });
   const [tempWorkflowName, setTempWorkflowName] = useState("");
   const [isTestingWorkflow, setIsTestingWorkflow] = useState(false);
   const [currentTestNodeIndex, setCurrentTestNodeIndex] = useState(0);
@@ -903,7 +906,7 @@ const UIConfiguratorPage = () => {
   const loadComponentLibrary = useCallback(async () => {
     try {
       // Fetch component library from API
-      const username = "vaishakhsk"; // Get from auth service if needed
+      const username = authService.getUsername() || authService.getUserId();
       const libraryData = await uiConfiguratorService.getComponentLibrary(
         username
       );
@@ -983,7 +986,7 @@ const UIConfiguratorPage = () => {
   const saveWorkflow = useCallback(
     async (workflowId = null, customWorkflowName = null) => {
       try {
-        const username = "vaishakhsk"; // Get from auth service
+        const username = authService.getUsername() || authService.getUserId();
         const productId = "loan_app"; // Get from context or props
 
         // Use custom name if provided, otherwise use state
@@ -1205,12 +1208,119 @@ const UIConfiguratorPage = () => {
   );
 
   /**
+   * Handle workflow generated from AI builder - load directly onto canvas
+   */
+  const handleWorkflowGenerated = useCallback(
+    (workflowData) => {
+      try {
+        const canvasState = workflowData.canvas_state;
+        if (!canvasState?.nodes) return;
+
+        setWorkflowName(workflowData.workflow_name || "Custom Workflow");
+
+        // Layout nodes horizontally with good spacing
+        const NODE_WIDTH = 320;
+        const NODE_GAP = 80;
+        const START_X = 50;
+        const START_Y = 80;
+
+        const restoredNodes = canvasState.nodes.map((node, index) => {
+          const component = {
+            id: node.data.form_id,
+            name: node.data.title,
+            title: node.data.title,
+            description: node.data.description,
+            category: node.data.category || "general",
+            icon: "person",
+            color: "#1976d2",
+          };
+
+          return {
+            id: node.id,
+            type: node.type || "formPreview",
+            position: {
+              x: START_X + index * (NODE_WIDTH + NODE_GAP),
+              y: START_Y,
+            },
+            data: {
+              component,
+              schema: node.data.schema,
+              title: node.data.title,
+              description: node.data.description,
+              category: node.data.category,
+              onDelete: () => {
+                setNodes((nds) => nds.filter((n) => n.id !== node.id));
+                setEdges((eds) =>
+                  eds.filter(
+                    (edge) => edge.source !== node.id && edge.target !== node.id
+                  )
+                );
+              },
+              onConfigure: (comp) => {
+                setSelectedComponent(comp);
+                setSelectedNodeForConfig(node);
+                setApiConfigChatOpen(true);
+              },
+              onPreview: (comp) => {
+                setFullPreviewSchema(comp.schema || node.data.schema);
+                setFullPreviewOpen(true);
+              },
+            },
+            width: node.width,
+            height: node.height,
+          };
+        });
+
+        const restoredEdges = (canvasState.edges || []).map((edge) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          sourceHandle: edge.sourceHandle,
+          targetHandle: edge.targetHandle,
+          type: edge.type || "default",
+          animated: edge.animated !== false,
+          style: edge.style || { stroke: "#1976d2", strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#1976d2",
+          },
+          data: edge.data,
+        }));
+
+        setNodes(restoredNodes);
+        setEdges(restoredEdges);
+
+        if (workflowData.workflow_id) {
+          setCurrentWorkflowId(workflowData.workflow_id);
+        }
+
+        // Refresh workflows list
+        loadWorkflowsList();
+
+        setSnackbar({
+          open: true,
+          message: `Workflow '${workflowData.workflow_name}' loaded on canvas!`,
+          severity: "success",
+        });
+      } catch (error) {
+        console.error("Error loading generated workflow:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to load workflow onto canvas",
+          severity: "error",
+        });
+      }
+    },
+    [setNodes, setEdges]
+  );
+
+  /**
    * Load list of workflows for the user
    */
   const loadWorkflowsList = useCallback(async () => {
     try {
       setWorkflowsLoading(true);
-      const username = "vaishakhsk"; // Get from auth service
+      const username = authService.getUsername() || authService.getUserId();
       const productId = "loan_app"; // Get from context or props
 
       const data = await uiConfiguratorService.getUserWorkflows(
@@ -1320,6 +1430,67 @@ const UIConfiguratorPage = () => {
       severity: "info",
     });
   }, []);
+
+  const handleDeleteComponent = useCallback(
+    (componentId, componentName) => {
+      setDeleteComponentDialog({ open: true, componentId, componentName });
+    },
+    []
+  );
+
+  const confirmDeleteComponent = useCallback(async () => {
+    const { componentId } = deleteComponentDialog;
+    setDeleteComponentDialog({ open: false, componentId: null, componentName: "" });
+    try {
+      await uiConfiguratorService.deleteComponent(componentId);
+      setComponentLibrary((prev) =>
+        prev.filter((c) => c.id !== componentId)
+      );
+      setSnackbar({
+        open: true,
+        message: "Component deleted successfully",
+        severity: "success",
+      });
+      // Refresh library from server to stay in sync
+      loadComponentLibrary();
+    } catch (error) {
+      console.error("Error deleting component:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to delete component",
+        severity: "error",
+      });
+    }
+  }, [deleteComponentDialog, loadComponentLibrary]);
+
+  const confirmDeleteWorkflow = useCallback(async () => {
+    const { workflowId } = deleteWorkflowDialog;
+    setDeleteWorkflowDialog({ open: false, workflowId: null, workflowName: "" });
+    try {
+      const username = authService.getUsername() || authService.getUserId();
+      await uiConfiguratorService.deleteWorkflow(workflowId, username);
+      // If this was the currently loaded workflow, clear the canvas
+      if (currentWorkflowId === workflowId) {
+        setNodes([]);
+        setEdges([]);
+        setCurrentWorkflowId(null);
+        setWorkflowName("");
+      }
+      loadWorkflowsList();
+      setSnackbar({
+        open: true,
+        message: "Workflow deleted successfully",
+        severity: "success",
+      });
+    } catch (error) {
+      console.error("Error deleting workflow:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to delete workflow",
+        severity: "error",
+      });
+    }
+  }, [deleteWorkflowDialog, currentWorkflowId, setNodes, setEdges, loadWorkflowsList]);
 
   const handleConfigureNode = useCallback(
     (component) => {
@@ -1745,7 +1916,7 @@ const UIConfiguratorPage = () => {
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {workflowName}
+                  {workflowName || "Select a Workflow"}
                 </Typography>
                 {currentWorkflowId && (
                   <Chip
@@ -1909,6 +2080,27 @@ const UIConfiguratorPage = () => {
                         : "success.main",
                   }}
                 />
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteWorkflowDialog({
+                      open: true,
+                      workflowId: workflow.workflow_id,
+                      workflowName: workflow.workflow_name,
+                    });
+                    setWorkflowMenuAnchor(null);
+                  }}
+                  sx={{
+                    color: "error.main",
+                    p: 0.5,
+                    "&:hover": {
+                      bgcolor: alpha("#DC2626", 0.08),
+                    },
+                  }}
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
               </Box>
               <Box sx={{ display: "flex", gap: 2, width: "100%" }}>
                 <Typography variant="caption" color="text.secondary">
@@ -2178,15 +2370,24 @@ const UIConfiguratorPage = () => {
                             >
                               Add
                             </Button>
-                            {/* <Button
-                                size="small"
-                                variant="text"
-                                onClick={() =>
-                                  handlePreviewComponent(component)
-                                }
-                              >
-                                Preview
-                              </Button> */}
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteComponent(component.id, component.name);
+                              }}
+                              sx={{
+                                color: "error.main",
+                                border: "1px solid",
+                                borderColor: "error.light",
+                                borderRadius: 1,
+                                "&:hover": {
+                                  bgcolor: alpha("#DC2626", 0.08),
+                                },
+                              }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
                           </Box>
                         </CardContent>
                       </Card>
@@ -2207,7 +2408,7 @@ const UIConfiguratorPage = () => {
                 }}
               >
                 <ErrorBoundary fallbackMessage="Unable to load AI Component Builder. Please refresh the page.">
-                  <AIComponentBuilder onAddToCanvas={handleAddNodeToCanvas} />
+                  <AIComponentBuilder onAddToCanvas={handleAddNodeToCanvas} onWorkflowGenerated={handleWorkflowGenerated} />
                 </ErrorBoundary>
               </Box>
             )}
@@ -2463,6 +2664,7 @@ const UIConfiguratorPage = () => {
                     key={JSON.stringify(fullPreviewSchema)}
                     data={fullPreviewSchema}
                     hideMetadata={true}
+                    skipNavigation={isTestingWorkflow}
                     onSubmit={(data) => {
                       console.log("🚀 SUBMIT BUTTON CLICKED!");
                       console.log("🚀 Form Preview Submit:", data);
@@ -2587,6 +2789,74 @@ const UIConfiguratorPage = () => {
             sx={{ textTransform: "none" }}
           >
             Save Workflow
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Component Confirmation Dialog */}
+      <Dialog
+        open={deleteComponentDialog.open}
+        onClose={() => setDeleteComponentDialog({ open: false, componentId: null, componentName: "" })}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Delete Component</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Are you sure you want to delete{" "}
+            <strong>{deleteComponentDialog.componentName}</strong>? This action
+            cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteComponentDialog({ open: false, componentId: null, componentName: "" })}
+            sx={{ textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteComponent}
+            variant="contained"
+            color="error"
+            startIcon={<Delete />}
+            sx={{ textTransform: "none" }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Workflow Confirmation Dialog */}
+      <Dialog
+        open={deleteWorkflowDialog.open}
+        onClose={() => setDeleteWorkflowDialog({ open: false, workflowId: null, workflowName: "" })}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Delete Workflow</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Are you sure you want to delete{" "}
+            <strong>{deleteWorkflowDialog.workflowName}</strong>? This action
+            cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteWorkflowDialog({ open: false, workflowId: null, workflowName: "" })}
+            sx={{ textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteWorkflow}
+            variant="contained"
+            color="error"
+            startIcon={<Delete />}
+            sx={{ textTransform: "none" }}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
