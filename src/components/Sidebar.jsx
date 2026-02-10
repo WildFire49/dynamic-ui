@@ -48,6 +48,7 @@ import {
   AccountTree as GraphIcon,
   Category as CategoryIcon,
   ArrowForward as ArrowIcon,
+  SmartToy as SmartToyIcon,
 } from "@mui/icons-material";
 // import NewStreetLogo from '../../public/assets/NewStreetLogo'; // Replaced with MiFiX logo
 import MiFixLogoLight from "../../public/assets/MiFixLogoLight";
@@ -70,6 +71,7 @@ const ICON_MAP = {
   DataIcon: DataIcon,
   AIIcon: AIIcon,
   GraphIcon: GraphIcon,
+  SmartToyIcon: SmartToyIcon,
 };
 
 
@@ -388,7 +390,7 @@ const Sidebar = ({
   // Group menu items into categories for visual organization
   const groupedMenuItems = React.useMemo(() => {
     const mainIds = ["chat", "dashboard"];
-    const configuratorIds = ["workflow_configurator", "retriever_configurator", "productConfigurator", "creConfigurator"];
+    const configuratorIds = ["workflow_configurator", "retriever_configurator", "mifix_ai_agents", "productConfigurator", "creConfigurator"];
     const adminIds = ["accessControl"];
 
     const main = menuItems.filter(item => mainIds.includes(item.id));

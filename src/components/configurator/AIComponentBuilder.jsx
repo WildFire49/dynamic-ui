@@ -36,6 +36,17 @@ import uiConfiguratorService from "@/services/uiConfiguratorService";
 import { useConversationHistory } from "@/hooks/useConversationHistory";
 import { useAIFormGenerator } from "@/hooks/useAIFormGenerator";
 
+const LOADING_MESSAGES = [
+  "Analyzing your requirements...",
+  "Searching knowledge base...",
+  "Identifying workflow components...",
+  "Stitching your workflow together...",
+  "Mapping process dependencies...",
+  "Configuring form validations...",
+  "Optimizing workflow sequence...",
+  "Finalizing your workflow...",
+];
+
 /**
  * AI Component Builder
  * Generates forms using natural language with conversation history
@@ -48,12 +59,13 @@ const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
       id: 1,
       type: "system",
       content:
-        "👋 Welcome to MiFiX Workflow Builder! Describe the workflow you want to create, and I'll generate it for you.\n\nExample: 'Create a workflow for loan application with name, amount, and tenure'",
+        "👋 Welcome to MiFiX Workflow Builder! Describe the workflow you want to create, and I'll generate it for you.\n\nExample: 'Create a vehichle loan workflow'",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -77,6 +89,18 @@ const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
     resetConversation: resetFormState,
     loadConversation: setConversationState,
   } = useAIFormGenerator();
+
+  // Cycle through loading messages while generating
+  useEffect(() => {
+    if (!loading) {
+      setLoadingMsgIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingMsgIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   /**
    * Scroll to bottom of chat
@@ -574,10 +598,10 @@ const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
             <WorkflowIcon sx={{ color: "#2562b2ff", fontSize: 28 }} />
             <Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                Component Builder
+                Workflow Builder
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Generate Components using natural language
+                Create Workflows using prompts
               </Typography>
             </Box>
           </Box>
@@ -633,11 +657,23 @@ const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
               p: 2,
               bgcolor: alpha("#1976d2", 0.05),
               borderRadius: 2,
+              border: `1px solid ${alpha("#1976d2", 0.12)}`,
             }}
           >
             <CircularProgress size={20} />
-            <Typography variant="body2" color="text.secondary">
-              Generating your form...
+            <Typography
+              key={loadingMsgIndex}
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                animation: "fadeInUp 0.4s ease-out",
+                "@keyframes fadeInUp": {
+                  "0%": { opacity: 0, transform: "translateY(6px)" },
+                  "100%": { opacity: 1, transform: "translateY(0)" },
+                },
+              }}
+            >
+              {LOADING_MESSAGES[loadingMsgIndex]}
             </Typography>
           </Box>
         )}

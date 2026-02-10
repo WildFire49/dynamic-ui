@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Tooltip, alpha } from '@mui/material';
-import { smartFormat } from './utils';
+import { smartFormat, getSafeDisplayValue } from './utils';
 
 const MiniTable = ({ card, theme }) => {
   const columns = card.columns || card.mini_columns;
@@ -49,10 +49,11 @@ const MiniTable = ({ card, theme }) => {
           {columns.map((col, cIdx) => {
             const key = resolvedKeys[cIdx];
             const cellValue = row[key];
+            const unit = col.unit || card.metric_unit;
             const displayValue = cellValue === null || cellValue === undefined
               ? '—'
               : typeof cellValue === 'number'
-                ? smartFormat(cellValue)
+                ? getSafeDisplayValue(cellValue, null, unit)
                 : cellValue;
             return (
               <Tooltip key={cIdx} title={String(displayValue)} arrow placement="top" enterDelay={500}>

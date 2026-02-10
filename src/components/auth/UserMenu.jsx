@@ -149,27 +149,27 @@ const UserMenu = () => {
               {user.username?.charAt(0).toUpperCase() || 'U'}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 700, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
                   fontSize: '1rem',
                   lineHeight: 1.2,
                   mb: 0.5,
                   color: '#212529',
                 }}
               >
-                Welcome Back
+                {user.fullName || user.username || 'Welcome Back'}
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   fontSize: '0.85rem',
                   fontWeight: 500,
                   color: '#6C757D',
                 }}
               >
-                Employee ID: {user.employeeId}
+                {user.username || user.userId}
               </Typography>
             </Box>
           </Box>

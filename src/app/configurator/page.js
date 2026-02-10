@@ -77,6 +77,9 @@ import {
   Settings as SettingsIcon,
   SettingsSuggest as GearIcon,
   Agriculture as AgriIcon,
+  DirectionsCar as VehicleIcon,
+  Assessment as AssessmentIcon,
+  Route as RouteIcon,
 } from "@mui/icons-material";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import BuildIcon from "@mui/icons-material/Build";
@@ -135,7 +138,7 @@ const CONFIGURATOR_OPTIONS = [
 const SUCCESS_STORIES = [
   {
     title: "Swift Reconciliation",
-    client: "PESU 1",
+    client: "PSU 1",
     icon: BankIcon,
     desc: "Automated reconciliation handling millions of transactions daily with near-zero latency.",
     impact: "10x",
@@ -156,7 +159,7 @@ const SUCCESS_STORIES = [
     tags: ["BI", "Analytics"],
   },
   {
-    title: "Portfolio Strategy",
+    title: "Portfolio Business Plan ",
     client: "Finance Sector",
     icon: ChartIcon,
     desc: "AI-driven portfolio generation optimizing asset allocation based on risk profiles.",
@@ -178,13 +181,13 @@ const SUCCESS_STORIES = [
     tags: ["E-com", "Social"],
   },
   {
-    title: "Field RM Companion",
+    title: "NPA Priortisation",
     client: "Sales Mgmt",
     icon: MapIcon,
-    desc: "Geo-fenced live tracking for field RMs that also guides on what needs to be done next, improving visit efficiency.",
+    desc: "Analysis of NPA Customers and creating strategies for recovery.",
     impact: "35%",
-    impactLabel: "Productivity",
-    stat: "Live Tracking",
+    impactLabel: "Recovery Rate",
+    stat: "NPA Analysis",
     color: "#AB47BC", // Purple
     tags: ["Geo", "Sales"],
   },
@@ -192,12 +195,45 @@ const SUCCESS_STORIES = [
     title: "Individual Farmer Finance",
     client: "Agri Sector",
     icon: AgriIcon,
-    desc: "Facilitating RBG-FF (Rural Banking Group – Individual Farmer Finance) via STP for seamless farmer underwriting and loan disbursements.",
+    desc: "STP-based underwriting and disbursement for RBG-FF farmer loans.",
     impact: "15hr",
     impactLabel: "Saved / Week",
     stat: "Efficiency",
     color: "#FF7043", // Deep Orange
     tags: ["Agri", "Finance"],
+  },
+  {
+    title: "Vehicle Loan Platform",
+    client: "Auto Finance",
+    icon: VehicleIcon,
+    desc: "End-to-end vehicle loan origination with automated credit scoring and instant approvals.",
+    impact: "60%",
+    impactLabel: "Faster Approval",
+    stat: "Auto Lending",
+    color: "#42A5F5", // Blue
+    tags: ["Lending", "Auto"],
+  },
+  {
+    title: "LOS for Large NBFC",
+    client: "NBFC",
+    icon: AssessmentIcon,
+    desc: "Scalable Loan Origination System handling high-volume applications with end-to-end lifecycle management.",
+    impact: "3x",
+    impactLabel: "Throughput",
+    stat: "Enterprise",
+    color: "#7E57C2", // Deep Purple
+    tags: ["NBFC", "LOS"],
+  },
+  {
+    title: "Route Monitoring & Optimisation",
+    client: "UAE Logistics",
+    icon: RouteIcon,
+    desc: "Real-time fleet route tracking and AI-driven optimisation reducing fuel costs and delivery times.",
+    impact: "25%",
+    impactLabel: "Cost Savings",
+    stat: "Fleet Ops",
+    color: "#26A69A", // Teal
+    tags: ["Logistics", "UAE"],
   },
 ];
 

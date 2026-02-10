@@ -45,7 +45,7 @@ import { keyframes } from "@emotion/react";
 // Critical components - fixed import paths for new location
 import { useAuth } from "../../contexts/AuthContext";
 import authService from "../../services/authService";
-import { getAuthHeaders } from "../../services/apiClient";
+import apiClient, { getAuthHeaders } from "../../services/apiClient";
 import { API_BASE_URL, CHAT_ENDPOINT } from "../../lib/config";
 
 // Utilities - fixed import paths
@@ -895,6 +895,7 @@ export default function ChatPage() {
           setConfiguratorCallTime(Date.now());
         }
 
+        await authService.ensureValidToken();
         const response = await fetch(`${CHAT_ENDPOINT}`, {
           method: "POST",
           headers: getAuthHeaders(),
@@ -1249,17 +1250,7 @@ export default function ChatPage() {
       console.log("🔗 API URL:", apiUrl);
       setLoadingDocuments(true);
       try {
-        const response = await fetch(apiUrl, {
-          headers: getAuthHeaders(),
-        });
-
-        console.log("📡 Documents API response status:", response.status);
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch documents: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = await apiClient.get(apiUrl);
         console.log("📄 Documents API response data:", data);
         const docs = data.documents || [];
 
@@ -1531,6 +1522,7 @@ export default function ChatPage() {
 
         console.log("📤 Sending payload:", requestPayload);
 
+        await authService.ensureValidToken();
         const response = await fetch(`${CHAT_ENDPOINT}`, {
           method: "POST",
           headers: getAuthHeaders(),
@@ -2907,7 +2899,7 @@ export default function ChatPage() {
             </Box>
 
             {/* Workflow Mode Toggle Button */}
-            <Tooltip
+            {/* <Tooltip
               title={
                 workflowMode ? "Switch to Chat Mode" : "Switch to Workflow Mode"
               }
@@ -2939,7 +2931,7 @@ export default function ChatPage() {
               >
                 {workflowMode ? <WorkflowIcon /> : <ChatIcon />}
               </IconButton>
-            </Tooltip>
+            </Tooltip> */}
           </Box>
         </Box>
       </>
