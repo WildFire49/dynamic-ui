@@ -7,6 +7,7 @@ import {
   Paper,
   Typography,
   Button,
+  IconButton,
   Toolbar,
   alpha,
   useTheme,
@@ -15,12 +16,7 @@ import { ArrowBack } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import UserMenu from '@/components/auth/UserMenu';
-import Image from 'next/image';
 
-/**
- * Reusable Page Header Component
- * Provides consistent header with logo, title, user info, and optional actions
- */
 const PageHeader = ({
   title,
   subtitle,
@@ -42,13 +38,12 @@ const PageHeader = ({
     <Paper
       elevation={0}
       sx={{
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-        boxShadow: '0 4px 20px rgba(25, 118, 210, 0.08)',
-        borderBottom: '1px solid rgba(25, 118, 210, 0.1)',
-        backdropFilter: 'blur(10px)',
+        background: '#ffffff',
         position: 'sticky',
         top: 0,
         zIndex: 1100,
+        borderBottom: `1px solid ${alpha('#000', 0.08)}`,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)',
       }}
     >
       <Toolbar
@@ -56,58 +51,68 @@ const PageHeader = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          py: 1.5,
-          minHeight: '72px',
+          py: 1,
+          minHeight: '64px',
           px: 3,
         }}
       >
         {/* Left Section */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Back Button + Logo (Extreme Left) */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Back Button */}
-            {showBackButton && (
-              <Button
-                startIcon={<ArrowBack />}
-                onClick={handleBackClick}
-                sx={{
-                  color: 'primary.main',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  '&:hover': {
-                    bgcolor: alpha(theme.palette.primary.main, 0.08),
-                  },
-                }}
-              >
-                Back
-              </Button>
-            )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {showBackButton && (
+            <IconButton
+              onClick={handleBackClick}
+              size="small"
+              sx={{
+                color: '#64748b',
+                width: 34,
+                height: 34,
+                borderRadius: 2,
+                transition: 'all 0.15s ease',
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.primary.main, 0.06),
+                  color: theme.palette.primary.main,
+                },
+              }}
+            >
+              <ArrowBack fontSize="small" />
+            </IconButton>
+          )}
 
-            {/* Logo and Brand */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <img
-                src="/mifix-logo.png"
-                alt="MiFiX Studio"
-                style={{
-                  height: '28px',
-                  width: 'auto',
-                }}
-              />
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 700,
-                  color: 'text.primary',
-                  fontSize: '1.1rem',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                MiFiX Studio
-              </Typography>
-            </Box>
+          {/* Logo and Brand */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <img
+              src="/mifix-logo.png"
+              alt="MiFiX Studio"
+              style={{
+                height: '30px',
+                width: 'auto',
+              }}
+            />
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                color: '#0f172a',
+                fontSize: '1.1rem',
+                whiteSpace: 'nowrap',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              MiFiX Studio
+            </Typography>
           </Box>
 
-          {/* Custom Left Content (Separated with Gap) */}
+          {/* Separator */}
+          {leftContent && (
+            <Box sx={{
+              width: '1px',
+              height: 28,
+              bgcolor: alpha('#000', 0.1),
+              mx: 0.5,
+            }} />
+          )}
+
+          {/* Custom Left Content */}
           {leftContent}
         </Box>
 
@@ -125,10 +130,11 @@ const PageHeader = ({
             <Typography
               variant="h6"
               sx={{
-                fontWeight: 600,
-                color: 'text.primary',
-                fontSize: '1.1rem',
+                fontWeight: 700,
+                color: '#0f172a',
+                fontSize: '1rem',
                 whiteSpace: 'nowrap',
+                letterSpacing: '-0.01em',
               }}
             >
               {title}
@@ -137,8 +143,9 @@ const PageHeader = ({
               <Typography
                 variant="caption"
                 sx={{
-                  color: 'text.secondary',
-                  fontSize: '0.75rem',
+                  color: '#94a3b8',
+                  fontSize: '0.7rem',
+                  fontWeight: 500,
                 }}
               >
                 {subtitle}
@@ -147,12 +154,10 @@ const PageHeader = ({
           </Box>
         )}
 
-        {/* Right Section - User Info & Menu */}
+        {/* Right Section */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {/* Custom Right Content */}
           {rightContent}
 
-          {/* User Info & Menu */}
           {showUserInfo && user && (
             <Box
               sx={{
@@ -170,8 +175,8 @@ const PageHeader = ({
                 <Typography
                   sx={{
                     fontWeight: 600,
-                    fontSize: '14px',
-                    color: '#1976d2',
+                    fontSize: '13px',
+                    color: '#334155',
                     lineHeight: 1.2,
                   }}
                 >
@@ -182,7 +187,7 @@ const PageHeader = ({
                 <Typography
                   sx={{
                     fontSize: '11px',
-                    color: '#666',
+                    color: '#94a3b8',
                     lineHeight: 1,
                     fontWeight: 500,
                   }}

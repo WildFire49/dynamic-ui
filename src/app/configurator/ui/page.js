@@ -1025,7 +1025,7 @@ const UIConfiguratorPage = () => {
               target: edge.target,
               sourceHandle: edge.sourceHandle,
               targetHandle: edge.targetHandle,
-              type: edge.type || "default",
+              type: "smoothstep",
               animated: edge.animated !== false,
               style: edge.style || { stroke: "#1976d2", strokeWidth: 2 },
               data: {
@@ -1165,7 +1165,7 @@ const UIConfiguratorPage = () => {
           target: edge.target,
           sourceHandle: edge.sourceHandle,
           targetHandle: edge.targetHandle,
-          type: edge.type || "default",
+          type: "smoothstep",
           animated: edge.animated !== false,
           style: edge.style || { stroke: "#1976d2", strokeWidth: 2 },
           markerEnd: {
@@ -1277,7 +1277,7 @@ const UIConfiguratorPage = () => {
           target: edge.target,
           sourceHandle: edge.sourceHandle,
           targetHandle: edge.targetHandle,
-          type: edge.type || "default",
+          type: "smoothstep",
           animated: edge.animated !== false,
           style: edge.style || { stroke: "#1976d2", strokeWidth: 2 },
           markerEnd: {
@@ -1675,6 +1675,8 @@ const UIConfiguratorPage = () => {
   const handleConnect = (params) => {
     const newEdge = {
       ...params,
+      type: "smoothstep",
+      animated: true,
       markerEnd: {
         type: MarkerType.ArrowClosed,
         color: theme.palette.primary.main,
@@ -1896,26 +1898,27 @@ const UIConfiguratorPage = () => {
             {/* Workflow Selector */}
             <Button
               onClick={(e) => setWorkflowMenuAnchor(e.currentTarget)}
-              endIcon={<ArrowDropDown />}
-              startIcon={<FolderOpen />}
+              endIcon={<ArrowDropDown sx={{ color: "#94a3b8" }} />}
+              startIcon={<AccountTree sx={{ fontSize: 18, color: theme.palette.primary.main }} />}
               sx={{
-                bgcolor: alpha("#000", 0.02),
-                color: "text.primary",
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                color: "#334155",
                 textTransform: "none",
-                px: 2.5,
-                py: 1,
-                fontSize: "0.95rem",
+                px: 2,
+                py: 0.8,
+                fontSize: "0.9rem",
                 fontWeight: 600,
                 borderRadius: 2,
-                border: `1px solid transparent`,
+                border: `1px solid ${alpha("#000", 0.08)}`,
+                transition: "all 0.15s ease",
                 "&:hover": {
-                  bgcolor: alpha("#000", 0.04),
+                  bgcolor: alpha(theme.palette.primary.main, 0.08),
                   borderColor: alpha(theme.palette.primary.main, 0.2),
                 },
               }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: "#1e293b" }}>
                   {workflowName || "Select a Workflow"}
                 </Typography>
                 {currentWorkflowId && (
@@ -1923,10 +1926,11 @@ const UIConfiguratorPage = () => {
                     label="Saved"
                     size="small"
                     sx={{
-                      height: 20,
-                      fontSize: "0.75rem",
-                      bgcolor: alpha(theme.palette.success.main, 0.1),
-                      color: "success.main",
+                      height: 18,
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      bgcolor: alpha("#10b981", 0.1),
+                      color: "#059669",
                     }}
                   />
                 )}
@@ -1941,14 +1945,17 @@ const UIConfiguratorPage = () => {
               onClick={handleTestWorkflow}
               sx={{
                 textTransform: "none",
-                fontWeight: 500,
+                fontWeight: 600,
                 px: 2,
+                py: 0.7,
                 borderColor: alpha("#000", 0.12),
-                color: "text.secondary",
+                color: "#475569",
+                borderRadius: 2,
+                transition: "all 0.15s ease",
                 "&:hover": {
-                  borderColor: "primary.main",
+                  borderColor: theme.palette.primary.main,
                   bgcolor: alpha(theme.palette.primary.main, 0.04),
-                  color: "primary.main",
+                  color: theme.palette.primary.main,
                 },
               }}
             >
@@ -1964,9 +1971,12 @@ const UIConfiguratorPage = () => {
                 textTransform: "none",
                 fontWeight: 600,
                 px: 2.5,
-                bgcolor: "primary.main",
+                py: 0.7,
+                borderRadius: 2,
+                bgcolor: theme.palette.primary.main,
+                transition: "all 0.15s ease",
                 "&:hover": {
-                  bgcolor: "primary.dark",
+                  bgcolor: theme.palette.primary.dark,
                 },
               }}
             >
@@ -1979,15 +1989,16 @@ const UIConfiguratorPage = () => {
             href="/configurator/ui/template-manager"
             startIcon={<Description fontSize="small" />}
             sx={{
-              color: "#1976d2",
+              color: theme.palette.primary.main,
               textTransform: "none",
               fontWeight: 600,
               px: 2,
-              py: 1,
+              py: 0.8,
               borderRadius: 2,
-              backgroundColor: "rgba(25, 118, 210, 0.08)",
+              bgcolor: alpha(theme.palette.primary.main, 0.06),
+              transition: "all 0.15s ease",
               "&:hover": {
-                backgroundColor: "rgba(25, 118, 210, 0.15)",
+                bgcolor: alpha(theme.palette.primary.main, 0.12),
               },
             }}
           >
@@ -2496,7 +2507,9 @@ const UIConfiguratorPage = () => {
                 onEdgesChange={onEdgesChange}
                 onConnect={handleConnect}
                 nodeTypes={nodeTypes}
-                defaultViewport={{ x: 0, y: 0, zoom: 0.9 }}
+                fitView
+                fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+                defaultEdgeOptions={{ type: "smoothstep", animated: true }}
                 minZoom={0.3}
                 maxZoom={1.5}
                 style={{ width: "100%", height: "100%" }}

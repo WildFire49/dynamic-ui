@@ -74,6 +74,9 @@ import {
   Timeline as TimelineIcon,
   Error as ErrorIcon,
   BarChart as BarChartIcon,
+  AccessTime as AccessTimeIcon,
+  ArrowDownward as ArrowDownwardIcon,
+  Percent as PercentIcon,
 } from '@mui/icons-material';
 import MoneyIcon from '@mui/icons-material/Money';
 
@@ -83,6 +86,7 @@ export const ICON_MAP = {
   TableChart: TableChartIcon, Table: TableChartIcon, Lightbulb: LightbulbIcon,
   Info: InfoIcon, CheckCircle: CheckCircleIcon, Money: MoneyIcon,
   Star: StarIcon, Timeline: TimelineIcon, AlertIcon: ErrorIcon, ChartBar: BarChartIcon,
+  Clock: AccessTimeIcon, ArrowDown: ArrowDownwardIcon, PercentageIcon: PercentIcon,
 };
 
 export const URGENCY_CONFIG = {

@@ -4,7 +4,8 @@ import { smartFormat, getSafeDisplayValue } from './utils';
 
 const MiniTable = ({ card, theme }) => {
   const columns = card.columns || card.mini_columns;
-  const rows = card.rows || card.mini_rows;
+  // Prefer raw query_results over pre-formatted mini_rows to avoid incorrect currency formatting
+  const rows = card.rows || card.query_results || card.mini_rows;
   if (!Array.isArray(columns) || !Array.isArray(rows) || rows.length === 0) return null;
 
   const resolveRowKey = (col, cIdx, sampleRow) => {
@@ -50,11 +51,17 @@ const MiniTable = ({ card, theme }) => {
             const key = resolvedKeys[cIdx];
             const cellValue = row[key];
             const unit = col.unit || card.metric_unit;
-            const displayValue = cellValue === null || cellValue === undefined
+            // Strip incorrectly applied currency formatting for non-currency values
+            let cleanedValue = cellValue;
+            if (typeof cellValue === 'string' && cellValue.includes('₹') && unit !== 'currency') {
+              const num = parseFloat(cellValue.replace(/[₹,]/g, ''));
+              if (!isNaN(num)) cleanedValue = num;
+            }
+            const displayValue = cleanedValue === null || cleanedValue === undefined
               ? '—'
-              : typeof cellValue === 'number'
-                ? getSafeDisplayValue(cellValue, null, unit)
-                : cellValue;
+              : typeof cleanedValue === 'number'
+                ? getSafeDisplayValue(cleanedValue, null, unit)
+                : cleanedValue;
             return (
               <Tooltip key={cIdx} title={String(displayValue)} arrow placement="top" enterDelay={500}>
                 <Typography sx={{

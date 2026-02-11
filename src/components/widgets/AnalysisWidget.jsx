@@ -2796,50 +2796,49 @@ const AnalysisWidget = ({
   }
 
   const handleSaveToLoginboard = () => {
-    console.log("🔥 [WIDGET SAVE DEBUG] Save button clicked");
-    console.log("🔥 [WIDGET SAVE DEBUG] finalAnalysis:", finalAnalysis);
-    console.log("🔥 [WIDGET SAVE DEBUG] onSave function:", onSave);
-
-    if (finalAnalysis && onSave) {
-      const dashboardData = {
-        id: Date.now().toString(), // Add unique ID
-        type: "analysis_widget",
-        title: finalAnalysis.title || title || "Untitled Analysis",
-        analysis: finalAnalysis,
-        data: data, // Include original data for Dashboard rendering
-        timestamp: new Date().toISOString(),
-        charts: finalAnalysis.charts,
-        stats: finalAnalysis.stats,
-        tables: finalAnalysis.tables,
-        // Save expanded/collapsed states
-        expandedStates: {
-          visualAnalytics: visualAnalyticsExpanded,
-          tabularResults: tabularResultsExpanded,
-          expandedCharts: expandedCharts,
-          expandedTables: expandedTables,
-          selectedChartTab: selectedChartTab,
-          selectedTableTab: selectedTableTab,
-          lastExpandedChartKeyByTab: lastExpandedChartKeyByTab,
-        },
-      };
-
-      console.log(
-        "🔥 [WIDGET SAVE DEBUG] Calling onSave with dashboardData:",
-        dashboardData
-      );
-      onSave(dashboardData);
-
-      // Navigate to dashboard in new tab
-      window.open("/dashboard", "_blank");
-    } else {
-      console.error("❌ [WIDGET SAVE ERROR] Missing finalAnalysis or onSave:", {
-        hasFinalAnalysis: !!finalAnalysis,
-        hasOnSave: !!onSave,
-        finalAnalysis,
-        onSave,
-      });
-      alert("Cannot save: Missing analysis data or save function");
+    if (!finalAnalysis) {
+      alert("Cannot save: Missing analysis data");
+      return;
     }
+
+    const dashboardData = {
+      id: Date.now().toString(),
+      type: "analysis_widget",
+      title: finalAnalysis.title || title || "Untitled Analysis",
+      analysis: finalAnalysis,
+      data: data,
+      timestamp: new Date().toISOString(),
+      charts: finalAnalysis.charts,
+      stats: finalAnalysis.stats,
+      tables: finalAnalysis.tables,
+      expandedStates: {
+        visualAnalytics: visualAnalyticsExpanded,
+        tabularResults: tabularResultsExpanded,
+        expandedCharts: expandedCharts,
+        expandedTables: expandedTables,
+        selectedChartTab: selectedChartTab,
+        selectedTableTab: selectedTableTab,
+        lastExpandedChartKeyByTab: lastExpandedChartKeyByTab,
+      },
+    };
+
+    // Save to localStorage for the reconciliation dashboard page
+    try {
+      const existing = JSON.parse(localStorage.getItem("reconDashboardItems") || "[]");
+      // Avoid duplicates by id
+      const updated = [dashboardData, ...existing.filter(item => item.id !== dashboardData.id)];
+      localStorage.setItem("reconDashboardItems", JSON.stringify(updated));
+    } catch (e) {
+      console.error("Error saving to localStorage:", e);
+    }
+
+    // Also call legacy onSave if provided
+    if (onSave) {
+      onSave(dashboardData);
+    }
+
+    // Navigate to reconciliation dashboard
+    window.open("/reconciliation-dashboard", "_blank");
   };
 
   if (!finalAnalysis) {
@@ -2997,7 +2996,7 @@ const AnalysisWidget = ({
                       margin: topRowCount === 1 ? "0 auto" : "0",
                     }}
                   >
-                    {/* Successful Matches - Independent Component */}
+                    {/*   - Independent Component */}
                     {organizedStats.matches?.stats?.length > 0 && (
                       <StatisticsCard
                         category="matches"
@@ -4681,6 +4680,7 @@ const AnalysisWidget = ({
         recordData={reviewPopover.recordData}
         tableName={reviewPopover.tableName}
       />
+
     </Box>
   );
 };

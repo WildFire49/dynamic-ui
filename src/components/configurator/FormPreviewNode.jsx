@@ -426,10 +426,10 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
         </Tooltip>
       </Box>
 
-      {/* Connection Handles */}
+      {/* Connection Handles - Left/Right for horizontal workflow layout */}
       <Handle
         type="target"
-        position={Position.Top}
+        position={Position.Left}
         isConnectable={isConnectable}
         style={{
           width: 12,
@@ -441,7 +441,7 @@ const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
       />
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={Position.Right}
         isConnectable={isConnectable}
         style={{
           width: 12,

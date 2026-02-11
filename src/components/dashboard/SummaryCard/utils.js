@@ -56,9 +56,10 @@ export const prettifyLabel = (label = '') =>
 
 export const getSafeDisplayValue = (val, formattedVal, unit) => {
   const numericVal = toNumeric(val);
-  if (unit === 'count' && numericVal !== null) return numericVal.toLocaleString('en-IN');
-  if (unit === 'currency' && numericVal !== null && !formattedVal) return formatIndianCurrency(numericVal);
+  // Always prefer explicitly formatted value when provided
   if (formattedVal) return formattedVal;
+  if (unit === 'count' && numericVal !== null) return numericVal.toLocaleString('en-IN');
+  if (unit === 'currency' && numericVal !== null) return formatIndianCurrency(numericVal);
   if (numericVal !== null) return smartFormat(numericVal);
   return smartFormat(val) || val;
 };

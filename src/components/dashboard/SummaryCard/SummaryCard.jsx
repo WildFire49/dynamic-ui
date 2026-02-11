@@ -159,14 +159,35 @@ const SummaryCard = memo(({
 
     // Table Summary - Top Entries
     if (card_type === 'table_summary' && top_entries && top_entries.length > 0) {
+      // Detect if the numeric column is actually a count (not currency) by checking query_results column names
+      const isCountMetric = (() => {
+        if (metric_unit === 'count') return true;
+        if (Array.isArray(query_results) && query_results.length > 0) {
+          const sample = query_results[0];
+          const numericKeys = Object.keys(sample).filter(k => typeof sample[k] === 'number');
+          return numericKeys.some(k => /count|number|days|qty|quantity|num_/i.test(k));
+        }
+        return false;
+      })();
+
+      const formatEntryValue = (entry) => {
+        if (isCountMetric) {
+          // Format as plain number, not currency
+          const num = typeof entry.value === 'number' ? entry.value : parseFloat(String(entry.value).replace(/[₹,]/g, ''));
+          if (!isNaN(num)) return Number.isInteger(num) ? num.toLocaleString('en-IN') : num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+        return entry.formatted || smartFormat(entry.value);
+      };
+
       return (
         <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: top_entries.length <= 3 ? 3 : 2, flex: 1, justifyContent: 'center', py: 0.5 }}>
           {top_entries.map((entry, idx) => {
             const maxValue = Math.max(...top_entries.map(e => e.value), 1);
             const percentage = (entry.value / maxValue) * 100;
             const rankTheme = CARD_THEMES[idx % CARD_THEMES.length];
+            const displayVal = formatEntryValue(entry);
             return (
-              <Tooltip key={idx} title={`${entry.fullName || entry.name}: ${entry.formatted}`} arrow placement="top" enterDelay={300}>
+              <Tooltip key={idx} title={`${entry.fullName || entry.name}: ${displayVal}`} arrow placement="top" enterDelay={300}>
                 <Box sx={{ width: '100%' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, alignItems: 'center', gap: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
@@ -188,7 +209,7 @@ const SummaryCard = memo(({
                       fontSize: '1.15rem', color: rankTheme.primary,
                       fontWeight: 900, letterSpacing: '-0.02em', flexShrink: 0,
                     }}>
-                      {entry.formatted || smartFormat(entry.value)}
+                      {displayVal}
                     </Typography>
                   </Box>
                   <Box sx={{ width: '100%', height: 10, bgcolor: alpha(rankTheme.primary, 0.08), borderRadius: 5, overflow: 'hidden' }}>
