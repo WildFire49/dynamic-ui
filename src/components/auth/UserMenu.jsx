@@ -260,7 +260,7 @@ const UserMenu = () => {
             <ArrowIcon sx={{ color: theme.palette.text.secondary, ml: 1 }} />
           </MenuItem>
 
-          <MenuItem 
+          {/* <MenuItem 
             onClick={handleClose} 
             sx={{ 
               py: 2,
@@ -290,7 +290,7 @@ const UserMenu = () => {
               }}
             />
             <ArrowIcon sx={{ color: theme.palette.text.secondary, ml: 1 }} />
-          </MenuItem>
+          </MenuItem> */}
 
           <Divider sx={{ my: 1, mx: 3 }} />
 

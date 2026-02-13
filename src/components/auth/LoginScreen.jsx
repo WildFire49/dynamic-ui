@@ -241,7 +241,7 @@ const LoginScreen = () => {
               )}
 
               {/* Product Code Dropdown - Subtle */}
-              {productCodes.length > 1 && (
+              {/* {productCodes.length > 1 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography
                     variant="body2"
@@ -291,7 +291,7 @@ const LoginScreen = () => {
                     </Select>
                   </FormControl>
                 </Box>
-              )}
+              )} */}
 
               {/* User ID Field */}
               <Typography

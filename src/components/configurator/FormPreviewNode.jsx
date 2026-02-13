@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, memo, useCallback } from "react";
-import { Handle, Position } from "reactflow";
+import React, { useState, memo, useCallback, useMemo } from "react";
+import { Handle, Position, useStore } from "reactflow";
 import {
   Box,
   Typography,
@@ -10,9 +10,8 @@ import {
   Collapse,
   Paper,
   alpha,
-  useTheme,
-  Divider,
   Tooltip,
+  Avatar,
 } from "@mui/material";
 import {
   ExpandMore,
@@ -20,437 +19,369 @@ import {
   Visibility,
   Delete,
   Settings,
-  CheckCircle,
   Person,
   Agriculture,
   AccountBalance,
   Fingerprint,
-  Check,
+  CheckCircle,
+  DataObject,
+  PlayArrow,
+  FlagRounded,
+  GridView,
+  InputRounded,
 } from "@mui/icons-material";
 
-// Custom equality check for memo - only re-render if data actually changed
-const arePropsEqual = (prevProps, nextProps) => {
-  return (
-    prevProps.data.component?.id === nextProps.data.component?.id &&
-    prevProps.data.component?.name === nextProps.data.component?.name &&
-    prevProps.data.schema?.id === nextProps.data.schema?.id &&
-    prevProps.data.schema?.sections?.length ===
-      nextProps.data.schema?.sections?.length &&
-    prevProps.selected === nextProps.selected &&
-    prevProps.isConnectable === nextProps.isConnectable
-  );
+// ── Constants ──
+
+const BRAND = '#0078d7';
+const BRAND_LIGHT = '#e8f4fd';
+const BRAND_DARK = '#005a9e';
+const START_COLOR = '#059669';
+const END_COLOR = '#dc2626';
+const CARD_WIDTH = 260;
+
+const ICON_MAP = {
+  person: Person,
+  agriculture: Agriculture,
+  account_balance: AccountBalance,
+  fingerprint: Fingerprint,
+  check_circle: CheckCircle,
 };
 
-const FormPreviewNode = memo(({ data, isConnectable, selected }) => {
-  const theme = useTheme();
+// ── Static styles ──
+
+const containerBase = {
+  width: CARD_WIDTH,
+  background: '#fff',
+  borderRadius: '14px',
+  overflow: 'visible',
+  position: 'relative',
+};
+
+const getContainerSx = (selected, isStart, isEnd) => ({
+  ...containerBase,
+  border: isStart
+    ? `2px solid ${START_COLOR}`
+    : isEnd
+      ? `2px solid ${END_COLOR}`
+      : selected
+        ? `2px solid ${BRAND}`
+        : '1px solid #e2e6ec',
+  boxShadow: selected
+    ? `0 0 0 3px ${alpha(BRAND, 0.1)}, 0 6px 20px ${alpha(BRAND, 0.12)}`
+    : '0 1px 3px rgba(0,0,0,0.04), 0 4px 14px rgba(0,0,0,0.03)',
+  transition: 'all 0.25s ease',
+  '&:hover': {
+    boxShadow: `0 6px 22px ${alpha(BRAND, 0.12)}`,
+    borderColor: selected ? BRAND : alpha(BRAND, 0.3),
+  },
+});
+
+const getAccentSx = (isStart, isEnd) => ({
+  height: 3,
+  background: isStart
+    ? `linear-gradient(90deg, ${START_COLOR}, ${alpha(START_COLOR, 0.3)})`
+    : isEnd
+      ? `linear-gradient(90deg, ${END_COLOR}, ${alpha(END_COLOR, 0.3)})`
+      : `linear-gradient(90deg, ${BRAND}, ${alpha(BRAND, 0.3)})`,
+});
+
+const headerSx = {
+  px: 1.75,
+  pt: 1.5,
+  pb: 1,
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: 1,
+};
+
+const iconAvatarSx = {
+  width: 36,
+  height: 36,
+  borderRadius: '10px',
+  background: `linear-gradient(145deg, ${BRAND}, ${BRAND_DARK})`,
+  color: '#fff',
+  boxShadow: `0 2px 8px ${alpha(BRAND, 0.25)}`,
+  flexShrink: 0,
+};
+
+const titleSx = {
+  fontWeight: 700,
+  fontSize: '12px',
+  color: '#0f1b2d',
+  lineHeight: 1.35,
+  mb: 0.5,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+};
+
+const chipRowSx = { display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' };
+
+const categoryChipSx = {
+  fontSize: '9px',
+  height: 18,
+  bgcolor: BRAND_LIGHT,
+  color: BRAND,
+  fontWeight: 600,
+  borderRadius: '5px',
+  '& .MuiChip-label': { px: 0.6 },
+};
+
+const startBadgeSx = {
+  fontSize: '9px', height: 18,
+  bgcolor: alpha(START_COLOR, 0.1),
+  color: START_COLOR,
+  fontWeight: 700,
+  borderRadius: '5px',
+  '& .MuiChip-label': { px: 0.5 },
+};
+
+const endBadgeSx = {
+  fontSize: '9px', height: 18,
+  bgcolor: alpha(END_COLOR, 0.1),
+  color: END_COLOR,
+  fontWeight: 700,
+  borderRadius: '5px',
+  '& .MuiChip-label': { px: 0.5 },
+};
+
+const expandBtnSx = {
+  width: 26, height: 26,
+  color: '#b8c0cc',
+  flexShrink: 0,
+  mt: 0.25,
+  '&:hover': { bgcolor: BRAND_LIGHT, color: BRAND },
+};
+
+// Stats
+const statsBgSx = {
+  display: 'flex',
+  mx: 1.75,
+  mb: 1.25,
+  borderRadius: '8px',
+  border: `1px solid ${alpha(BRAND, 0.07)}`,
+  bgcolor: alpha(BRAND, 0.02),
+};
+
+const statItemFirstSx = {
+  flex: 1, py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.15,
+  borderRight: `1px solid ${alpha(BRAND, 0.07)}`,
+};
+
+const statItemSecondSx = {
+  flex: 1, py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.15,
+};
+
+const statNumSx = { fontWeight: 800, fontSize: '18px', color: BRAND, lineHeight: 1 };
+const statLblSx = { fontSize: '8px', fontWeight: 600, color: '#939dab', textTransform: 'uppercase', letterSpacing: '0.05em' };
+const statIcoSx = { fontSize: 12, color: BRAND, opacity: 0.4, mb: -0.15 };
+
+// Expanded
+const expandedSx = {
+  px: 1.75, py: 1,
+  borderTop: `1px solid ${alpha(BRAND, 0.06)}`,
+  maxHeight: 160,
+  overflowY: 'auto',
+  '&::-webkit-scrollbar': { width: '2px' },
+  '&::-webkit-scrollbar-thumb': { background: alpha(BRAND, 0.12), borderRadius: '2px' },
+};
+
+const sectionRowSx = {
+  py: 0.5, px: 0.5,
+  display: 'flex', alignItems: 'center', gap: 0.5,
+  borderRadius: '5px',
+  '&:hover': { bgcolor: alpha(BRAND, 0.03) },
+  '&:not(:last-child)': { mb: 0.15 },
+};
+
+const sectionDotSx = { width: 4, height: 4, borderRadius: '50%', bgcolor: BRAND, opacity: 0.35, flexShrink: 0 };
+
+const fieldTagSx = {
+  fontSize: '8px', height: 16,
+  bgcolor: alpha(BRAND, 0.05), color: '#6b7280',
+  fontWeight: 500, borderRadius: '3px',
+  '& .MuiChip-label': { px: 0.4 },
+};
+
+// Actions
+const actionBarSx = {
+  px: 1.25, py: 0.6,
+  display: 'flex', alignItems: 'center', gap: 0.25,
+  borderTop: `1px solid ${alpha(BRAND, 0.06)}`,
+};
+
+const actionBtnSx = {
+  width: 28, height: 28, color: '#a8b0bc',
+  transition: 'all 0.15s ease',
+  '&:hover': { bgcolor: alpha(BRAND, 0.07), color: BRAND },
+};
+
+const deleteBtnSx = {
+  width: 28, height: 28, color: '#cbd1d9',
+  transition: 'all 0.15s ease',
+  '&:hover': { bgcolor: alpha('#ef4444', 0.06), color: '#ef4444' },
+};
+
+const handleStyle = {
+  width: 10, height: 10,
+  background: BRAND,
+  border: '2.5px solid #fff',
+  boxShadow: `0 1px 4px ${alpha(BRAND, 0.3)}`,
+};
+
+// ── Edge detection selector ──
+
+const createEdgeSelector = (nodeId) => (store) => {
+  const hasIncoming = store.edges.some((e) => e.target === nodeId);
+  const hasOutgoing = store.edges.some((e) => e.source === nodeId);
+  return { hasIncoming, hasOutgoing };
+};
+
+// ── Memo equality ──
+
+const arePropsEqual = (prevProps, nextProps) => (
+  prevProps.data.component?.id === nextProps.data.component?.id &&
+  prevProps.data.component?.name === nextProps.data.component?.name &&
+  prevProps.data.schema?.id === nextProps.data.schema?.id &&
+  prevProps.data.schema?.sections?.length === nextProps.data.schema?.sections?.length &&
+  prevProps.selected === nextProps.selected &&
+  prevProps.isConnectable === nextProps.isConnectable
+);
+
+// ── Component ──
+
+const FormPreviewNode = memo(({ id, data, isConnectable, selected }) => {
   const [expanded, setExpanded] = useState(false);
   const { component, schema, onDelete, onConfigure, onPreview } = data;
 
-  const getIconComponent = (iconName) => {
-    const iconMap = {
-      person: Person,
-      agriculture: Agriculture,
-      account_balance: AccountBalance,
-      fingerprint: Fingerprint,
-      check_circle: CheckCircle,
-    };
-    return iconMap[iconName] || Person;
-  };
+  const IconComponent = ICON_MAP[component?.icon] || Person;
 
-  const IconComponent = getIconComponent(component?.icon);
+  // Detect start/end from edges
+  const edgeSelector = useMemo(() => createEdgeSelector(id), [id]);
+  const { hasIncoming, hasOutgoing } = useStore(edgeSelector);
+  const isStart = !hasIncoming;
+  const isEnd = !hasOutgoing;
 
-  // Memoize expensive calculations
-  const totalFields = React.useMemo(
-    () =>
-      schema?.sections?.reduce(
-        (sum, section) => sum + (section.fields?.length || 0),
-        0
-      ) || 0,
+  const totalFields = useMemo(
+    () => schema?.sections?.reduce((sum, s) => sum + (s.fields?.length || 0), 0) || 0,
     [schema]
   );
+  const totalSections = useMemo(() => schema?.sections?.length || 0, [schema]);
 
-  const totalSections = React.useMemo(
-    () => schema?.sections?.length || 0,
-    [schema]
-  );
+  const containerSx = useMemo(() => getContainerSx(selected, isStart, isEnd), [selected, isStart, isEnd]);
+  const accentSx = useMemo(() => getAccentSx(isStart, isEnd), [isStart, isEnd]);
 
-  // Memoize color values
-  const componentColor = React.useMemo(
-    () => component?.color || "#1976d2",
-    [component?.color]
-  );
-
-  const borderColor = React.useMemo(
-    () => (selected ? theme.palette.primary.main : alpha(componentColor, 0.3)),
-    [selected, theme.palette.primary.main, componentColor]
-  );
-
-  // Memoize callbacks to prevent re-renders
-  const handleExpand = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
-
-  const handleDelete = useCallback(() => {
-    onDelete && onDelete();
-  }, [onDelete]);
-
-  const handleConfigure = useCallback(() => {
-    onConfigure && onConfigure(component);
-  }, [onConfigure, component]);
-
-  const handlePreview = useCallback(() => {
-    // Pass component with updated schema
-    onPreview && onPreview({ ...component, schema });
-  }, [onPreview, component, schema]);
+  const handleExpand = useCallback(() => setExpanded(p => !p), []);
+  const handleDelete = useCallback(() => onDelete?.(), [onDelete]);
+  const handleConfigure = useCallback(() => onConfigure?.(component), [onConfigure, component]);
+  const handlePreview = useCallback(() => onPreview?.({ ...component, schema }), [onPreview, component, schema]);
 
   return (
-    <Paper
-      elevation={selected ? 8 : 3}
-      sx={{
-        minWidth: 260,
-        maxWidth: 300,
-        background: alpha("#fff", 0.98),
-        border: `2px solid ${borderColor}`,
-        borderRadius: 3,
-        overflow: "hidden",
-        transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-        boxShadow: selected
-          ? `0 12px 40px ${alpha(componentColor, 0.4)}`
-          : `0 4px 12px ${alpha("#000", 0.1)}`,
-        willChange: "transform",
-        transform: "translateZ(0)",
-        backfaceVisibility: "hidden",
-        WebkitFontSmoothing: "subpixel-antialiased",
-        "&:hover": {
-          boxShadow: `0 12px 40px ${alpha(componentColor, 0.3)}`,
-        },
-      }}
-    >
-      {/* Top Gradient Bar */}
-      <Box
-        sx={{
-          height: 4,
-          background: `linear-gradient(90deg, ${componentColor} 0%, ${alpha(
-            componentColor,
-            0.6
-          )} 100%)`,
-        }}
-      />
+    <Paper elevation={0} sx={containerSx}>
+      {/* Accent stripe */}
+      <Box sx={accentSx} />
 
       {/* Header */}
-      <Box
-        sx={{
-          p: 1.5,
-          background: alpha(componentColor, 0.05),
-          borderBottom: `1px solid ${alpha(componentColor, 0.1)}`,
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
-          {/* Icon */}
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${componentColor} 0%, ${alpha(
-                componentColor,
-                0.8
-              )} 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: `0 4px 12px ${alpha(componentColor, 0.3)}`,
-              flexShrink: 0,
-            }}
-          >
-            <IconComponent sx={{ color: "white", fontSize: 24 }} />
-          </Box>
+      <Box sx={headerSx}>
+        <Avatar sx={iconAvatarSx} variant="rounded">
+          <IconComponent sx={{ fontSize: 18 }} />
+        </Avatar>
 
-          {/* Title and Badges */}
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 700,
-                fontSize: "0.85rem",
-                mb: 0.5,
-                lineHeight: 1.2,
-                color: theme.palette.text.primary,
-              }}
-            >
-              {data.title || component?.name || schema?.title || "Form Component"}
-            </Typography>
-            <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-              <Chip
-                label={component?.category || "form"}
-                size="small"
-                sx={{
-                  fontSize: "0.65rem",
-                  height: 20,
-                  bgcolor: alpha(componentColor, 0.15),
-                  color: componentColor,
-                  fontWeight: 600,
-                }}
-              />
-              {component?.is_entry_point && (
-                <Chip
-                  label="Start"
-                  size="small"
-                  sx={{
-                    fontSize: "0.65rem",
-                    height: 20,
-                    bgcolor: alpha("#4caf50", 0.15),
-                    color: "#4caf50",
-                    fontWeight: 600,
-                  }}
-                />
-              )}
-              {component?.is_exit_point && (
-                <Chip
-                  label="End"
-                  size="small"
-                  sx={{
-                    fontSize: "0.65rem",
-                    height: 20,
-                    bgcolor: alpha("#f44336", 0.15),
-                    color: "#f44336",
-                    fontWeight: 600,
-                  }}
-                />
-              )}
-            </Box>
-          </Box>
-
-          {/* Expand Button */}
-          <IconButton
-            size="small"
-            onClick={handleExpand}
-            sx={{
-              bgcolor: alpha(componentColor, 0.1),
-              "&:hover": { bgcolor: alpha(componentColor, 0.2) },
-            }}
-          >
-            {expanded ? <ExpandLess /> : <ExpandMore />}
-          </IconButton>
-        </Box>
-      </Box>
-
-      {/* Compact Stats (Always Visible) */}
-      <Box sx={{ p: 1.5, py: 1 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-around",
-            alignItems: "center",
-          }}
-        >
-          <Box sx={{ textAlign: "center", flex: 1 }}>
-            <Typography
-              variant="h6"
-              sx={{ fontWeight: 700, color: theme.palette.primary.main }}
-            >
-              {totalSections}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Sections
-            </Typography>
-          </Box>
-          <Divider orientation="vertical" flexItem />
-          <Box sx={{ textAlign: "center", flex: 1 }}>
-            <Typography
-              variant="h6"
-              sx={{ fontWeight: 700, color: theme.palette.primary.main }}
-            >
-              {totalFields}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Fields
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
-
-      {/* Expanded Schema Preview */}
-      <Collapse in={expanded}>
-        <Divider />
-        <Box
-          sx={{
-            p: 2,
-            bgcolor: alpha("#f5f5f5", 0.5),
-            maxHeight: 250,
-            overflowY: "auto",
-            overflowX: "hidden",
-            "&::-webkit-scrollbar": {
-              width: "6px",
-            },
-            "&::-webkit-scrollbar-track": {
-              background: alpha("#000", 0.05),
-              borderRadius: "3px",
-            },
-            "&::-webkit-scrollbar-thumb": {
-              background: alpha(theme.palette.primary.main, 0.3),
-              borderRadius: "3px",
-              "&:hover": {
-                background: alpha(theme.palette.primary.main, 0.5),
-              },
-            },
-          }}
-        >
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 600,
-              mb: 1,
-              display: "block",
-              color: "text.secondary",
-            }}
-          >
-            Form Sections Preview:
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={titleSx}>
+            {data.title || component?.name || schema?.title || "Form Component"}
           </Typography>
-          {schema?.sections?.map((section, index) => (
-            <Paper
-              key={section.id}
-              elevation={0}
-              sx={{
-                p: 1.5,
-                mb: 1,
-                border: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
-                "&:last-child": { mb: 0 },
-              }}
-            >
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
-              >
-                <CheckCircle
-                  sx={{
-                    fontSize: 16,
-                    color: theme.palette.success.main,
-                  }}
-                />
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    color: theme.palette.text.primary,
-                  }}
-                >
-                  {section.title}
-                </Typography>
-              </Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", fontSize: "0.7rem", mb: 0.5 }}
-              >
-                {section.subtitle}
+          <Box sx={chipRowSx}>
+            <Chip label={component?.category || "form"} size="small" sx={categoryChipSx} />
+            {isStart && (
+              <Chip
+                icon={<PlayArrow sx={{ fontSize: '10px !important', color: `${START_COLOR} !important` }} />}
+                label="Start" size="small" sx={startBadgeSx}
+              />
+            )}
+            {isEnd && (
+              <Chip
+                icon={<FlagRounded sx={{ fontSize: '10px !important', color: `${END_COLOR} !important` }} />}
+                label="End" size="small" sx={endBadgeSx}
+              />
+            )}
+          </Box>
+        </Box>
+
+        <IconButton size="small" onClick={handleExpand} sx={expandBtnSx}>
+          {expanded ? <ExpandLess sx={{ fontSize: 15 }} /> : <ExpandMore sx={{ fontSize: 15 }} />}
+        </IconButton>
+      </Box>
+
+      {/* Stats */}
+      <Box sx={statsBgSx}>
+        <Box sx={statItemFirstSx}>
+          <GridView sx={statIcoSx} />
+          <Typography sx={statNumSx}>{totalSections}</Typography>
+          <Typography sx={statLblSx}>Sections</Typography>
+        </Box>
+        <Box sx={statItemSecondSx}>
+          <InputRounded sx={statIcoSx} />
+          <Typography sx={statNumSx}>{totalFields}</Typography>
+          <Typography sx={statLblSx}>Fields</Typography>
+        </Box>
+      </Box>
+
+      {/* Expanded */}
+      <Collapse in={expanded}>
+        <Box sx={expandedSx}>
+          {schema?.sections?.map((section) => (
+            <Box key={section.id} sx={sectionRowSx}>
+              <Box sx={sectionDotSx} />
+              <Typography sx={{ fontWeight: 600, fontSize: '10px', color: '#374151', flex: 1 }}>
+                {section.title}
               </Typography>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                {section.fields?.slice(0, 3).map((field) => (
-                  <Chip
-                    key={field.id}
-                    label={field.label}
-                    size="small"
-                    sx={{
-                      fontSize: "0.65rem",
-                      height: 18,
-                      bgcolor: alpha(theme.palette.primary.main, 0.08),
-                      "& .MuiChip-label": { px: 1 },
-                    }}
-                  />
+              <Box sx={{ display: 'flex', gap: 0.25 }}>
+                {section.fields?.slice(0, 2).map((f) => (
+                  <Chip key={f.id} label={f.label} size="small" sx={fieldTagSx} />
                 ))}
-                {section.fields?.length > 3 && (
-                  <Chip
-                    label={`+${section.fields.length - 3} more`}
-                    size="small"
-                    sx={{
-                      fontSize: "0.65rem",
-                      height: 18,
-                      bgcolor: alpha(theme.palette.grey[500], 0.1),
-                      "& .MuiChip-label": { px: 1 },
-                    }}
-                  />
+                {section.fields?.length > 2 && (
+                  <Typography sx={{ fontSize: '8px', color: '#9ca3af', alignSelf: 'center', ml: 0.25 }}>
+                    +{section.fields.length - 2}
+                  </Typography>
                 )}
               </Box>
-            </Paper>
+            </Box>
           ))}
         </Box>
       </Collapse>
 
-      {/* Action Buttons */}
-      <Box
-        sx={{
-          p: 1.5,
-          display: "flex",
-          gap: 1,
-          bgcolor: alpha("#f5f5f5", 0.3),
-          borderTop: `1px solid ${theme.palette.divider}`,
-        }}
-      >
-        <Tooltip title="Preview Full Form">
-          <IconButton
-            size="small"
-            onClick={handlePreview}
-            sx={{
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.2) },
-            }}
-          >
-            <Visibility fontSize="small" />
+      {/* Actions */}
+      <Box sx={actionBarSx}>
+        <Tooltip title="Preview" arrow placement="top">
+          <IconButton size="small" onClick={handlePreview} sx={actionBtnSx}>
+            <Visibility sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Configure">
-          <IconButton
-            size="small"
-            onClick={handleConfigure}
-            sx={{
-              bgcolor: alpha(theme.palette.info.main, 0.1),
-              "&:hover": { bgcolor: alpha(theme.palette.info.main, 0.2) },
-            }}
-          >
-            <Settings fontSize="small" />
+        <Tooltip title="Configure" arrow placement="top">
+          <IconButton size="small" onClick={handleConfigure} sx={actionBtnSx}>
+            <Settings sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Schema" arrow placement="top">
+          <IconButton size="small" onClick={handleExpand} sx={actionBtnSx}>
+            <DataObject sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
         <Box sx={{ flex: 1 }} />
-        <Tooltip title="Remove from Canvas">
-          <IconButton
-            size="small"
-            onClick={handleDelete}
-            sx={{
-              bgcolor: alpha(theme.palette.error.main, 0.1),
-              "&:hover": { bgcolor: alpha(theme.palette.error.main, 0.2) },
-            }}
-          >
-            <Delete fontSize="small" />
+        <Tooltip title="Remove" arrow placement="top">
+          <IconButton size="small" onClick={handleDelete} sx={deleteBtnSx}>
+            <Delete sx={{ fontSize: 14 }} />
           </IconButton>
         </Tooltip>
       </Box>
 
-      {/* Connection Handles - Left/Right for horizontal workflow layout */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        isConnectable={isConnectable}
-        style={{
-          width: 12,
-          height: 12,
-          background: componentColor,
-          border: `2px solid white`,
-          boxShadow: `0 2px 8px ${alpha(componentColor, 0.4)}`,
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        isConnectable={isConnectable}
-        style={{
-          width: 12,
-          height: 12,
-          background: componentColor,
-          border: `2px solid white`,
-          boxShadow: `0 2px 8px ${alpha(componentColor, 0.4)}`,
-        }}
-      />
+      {/* Handles */}
+      <Handle type="target" position={Position.Left} isConnectable={isConnectable} style={handleStyle} />
+      <Handle type="source" position={Position.Right} isConnectable={isConnectable} style={handleStyle} />
     </Paper>
   );
 }, arePropsEqual);

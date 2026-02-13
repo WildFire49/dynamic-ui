@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -8,20 +8,15 @@ import {
   Paper,
   Button,
   FormControl,
-  FormLabel,
   RadioGroup,
-  FormControlLabel,
-  Radio,
   Select,
   MenuItem,
   InputAdornment,
-  Collapse,
-  IconButton,
   Checkbox,
   FormControlLabel as MuiFormControlLabel,
   Avatar,
   Chip,
-  Divider,
+  LinearProgress,
   alpha,
   useTheme
 } from '@mui/material';
@@ -30,8 +25,6 @@ import {
   Female as FemaleIcon,
   Male as MaleIcon,
   Transgender as TransgenderIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
   CalendarToday as CalendarIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
@@ -51,609 +44,431 @@ import {
   CrueltyFree as RabbitIcon,
   FlightTakeoff as BirdIcon,
   Phishing as FishIcon,
-  Pets as PawIcon
+  Pets as PawIcon,
+  Work as WorkIcon,
+  Business as BusinessIcon,
+  LocationOn as LocationIcon,
+  CloudUpload as UploadIcon,
+  Badge as BadgeIcon,
+  CreditCard as CreditCardIcon,
+  Security as SecurityIcon,
+  Verified as VerifiedIcon,
+  ArrowForward as ArrowForwardIcon,
+  Shield as ShieldIcon,
+  TaskAlt as TaskAltIcon,
+  Celebration as CelebrationIcon,
+  Lock as LockIcon,
+  AccountCircle as AccountCircleIcon,
+  FamilyRestroom as FamilyIcon,
+  Wc as WcIcon,
+  Cake as CakeIcon,
+  ContactPhone as ContactPhoneIcon,
+  MarkunreadMailbox as MailboxIcon,
+  Map as MapIcon,
+  PinDrop as PinDropIcon,
+  MyLocation as MyLocationIcon,
+  Apartment as ApartmentIcon,
+  Public as PublicIcon,
+  LocalPostOffice as PostOfficeIcon,
+  Numbers as NumbersIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  Check as CheckIcon
 } from '@mui/icons-material';
 import ImageCaptureUpload from './ImageCaptureUpload';
 
-// Styles defined at the top for better maintainability
-const getStyles = (theme) => ({
-  // Success Card Styles
-  successContainer: {
-    width: '100%',
-    maxWidth: '500px',
-    mx: 'auto',
-    py: 4
-  },
-  successCard: {
-    background: alpha(theme.palette.success.light, 0.08),
-    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-    borderRadius: '24px',
-    p: 5,
-    textAlign: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  successLogoContainer: {
-    display: 'inline-flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    mb: 3,
-    animation: 'scaleIn 0.5s ease-out',
-    '@keyframes scaleIn': {
-      '0%': { transform: 'scale(0)', opacity: 0 },
-      '50%': { transform: 'scale(1.05)' },
-      '100%': { transform: 'scale(1)', opacity: 1 },
-    },
-  },
-  successLogoBox: {
-    width: '80px',
-    height: '80px',
-    mb: 2,
-    position: 'relative',
-    '& img': {
-      width: '100%',
-      height: '100%',
-      objectFit: 'contain',
-    }
-  },
-  successFallbackIconCircle: {
-    width: '80px',
-    height: '80px',
-    mb: 2,
-    borderRadius: '50%',
-    background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: `0 8px 32px ${alpha(theme.palette.success.main, 0.4)}`,
-  },
-  successCheckIcon: {
-    fontSize: '48px',
-    color: '#fff'
-  },
-  successTitleText: {
-    fontWeight: 700,
-    mb: 1.5,
-    color: theme.palette.text.primary,
-    fontSize: { xs: '20px', sm: '24px' },
-  },
-  successSubtitleText: {
-    color: theme.palette.text.secondary,
-    mb: 4,
+// ── Constants ──
+
+const SECTION_PALETTES = [
+  { main: '#3B82F6', light: '#DBEAFE', dark: '#1D4ED8', bg: '#EFF6FF' },
+  { main: '#8B5CF6', light: '#EDE9FE', dark: '#6D28D9', bg: '#F5F3FF' },
+  { main: '#06B6D4', light: '#CFFAFE', dark: '#0891B2', bg: '#ECFEFF' },
+  { main: '#10B981', light: '#D1FAE5', dark: '#059669', bg: '#ECFDF5' },
+  { main: '#F59E0B', light: '#FEF3C7', dark: '#D97706', bg: '#FFFBEB' },
+  { main: '#EF4444', light: '#FEE2E2', dark: '#DC2626', bg: '#FEF2F2' },
+  { main: '#EC4899', light: '#FCE7F3', dark: '#DB2777', bg: '#FDF2F8' },
+];
+
+const ICON_MAP = {
+  'male': MaleIcon, 'female': FemaleIcon, 'transgender': TransgenderIcon,
+  'person': PersonIcon, 'calendar': CalendarIcon, 'phone': PhoneIcon,
+  'email': EmailIcon, 'home': HomeIcon, 'bank': BankIcon, 'camera': CameraIcon,
+  'fingerprint': FingerprintIcon, 'document': DocumentIcon, 'edit': EditIcon,
+  'pdf': PdfIcon, 'check_circle': CheckCircleIcon, 'pets': PetsIcon,
+  'buffalo': BuffaloIcon, 'cow': CowIcon, 'goat': GoatIcon, 'pig': PigIcon,
+  'rabbit': RabbitIcon, 'bird': BirdIcon, 'fish': FishIcon, 'paw': PawIcon,
+  'work': WorkIcon, 'business': BusinessIcon, 'location': LocationIcon,
+  'upload': UploadIcon, 'badge': BadgeIcon, 'credit_card': CreditCardIcon,
+  'security': SecurityIcon, 'verified': VerifiedIcon, 'shield': ShieldIcon,
+  'lock': LockIcon, 'account': AccountCircleIcon, 'family': FamilyIcon,
+  'wc': WcIcon, 'cake': CakeIcon, 'contact_phone': ContactPhoneIcon,
+  'mailbox': MailboxIcon, 'map': MapIcon, 'pin_drop': PinDropIcon,
+  'my_location': MyLocationIcon, 'apartment': ApartmentIcon,
+  'public': PublicIcon, 'post_office': PostOfficeIcon, 'numbers': NumbersIcon,
+};
+
+const getIconComponent = (iconName) => ICON_MAP[iconName?.toLowerCase()] || PersonIcon;
+
+// ── Extracted styles ──
+
+const getTextFieldSx = (accentColor, error, errorColor) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '14px',
+    backgroundColor: '#ffffff',
     fontSize: '15px',
-    lineHeight: 1.6,
-  },
-  successContinueButton: (hasContinued) => ({
-    px: 5,
-    py: 1.75,
-    borderRadius: '12px',
-    textTransform: 'none',
-    fontSize: '16px',
-    fontWeight: 600,
-    background: hasContinued 
-      ? theme.palette.action.disabledBackground
-      : `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-    boxShadow: hasContinued 
-      ? 'none'
-      : `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
-    '&:hover': {
-      boxShadow: hasContinued 
-        ? 'none'
-        : `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
-      transform: hasContinued ? 'none' : 'translateY(-2px)',
+    '& fieldset': {
+      borderColor: error ? errorColor : alpha('#000', 0.08),
     },
-    transition: 'all 0.3s ease',
-  }),
-  successCompletionChip: {
-    px: 2,
-    py: 2.5,
+    '&:hover fieldset': {
+      borderColor: error ? errorColor : alpha(accentColor, 0.4),
+    },
+    '&.Mui-focused': {
+      boxShadow: `0 0 0 3px ${alpha(accentColor, 0.1)}`,
+      '& fieldset': {
+        borderColor: accentColor,
+        borderWidth: '1.5px',
+      },
+    },
+  },
+  '& .MuiInputLabel-root': {
     fontSize: '14px',
-    fontWeight: 600
+    fontWeight: 500,
+    '&.Mui-focused': { color: accentColor },
   },
-  
-  // Form Container Styles
-  formContainer: {
-    width: '100%',
-    maxWidth: '100%',
-    mx: 'auto',
-  },
-  formHeader: {
-    mb: 3,
-    textAlign: 'left'
-  },
-  formTitle: {
-    fontWeight: 700,
-    color: theme.palette.text.primary,
-    mb: 0.5,
-    fontSize: { xs: '20px', sm: '24px' }
-  },
-  formDescription: {
-    color: theme.palette.text.secondary,
-    fontSize: '14px'
-  },
-  
-  // Section Styles
-  sectionPaper: {
-    mb: 3,
-    borderRadius: '16px',
-    overflow: 'hidden',
-    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-    transition: 'all 0.3s ease',
-    '&:hover': {
-      boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.08)}`,
-      borderColor: alpha(theme.palette.primary.main, 0.2),
-    }
-  },
-  sectionHeader: {
-    p: 2.5,
-    cursor: 'pointer',
-    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.03)} 0%, ${alpha(theme.palette.primary.light, 0.02)} 100%)`,
-    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 2,
-    transition: 'background 0.2s ease',
-    '&:hover': {
-      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.primary.light, 0.03)} 100%)`,
-    }
-  },
-  sectionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: '12px',
-    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-  },
-  sectionIcon: {
-    color: '#fff',
-    fontSize: 24
-  },
-  sectionTitleContainer: {
-    flex: 1
-  },
-  sectionTitle: {
-    fontWeight: 600,
-    fontSize: '16px',
-    color: theme.palette.text.primary,
-    mb: 0.25
-  },
-  sectionSubtitle: {
-    fontSize: '13px',
-    color: theme.palette.text.secondary
-  },
-  sectionContent: {
-    p: 3
-  },
-  
-  // Field Styles
-  fieldBox: {
-    mb: 2
-  },
-  textField: {
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '12px',
-      '&:hover fieldset': {
-        borderColor: theme.palette.primary.main,
-      }
-    }
-  },
-  
-  // Radio Button Styles
-  radioOption: (isSelected) => ({
-    flex: '1 1 0',
-    p: 2,
-    cursor: 'pointer',
-    border: `2px solid ${isSelected ? theme.palette.primary.main : alpha(theme.palette.divider, 0.2)}`,
-    borderRadius: '12px',
-    transition: 'all 0.2s ease',
-    background: isSelected ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
-    '&:hover': {
-      borderColor: theme.palette.primary.main,
-      background: alpha(theme.palette.primary.main, 0.04),
-      transform: 'translateY(-2px)',
-      boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.15)}`,
-    }
-  }),
-  radioIconCircle: (isSelected) => ({
-    width: 48,
-    height: 48,
-    borderRadius: '12px',
-    background: isSelected 
-      ? `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)` 
-      : alpha(theme.palette.action.hover, 0.5),
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    mb: 1.5,
-    transition: 'all 0.2s ease',
-  }),
-  radioIconStyle: (isSelected) => ({
-    fontSize: 28,
-    color: isSelected ? '#fff' : theme.palette.text.secondary,
-  }),
-  radioLabel: (isSelected) => ({
-    fontWeight: isSelected ? 600 : 500,
-    fontSize: '15px',
-    color: isSelected ? theme.palette.primary.main : theme.palette.text.primary,
-  }),
-  
-  // Submit Button Styles
-  submitButton: {
-    mt: 3,
-    py: 1.75,
-    borderRadius: '12px',
-    textTransform: 'none',
-    fontSize: '16px',
-    fontWeight: 600,
-    boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
-    '&:hover': {
-      boxShadow: `0 6px 24px ${alpha(theme.palette.primary.main, 0.4)}`,
-      transform: 'translateY(-2px)',
-    },
-    transition: 'all 0.2s ease',
-  },
-  
-  // Biometric Scanner Styles
-  biometricContainer: {
-    textAlign: 'center',
-    py: 3
-  },
-  biometricPaper: (captured) => ({
-    display: 'inline-flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 2,
-    p: 5,
-    border: captured 
-      ? `2px solid ${theme.palette.success.main}`
-      : `2px dashed ${alpha(theme.palette.primary.main, 0.3)}`,
-    borderRadius: '20px',
-    cursor: captured ? 'default' : 'pointer',
-    transition: 'all 0.3s ease',
-    backgroundColor: captured 
-      ? alpha(theme.palette.success.main, 0.05)
-      : '#ffffff',
-    '&:hover': {
-      borderColor: captured 
-        ? theme.palette.success.main
-        : theme.palette.primary.main,
-      backgroundColor: captured 
-        ? alpha(theme.palette.success.main, 0.05)
-        : alpha(theme.palette.primary.main, 0.02),
-      transform: captured ? 'none' : 'scale(1.02)',
-    }
-  }),
-  biometricIconCircle: (captured) => ({
-    width: '120px',
-    height: '120px',
-    borderRadius: '50%',
-    background: captured
-      ? `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`
-      : `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: `0 8px 32px ${alpha(captured ? theme.palette.success.main : theme.palette.primary.main, 0.3)}`,
-    animation: captured ? 'none' : 'biometricPulse 2s ease-in-out infinite',
-    '@keyframes biometricPulse': {
-      '0%, 100%': { transform: 'scale(1)' },
-      '50%': { transform: 'scale(1.05)' },
-    },
-  }),
-  biometricIcon: {
-    fontSize: 64,
-    color: '#fff'
-  },
-  biometricLabel: (captured) => ({
-    fontWeight: 600,
-    color: captured ? theme.palette.success.main : theme.palette.text.primary,
-    fontSize: '16px'
-  }),
-  biometricSubtext: {
-    color: theme.palette.text.secondary,
-    fontSize: '14px'
+  '& .MuiFormHelperText-root': {
+    fontSize: '12px',
+    ml: 0.5,
+    mt: 0.5,
   },
 });
 
+const getSelectSx = (accentColor, error, errorColor, hasValue, textPrimary, textDisabled) => ({
+  borderRadius: '14px',
+  backgroundColor: '#ffffff',
+  fontSize: '15px',
+  '& .MuiOutlinedInput-notchedOutline': {
+    borderColor: error ? errorColor : alpha('#000', 0.08),
+  },
+  '&:hover .MuiOutlinedInput-notchedOutline': {
+    borderColor: alpha(accentColor, 0.4),
+  },
+  '&.Mui-focused': {
+    boxShadow: `0 0 0 3px ${alpha(accentColor, 0.1)}`,
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: accentColor,
+      borderWidth: '1.5px',
+    },
+  },
+  '& .MuiSelect-select': {
+    color: hasValue ? textPrimary : textDisabled,
+  },
+});
+
+const getMenuPaperSx = (accentColor) => ({
+  borderRadius: '14px',
+  mt: 0.5,
+  boxShadow: `0 10px 40px ${alpha('#000', 0.1)}`,
+  border: `1px solid ${alpha('#000', 0.04)}`,
+  '& .MuiMenuItem-root': {
+    fontSize: '15px',
+    py: 1.25,
+    mx: 0.75,
+    borderRadius: '10px',
+    '&.Mui-selected': {
+      backgroundColor: alpha(accentColor, 0.08),
+      color: accentColor,
+      fontWeight: 600,
+    },
+  },
+});
+
+const getRadioOptionSx = (isSelected, accentColor) => ({
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 0.75,
+  py: 2,
+  px: 1.5,
+  border: `2px solid ${isSelected ? accentColor : alpha('#000', 0.06)}`,
+  borderRadius: '16px',
+  cursor: 'pointer',
+  backgroundColor: isSelected ? alpha(accentColor, 0.06) : '#ffffff',
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  position: 'relative',
+  boxShadow: isSelected
+    ? `0 4px 14px ${alpha(accentColor, 0.15)}`
+    : `0 1px 3px ${alpha('#000', 0.04)}`,
+  '&:active': { transform: 'scale(0.96)' },
+});
+
+const getRadioAvatarSx = (isSelected, accentColor) => ({
+  width: 42,
+  height: 42,
+  backgroundColor: isSelected ? accentColor : alpha(accentColor, 0.1),
+  color: isSelected ? '#fff' : accentColor,
+  transition: 'all 0.2s ease',
+  boxShadow: isSelected ? `0 3px 10px ${alpha(accentColor, 0.3)}` : 'none',
+});
+
+const radioCheckmark = {
+  position: 'absolute', top: 7, right: 7,
+  width: 18, height: 18, borderRadius: '50%',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+};
+
+const getBiometricContainerSx = (captured, accentColor, successColor) => ({
+  display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, p: 3.5,
+  border: captured
+    ? `2px solid ${successColor}`
+    : `2px dashed ${alpha(accentColor, 0.3)}`,
+  borderRadius: '20px',
+  cursor: captured ? 'default' : 'pointer',
+  backgroundColor: captured ? alpha(successColor, 0.04) : '#ffffff',
+  transition: 'all 0.2s ease',
+  boxShadow: `0 2px 8px ${alpha('#000', 0.04)}`,
+  '&:active': captured ? {} : { transform: 'scale(0.97)' },
+});
+
+const getBiometricCircle = (captured, accentColor, paletteDark, successColor, successDark) => ({
+  width: 80, height: 80, borderRadius: '50%',
+  background: captured
+    ? `linear-gradient(135deg, ${successColor}, ${successDark})`
+    : `linear-gradient(135deg, ${accentColor}, ${paletteDark})`,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  boxShadow: `0 6px 20px ${alpha(captured ? successColor : accentColor, 0.25)}`,
+});
+
+const getSectionPaperSx = (paletteMain) => ({
+  borderRadius: '20px',
+  overflow: 'hidden',
+  border: `1px solid ${alpha(paletteMain, 0.12)}`,
+  backgroundColor: '#ffffff',
+  transition: 'all 0.2s ease',
+});
+
+const getSectionBannerSx = (paletteMain, paletteLight) => ({
+  background: `linear-gradient(135deg, ${alpha(paletteMain, 0.08)} 0%, ${alpha(paletteLight, 0.5)} 100%)`,
+  px: 2.5,
+  py: 2,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 1.5,
+  borderBottom: `1px solid ${alpha(paletteMain, 0.06)}`,
+});
+
+const getSectionAvatarSx = (paletteMain, paletteDark) => ({
+  width: 40,
+  height: 40,
+  borderRadius: '12px',
+  background: `linear-gradient(135deg, ${paletteMain}, ${paletteDark})`,
+  color: '#fff',
+  boxShadow: `0 4px 12px ${alpha(paletteMain, 0.25)}`,
+});
+
+const getCompleteBadgeSx = (successColor) => ({
+  height: 20, fontSize: '10px', fontWeight: 700,
+  backgroundColor: alpha(successColor, 0.1),
+  color: successColor,
+  '& .MuiChip-label': { px: 0.75 },
+});
+
+const sectionFieldsContainer = { p: 2.5, display: 'flex', flexDirection: 'column', gap: 2.5 };
+
+const getSubmitButtonSx = (primaryMain) => ({
+  mt: 3,
+  py: 1.75,
+  borderRadius: '16px',
+  textTransform: 'none',
+  fontSize: '16px',
+  fontWeight: 700,
+  background: `linear-gradient(135deg, ${primaryMain} 0%, #8B5CF6 100%)`,
+  boxShadow: `0 6px 20px ${alpha(primaryMain, 0.3)}`,
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  '&:hover': {
+    boxShadow: `0 8px 28px ${alpha(primaryMain, 0.4)}`,
+    transform: 'translateY(-1px)',
+  },
+  '&:active': {
+    transform: 'scale(0.99) translateY(0)',
+  },
+});
+
+const getProgressBarSx = (progress, successColor, successLight) => ({
+  flex: 1, height: 6, borderRadius: 3,
+  backgroundColor: alpha('#000', 0.04),
+  '& .MuiLinearProgress-bar': {
+    borderRadius: 3,
+    background: progress === 100
+      ? `linear-gradient(90deg, ${successColor}, ${successLight})`
+      : 'linear-gradient(90deg, #3B82F6, #8B5CF6)',
+    transition: 'transform 0.3s ease',
+  },
+});
+
+const getSuccessCircleSx = (successColor, successDark) => ({
+  width: 72, height: 72, borderRadius: '50%',
+  background: `linear-gradient(135deg, ${successColor}, ${successDark})`,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  boxShadow: `0 6px 24px ${alpha(successColor, 0.3)}`,
+});
+
+const successPopAnimation = {
+  display: 'inline-flex', mb: 3,
+  animation: 'pop 0.4s ease-out',
+  '@keyframes pop': {
+    '0%': { transform: 'scale(0)', opacity: 0 },
+    '70%': { transform: 'scale(1.08)' },
+    '100%': { transform: 'scale(1)', opacity: 1 },
+  },
+};
+
+const getContinueButtonSx = (hasContinued, primaryMain, primaryDark, disabledBg) => ({
+  py: 1.5, borderRadius: '14px', textTransform: 'none', fontSize: '16px', fontWeight: 700,
+  background: hasContinued ? disabledBg : `linear-gradient(135deg, ${primaryMain}, ${primaryDark})`,
+  boxShadow: hasContinued ? 'none' : `0 4px 16px ${alpha(primaryMain, 0.25)}`,
+});
+
+const getButtonFieldSx = (accentColor, paletteDark, isOutlined) => ({
+  px: 4, py: 1.25, borderRadius: '14px', textTransform: 'none', fontSize: '15px', fontWeight: 600,
+  borderColor: accentColor,
+  color: isOutlined ? accentColor : '#fff',
+  backgroundColor: isOutlined ? 'transparent' : accentColor,
+  '&:hover': {
+    borderColor: paletteDark,
+    backgroundColor: isOutlined ? alpha(accentColor, 0.04) : paletteDark,
+  },
+});
+
+const errorText = (errorColor) => ({ color: errorColor, fontSize: '12px' });
+
+const labelStyle = (errorColor, secondaryColor, hasError) => ({
+  mb: 0.75, fontSize: '13px', fontWeight: 600,
+  color: hasError ? errorColor : secondaryColor,
+});
+
+// ── Component ──
+
 const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = false, skipNavigation = false }) => {
   const theme = useTheme();
-  const styles = getStyles(theme);
   const [formData, setFormData] = useState({});
-  const [expandedSections, setExpandedSections] = useState({});
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasContinued, setHasContinued] = useState(false);
 
-  // Initialize form data with mock data if available
+  // Cache theme colors
+  const colors = useMemo(() => ({
+    error: theme.palette.error.main,
+    textPrimary: theme.palette.text.primary,
+    textSecondary: theme.palette.text.secondary,
+    textDisabled: theme.palette.text.disabled,
+    successMain: theme.palette.success.main,
+    successDark: theme.palette.success.dark,
+    successLight: theme.palette.success.light,
+    primaryMain: theme.palette.primary.main,
+    primaryDark: theme.palette.primary.dark,
+    disabledBg: theme.palette.action.disabledBackground,
+  }), [theme]);
+
   React.useEffect(() => {
-    if (formSchema?.mockData) {
-      setFormData(formSchema.mockData);
-    }
+    if (formSchema?.mockData) setFormData(formSchema.mockData);
   }, [formSchema?.mockData]);
 
-  // Initialize expanded sections
-  React.useEffect(() => {
-    if (formSchema?.sections) {
-      const initialExpanded = {};
-      formSchema.sections.forEach((section, index) => {
-        initialExpanded[section.id || index] = index === 0; // First section expanded by default
-      });
-      setExpandedSections(initialExpanded);
-    }
-  }, [formSchema]);
-
-  const validateField = (field, value) => {
-    // Skip validation if field is not required and empty
-    if (!field.required && !value) {
-      return null;
-    }
-
-    // TEMPORARY: Skip file upload validation for testing workflow navigation
-    if (field.type === 'file' || field.type === 'image_capture') {
-      console.log(`⚠️ Skipping validation for file upload field: ${field.label}`);
-      return null;
-    }
-
-    // Required field validation
-    if (field.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
+  const validateField = useCallback((field, value) => {
+    if (!field.required && !value) return null;
+    if (field.type === 'file' || field.type === 'image_capture') return null;
+    if (field.required && (!value || (typeof value === 'string' && value.trim() === '')))
       return field.validation?.message || `${field.label} is required`;
-    }
-
-    // Custom validation rules from JSON
     if (field.validation && value) {
-      // Min length validation
-      if (field.validation.minLength && value.length < field.validation.minLength) {
+      if (field.validation.minLength && value.length < field.validation.minLength)
         return field.validation.message || `${field.label} must be at least ${field.validation.minLength} characters`;
-      }
-
-      // Max length validation
-      if (field.validation.maxLength && value.length > field.validation.maxLength) {
+      if (field.validation.maxLength && value.length > field.validation.maxLength)
         return field.validation.message || `${field.label} must not exceed ${field.validation.maxLength} characters`;
-      }
-
-      // Date validation - maxDate
-      if (field.validation.maxDate && field.type === 'date') {
-        const selectedDate = new Date(value);
-        const maxDate = new Date(field.validation.maxDate);
-        if (selectedDate >= maxDate) {
-          return field.validation.message || `Date must be before ${field.validation.maxDate}`;
-        }
-      }
-
-      // Date validation - minDate
-      if (field.validation.minDate && field.type === 'date') {
-        const selectedDate = new Date(value);
-        const minDate = new Date(field.validation.minDate);
-        if (selectedDate <= minDate) {
-          return field.validation.message || `Date must be after ${field.validation.minDate}`;
-        }
-      }
-
-      // Pattern validation (regex from JSON)
-      if (field.validation.pattern) {
-        const regex = new RegExp(field.validation.pattern);
-        if (!regex.test(value)) {
-          return field.validation.message || `${field.label} format is invalid`;
-        }
-      }
-
-      // Min value validation (for number fields)
+      if (field.validation.maxDate && field.type === 'date' && new Date(value) >= new Date(field.validation.maxDate))
+        return field.validation.message || `Date must be before ${field.validation.maxDate}`;
+      if (field.validation.minDate && field.type === 'date' && new Date(value) <= new Date(field.validation.minDate))
+        return field.validation.message || `Date must be after ${field.validation.minDate}`;
+      if (field.validation.pattern && !new RegExp(field.validation.pattern).test(value))
+        return field.validation.message || `${field.label} format is invalid`;
       if (field.validation.minValue !== undefined && field.type === 'number') {
-        const numValue = parseFloat(value);
-        if (!isNaN(numValue) && numValue < field.validation.minValue) {
+        const n = parseFloat(value);
+        if (!isNaN(n) && n < field.validation.minValue)
           return field.validation.message || `${field.label} must be at least ${field.validation.minValue}`;
-        }
       }
-
-      // Max value validation (for number fields)
       if (field.validation.maxValue !== undefined && field.type === 'number') {
-        const numValue = parseFloat(value);
-        if (!isNaN(numValue) && numValue > field.validation.maxValue) {
+        const n = parseFloat(value);
+        if (!isNaN(n) && n > field.validation.maxValue)
           return field.validation.message || `${field.label} must not exceed ${field.validation.maxValue}`;
-        }
       }
     }
-
     return null;
-  };
+  }, []);
 
-  const handleFieldChange = (fieldId, value, field) => {
-    setFormData(prev => ({
-      ...prev,
-      [fieldId]: value
-    }));
+  const handleFieldChange = useCallback((fieldId, value, field) => {
+    setFormData(prev => ({ ...prev, [fieldId]: value }));
+    setErrors(prev => ({ ...prev, [fieldId]: validateField(field, value) }));
+  }, [validateField]);
 
-    // Validate on change
-    const error = validateField(field, value);
-    setErrors(prev => ({
-      ...prev,
-      [fieldId]: error
-    }));
-  };
-
-  const toggleSection = (sectionId) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId]
-    }));
-  };
-
-  const handleSubmit = () => {
-    console.log("🔘 Submit button clicked in DynamicFormRenderer");
-    console.log("🔘 Current form data:", formData);
-    
-    // Validate all fields before submit
+  const handleSubmit = useCallback(() => {
     const newErrors = {};
     let hasErrors = false;
-
     formSchema.sections?.forEach(section => {
       section.fields?.forEach(field => {
-        const value = formData[field.id];
-        const error = validateField(field, value);
-        if (error) {
-          console.log(`❌ Validation error for field "${field.label}" (${field.id}):`, error);
-          newErrors[field.id] = error;
-          hasErrors = true;
-        }
+        const error = validateField(field, formData[field.id]);
+        if (error) { newErrors[field.id] = error; hasErrors = true; }
       });
     });
-
     setErrors(newErrors);
-
     if (hasErrors) {
-      console.log("❌ Form has validation errors:", newErrors);
-      console.log("❌ Total errors:", Object.keys(newErrors).length);
-      
-      // Scroll to first error
-      const firstErrorField = Object.keys(newErrors)[0];
-      const errorElement = document.getElementById(`field-${firstErrorField}`);
-      if (errorElement) {
-        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      const el = document.getElementById(`field-${Object.keys(newErrors)[0]}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-
-    console.log("✅ Form validation passed!");
-    console.log("✅ Calling onSubmit with data:", formData);
-    
-    // Mark as submitted
     setIsSubmitted(true);
-    
-    // Handle submitApi configuration (skip navigation in workflow test mode)
     if (formSchema.submitApi && !skipNavigation) {
       const { onSuccess } = formSchema.submitApi;
-
-      // Handle navigation action
       if (onSuccess?.action === 'navigate' && onSuccess?.path) {
-        console.log("🔀 Will navigate to:", onSuccess.path, "after 2 seconds");
-
-        // Show success message if provided
-        if (onSuccess.message) {
-          console.log("✅", onSuccess.message);
-        }
-
-        // Wait 2 seconds before navigating to show completion screen
         setTimeout(() => {
-          // Navigate based on openInNewTab flag
-          if (onSuccess.openInNewTab) {
-            // Open in new tab
-            console.log("🔀 Opening in new tab:", onSuccess.path);
-            window.open(onSuccess.path, '_blank', 'noopener,noreferrer');
-          } else {
-            // Navigate in same tab
-            console.log("🔀 Navigating to:", onSuccess.path);
-            window.location.href = onSuccess.path;
-          }
-        }, 2000); // 2 second delay
+          if (onSuccess.openInNewTab) window.open(onSuccess.path, '_blank', 'noopener,noreferrer');
+          else window.location.href = onSuccess.path;
+        }, 2000);
       }
     }
-    
-    if (onSubmit) {
-      onSubmit(formData);
-    }
-  };
+    if (onSubmit) onSubmit(formData);
+  }, [formSchema, formData, validateField, skipNavigation, onSubmit]);
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     if (onContinue && formSchema.nextFormId && !hasContinued) {
       setHasContinued(true);
       onContinue(formSchema.nextFormId);
     }
-  };
+  }, [onContinue, formSchema?.nextFormId, hasContinued]);
 
-  const getIconComponent = (iconName) => {
-    const iconMap = {
-      'male': MaleIcon,
-      'female': FemaleIcon,
-      'transgender': TransgenderIcon,
-      'person': PersonIcon,
-      'calendar': CalendarIcon,
-      'phone': PhoneIcon,
-      'email': EmailIcon,
-      'home': HomeIcon,
-      'bank': BankIcon,
-      'camera': CameraIcon,
-      'fingerprint': FingerprintIcon,
-      'document': DocumentIcon,
-      'edit': EditIcon,
-      'pdf': PdfIcon,
-      'check_circle': CheckCircleIcon,
-      'pets': PetsIcon,
-      'buffalo': BuffaloIcon,
-      'cow': CowIcon,
-      'goat': GoatIcon,
-      'pig': PigIcon,
-      'rabbit': RabbitIcon,
-      'bird': BirdIcon,
-      'fish': FishIcon,
-      'paw': PawIcon
-    };
-    return iconMap[iconName?.toLowerCase()] || PersonIcon;
-  };
+  const isFieldEnabled = useCallback((field) => {
+    if (viewOnly) return false;
+    if (field.disabled === true) return false;
+    if (!field.enabledIf) return true;
+    const dep = formData[field.enabledIf.field];
+    if (field.enabledIf.equals !== undefined) return dep === field.enabledIf.equals;
+    if (field.enabledIf.notEquals !== undefined) return dep !== field.enabledIf.notEquals;
+    return !!dep;
+  }, [viewOnly, formData]);
 
-  const isFieldEnabled = (field) => {
-    // If viewOnly mode is active, all fields are disabled
-    if (viewOnly) {
-      return false;
-    }
-    
-    // If field is explicitly disabled in config, always return false
-    if (field.disabled === true) {
-      return false;
-    }
-    // If no enabledIf condition, field is always enabled
-    if (!field.enabledIf) {
-      return true;
-    }
+  const isFieldVisible = useCallback((field) => {
+    if (!field.showIf) return true;
+    const dep = formData[field.showIf.field];
+    if (field.showIf.equals !== undefined) return dep === field.showIf.equals;
+    if (field.showIf.notEquals !== undefined) return dep !== field.showIf.notEquals;
+    return !!dep;
+  }, [formData]);
 
-    // Check if the dependent field has the required value
-    const dependentFieldValue = formData[field.enabledIf.field];
-    
-    if (field.enabledIf.equals !== undefined) {
-      return dependentFieldValue === field.enabledIf.equals;
-    }
-    
-    if (field.enabledIf.notEquals !== undefined) {
-      return dependentFieldValue !== field.enabledIf.notEquals;
-    }
-    
-    // For boolean fields (like checkbox), check if it's truthy
-    return !!dependentFieldValue;
-  };
-
-  const isFieldVisible = (field) => {
-    // If no showIf condition, field is always visible
-    if (!field.showIf) {
-      return true;
-    }
-
-    // Check if the dependent field has the required value
-    const dependentFieldValue = formData[field.showIf.field];
-    
-    if (field.showIf.equals !== undefined) {
-      return dependentFieldValue === field.showIf.equals;
-    }
-    
-    if (field.showIf.notEquals !== undefined) {
-      return dependentFieldValue !== field.showIf.notEquals;
-    }
-    
-    // For boolean fields (like checkbox), check if it's truthy
-    return !!dependentFieldValue;
-  };
-
-  const renderField = (field) => {
-    // Check if field should be visible
-    const isVisible = isFieldVisible(field);
-    if (!isVisible) {
-      return null; // Don't render the field at all
-    }
-
+  const renderField = (field, palette) => {
+    if (!isFieldVisible(field)) return null;
     const value = formData[field.id] || '';
     const error = errors[field.id];
     const isEnabled = isFieldEnabled(field);
+    const accentColor = palette.main;
+
+    const textFieldSx = getTextFieldSx(accentColor, error, colors.error);
 
     switch (field.type) {
       case 'text':
@@ -674,33 +489,12 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
               helperText={error}
               disabled={!isEnabled}
               variant="outlined"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px',
-                  backgroundColor: '#ffffff',
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                  },
-                  '&.Mui-focused': {
-                    backgroundColor: '#ffffff',
-                  }
-                },
-                '& .MuiInputLabel-root': {
-                  color: theme.palette.text.secondary,
-                  fontSize: '14px',
-                  fontWeight: 500,
-                },
-                '& .MuiFormHelperText-root': {
-                  fontSize: '12px',
-                  marginLeft: 0,
-                  marginTop: 0.5
-                }
-              }}
+              sx={textFieldSx}
               InputProps={field.icon ? {
                 startAdornment: (
                   <InputAdornment position="start">
                     {React.createElement(getIconComponent(field.icon), {
-                      sx: { color: error ? theme.palette.error.main : theme.palette.primary.main, fontSize: 20 }
+                      sx: { color: error ? colors.error : alpha(accentColor, 0.5), fontSize: 20 }
                     })}
                   </InputAdornment>
                 ),
@@ -724,17 +518,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
               disabled={!isEnabled}
               InputLabelProps={{ shrink: true }}
               variant="outlined"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px',
-                  backgroundColor: '#ffffff',
-                },
-                '& .MuiFormHelperText-root': {
-                  fontSize: '12px',
-                  marginLeft: 0,
-                  marginTop: 0.5
-                }
-              }}
+              sx={textFieldSx}
             />
           </Box>
         );
@@ -742,157 +526,75 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
       case 'dropdown':
       case 'select':
         return (
-          <FormControl key={field.id} fullWidth error={!!error} id={`field-${field.id}`}>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 1,
-                color: error ? theme.palette.error.main : theme.palette.text.primary,
-                fontSize: '15px',
-                fontWeight: 600
-              }}
-            >
-              {field.label}{field.required && '*'}
-            </Typography>
-            <Select
-              value={value}
-              onChange={(e) => handleFieldChange(field.id, e.target.value, field)}
-              disabled={!isEnabled}
-              displayEmpty
-              sx={{
-                borderRadius: '12px',
-                backgroundColor: '#ffffff',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: error ? theme.palette.error.main : alpha(theme.palette.divider, 0.3),
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: error ? theme.palette.error.main : theme.palette.primary.main,
-                },
-                '& .MuiSelect-select': {
-                  color: value ? theme.palette.text.primary : theme.palette.text.disabled,
-                }
-              }}
-            >
-              <MenuItem value="" disabled>
-                <Typography sx={{ color: theme.palette.text.disabled, fontSize: '14px' }}>
-                  {field.placeholder || `Select ${field.label}`}
-                </Typography>
-              </MenuItem>
-              {field.options?.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-            {error && (
-              <Typography sx={{ color: theme.palette.error.main, fontSize: '12px', mt: 0.5, ml: 0 }}>
-                {error}
+          <Box key={field.id} id={`field-${field.id}`}>
+            <FormControl fullWidth error={!!error}>
+              <Typography sx={labelStyle(colors.error, colors.textSecondary, !!error)}>
+                {field.label}{field.required && ' *'}
               </Typography>
-            )}
-          </FormControl>
+              <Select
+                value={value}
+                onChange={(e) => handleFieldChange(field.id, e.target.value, field)}
+                disabled={!isEnabled}
+                displayEmpty
+                IconComponent={KeyboardArrowDownIcon}
+                MenuProps={{
+                  PaperProps: { sx: getMenuPaperSx(accentColor) },
+                }}
+                sx={getSelectSx(accentColor, error, colors.error, !!value, colors.textPrimary, colors.textDisabled)}
+              >
+                <MenuItem value="" disabled>
+                  <span style={{ color: colors.textDisabled }}>{field.placeholder || `Select ${field.label}`}</span>
+                </MenuItem>
+                {field.options?.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                ))}
+              </Select>
+              {error && <Typography sx={{ ...errorText(colors.error), mt: 0.5, ml: 0.5 }}>{error}</Typography>}
+            </FormControl>
+          </Box>
         );
 
       case 'radio':
         return (
-          <FormControl key={field.id} fullWidth sx={{ mb: 2 }} error={!!error} id={`field-${field.id}`}>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 2,
-                color: error ? theme.palette.error.main : theme.palette.text.primary,
-                fontSize: '15px',
-                fontWeight: 600
-              }}
-            >
-              {field.label}{field.required && '*'}
-            </Typography>
-            <RadioGroup
-              value={value}
-              onChange={(e) => handleFieldChange(field.id, e.target.value, field)}
-              sx={{
-                opacity: isEnabled ? 1 : 0.5,
-                pointerEvents: isEnabled ? 'auto' : 'none',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              {field.options?.map((option) => {
-                const isSelected = value === option.value;
-                const IconComponent = option.icon ? getIconComponent(option.icon) : null;
-
-                return (
-                  <Paper
-                    key={option.value}
-                    elevation={0}
-                    sx={{
-                      width: '100%',
-                      maxWidth: '100%',
-                      p: 2,
-                      border: `2px solid ${isSelected ? theme.palette.primary.main : alpha(theme.palette.divider, 0.3)}`,
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.05) : '#ffffff',
-                      boxSizing: 'border-box',
-                      '&:hover': {
-                        borderColor: theme.palette.primary.main,
-                        backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                        transform: 'translateY(-2px)',
-                        boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.15)}`,
-                      }
-                    }}
-                    onClick={() => handleFieldChange(field.id, option.value, field)}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      {IconComponent && (
-                        <Avatar
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            backgroundColor: isSelected ? theme.palette.primary.main : alpha(theme.palette.primary.main, 0.1),
-                            color: isSelected ? '#ffffff' : theme.palette.primary.main,
-                          }}
-                        >
-                          <IconComponent sx={{ fontSize: 22 }} />
+          <Box key={field.id} id={`field-${field.id}`}>
+            <FormControl fullWidth error={!!error}>
+              <Typography sx={{ mb: 1.25, fontSize: '13px', fontWeight: 600, color: error ? colors.error : colors.textSecondary }}>
+                {field.label}{field.required && ' *'}
+              </Typography>
+              <RadioGroup
+                value={value}
+                onChange={(e) => handleFieldChange(field.id, e.target.value, field)}
+                sx={{ opacity: isEnabled ? 1 : 0.5, pointerEvents: isEnabled ? 'auto' : 'none', display: 'flex', flexDirection: 'row', gap: 1.25 }}
+              >
+                {field.options?.map((option) => {
+                  const isSelected = value === option.value;
+                  const IconComp = option.icon ? getIconComponent(option.icon) : null;
+                  return (
+                    <Box
+                      key={option.value}
+                      onClick={() => handleFieldChange(field.id, option.value, field)}
+                      sx={getRadioOptionSx(isSelected, accentColor)}
+                    >
+                      {IconComp && (
+                        <Avatar sx={getRadioAvatarSx(isSelected, accentColor)}>
+                          <IconComp sx={{ fontSize: 21 }} />
                         </Avatar>
                       )}
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: isSelected ? 600 : 500,
-                            color: isSelected ? theme.palette.primary.main : theme.palette.text.primary,
-                            fontSize: '15px',
-                            wordBreak: 'normal',
-                            whiteSpace: 'normal',
-                            lineHeight: 1.4
-                          }}
-                        >
-                          {option.label}
-                        </Typography>
-                      </Box>
-                      <Radio
-                        checked={isSelected}
-                        value={option.value}
-                        sx={{
-                          color: alpha(theme.palette.primary.main, 0.3),
-                          '&.Mui-checked': {
-                            color: theme.palette.primary.main,
-                          }
-                        }}
-                      />
+                      <Typography sx={{ fontSize: '13px', fontWeight: isSelected ? 700 : 500, color: isSelected ? accentColor : colors.textPrimary, textAlign: 'center' }}>
+                        {option.label}
+                      </Typography>
+                      {isSelected && (
+                        <Box sx={{ ...radioCheckmark, backgroundColor: accentColor }}>
+                          <CheckIcon sx={{ fontSize: 12, color: '#fff' }} />
+                        </Box>
+                      )}
                     </Box>
-                  </Paper>
-                );
-              })}
-            </RadioGroup>
-            {error && (
-              <Typography sx={{ color: theme.palette.error.main, fontSize: '12px', mt: 1, ml: 0 }}>
-                {error}
-              </Typography>
-            )}
-          </FormControl>
+                  );
+                })}
+              </RadioGroup>
+              {error && <Typography sx={{ ...errorText(colors.error), mt: 0.5 }}>{error}</Typography>}
+            </FormControl>
+          </Box>
         );
 
       case 'checkbox':
@@ -903,301 +605,221 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
                 <Checkbox
                   checked={!!value}
                   onChange={(e) => handleFieldChange(field.id, e.target.checked, field)}
-                  sx={{
-                    color: error ? theme.palette.error.main : theme.palette.primary.main,
-                    '&.Mui-checked': {
-                      color: theme.palette.primary.main,
-                    }
-                  }}
+                  sx={{ color: error ? colors.error : alpha(accentColor, 0.4), '&.Mui-checked': { color: accentColor } }}
                 />
               }
-              label={
-                <Typography variant="body2" sx={{ fontSize: '13px', color: theme.palette.text.secondary }}>
-                  {field.label}
-                </Typography>
-              }
-              sx={{ mb: 2 }}
+              label={<Typography sx={{ fontSize: '14px', color: colors.textSecondary }}>{field.label}</Typography>}
             />
-            {error && (
-              <Typography sx={{ color: theme.palette.error.main, fontSize: '12px', mt: 0.5, ml: 0 }}>
-                {error}
-              </Typography>
-            )}
+            {error && <Typography sx={{ ...errorText(colors.error), ml: 4 }}>{error}</Typography>}
           </Box>
         );
 
-      case 'biometric':
-        const biometricCaptured = formData[field.id] === 'captured';
+      case 'biometric': {
+        const captured = formData[field.id] === 'captured';
         return (
-          <Box key={field.id} sx={styles.biometricContainer} id={`field-${field.id}`}>
-            <Paper
-              elevation={0}
-              onClick={() => {
-                if (!biometricCaptured) {
-                  handleFieldChange(field.id, 'captured', field);
-                }
-              }}
-              sx={styles.biometricPaper(biometricCaptured)}
+          <Box key={field.id} id={`field-${field.id}`} sx={{ textAlign: 'center', py: 1.5 }}>
+            <Box
+              onClick={() => { if (!captured) handleFieldChange(field.id, 'captured', field); }}
+              sx={getBiometricContainerSx(captured, accentColor, colors.successMain)}
             >
-              <Box sx={styles.biometricIconCircle(biometricCaptured)}>
-                {biometricCaptured ? (
-                  <CheckCircleIcon sx={styles.biometricIcon} />
-                ) : (
-                  <FingerprintIcon sx={styles.biometricIcon} />
-                )}
+              <Box sx={getBiometricCircle(captured, accentColor, palette.dark, colors.successMain, colors.successDark)}>
+                {captured
+                  ? <CheckCircleIcon sx={{ fontSize: 40, color: '#fff' }} />
+                  : <FingerprintIcon sx={{ fontSize: 40, color: '#fff' }} />}
               </Box>
-              <Typography variant="body1" sx={styles.biometricLabel(biometricCaptured)}>
-                {biometricCaptured ? '✓ Fingerprint Captured' : (field.label || 'Tap to scan fingerprint')}
+              <Typography sx={{ fontWeight: 600, fontSize: '15px', color: captured ? colors.successMain : colors.textPrimary }}>
+                {captured ? 'Fingerprint Captured' : (field.label || 'Tap to scan fingerprint')}
               </Typography>
-              {biometricCaptured && (
-                <Typography variant="body2" sx={styles.biometricSubtext}>
-                  Authentication successful
-                </Typography>
-              )}
-            </Paper>
-            {error && (
-              <Typography sx={{ color: theme.palette.error.main, fontSize: '12px', mt: 1 }}>
-                {error}
-              </Typography>
-            )}
+            </Box>
+            {error && <Typography sx={{ ...errorText(colors.error), mt: 0.75 }}>{error}</Typography>}
           </Box>
         );
+      }
 
       case 'image_capture':
       case 'file':
         return (
-          <ImageCaptureUpload
-            key={field.id}
-            field={field}
-            value={value}
-            onChange={(imageData) => handleFieldChange(field.id, imageData, field)}
-            error={error}
-            disabled={!isEnabled}
+          <ImageCaptureUpload key={field.id} field={field} value={value}
+            onChange={(data) => handleFieldChange(field.id, data, field)} error={error} disabled={!isEnabled}
           />
         );
 
-      case 'button':
+      case 'button': {
+        const isOutlined = field.variant === 'outlined' || !field.variant;
         return (
-          <Box key={field.id} sx={{ textAlign: 'center', my: 3 }} id={`field-${field.id}`}>
+          <Box key={field.id} id={`field-${field.id}`} sx={{ textAlign: 'center', my: 1 }}>
             <Button
               variant={field.variant || 'outlined'}
               size="large"
               onClick={() => {
                 if (field.action === 'esign') {
-                  // Simulate e-sign process
                   handleFieldChange(field.id, 'signed', field);
-                  handleFieldChange('esign_status', '✅ E-sign Completed', field);
+                  handleFieldChange('esign_status', 'E-sign Completed', field);
                   handleFieldChange('esign_completed', true, field);
                 } else if (field.action === 'view_pdf') {
-                  // Open mock PDF in new tab
                   window.open('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', '_blank');
                 }
               }}
               disabled={!isEnabled || (field.action === 'view_pdf' && !formData.esign_completed)}
               startIcon={field.icon && React.createElement(getIconComponent(field.icon), { sx: { fontSize: 20 } })}
-              sx={{
-                px: 4,
-                py: 1.5,
-                borderRadius: '12px',
-                textTransform: 'none',
-                fontSize: '15px',
-                fontWeight: 600,
-                minWidth: 200,
-                border: field.variant === 'outlined' ? `2px solid ${theme.palette.primary.main}` : 'none',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
-                },
-                transition: 'all 0.2s ease',
-              }}
+              sx={getButtonFieldSx(accentColor, palette.dark, isOutlined)}
             >
               {field.buttonLabel || field.label}
             </Button>
-            {error && (
-              <Typography sx={{ color: theme.palette.error.main, fontSize: '12px', mt: 1 }}>
-                {error}
-              </Typography>
-            )}
           </Box>
         );
+      }
 
       default:
         return null;
     }
   };
 
-  const renderSection = (section, index) => {
-    const sectionId = section.id || index;
-    const isExpanded = expandedSections[sectionId];
-    const IconComponent = section.icon ? getIconComponent(section.icon) : BankIcon;
+  if (!formSchema) return null;
 
-    return (
-      <Paper
-        key={sectionId}
-        elevation={0}
-        sx={{
-          mb: 2,
-          borderRadius: '16px',
-          overflow: 'hidden',
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          backgroundColor: '#ffffff',
-        }}
-      >
-        {/* Section Header */}
-        <Box
-          onClick={() => toggleSection(sectionId)}
-          sx={{
-            p: 2.5,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            cursor: 'pointer',
-            backgroundColor: alpha(theme.palette.primary.main, 0.04),
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-            }
-          }}
-        >
-          <Avatar
-            sx={{
-              width: 44,
-              height: 44,
-              backgroundColor: theme.palette.primary.main,
-              color: '#ffffff',
-            }}
-          >
-            <IconComponent sx={{ fontSize: 24 }} />
-          </Avatar>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '16px', color: theme.palette.text.primary }}>
-              {section.title}
-            </Typography>
-            {section.subtitle && (
-              <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontSize: '12px' }}>
-                {section.subtitle}
-              </Typography>
-            )}
-          </Box>
-          <IconButton size="small">
-            {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </IconButton>
-        </Box>
-
-        {/* Section Content */}
-        <Collapse in={isExpanded}>
-          <Box sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              {section.fields?.map(field => renderField(field))}
-            </Box>
-          </Box>
-        </Collapse>
-      </Paper>
-    );
-  };
-
-  if (!formSchema) {
-    return null;
-  }
-
-  // If form is submitted, show success message
+  // ── Success Screen ──
   if (isSubmitted) {
-    // Get the appropriate logo based on form ID
     const getLogo = () => {
-      if (formSchema.id === 'l1_customer_info') return '/l1.svg';
-      if (formSchema.id === 'instant_kcc') return '/kcc.svg';
-      if (formSchema.id === 'bank_account_details') return '/bank.svg';
-      if (formSchema.id === 'esign_documents') return '/esign.svg';
-      if (formSchema.id === 'loan_disbursement') return '/esign.svg';
-      return null;
+      const logoMap = {
+        'l1_customer_info': '/l1.svg',
+        'instant_kcc': '/kcc.svg',
+        'bank_account_details': '/bank.svg',
+        'esign_documents': '/esign.svg',
+        'loan_disbursement': '/esign.svg',
+      };
+      return logoMap[formSchema.id] || null;
     };
-
     const logo = getLogo();
 
     return (
-      <Box sx={styles.successContainer}>
-        <Paper elevation={0} sx={styles.successCard}>
-          {/* Success Icon with Logo */}
-          <Box sx={styles.successLogoContainer}>
+      <Box sx={{ width: '100%', maxWidth: '500px', mx: 'auto', py: 6, px: 2 }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Box sx={successPopAnimation}>
             {logo ? (
-              <Box sx={styles.successLogoBox}>
+              <Box sx={{ width: 72, height: 72, '& img': { width: '100%', height: '100%', objectFit: 'contain' } }}>
                 <img src={logo} alt="Success" />
               </Box>
             ) : (
-              <Box sx={styles.successFallbackIconCircle}>
-                <CheckCircleIcon sx={styles.successCheckIcon} />
+              <Box sx={getSuccessCircleSx(colors.successMain, colors.successDark)}>
+                <CheckCircleIcon sx={{ fontSize: 40, color: '#fff' }} />
               </Box>
             )}
           </Box>
-
-          {/* Title */}
-          <Typography variant="h5" sx={styles.successTitleText}>
+          <Typography sx={{ fontWeight: 700, fontSize: '22px', color: colors.textPrimary, mb: 0.75 }}>
             {formSchema.title} Completed!
           </Typography>
-
-          {/* Subtitle */}
-          <Typography variant="body1" sx={styles.successSubtitleText}>
+          <Typography sx={{ color: colors.textSecondary, fontSize: '15px', mb: 4, lineHeight: 1.5 }}>
             Your information has been saved successfully.
           </Typography>
-          
-          {/* Continue Button */}
           {formSchema.nextFormId && (
-            <Button
-              variant="contained"
-              size="large"
-              onClick={handleContinue}
-              disabled={hasContinued}
-              sx={styles.successContinueButton(hasContinued)}
+            <Button fullWidth variant="contained" size="large" onClick={handleContinue} disabled={hasContinued}
+              endIcon={hasContinued ? <TaskAltIcon /> : <ArrowForwardIcon />}
+              sx={getContinueButtonSx(hasContinued, colors.primaryMain, colors.primaryDark, colors.disabledBg)}
             >
-              {hasContinued 
-                ? '✓ Proceeding to Next Section...'
-                : `Continue to ${formSchema.nextFormTitle || 'Next Section'}`
-              }
+              {hasContinued ? 'Proceeding...' : `Continue to ${formSchema.nextFormTitle || 'Next Section'}`}
             </Button>
           )}
-
-          {/* No next form message */}
           {!formSchema.nextFormId && (
-            <Chip
-              icon={<CheckCircleIcon />}
-              label="All Sections Complete"
-              color="success"
-              sx={styles.successCompletionChip}
+            <Chip icon={<CelebrationIcon />} label="All Sections Complete" color="success"
+              sx={{ px: 2, py: 2.5, fontSize: '14px', fontWeight: 700 }}
             />
           )}
-        </Paper>
+        </Box>
       </Box>
     );
   }
 
+  // ── Overall progress ──
+  const totalRequired = formSchema.sections?.reduce((s, sec) => s + (sec.fields?.filter(f => f.required).length || 0), 0) || 0;
+  const totalFilled = formSchema.sections?.reduce((s, sec) =>
+    s + (sec.fields?.filter(f => f.required && formData[f.id] !== undefined && formData[f.id] !== null && formData[f.id] !== '').length || 0), 0) || 0;
+  const progress = totalRequired > 0 ? Math.round((totalFilled / totalRequired) * 100) : 0;
+
   return (
-    <Box sx={styles.formContainer}>
-      {/* Form Header */}
+    <Box sx={{ width: '100%', mx: 'auto' }}>
+      {/* ── Header ── */}
       {formSchema.title && (
-        <Box sx={styles.formHeader}>
-          <Typography variant="h5" sx={styles.formTitle}>
+        <Box sx={{ mb: 3 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: '22px', sm: '26px' }, color: colors.textPrimary, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
             {formSchema.title}
           </Typography>
           {formSchema.description && (
-            <Typography variant="body2" sx={styles.formDescription}>
+            <Typography sx={{ color: colors.textSecondary, fontSize: '14px', mt: 0.5, lineHeight: 1.4 }}>
               {formSchema.description}
             </Typography>
+          )}
+          {totalRequired > 0 && (
+            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={getProgressBarSx(progress, colors.successMain, colors.successLight)}
+              />
+              <Typography sx={{ fontSize: '13px', fontWeight: 700, color: progress === 100 ? colors.successMain : '#3B82F6', minWidth: 36, textAlign: 'right' }}>
+                {progress}%
+              </Typography>
+            </Box>
           )}
         </Box>
       )}
 
-      {/* Form Sections */}
-      {formSchema.sections?.map((section, index) => renderSection(section, index))}
+      {/* ── Section Cards ── */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+        {formSchema.sections?.map((section, sIndex) => {
+          const palette = SECTION_PALETTES[sIndex % SECTION_PALETTES.length];
+          const IconComp = section.icon ? getIconComponent(section.icon) : BankIcon;
 
-      {/* Submit Button - Hidden in view-only mode */}
+          const reqFields = section.fields?.filter(f => f.required) || [];
+          const filledFields = reqFields.filter(f => formData[f.id] !== undefined && formData[f.id] !== null && formData[f.id] !== '');
+          const sectionComplete = reqFields.length > 0 && filledFields.length === reqFields.length;
+
+          return (
+            <Paper key={section.id || sIndex} elevation={0} sx={getSectionPaperSx(palette.main)}>
+              {/* Section Banner */}
+              <Box sx={getSectionBannerSx(palette.main, palette.light)}>
+                <Avatar sx={getSectionAvatarSx(palette.main, palette.dark)} variant="rounded">
+                  {sectionComplete ? <TaskAltIcon sx={{ fontSize: 20 }} /> : <IconComp sx={{ fontSize: 20 }} />}
+                </Avatar>
+                <Box sx={{ flex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '15px', color: colors.textPrimary }}>
+                      {section.title}
+                    </Typography>
+                    {sectionComplete && (
+                      <Chip label="Complete" size="small" sx={getCompleteBadgeSx(colors.successMain)} />
+                    )}
+                  </Box>
+                  {section.subtitle && (
+                    <Typography sx={{ fontSize: '12px', color: colors.textSecondary, mt: 0.25 }}>
+                      {section.subtitle}
+                    </Typography>
+                  )}
+                </Box>
+                {reqFields.length > 0 && (
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: sectionComplete ? colors.successMain : palette.main }}>
+                    {filledFields.length}/{reqFields.length}
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Section Fields */}
+              <Box sx={sectionFieldsContainer}>
+                {section.fields?.map(field => renderField(field, palette))}
+              </Box>
+            </Paper>
+          );
+        })}
+      </Box>
+
+      {/* ── Submit Button ── */}
       {!viewOnly && formSchema.submitButton && (
         <Button
           fullWidth
           variant="contained"
           size="large"
           onClick={handleSubmit}
-          endIcon={<CheckCircleIcon />}
-          sx={styles.submitButton}
+          endIcon={<ArrowForwardIcon />}
+          sx={getSubmitButtonSx(colors.primaryMain)}
         >
           {formSchema.submitButton.label || 'Submit'}
         </Button>
