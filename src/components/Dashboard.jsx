@@ -82,7 +82,8 @@ import {
   Person as PersonIcon,
   FormatColorFill as FormatColorFillIcon,
   BorderColor as BorderColorIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
+  Storage as StorageIcon
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -2896,6 +2897,129 @@ const Dashboard = ({ initialDashboardId }) => {
       if (isThisWidgetLoading) {
         return <WidgetContentSkeleton variant="chart" />;
       }
+      
+      // If the widget has a lock error, show Data Sync in Progress instead of "No data available"
+      const hasLockError = item.isLockError || (item.error && (item.error.includes('lock') || item.error.includes('Conflicting lock')));
+      if (hasLockError || item.error) {
+        return (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              minHeight: 200,
+              py: 4,
+              px: 3,
+            }}
+          >
+            {/* Animated Database Icon */}
+            <Box
+              sx={{
+                position: 'relative',
+                mb: 2.5,
+                animation: 'widgetSyncPulse 2s ease-in-out infinite',
+                '@keyframes widgetSyncPulse': {
+                  '0%, 100%': { transform: 'scale(1)', opacity: 1 },
+                  '50%': { transform: 'scale(1.08)', opacity: 0.85 },
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  position: 'relative',
+                  width: 80,
+                  height: 80,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {/* Rotating ring */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    animation: 'widgetSyncRotate 3s linear infinite',
+                    '@keyframes widgetSyncRotate': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' },
+                    },
+                  }}
+                >
+                  {[0, 1, 2].map((i) => (
+                    <Box
+                      key={i}
+                      sx={{
+                        position: 'absolute',
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        bgcolor: '#b5c8de',
+                        top: '50%',
+                        left: '50%',
+                        transform: `translate(-50%, -50%) translateY(-40px) rotate(${i * 120}deg)`,
+                        transformOrigin: '0 40px',
+                        opacity: 0.6,
+                        animation: `widgetSyncFade 2s ease-in-out infinite ${i * 0.3}s`,
+                        '@keyframes widgetSyncFade': {
+                          '0%, 100%': { opacity: 0.3 },
+                          '50%': { opacity: 1 },
+                        },
+                      }}
+                    />
+                  ))}
+                </Box>
+                <StorageIcon
+                  sx={{
+                    fontSize: 36,
+                    color: '#b5c8de',
+                    animation: 'widgetSyncGlow 2s ease-in-out infinite',
+                    '@keyframes widgetSyncGlow': {
+                      '0%, 100%': { filter: 'drop-shadow(0 0 4px rgba(181, 200, 222, 0.4))' },
+                      '50%': { filter: 'drop-shadow(0 0 10px rgba(181, 200, 222, 0.7))' },
+                    },
+                  }}
+                />
+                <CircularProgress
+                  size={70}
+                  thickness={2}
+                  sx={{
+                    position: 'absolute',
+                    color: '#b5c8de',
+                  }}
+                />
+              </Box>
+            </Box>
+            <Typography
+              sx={{
+                fontWeight: 700,
+                color: '#1E293B',
+                mb: 0.5,
+                fontSize: '1rem',
+              }}
+            >
+              Data Sync in Progress
+            </Typography>
+            <Typography
+              sx={{
+                color: '#64748B',
+                textAlign: 'center',
+                maxWidth: 350,
+                lineHeight: 1.5,
+                fontSize: '0.85rem',
+              }}
+            >
+              {hasLockError
+                ? 'The database is currently syncing with source database. Please wait a moment and try refreshing.'
+                : 'We\'re syncing your data. This may take a few moments.'}
+            </Typography>
+          </Box>
+        );
+      }
+      
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
           <Typography variant="body2">No data available</Typography>
