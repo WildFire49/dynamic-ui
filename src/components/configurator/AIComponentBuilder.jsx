@@ -32,6 +32,7 @@ import {
   AccountTree as WorkflowIcon,
 } from "@mui/icons-material";
 import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
+import WorkflowFlowViewer from "./WorkflowFlowViewer";
 import uiConfiguratorService from "@/services/uiConfiguratorService";
 import { useConversationHistory } from "@/hooks/useConversationHistory";
 import { useAIFormGenerator } from "@/hooks/useAIFormGenerator";
@@ -528,14 +529,15 @@ const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
 
     if (message.type === "workflow_created") {
       const wd = message.workflowData;
-      const nodeCount = wd.canvas_state?.nodes?.length || 0;
       return (
         <Box sx={{ mb: 2 }}>
+          {/* Success Header */}
           <Box
             sx={{
               display: "flex",
               alignItems: "center",
               gap: 1,
+              mb: 1.5,
               p: 1.5,
               bgcolor: alpha("#4caf50", 0.1),
               borderRadius: 2,
@@ -543,25 +545,13 @@ const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
             }}
           >
             <CheckCircle sx={{ color: "#4caf50", fontSize: 20 }} />
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {message.content}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {nodeCount} components added to canvas
-              </Typography>
-            </Box>
-            <Chip
-              label={wd.workflow_name || "Workflow"}
-              size="small"
-              sx={{
-                fontSize: "0.7rem",
-                height: 20,
-                bgcolor: alpha("#4caf50", 0.15),
-                color: "#2e7d32",
-              }}
-            />
+            <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
+              {message.content}
+            </Typography>
           </Box>
+
+          {/* Interactive Workflow Flow Viewer */}
+          <WorkflowFlowViewer workflowData={wd} height={380} />
         </Box>
       );
     }

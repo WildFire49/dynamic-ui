@@ -40,7 +40,11 @@ import {
   Verified,
   Article,
   Settings,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon,
+  ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import templateService from "@/services/templateService";
 
@@ -62,6 +66,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 export default function TemplateManager() {
+  const router = useRouter();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -167,6 +172,35 @@ export default function TemplateManager() {
     }
   };
 
+  const handleToggleTemplate = async (template) => {
+    const isCurrentlyActive = template.is_active;
+    const action = isCurrentlyActive ? "disable" : "enable";
+
+    try {
+      let data;
+      if (isCurrentlyActive) {
+        data = await templateService.disableTemplate(template.template_id);
+      } else {
+        data = await templateService.enableTemplate(template.template_id);
+      }
+      if (data.success) {
+        showSnackbar(
+          `Template ${isCurrentlyActive ? "disabled" : "enabled"} successfully`,
+          "success"
+        );
+        fetchTemplates();
+      } else {
+        showSnackbar(
+          data.detail || `Failed to ${action} template`,
+          "error"
+        );
+      }
+    } catch (error) {
+      showSnackbar(`Failed to ${action} template`, "error");
+      console.error(`Error ${action} template:`, error);
+    }
+  };
+
   const handleOpenDialog = async (template = null) => {
     if (template) {
       // Fetch full template details including content
@@ -249,20 +283,34 @@ export default function TemplateManager() {
           gap: 2,
         }}
       >
-        <Box>
-          <Typography
-            variant="h4"
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <IconButton
+            onClick={() => router.push("/configurator/ui")}
             sx={{
-              fontWeight: 700,
-              color: "#1a202c",
-              mb: 1,
+              bgcolor: "#f0f9ff",
+              color: "#0078d7",
+              "&:hover": {
+                bgcolor: "#e6f2ff",
+              },
             }}
           >
-            UI Template Manager
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Create and manage UI Templates with version control
-          </Typography>
+            <ArrowBackIcon />
+          </IconButton>
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                color: "#1a202c",
+                mb: 1,
+              }}
+            >
+              UI Template Manager
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Create and manage UI Templates with version control
+            </Typography>
+          </Box>
         </Box>
         <Button
           variant="contained"
@@ -354,13 +402,14 @@ export default function TemplateManager() {
                 },
               }}
             >
-              {/* Status Badge */}
+              {/* Status Badge - clickable toggle */}
               <Box
+                onClick={() => handleToggleTemplate(template)}
                 sx={{
                   position: "absolute",
                   top: 0,
                   right: 0,
-                  bgcolor: template.is_active ? "#0078d7" : "#9ca3af",
+                  bgcolor: template.is_active ? "#059669" : "#9ca3af",
                   color: "white",
                   px: 2,
                   py: 0.5,
@@ -368,6 +417,11 @@ export default function TemplateManager() {
                   display: "flex",
                   alignItems: "center",
                   gap: 0.5,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    bgcolor: template.is_active ? "#047857" : "#6b7280",
+                  },
                 }}
               >
                 {template.is_active ? (
@@ -491,18 +545,38 @@ export default function TemplateManager() {
                 >
                   View
                 </Button>
-                <IconButton
-                  size="small"
-                  onClick={() => handleDeleteTemplate(template.template_id)}
-                  sx={{
-                    color: "#f56565",
-                    "&:hover": {
-                      bgcolor: "#fef2f2",
-                    },
-                  }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                <Tooltip title={template.is_active ? "Disable Template" : "Enable Template"}>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleToggleTemplate(template)}
+                    sx={{
+                      color: template.is_active ? "#059669" : "#9ca3af",
+                      "&:hover": {
+                        bgcolor: template.is_active ? "#ecfdf5" : "#f3f4f6",
+                      },
+                    }}
+                  >
+                    {template.is_active ? (
+                      <ToggleOnIcon fontSize="small" />
+                    ) : (
+                      <ToggleOffIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Delete Template">
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDeleteTemplate(template.template_id)}
+                    sx={{
+                      color: "#f56565",
+                      "&:hover": {
+                        bgcolor: "#fef2f2",
+                      },
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Box>
 
               {/* Footer */}

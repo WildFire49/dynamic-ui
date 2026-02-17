@@ -153,6 +153,41 @@ const templateService = {
       throw error;
     }
   },
+
+  /**
+   * Enable template (set is_active = true)
+   * @param {string} templateId - Template ID
+   * @returns {Promise<Object>} Enable response
+   */
+  enableTemplate: async (templateId) => {
+    try {
+      const data = await apiClient.put(
+        `/api/v1/configurator/ui-configurator/templates/${templateId}`,
+        { is_active: true }
+      );
+      return data;
+    } catch (error) {
+      console.error("Error enabling template:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Disable template (set is_active = false)
+   * @param {string} templateId - Template ID
+   * @returns {Promise<Object>} Disable response
+   */
+  disableTemplate: async (templateId) => {
+    try {
+      const data = await apiClient.delete(
+        `/api/v1/configurator/ui-configurator/templates/${templateId}`
+      );
+      return data;
+    } catch (error) {
+      console.error("Error disabling template:", error);
+      throw error;
+    }
+  },
 };
 
 export default templateService;
