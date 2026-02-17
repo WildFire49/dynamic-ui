@@ -10,7 +10,7 @@ export const ROLES = {
   MIS: "RE-20920",
   ADMIN_CONFIGURATOR: "RE-20769",
   PRODUCT_LEAD: "RE-231875",
-  TESTER:"RE-76924"
+  TESTER: "RE-76924",
 };
 
 // ============================
@@ -39,7 +39,13 @@ export const ROUTE_ACCESS = {
 
   // Specific route permissions
   ROUTE_PERMISSIONS: {
-    chat: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD, ROLES.TESTER],
+    chat: [
+      ROLES.SUPER_ADMIN,
+      ROLES.RECON_USER,
+      ROLES.MIS,
+      ROLES.PRODUCT_LEAD,
+      ROLES.TESTER,
+    ],
     dashboard: [
       ROLES.SUPER_ADMIN,
       ROLES.RECON_USER,
@@ -51,8 +57,16 @@ export const ROUTE_ACCESS = {
     configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER], // Super Admin and Tester
     productConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
     creConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
-    workflow_configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER],
-    retriever_configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER],
+    workflow_configurator: [
+      ROLES.SUPER_ADMIN,
+      ROLES.TESTER,
+      ROLES.PRODUCT_LEAD,
+    ],
+    retriever_configurator: [
+      ROLES.SUPER_ADMIN,
+      ROLES.TESTER,
+      ROLES.PRODUCT_LEAD,
+    ],
     mifix_ai_agents: [ROLES.SUPER_ADMIN, ROLES.TESTER],
     accessControl: [ROLES.SUPER_ADMIN], // Admin only
     settings: [ROLES.SUPER_ADMIN], // Admin only
@@ -69,7 +83,13 @@ export const MENU_ITEMS = [
     label: "MiFiX.ai Chat",
     icon: "ChatIcon",
     color: "#2196f3",
-    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD, ROLES.TESTER],
+    roles: [
+      ROLES.SUPER_ADMIN,
+      ROLES.RECON_USER,
+      ROLES.MIS,
+      ROLES.PRODUCT_LEAD,
+      ROLES.TESTER,
+    ],
     path: "/",
   },
   {
@@ -77,7 +97,13 @@ export const MENU_ITEMS = [
     label: "Dashboard",
     icon: "DashboardIcon",
     color: "#2196f3",
-    roles: [ROLES.SUPER_ADMIN, ROLES.RECON_USER, ROLES.MIS, ROLES.PRODUCT_LEAD, ROLES.TESTER],
+    roles: [
+      ROLES.SUPER_ADMIN,
+      ROLES.RECON_USER,
+      ROLES.MIS,
+      ROLES.PRODUCT_LEAD,
+      ROLES.TESTER,
+    ],
     path: "/dashboard",
   },
   {
@@ -93,15 +119,15 @@ export const MENU_ITEMS = [
     label: "Workflow Configurator",
     icon: "ConfiguratorIcon",
     color: "#210c82ff",
-    roles: [ROLES.SUPER_ADMIN, ROLES.TESTER],
+    roles: [ROLES.SUPER_ADMIN, ROLES.TESTER, ROLES.PRODUCT_LEAD],
     path: "/configurator/ui",
   },
-   {
+  {
     id: "retriever_configurator",
     label: "Retriever Configurator",
     icon: "ConfiguratorIcon",
     color: "#1976d2",
-    roles: [ROLES.SUPER_ADMIN, ROLES.TESTER],
+    roles: [ROLES.SUPER_ADMIN, ROLES.TESTER, ROLES.PRODUCT_LEAD],
     path: "/configurator/retriever",
   },
   {
