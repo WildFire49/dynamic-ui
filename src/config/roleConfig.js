@@ -54,7 +54,7 @@ export const ROUTE_ACCESS = {
       ROLES.TESTER,
     ],
     leads: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD], // Internal CPH - Super Admin and Product Lead only
-    configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER], // Super Admin and Tester
+    configurator: [ROLES.SUPER_ADMIN, ROLES.TESTER, ROLES.PRODUCT_LEAD], // Super Admin, Tester, and Product Lead
     productConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
     creConfigurator: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_LEAD],
     workflow_configurator: [
