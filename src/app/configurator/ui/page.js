@@ -78,6 +78,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import DynamicUIRenderer from "@/components/dynamic-form/DynamicUIRenderer";
+import UnifiedFormRenderer from "@/components/dynamic-form/UnifiedFormRenderer";
 import { getFormSchemaById } from "@/components/dynamic-form/sampleFormSchemas";
 import ApiConfigDialog from "@/components/configurator/ApiConfigDialog";
 import ApiConfigChatDialog from "@/components/configurator/ApiConfigChatDialog";
@@ -85,10 +86,18 @@ import FieldManagerDialog from "@/components/configurator/FieldManagerDialog";
 import FormPreviewNode from "@/components/configurator/FormPreviewNode";
 import AIComponentBuilder from "@/components/configurator/AIComponentBuilder";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import ApiVersionToggle from "@/components/settings/ApiVersionToggle";
 import uiConfiguratorService from "@/services/uiConfiguratorService";
 import authService from "@/services/authService";
 import PageHeader from "@/components/layout/PageHeader";
 import Image from "next/image";
+import {
+  fetchWorkflows,
+  getApiVersion,
+  isBetaVersion,
+  fetchWorkflowSteps,
+  fetchStepUI
+} from "@/lib/api/workflowService";
 
 // Helper function to get icon based on category
 const getCategoryIcon = (category) => {
@@ -244,8 +253,8 @@ const UIConfiguratorPage = () => {
 
     // iPhone Mockup
     iphoneMockup: {
-      width: { xs: 320, sm: 350 },
-      height: { xs: 680, sm: 720 },
+      width: { xs: 340, sm: 390 },
+      height: { xs: 720, sm: 780 },
       maxWidth: "100%",
       position: "relative",
       borderRadius: "42px",
@@ -1098,13 +1107,71 @@ const UIConfiguratorPage = () => {
   const loadWorkflow = useCallback(
     async (workflowId) => {
       try {
-        const response = await uiConfiguratorService.getWorkflow(workflowId);
+        const apiVersion = getApiVersion();
+        console.log(`📥 Loading workflow from ${apiVersion.toUpperCase()} API:`, workflowId);
 
-        if (!response.success || !response.data) {
-          throw new Error("Invalid workflow response");
+        let workflowData;
+
+        if (apiVersion === 'beta') {
+          // Beta API: Fetch workflow steps only (no UI data yet)
+          const stepsResponse = await fetchWorkflowSteps(workflowId);
+          console.log("📋 Beta API steps response:", stepsResponse);
+
+          if (!stepsResponse.success || !stepsResponse.steps) {
+            throw new Error("Invalid steps response from Beta API");
+          }
+
+          const steps = stepsResponse.steps;
+
+          // Convert Beta workflow to Alpha-like structure
+          // UI schemas will be fetched only when preview/test is clicked
+          // Arrange nodes in rows for better layout
+          const COLS = Math.min(steps.length, 6); // max 6 per row
+          const X_GAP = 340;
+          const Y_GAP = 280;
+
+          workflowData = {
+            workflow_id: workflowId,
+            workflow_name: stepsResponse.workflow_name || workflowId,
+            version: "1.0.0",
+            status: "active",
+            canvas_state: {
+              nodes: steps.map((step, index) => ({
+                id: `node-${index + 1}`,
+                type: "formPreview",
+                position: {
+                  x: 50 + (index % COLS) * X_GAP,
+                  y: 80 + Math.floor(index / COLS) * Y_GAP,
+                },
+                data: {
+                  form_id: step.step_id,
+                  ui_id: step.ui_id,
+                  title: step.name || `Step ${index + 1}`,
+                  description: step.description || "",
+                  category: "workflow",
+                  has_ui_data: step.has_ui_data,
+                  order: step.order,
+                  schema: null // Will be fetched on preview/test
+                }
+              })),
+              edges: steps.slice(0, -1).map((_, index) => ({
+                id: `edge-${index + 1}`,
+                source: `node-${index + 1}`,
+                target: `node-${index + 2}`,
+                animated: true
+              }))
+            }
+          };
+        } else {
+          // Alpha API
+          const response = await uiConfiguratorService.getWorkflow(workflowId);
+
+          if (!response.success || !response.data) {
+            throw new Error("Invalid workflow response");
+          }
+
+          workflowData = response.data;
         }
-
-        const workflowData = response.data;
 
         console.log("📥 Loading workflow:", workflowData.workflow_name);
 
@@ -1134,6 +1201,9 @@ const UIConfiguratorPage = () => {
               title: node.data.title,
               description: node.data.description,
               category: node.data.category,
+              form_id: node.data.form_id,
+              ui_id: node.data.ui_id,
+              has_ui_data: node.data.has_ui_data,
               // Define callbacks inline to avoid initialization order issues
               onDelete: () => {
                 setNodes((nds) => nds.filter((n) => n.id !== node.id));
@@ -1148,8 +1218,45 @@ const UIConfiguratorPage = () => {
                 setSelectedNodeForConfig(node);
                 setApiConfigChatOpen(true);
               },
-              onPreview: (comp) => {
-                setFullPreviewSchema(comp.schema || node.data.schema);
+              onPreview: async (comp) => {
+                const apiVersion = getApiVersion();
+                let schema = comp.schema || node.data.schema;
+
+                // For Beta API, always re-fetch to pick up edits
+                if (apiVersion === 'beta' && (node.data.ui_id || node.data.form_id)) {
+                  try {
+                    const uiResponse = await fetchStepUI(node.data.form_id);
+                    if (uiResponse.success && uiResponse.ui_config) {
+                      schema = uiResponse.ui_config;
+                      setNodes((nds) =>
+                        nds.map((n) =>
+                          n.id === node.id
+                            ? { ...n, data: { ...n.data, schema } }
+                            : n
+                        )
+                      );
+                    } else if (uiResponse.success && uiResponse.data) {
+                      schema = uiResponse.data;
+                      setNodes((nds) =>
+                        nds.map((n) =>
+                          n.id === node.id
+                            ? { ...n, data: { ...n.data, schema } }
+                            : n
+                        )
+                      );
+                    }
+                  } catch (err) {
+                    console.error(`Failed to fetch UI schema:`, err);
+                    setSnackbar({
+                      open: true,
+                      message: `Failed to load UI schema: ${err.message}`,
+                      severity: "error",
+                    });
+                    return;
+                  }
+                }
+
+                setFullPreviewSchema(schema);
                 setFullPreviewOpen(true);
               },
             },
@@ -1213,6 +1320,142 @@ const UIConfiguratorPage = () => {
   const handleWorkflowGenerated = useCallback(
     (workflowData) => {
       try {
+        // ── Beta API: steps array (no canvas_state) ──
+        const isBetaSteps = workflowData.steps && Array.isArray(workflowData.steps) && !workflowData.canvas_state;
+
+        if (isBetaSteps) {
+          const steps = workflowData.steps.sort((a, b) => a.order - b.order);
+          setWorkflowName(workflowData.workflow_name || "Custom Workflow");
+
+          const NODE_WIDTH = 320;
+          const NODE_GAP = 80;
+          const START_X = 50;
+          const START_Y = 80;
+          const NODES_PER_ROW = 4;
+
+          const restoredNodes = steps.map((step, index) => {
+            const nodeId = step.step_id || `step_${index}`;
+            const row = Math.floor(index / NODES_PER_ROW);
+            const col = index % NODES_PER_ROW;
+            const actualCol = row % 2 === 0 ? col : NODES_PER_ROW - 1 - col;
+
+            const component = {
+              id: step.step_id,
+              name: step.name,
+              title: step.name,
+              description: step.description,
+              category: "loan-vehicle",
+              icon: "person",
+              color: "#1976d2",
+            };
+
+            return {
+              id: nodeId,
+              type: "formPreview",
+              position: {
+                x: START_X + actualCol * (NODE_WIDTH + NODE_GAP),
+                y: START_Y + row * 250,
+              },
+              data: {
+                component,
+                schema: null,
+                title: step.name,
+                description: step.description,
+                category: "loan-vehicle",
+                form_id: step.step_id,
+                ui_id: step.ui_id,
+                has_ui_data: step.has_ui_data,
+                onDelete: () => {
+                  setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+                  setEdges((eds) =>
+                    eds.filter(
+                      (edge) => edge.source !== nodeId && edge.target !== nodeId
+                    )
+                  );
+                },
+                onConfigure: (comp) => {
+                  setSelectedComponent(comp);
+                  setSelectedNodeForConfig({ id: nodeId, data: { ...comp, form_id: step.step_id, ui_id: step.ui_id } });
+                  setApiConfigChatOpen(true);
+                },
+                onPreview: async (comp) => {
+                  let schema = comp?.schema;
+                  // Always re-fetch in beta mode to pick up edits
+                  if (step.ui_id || step.step_id) {
+                    try {
+                      const uiResponse = await fetchStepUI(step.step_id);
+                      if (uiResponse.success && uiResponse.ui_config) {
+                        schema = uiResponse.ui_config;
+                        setNodes((nds) =>
+                          nds.map((n) =>
+                            n.id === nodeId
+                              ? { ...n, data: { ...n.data, schema } }
+                              : n
+                          )
+                        );
+                      } else if (uiResponse.success && uiResponse.data) {
+                        schema = uiResponse.data;
+                        setNodes((nds) =>
+                          nds.map((n) =>
+                            n.id === nodeId
+                              ? { ...n, data: { ...n.data, schema } }
+                              : n
+                          )
+                        );
+                      }
+                    } catch (err) {
+                      console.error(`Failed to fetch UI schema:`, err);
+                      setSnackbar({
+                        open: true,
+                        message: `Failed to load UI schema: ${err.message}`,
+                        severity: "error",
+                      });
+                      return;
+                    }
+                  }
+                  setFullPreviewSchema(schema);
+                  setFullPreviewOpen(true);
+                },
+              },
+            };
+          });
+
+          // Build edges connecting sequential steps
+          const restoredEdges = steps.slice(0, -1).map((step, index) => {
+            const sourceId = step.step_id || `step_${index}`;
+            const targetId = steps[index + 1].step_id || `step_${index + 1}`;
+            return {
+              id: `edge_${sourceId}_${targetId}`,
+              source: sourceId,
+              target: targetId,
+              type: "smoothstep",
+              animated: true,
+              style: { stroke: "#1976d2", strokeWidth: 2 },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: "#1976d2",
+              },
+            };
+          });
+
+          setNodes(restoredNodes);
+          setEdges(restoredEdges);
+
+          if (workflowData.workflow_id) {
+            setCurrentWorkflowId(workflowData.workflow_id);
+          }
+
+          loadWorkflowsList();
+
+          setSnackbar({
+            open: true,
+            message: `Workflow '${workflowData.workflow_name}' loaded with ${steps.length} steps!`,
+            severity: "success",
+          });
+          return;
+        }
+
+        // ── Alpha API: canvas_state format ──
         const canvasState = workflowData.canvas_state;
         if (!canvasState?.nodes) return;
 
@@ -1261,8 +1504,45 @@ const UIConfiguratorPage = () => {
                 setSelectedNodeForConfig(node);
                 setApiConfigChatOpen(true);
               },
-              onPreview: (comp) => {
-                setFullPreviewSchema(comp.schema || node.data.schema);
+              onPreview: async (comp) => {
+                const apiVersion = getApiVersion();
+                let schema = comp.schema || node.data.schema;
+
+                // For Beta API, always re-fetch to pick up edits
+                if (apiVersion === 'beta' && (node.data.ui_id || node.data.form_id)) {
+                  try {
+                    const uiResponse = await fetchStepUI(node.data.form_id);
+                    if (uiResponse.success && uiResponse.ui_config) {
+                      schema = uiResponse.ui_config;
+                      setNodes((nds) =>
+                        nds.map((n) =>
+                          n.id === node.id
+                            ? { ...n, data: { ...n.data, schema } }
+                            : n
+                        )
+                      );
+                    } else if (uiResponse.success && uiResponse.data) {
+                      schema = uiResponse.data;
+                      setNodes((nds) =>
+                        nds.map((n) =>
+                          n.id === node.id
+                            ? { ...n, data: { ...n.data, schema } }
+                            : n
+                        )
+                      );
+                    }
+                  } catch (err) {
+                    console.error(`Failed to fetch UI schema:`, err);
+                    setSnackbar({
+                      open: true,
+                      message: `Failed to load UI schema: ${err.message}`,
+                      severity: "error",
+                    });
+                    return;
+                  }
+                }
+
+                setFullPreviewSchema(schema);
                 setFullPreviewOpen(true);
               },
             },
@@ -1316,26 +1596,61 @@ const UIConfiguratorPage = () => {
 
   /**
    * Load list of workflows for the user
+   * Supports both Alpha and Beta APIs
    */
   const loadWorkflowsList = useCallback(async () => {
     try {
       setWorkflowsLoading(true);
       const username = authService.getUsername() || authService.getUserId();
       const productId = "loan_app"; // Get from context or props
+      const apiVersion = getApiVersion();
 
-      const data = await uiConfiguratorService.getUserWorkflows(
-        username,
-        productId
-      );
+      console.log(`📋 Loading workflows from ${apiVersion.toUpperCase()} API...`);
+
+      let data;
+      if (apiVersion === 'beta') {
+        // Use Beta API
+        const response = await fetchWorkflows({ userId: username, productId });
+        console.log("📋 Beta API response:", response);
+
+        // Transform Beta response to match Alpha format
+        if (response.success && response.workflows) {
+          data = {
+            workflows: response.workflows.map(w => ({
+              workflow_id: w.workflow_id,
+              workflow_name: w.name || w.workflow_name,
+              description: w.description,
+              version: w.version,
+              status: w.status,
+              total_nodes: w.total_steps || 0,
+              total_edges: 0,
+              product_id: w.product_id
+            }))
+          };
+        } else {
+          data = { workflows: [] };
+        }
+      } else {
+        // Use Alpha API (existing logic)
+        data = await uiConfiguratorService.getUserWorkflows(
+          username,
+          productId
+        );
+      }
 
       console.log("📋 Workflows list loaded:", data);
-
       setWorkflowsList(data.workflows || []);
+
+      setSnackbar({
+        open: true,
+        message: `Loaded ${data.workflows?.length || 0} workflows from ${apiVersion.toUpperCase()} API`,
+        severity: "success",
+      });
     } catch (error) {
       console.error("❌ Error loading workflows list:", error);
       setSnackbar({
         open: true,
-        message: "Failed to load workflows list",
+        message: `Failed to load workflows: ${error.message}`,
         severity: "error",
       });
     } finally {
@@ -1551,12 +1866,23 @@ const UIConfiguratorPage = () => {
 
       // Check if config is a full form schema (has sections) or just API config
       const isFullSchema = config && config.sections && config.id;
+      // Check if config is a beta UI config (has forms.ui structure)
+      const isBetaUiConfig = config && config.forms;
 
       // Update the node's schema with the new configuration
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === selectedNodeForConfig.id) {
-            if (isFullSchema) {
+            if (isBetaUiConfig) {
+              // Beta UI config — store as schema directly
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  schema: config,
+                },
+              };
+            } else if (isFullSchema) {
               // Full schema replacement - update everything
               return {
                 ...node,
@@ -1592,7 +1918,7 @@ const UIConfiguratorPage = () => {
 
       setSnackbar({
         open: true,
-        message: isFullSchema
+        message: (isFullSchema || isBetaUiConfig)
           ? "Component updated successfully!"
           : "API configuration updated successfully!",
         severity: "success",
@@ -1711,7 +2037,7 @@ const UIConfiguratorPage = () => {
     }
   };
 
-  const handleTestWorkflow = () => {
+  const handleTestWorkflow = async () => {
     if (nodes.length === 0) {
       setSnackbar({
         open: true,
@@ -1723,12 +2049,61 @@ const UIConfiguratorPage = () => {
 
     // Find the first node (entry point)
     const firstNode = nodes[0];
+    const apiVersion = getApiVersion();
+    let schema = firstNode.data.schema;
+
+    // Treat empty objects as no schema
+    if (schema && typeof schema === 'object' && Object.keys(schema).length === 0) {
+      schema = null;
+    }
+
+    // For Beta API, fetch UI schema if not already loaded
+    const firstStepId = firstNode.data.form_id || firstNode.data.ui_id || firstNode.data.component?.id;
+    if (apiVersion === 'beta' && !schema && firstStepId) {
+      try {
+        const stepId = firstStepId;
+        console.log(`🔍 Fetching UI schema for first step: ${stepId}`);
+        const uiResponse = await fetchStepUI(stepId);
+        console.log('📦 Received UI response:', uiResponse);
+        if (uiResponse.success && uiResponse.ui_config) {
+          schema = uiResponse.ui_config;
+          console.log('✅ Schema extracted:', schema);
+          // Update node with fetched schema
+          setNodes((nds) =>
+            nds.map((n) =>
+              n.id === firstNode.id
+                ? { ...n, data: { ...n.data, schema } }
+                : n
+            )
+          );
+        } else if (uiResponse.success && uiResponse.data) {
+          schema = uiResponse.data;
+          console.log('✅ Schema from data:', schema);
+          // Update node with fetched schema
+          setNodes((nds) =>
+            nds.map((n) =>
+              n.id === firstNode.id
+                ? { ...n, data: { ...n.data, schema } }
+                : n
+            )
+          );
+        }
+      } catch (err) {
+        console.error(`❌ Failed to fetch UI schema:`, err);
+        setSnackbar({
+          open: true,
+          message: `Failed to load UI schema: ${err.message}`,
+          severity: "error",
+        });
+        return;
+      }
+    }
 
     // Start workflow test
     setIsTestingWorkflow(true);
     setCurrentTestNodeIndex(0);
     setWorkflowTestData({});
-    setFullPreviewSchema(firstNode.data.schema);
+    setFullPreviewSchema(schema);
     setFullPreviewOpen(true);
 
     setSnackbar({
@@ -1742,78 +2117,131 @@ const UIConfiguratorPage = () => {
    * Handle form submission during workflow testing
    * Navigate to next connected node
    */
-  const handleWorkflowFormSubmit = (formData) => {
+  /**
+   * Check if a schema object has actual renderable content
+   * (not null, not undefined, not an empty object)
+   */
+  const isValidSchema = (schema) => {
+    if (!schema) return false;
+    if (typeof schema !== 'object') return false;
+    return Object.keys(schema).length > 0;
+  };
+
+  const handleWorkflowFormSubmit = async (formData) => {
     console.log("📝 Form submitted in workflow test:", formData);
     console.log("🔍 Current test node index:", currentTestNodeIndex);
-    console.log("🔍 Total nodes:", nodes.length);
-    console.log("🔍 Total edges:", edges.length);
 
-    // Store form data
+    // Store form data for current node
     const currentNode = nodes[currentTestNodeIndex];
-    console.log("🔍 Current node:", currentNode);
-    console.log("🔍 Current node ID:", currentNode?.id);
-    console.log("🔍 Current node title:", currentNode?.data?.title);
+    if (!currentNode) return;
 
     setWorkflowTestData((prev) => ({
       ...prev,
       [currentNode.id]: formData.formData,
     }));
 
-    // Find next node connected to current node
-    const currentNodeId = currentNode.id;
-    console.log("🔍 Looking for edge with source:", currentNodeId);
-    console.log("🔍 All edges:", edges);
+    // Walk edges to find the next node with a renderable schema,
+    // skipping nodes that have no UI. Use a local variable to track
+    // position so we don't depend on stale React state.
+    let walkNodeId = currentNode.id;
+    const apiVersion = getApiVersion();
+    const maxSkips = nodes.length; // safety cap to prevent infinite loop
+    let skips = 0;
 
-    const nextEdge = edges.find((edge) => edge.source === currentNodeId);
-    console.log("🔍 Found next edge:", nextEdge);
+    while (skips < maxSkips) {
+      const nextEdge = edges.find((edge) => edge.source === walkNodeId);
 
-    if (nextEdge) {
-      // Find the next node
-      const nextNodeId = nextEdge.target;
-      console.log("🔍 Next node ID:", nextNodeId);
-
-      const nextNodeIndex = nodes.findIndex((n) => n.id === nextNodeId);
-      console.log("🔍 Next node index:", nextNodeIndex);
-
-      const nextNode = nodes[nextNodeIndex];
-      console.log("🔍 Next node:", nextNode);
-
-      if (nextNode) {
-        console.log("➡️ Navigating to next node:", nextNode.data.title);
-        console.log("🔍 Next node schema:", nextNode.data.schema);
-
-        // Update current node index
-        setCurrentTestNodeIndex(nextNodeIndex);
-
-        // Update preview schema to next form
-        setFullPreviewSchema(nextNode.data.schema);
-
+      if (!nextEdge) {
+        // No more nodes - workflow complete
+        console.log("✅ Workflow completed!");
         setSnackbar({
           open: true,
-          message: `Moving to: ${nextNode.data.title}`,
+          message: "Workflow completed successfully!",
           severity: "success",
         });
-      } else {
-        console.error("❌ Next node not found in nodes array!");
+        setTimeout(() => {
+          setFullPreviewOpen(false);
+          setIsTestingWorkflow(false);
+          setCurrentTestNodeIndex(0);
+        }, 2000);
+        return;
       }
-    } else {
-      // No more nodes - workflow complete
-      console.log("✅ Workflow completed!");
-      console.log("📊 Collected data:", workflowTestData);
 
-      setSnackbar({
-        open: true,
-        message: "Workflow completed successfully! 🎉",
-        severity: "success",
-      });
+      const nextNodeId = nextEdge.target;
+      const nextNodeIndex = nodes.findIndex((n) => n.id === nextNodeId);
+      const nextNode = nodes[nextNodeIndex];
 
-      // Close preview after 2 seconds
-      setTimeout(() => {
-        setFullPreviewOpen(false);
-        setIsTestingWorkflow(false);
-        setCurrentTestNodeIndex(0);
-      }, 2000);
+      if (!nextNode) {
+        console.error("❌ Next node not found in nodes array!");
+        return;
+      }
+
+      console.log("➡️ Navigating to next node:", nextNode.data.title);
+
+      let schema = nextNode.data.schema;
+
+      // Treat empty objects as no schema
+      if (!isValidSchema(schema)) {
+        schema = null;
+      }
+
+      // For Beta API, fetch UI schema if not already loaded
+      // Try multiple sources for the step ID
+      const stepId = nextNode.data.form_id || nextNode.data.ui_id || nextNode.data.component?.id;
+      if (apiVersion === 'beta' && !schema && stepId) {
+        try {
+          console.log(`🔍 Fetching UI schema for next step: ${stepId}`);
+          const uiResponse = await fetchStepUI(stepId);
+          if (uiResponse.success && uiResponse.ui_config) {
+            schema = uiResponse.ui_config;
+          } else if (uiResponse.success && uiResponse.data) {
+            schema = uiResponse.data;
+          }
+          if (schema) {
+            // Update node with fetched schema
+            setNodes((nds) =>
+              nds.map((n) =>
+                n.id === nextNode.id
+                  ? { ...n, data: { ...n.data, schema } }
+                  : n
+              )
+            );
+          }
+        } catch (err) {
+          console.error(`❌ Failed to fetch UI schema for ${stepId}:`, err);
+          // Don't return — try to skip this node and continue
+        }
+      }
+
+      if (isValidSchema(schema)) {
+        // Found a node with schema — navigate to it
+        setCurrentTestNodeIndex(nextNodeIndex);
+        setFullPreviewSchema(schema);
+        setTimeout(() => {
+          const formTop = document.getElementById('dynamic-form-top');
+          if (formTop) formTop.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        setSnackbar({
+          open: true,
+          message: `Step ${nextNodeIndex + 1}: ${nextNode.data.title}`,
+          severity: "success",
+        });
+        return;
+      }
+
+      // No schema — skip this node and continue walking
+      console.log(`⏭️ Skipping node "${nextNode.data.title}" (no UI schema, stepId: ${stepId})`);
+      walkNodeId = nextNode.id;
+      skips++;
     }
+
+    // If we exhausted all skips, something is wrong
+    console.error("❌ Could not find a node with schema after skipping", maxSkips, "nodes");
+    setSnackbar({
+      open: true,
+      message: "No more steps with UI data found.",
+      severity: "warning",
+    });
   };
 
   // Handle drawer resize with useRef to avoid state issues
@@ -1985,25 +2413,28 @@ const UIConfiguratorPage = () => {
           </>
         }
         rightContent={
-          <Button
-            href="/configurator/ui/template-manager"
-            startIcon={<Description fontSize="small" />}
-            sx={{
-              color: theme.palette.primary.main,
-              textTransform: "none",
-              fontWeight: 600,
-              px: 2,
-              py: 0.8,
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.primary.main, 0.06),
-              transition: "all 0.15s ease",
-              "&:hover": {
-                bgcolor: alpha(theme.palette.primary.main, 0.12),
-              },
-            }}
-          >
-            Template Manager
-          </Button>
+          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+            <ApiVersionToggle />
+            <Button
+              href="/configurator/ui/template-manager"
+              startIcon={<Description fontSize="small" />}
+              sx={{
+                color: theme.palette.primary.main,
+                textTransform: "none",
+                fontWeight: 600,
+                px: 2,
+                py: 0.8,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.primary.main, 0.06),
+                transition: "all 0.15s ease",
+                "&:hover": {
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                },
+              }}
+            >
+              Template Manager
+            </Button>
+          </Box>
         }
       />
 
@@ -2510,7 +2941,7 @@ const UIConfiguratorPage = () => {
                 fitView
                 fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
                 defaultEdgeOptions={{ type: "smoothstep", animated: true }}
-                minZoom={0.3}
+                minZoom={0.1}
                 maxZoom={1.5}
                 style={{ width: "100%", height: "100%" }}
               >
@@ -2673,9 +3104,9 @@ const UIConfiguratorPage = () => {
               {/* Form Content - Scrollable with Padding */}
               <Box sx={styles.formContent}>
                 {fullPreviewSchema ? (
-                  <DynamicUIRenderer
+                  <UnifiedFormRenderer
                     key={JSON.stringify(fullPreviewSchema)}
-                    data={fullPreviewSchema}
+                    schema={fullPreviewSchema}
                     hideMetadata={true}
                     skipNavigation={isTestingWorkflow}
                     onSubmit={(data) => {

@@ -310,8 +310,169 @@ const InnerFlow = ({ nodes: initialNodes, edges: initialEdges, height }) => {
   );
 };
 
+// ── Beta Steps Pipeline View (compact for 27+ steps) ──
+const VISIBLE_STEPS = 8;
+const BetaStepsPipeline = ({ steps, workflowName, height }) => {
+  const [expanded, setExpanded] = React.useState(false);
+  const sorted = [...steps].sort((a, b) => a.order - b.order);
+  const totalSteps = sorted.length;
+  const needsCollapse = totalSteps > VISIBLE_STEPS;
+  const showFirst = needsCollapse && !expanded ? 5 : totalSteps;
+  const showLast = needsCollapse && !expanded ? 2 : 0;
+  const hiddenCount = needsCollapse && !expanded ? totalSteps - showFirst - showLast : 0;
+
+  const visibleSteps = needsCollapse && !expanded
+    ? [...sorted.slice(0, showFirst), null, ...sorted.slice(-showLast)]
+    : sorted;
+
+  return (
+    <Box sx={{ borderRadius: "12px", overflow: "hidden", border: `1px solid ${alpha(BRAND, 0.15)}`, bgcolor: "#fafbfc" }}>
+      {/* Header */}
+      <Box sx={{
+        px: 2, py: 1.5,
+        background: `linear-gradient(135deg, ${alpha(BRAND, 0.05)}, ${alpha(BRAND, 0.02)})`,
+        borderBottom: `1px solid ${alpha(BRAND, 0.1)}`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: START_COLOR, boxShadow: `0 0 6px ${alpha(START_COLOR, 0.4)}` }} />
+          <Typography sx={{ fontWeight: 700, fontSize: "13px", color: "#0f1b2d" }}>
+            {workflowName || "Workflow"}
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", gap: 0.75 }}>
+          <Chip label={`${totalSteps} steps`} size="small" sx={{ fontSize: "10px", height: 22, bgcolor: alpha(BRAND, 0.1), color: BRAND, fontWeight: 600, "& .MuiChip-label": { px: 1 } }} />
+          <Chip label="BETA" size="small" sx={{ fontSize: "10px", height: 22, bgcolor: alpha("#f59e0b", 0.15), color: "#d97706", fontWeight: 700, "& .MuiChip-label": { px: 1 } }} />
+        </Box>
+      </Box>
+
+      {/* Steps timeline */}
+      <Box sx={{ maxHeight: height - 52, overflowY: "auto", p: 1.5, "&::-webkit-scrollbar": { width: 4 }, "&::-webkit-scrollbar-thumb": { background: alpha(BRAND, 0.15), borderRadius: 2 } }}>
+        {visibleSteps.map((step, idx) => {
+          // Collapsed placeholder
+          if (step === null) {
+            return (
+              <Box key="collapsed" sx={{ display: "flex", alignItems: "center", gap: 1.5, pl: 1.25, py: 0.5 }}>
+                <Box sx={{ width: 24, height: 24, borderRadius: "50%", border: `2px dashed ${alpha(BRAND, 0.3)}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Typography sx={{ fontSize: "8px", fontWeight: 700, color: BRAND }}>...</Typography>
+                </Box>
+                <Box
+                  onClick={() => setExpanded(true)}
+                  sx={{
+                    flex: 1, py: 0.75, px: 1.5, borderRadius: "8px",
+                    border: `1px dashed ${alpha(BRAND, 0.2)}`, bgcolor: alpha(BRAND, 0.02),
+                    cursor: "pointer", transition: "all 0.15s ease",
+                    "&:hover": { bgcolor: alpha(BRAND, 0.06), borderColor: BRAND },
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5,
+                  }}
+                >
+                  <Typography sx={{ fontSize: "11px", fontWeight: 600, color: BRAND }}>
+                    +{hiddenCount} more steps
+                  </Typography>
+                  <ArrowForward sx={{ fontSize: 12, color: BRAND, transform: "rotate(90deg)" }} />
+                </Box>
+              </Box>
+            );
+          }
+
+          const isFirst = step.order === 1;
+          const isLast = step.order === totalSteps;
+          const isComplete = step.name?.toLowerCase().includes("complete");
+          const IconComp = getIconForTitle(step.name || "");
+
+          return (
+            <Box key={step.step_id} sx={{ display: "flex", alignItems: "stretch", gap: 1.5 }}>
+              {/* Timeline line + dot */}
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: 24, flexShrink: 0 }}>
+                {idx > 0 && <Box sx={{ width: 2, flex: 1, bgcolor: alpha(BRAND, 0.15), minHeight: 4 }} />}
+                <Box sx={{
+                  width: isFirst || isLast ? 24 : 20, height: isFirst || isLast ? 24 : 20,
+                  borderRadius: "50%", flexShrink: 0,
+                  bgcolor: isFirst ? START_COLOR : isLast ? END_COLOR : isComplete ? alpha("#059669", 0.15) : alpha(BRAND, 0.1),
+                  color: isFirst || isLast ? "#fff" : isComplete ? "#059669" : BRAND,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  border: isFirst || isLast ? "none" : `1.5px solid ${isComplete ? alpha("#059669", 0.3) : alpha(BRAND, 0.2)}`,
+                }}>
+                  {isFirst ? <PlayArrow sx={{ fontSize: 12 }} /> : isLast ? <FlagRounded sx={{ fontSize: 12 }} /> : (
+                    <Typography sx={{ fontSize: "9px", fontWeight: 700 }}>{step.order}</Typography>
+                  )}
+                </Box>
+                {idx < visibleSteps.length - 1 && <Box sx={{ width: 2, flex: 1, bgcolor: alpha(BRAND, 0.15), minHeight: 4 }} />}
+              </Box>
+
+              {/* Step card */}
+              <Box sx={{
+                flex: 1, py: 0.75, display: "flex", alignItems: "center", gap: 1,
+                my: 0.25, px: 1.25, borderRadius: "8px",
+                bgcolor: isFirst || isLast ? alpha(isFirst ? START_COLOR : END_COLOR, 0.04) : "transparent",
+                border: isFirst || isLast ? `1px solid ${alpha(isFirst ? START_COLOR : END_COLOR, 0.12)}` : "1px solid transparent",
+                transition: "all 0.15s ease",
+                "&:hover": { bgcolor: alpha(BRAND, 0.04) },
+              }}>
+                <Avatar variant="rounded" sx={{
+                  width: 28, height: 28, borderRadius: "7px",
+                  bgcolor: isComplete ? alpha("#059669", 0.1) : alpha(BRAND, 0.08),
+                  color: isComplete ? "#059669" : BRAND,
+                }}>
+                  <IconComp sx={{ fontSize: 14 }} />
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{
+                    fontWeight: 600, fontSize: "11px", color: "#0f1b2d", lineHeight: 1.3,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {step.name}
+                  </Typography>
+                  {step.description && step.description !== step.name && (
+                    <Typography sx={{ fontSize: "9px", color: "#9ca3af", lineHeight: 1.2, mt: 0.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {step.description}
+                    </Typography>
+                  )}
+                </Box>
+                {step.has_ui_data && (
+                  <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#059669", flexShrink: 0, opacity: 0.6 }} />
+                )}
+              </Box>
+            </Box>
+          );
+        })}
+
+        {/* Collapse button if expanded */}
+        {expanded && needsCollapse && (
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
+            <Chip
+              label="Show less"
+              size="small"
+              onClick={() => setExpanded(false)}
+              sx={{
+                fontSize: "10px", height: 24, cursor: "pointer",
+                bgcolor: alpha(BRAND, 0.08), color: BRAND, fontWeight: 600,
+                "&:hover": { bgcolor: alpha(BRAND, 0.15) },
+                "& .MuiChip-label": { px: 1.5 },
+              }}
+            />
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
 // ── Main Component ──
 const WorkflowFlowViewer = ({ workflowData, height = 400 }) => {
+  // ── Beta mode: steps array ──
+  const betaSteps = workflowData?.steps;
+  if (betaSteps && Array.isArray(betaSteps) && betaSteps.length > 0) {
+    return (
+      <BetaStepsPipeline
+        steps={betaSteps}
+        workflowName={workflowData.workflow_name}
+        height={height}
+      />
+    );
+  }
+
+  // ── Alpha mode: canvas_state ──
   const canvasState = workflowData?.canvas_state;
 
   const { processedNodes, processedEdges, flowSequence } = useMemo(() => {
@@ -329,7 +490,6 @@ const WorkflowFlowViewer = ({ workflowData, height = 400 }) => {
     // Build flow sequence for the step indicator
     const sequence = [];
     const visited = new Set();
-    // Find start node (not a target of any edge)
     let startNodeId = rawNodes.find((n) => !targetIds.has(n.id))?.id;
     if (startNodeId) {
       let current = startNodeId;
@@ -347,9 +507,7 @@ const WorkflowFlowViewer = ({ workflowData, height = 400 }) => {
       }
     }
 
-    // Auto-layout: arrange nodes in a horizontal flow
     const nodeSpacingX = 300;
-    const nodeSpacingY = 0;
     const nodesPerRow = 4;
 
     const orderedNodes = sequence.length > 0
@@ -359,7 +517,6 @@ const WorkflowFlowViewer = ({ workflowData, height = 400 }) => {
     const pNodes = orderedNodes.map((node, index) => {
       const row = Math.floor(index / nodesPerRow);
       const col = index % nodesPerRow;
-      // Serpentine layout: odd rows go right-to-left
       const actualCol = row % 2 === 0 ? col : nodesPerRow - 1 - col;
 
       return {

@@ -220,84 +220,46 @@ const ImageCaptureUpload = ({ field, value, onChange, error, disabled }) => {
 
       {/* Image Preview */}
       {imagePreview && (
-        <Paper
-          elevation={0}
-          sx={{
-            position: 'relative',
-            borderRadius: '12px',
-            overflow: 'hidden',
-            border: `2px solid ${theme.palette.success.main}`,
-            mb: 2
-          }}
-        >
-          <Box
-            component="img"
-            src={imagePreview}
-            alt="Preview"
-            sx={{
-              width: '100%',
-              height: 'auto',
-              maxHeight: '300px',
-              objectFit: 'contain',
-              display: 'block',
-              backgroundColor: '#f5f5f5'
-            }}
-          />
+        <Box sx={{ mb: 1 }}>
           <Box
             sx={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              display: 'flex',
-              gap: 1
+              position: 'relative',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              border: `1.5px solid ${theme.palette.success.main}`,
+              backgroundColor: '#f9f9f9',
             }}
           >
-            <IconButton
-              size="small"
-              onClick={retakePhoto}
+            <Box
+              component="img"
+              src={imagePreview}
+              alt="Preview"
               sx={{
-                backgroundColor: alpha('#ffffff', 0.9),
-                '&:hover': {
-                  backgroundColor: '#ffffff'
-                }
+                width: '100%',
+                height: '160px',
+                objectFit: 'cover',
+                display: 'block',
               }}
-            >
-              <RefreshIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={removeImage}
-              sx={{
-                backgroundColor: alpha('#ffffff', 0.9),
-                '&:hover': {
-                  backgroundColor: '#ffffff'
-                }
-              }}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
+            />
           </Box>
-          <Box
-            sx={{
-              position: 'absolute',
-              bottom: 8,
-              left: 8,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              backgroundColor: alpha(theme.palette.success.main, 0.9),
-              color: '#ffffff',
-              px: 1.5,
-              py: 0.5,
-              borderRadius: '20px'
-            }}
-          >
-            <CheckIcon sx={{ fontSize: 16 }} />
-            <Typography variant="caption" sx={{ fontWeight: 600 }}>
-              Image Captured
-            </Typography>
+          {/* Actions below image */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <CheckIcon sx={{ fontSize: 16, color: theme.palette.success.main }} />
+              <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
+                Image Captured
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <IconButton size="small" onClick={retakePhoto} sx={{ color: '#666' }}>
+                <RefreshIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <IconButton size="small" onClick={removeImage} sx={{ color: '#666' }}>
+                <CloseIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Box>
           </Box>
-        </Paper>
+        </Box>
       )}
 
       {/* Upload/Capture Buttons */}

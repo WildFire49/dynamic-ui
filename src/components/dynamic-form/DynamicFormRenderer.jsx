@@ -80,18 +80,15 @@ import {
   ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 import ImageCaptureUpload from './ImageCaptureUpload';
+import { getFormTheme, detectCategory } from './formTheme';
 
-// ── Constants ──
+// ── Fallback constants (overridden per-render by theme) ──
 
-const BRAND = '#0078d7';
-const BRAND_DARK = '#005a9e';
-const BRAND_LIGHT = '#e8f4fd';
-const SURFACE = '#f5f7fa';
-const TEXT_PRIMARY = '#111827';
-const TEXT_SECONDARY = '#6b7280';
-const TEXT_MUTED = '#9ca3af';
-const BORDER = '#e5e7eb';
-const SUCCESS = '#059669';
+const SURFACE = '#f8fafc';
+const TEXT_PRIMARY = '#0f172a';
+const TEXT_SECONDARY = '#475569';
+const TEXT_MUTED = '#94a3b8';
+const BORDER = '#e2e8f0';
 
 const ICON_MAP = {
   'male': MaleIcon, 'female': FemaleIcon, 'transgender': TransgenderIcon,
@@ -113,10 +110,9 @@ const ICON_MAP = {
 
 const getIconComponent = (iconName) => ICON_MAP[iconName?.toLowerCase()] || PersonIcon;
 
-// ── Styles ──
+// ── Dynamic style builders (accept theme colors) ──
 
-// Inputs sit inside grouped SURFACE container, so they use white bg
-const inputSx = {
+const buildInputSx = (t) => ({
   '& .MuiOutlinedInput-root': {
     borderRadius: '12px',
     backgroundColor: '#fff',
@@ -125,21 +121,22 @@ const inputSx = {
     fontWeight: 500,
     transition: 'all 0.2s ease',
     '& fieldset': { borderColor: BORDER },
-    '&:hover fieldset': { borderColor: alpha(BRAND, 0.4) },
+    '&:hover fieldset': { borderColor: alpha(t.brand, 0.4) },
     '&.Mui-focused': {
-      '& fieldset': { borderColor: BRAND, borderWidth: 2 },
+      '& fieldset': { borderColor: t.brand, borderWidth: 2 },
+      boxShadow: `0 0 0 3px ${t.brandGlow}`,
     },
     '& input': { color: TEXT_PRIMARY, fontWeight: 500 },
     '& input::placeholder': { color: TEXT_MUTED, opacity: 1 },
   },
   '& .MuiInputLabel-root': {
     fontSize: '14px', fontWeight: 500, color: TEXT_SECONDARY,
-    '&.Mui-focused': { color: BRAND, fontWeight: 600 },
+    '&.Mui-focused': { color: t.brand, fontWeight: 600 },
   },
   '& .MuiFormHelperText-root': { fontSize: '12px', ml: 0.5, mt: 0.5 },
-};
+});
 
-const datePickerSx = {
+const buildDatePickerSx = (t) => ({
   width: '100%',
   '& .MuiOutlinedInput-root': {
     borderRadius: '12px',
@@ -149,19 +146,20 @@ const datePickerSx = {
     fontWeight: 500,
     transition: 'all 0.2s ease',
     '& fieldset': { borderColor: BORDER },
-    '&:hover fieldset': { borderColor: alpha(BRAND, 0.4) },
+    '&:hover fieldset': { borderColor: alpha(t.brand, 0.4) },
     '&.Mui-focused': {
-      '& fieldset': { borderColor: BRAND, borderWidth: 2 },
+      '& fieldset': { borderColor: t.brand, borderWidth: 2 },
+      boxShadow: `0 0 0 3px ${t.brandGlow}`,
     },
     '& input': { color: TEXT_PRIMARY, fontWeight: 500 },
   },
   '& .MuiInputLabel-root': {
     fontSize: '14px', fontWeight: 500, color: TEXT_SECONDARY,
-    '&.Mui-focused': { color: BRAND, fontWeight: 600 },
+    '&.Mui-focused': { color: t.brand, fontWeight: 600 },
   },
-};
+});
 
-const selectSx = {
+const buildSelectSx = (t) => ({
   borderRadius: '12px',
   backgroundColor: '#fff',
   fontSize: '15px',
@@ -169,12 +167,13 @@ const selectSx = {
   fontWeight: 500,
   transition: 'all 0.2s ease',
   '& .MuiOutlinedInput-notchedOutline': { borderColor: BORDER },
-  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: alpha(BRAND, 0.4) },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: BRAND, borderWidth: 2 },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: alpha(t.brand, 0.4) },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: t.brand, borderWidth: 2 },
+  '&.Mui-focused': { boxShadow: `0 0 0 3px ${t.brandGlow}` },
   '& .MuiSelect-select': { color: TEXT_PRIMARY },
-};
+});
 
-const menuPaperSx = {
+const buildMenuPaperSx = (t) => ({
   borderRadius: '16px', mt: 0.5,
   boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.05)',
   border: 'none',
@@ -182,38 +181,45 @@ const menuPaperSx = {
     fontSize: '15px', fontWeight: 500, color: TEXT_PRIMARY,
     py: 1.5, mx: 1, borderRadius: '12px',
     transition: 'all 0.15s ease',
-    '&.Mui-selected': { backgroundColor: BRAND_LIGHT, color: BRAND, fontWeight: 600 },
+    '&.Mui-selected': { backgroundColor: t.brandLight, color: t.brand, fontWeight: 600 },
     '&:hover': { backgroundColor: SURFACE },
   },
-};
+});
 
-// Radio — compact pill style (inside SURFACE container, use white bg)
-const getRadioSx = (selected) => ({
+// Radio — compact pill style with themed colors
+const buildRadioSx = (selected, t) => ({
   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75,
   py: 1.75, px: 1,
-  bgcolor: selected ? alpha(BRAND, 0.06) : '#fff',
+  bgcolor: selected ? alpha(t.brand, 0.06) : '#fff',
   borderRadius: '14px', cursor: 'pointer',
   border: '2px solid',
-  borderColor: selected ? BRAND : BORDER,
+  borderColor: selected ? t.brand : BORDER,
+  boxShadow: selected ? `0 0 0 3px ${t.brandGlow}` : 'none',
   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
   position: 'relative',
+  '&:hover': {
+    borderColor: selected ? t.brand : alpha(t.brand, 0.3),
+    bgcolor: selected ? alpha(t.brand, 0.08) : alpha(t.brand, 0.02),
+  },
   '&:active': { transform: 'scale(0.96)' },
 });
 
-const getRadioAvatarSx = (selected) => ({
-  width: 42, height: 42,
-  bgcolor: selected ? BRAND : '#dfe3e8',
-  color: selected ? '#fff' : TEXT_SECONDARY,
+const buildRadioAvatarSx = (selected, t) => ({
+  width: 44, height: 44,
+  bgcolor: selected ? t.brand : alpha(t.brand, 0.08),
+  color: selected ? '#fff' : t.brand,
   transition: 'all 0.2s ease',
+  boxShadow: selected ? `0 4px 12px ${alpha(t.brand, 0.25)}` : 'none',
 });
 
-const radioCheckSx = {
+const buildRadioCheckSx = (t) => ({
   position: 'absolute', top: 6, right: 6,
-  width: 18, height: 18, borderRadius: '50%', bgcolor: BRAND,
+  width: 18, height: 18, borderRadius: '50%', bgcolor: t.brand,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
+  boxShadow: `0 2px 6px ${alpha(t.brand, 0.3)}`,
   animation: 'checkPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
   '@keyframes checkPop': { '0%': { transform: 'scale(0)' }, '100%': { transform: 'scale(1)' } },
-};
+});
 
 // Biometric
 const getBiometricSx = (captured, successColor) => ({
@@ -227,30 +233,31 @@ const getBiometricSx = (captured, successColor) => ({
   '&:active': captured ? {} : { transform: 'scale(0.98)' },
 });
 
-const getBiometricCircleSx = (captured, successColor, successDark) => ({
+const buildBiometricCircleSx = (captured, successColor, successDark, t) => ({
   width: 72, height: 72, borderRadius: '50%',
   background: captured
     ? `linear-gradient(135deg, ${successColor}, ${successDark})`
-    : `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})`,
+    : t.gradient,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  boxShadow: `0 8px 32px ${alpha(captured ? successColor : BRAND, 0.3)}`,
+  boxShadow: `0 8px 32px ${alpha(captured ? successColor : t.brand, 0.3)}`,
 });
 
 // CTA button
-const continueBtnSx = {
+const buildContinueBtnSx = (t) => ({
   py: 1.75, borderRadius: '16px', textTransform: 'none',
   fontSize: '16px', fontWeight: 700, letterSpacing: '-0.01em',
-  bgcolor: BRAND, color: '#fff',
-  boxShadow: `0 4px 20px ${alpha(BRAND, 0.35)}`,
+  background: t.gradient, color: '#fff',
+  boxShadow: t.shadowBrand,
   transition: 'all 0.2s ease',
   '&:hover': {
-    bgcolor: BRAND_DARK,
-    boxShadow: `0 8px 32px ${alpha(BRAND, 0.4)}`,
+    background: t.gradient,
+    filter: 'brightness(0.92)',
+    boxShadow: `0 8px 32px ${alpha(t.brand, 0.4)}`,
     transform: 'translateY(-1px)',
   },
   '&:active': { transform: 'scale(0.98) translateY(0)' },
-  '&.Mui-disabled': { bgcolor: '#e2e5ea', boxShadow: 'none', color: '#a0a8b4' },
-};
+  '&.Mui-disabled': { background: '#e2e5ea', boxShadow: 'none', color: '#a0a8b4' },
+});
 
 // ── Component ──
 
@@ -265,6 +272,19 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
   const errorColor = theme.palette.error.main;
   const successMain = theme.palette.success.main;
   const successDark = theme.palette.success.dark;
+
+  // Resolve form theme from schema category
+  const ft = useMemo(() => {
+    const cat = detectCategory(formSchema);
+    return getFormTheme(cat);
+  }, [formSchema]);
+
+  // Build themed styles
+  const inputSx = useMemo(() => buildInputSx(ft), [ft]);
+  const datePickerSx = useMemo(() => buildDatePickerSx(ft), [ft]);
+  const selectSx = useMemo(() => buildSelectSx(ft), [ft]);
+  const menuPaperSx = useMemo(() => buildMenuPaperSx(ft), [ft]);
+  const continueBtnSx = useMemo(() => buildContinueBtnSx(ft), [ft]);
 
   const sections = useMemo(() => formSchema?.sections || [], [formSchema]);
   const totalSteps = sections.length;
@@ -424,7 +444,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
       fontSize: '13px', fontWeight: 600, color: error ? errorColor : TEXT_SECONDARY,
       mb: 0.75, letterSpacing: '0.02em', textTransform: 'uppercase',
     }}>
-      {label}{required && <Box component="span" sx={{ color: BRAND, ml: 0.25 }}>*</Box>}
+      {label}{required && <Box component="span" sx={{ color: ft.brand, ml: 0.25 }}>*</Box>}
     </Typography>
   );
 
@@ -452,7 +472,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
                 startAdornment: (
                   <InputAdornment position="start">
                     {React.createElement(getIconComponent(field.icon), {
-                      sx: { color: alpha(BRAND, 0.5), fontSize: 20 }
+                      sx: { color: alpha(ft.brand, 0.5), fontSize: 20 }
                     })}
                   </InputAdornment>
                 ),
@@ -490,8 +510,8 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
                     },
                     '& .MuiPickersDay-root': {
                       borderRadius: '12px', fontWeight: 500,
-                      '&.Mui-selected': { bgcolor: BRAND, fontWeight: 700 },
-                      '&:hover': { bgcolor: BRAND_LIGHT },
+                      '&.Mui-selected': { bgcolor: ft.brand, fontWeight: 700 },
+                      '&:hover': { bgcolor: ft.brandLight },
                     },
                   },
                 },
@@ -543,17 +563,17 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
                   const Ico = opt.icon ? getIconComponent(opt.icon) : null;
                   return (
                     <Box key={opt.value} onClick={() => handleFieldChange(field.id, opt.value, field)}
-                      sx={getRadioSx(sel)}>
+                      sx={buildRadioSx(sel, ft)}>
                       {Ico && (
-                        <Avatar sx={getRadioAvatarSx(sel)}>
+                        <Avatar sx={buildRadioAvatarSx(sel, ft)}>
                           <Ico sx={{ fontSize: 20 }} />
                         </Avatar>
                       )}
-                      <Typography sx={{ fontSize: '12px', fontWeight: sel ? 700 : 500, color: sel ? BRAND : TEXT_PRIMARY, textAlign: 'center' }}>
+                      <Typography sx={{ fontSize: '12px', fontWeight: sel ? 700 : 500, color: sel ? ft.brand : TEXT_PRIMARY, textAlign: 'center' }}>
                         {opt.label}
                       </Typography>
                       {sel && (
-                        <Box sx={radioCheckSx}>
+                        <Box sx={buildRadioCheckSx(ft)}>
                           <CheckIcon sx={{ fontSize: 12, color: '#fff' }} />
                         </Box>
                       )}
@@ -573,7 +593,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
               control={
                 <Checkbox checked={!!value}
                   onChange={(e) => handleFieldChange(field.id, e.target.checked, field)}
-                  sx={{ color: '#d1d5db', '&.Mui-checked': { color: BRAND } }}
+                  sx={{ color: '#d1d5db', '&.Mui-checked': { color: ft.brand } }}
                 />
               }
               label={<Typography sx={{ fontSize: '15px', color: TEXT_PRIMARY, fontWeight: 500 }}>{field.label}</Typography>}
@@ -588,7 +608,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
           <Box key={field.id} id={`field-${field.id}`}>
             <Box onClick={() => { if (!captured) handleFieldChange(field.id, 'captured', field); }}
               sx={getBiometricSx(captured, successMain)}>
-              <Box sx={getBiometricCircleSx(captured, successMain, successDark)}>
+              <Box sx={buildBiometricCircleSx(captured, successMain, successDark, ft)}>
                 {captured
                   ? <CheckCircleIcon sx={{ fontSize: 34, color: '#fff' }} />
                   : <FingerprintIcon sx={{ fontSize: 34, color: '#fff' }} />}
@@ -638,11 +658,11 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
                 py: 1.5, borderRadius: '14px', textTransform: 'none',
                 fontSize: '15px', fontWeight: 600,
                 borderColor: isOutlined ? BORDER : 'transparent',
-                color: isOutlined ? BRAND : '#fff',
-                bgcolor: isOutlined ? 'transparent' : BRAND,
+                color: isOutlined ? ft.brand : '#fff',
+                bgcolor: isOutlined ? 'transparent' : ft.brand,
                 '&:hover': {
-                  borderColor: isOutlined ? BRAND : 'transparent',
-                  bgcolor: isOutlined ? alpha(BRAND, 0.04) : BRAND_DARK,
+                  borderColor: isOutlined ? ft.brand : 'transparent',
+                  bgcolor: isOutlined ? alpha(ft.brand, 0.04) : ft.brandDark,
                 },
               }}
             >
@@ -687,9 +707,9 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
               ) : (
                 <Box sx={{
                   width: 88, height: 88, borderRadius: '28px',
-                  background: `linear-gradient(135deg, ${SUCCESS}, #34d399)`,
+                  background: `linear-gradient(135deg, ${ft.success}, #34d399)`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: `0 12px 40px ${alpha(SUCCESS, 0.3)}`,
+                  boxShadow: `0 12px 40px ${alpha(ft.success, 0.3)}`,
                 }}>
                   <TrophyIcon sx={{ fontSize: 44, color: '#fff' }} />
                 </Box>
@@ -712,7 +732,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
             {!formSchema.nextFormId && (
               <Box sx={{
                 display: 'inline-flex', alignItems: 'center', gap: 1,
-                bgcolor: alpha(SUCCESS, 0.06), color: SUCCESS,
+                bgcolor: alpha(ft.success, 0.06), color: ft.success,
                 px: 2.5, py: 1.25, borderRadius: '14px',
               }}>
                 <CelebrationIcon sx={{ fontSize: 20 }} />
@@ -759,7 +779,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
                       <Box sx={{
                         height: '100%', borderRadius: 2,
                         width: `${pct}%`,
-                        bgcolor: st.complete ? SUCCESS : i <= currentStep ? BRAND : 'transparent',
+                        bgcolor: st.complete ? ft.success : i <= currentStep ? ft.brand : 'transparent',
                         transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                       }} />
                     </Box>
@@ -774,7 +794,7 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
                     onClick={goBack}
                     sx={{
                       display: 'inline-flex', alignItems: 'center', gap: 0.25,
-                      cursor: 'pointer', color: BRAND, fontSize: '13px', fontWeight: 600,
+                      cursor: 'pointer', color: ft.brand, fontSize: '13px', fontWeight: 600,
                       '&:hover': { opacity: 0.7 },
                     }}
                   >
@@ -789,25 +809,34 @@ const DynamicFormRenderer = ({ formSchema, onSubmit, onContinue, viewOnly = fals
                 </Typography>
               </Box>
 
-              {/* Section title */}
-              <Typography sx={{
-                fontWeight: 800, fontSize: '21px', color: TEXT_PRIMARY,
-                lineHeight: 1.2, letterSpacing: '-0.02em',
-              }}>
-                {currentSection?.title}
-              </Typography>
-              {currentSection?.subtitle && (
-                <Typography sx={{ fontSize: '13px', color: TEXT_MUTED, mt: 0.5, lineHeight: 1.4 }}>
-                  {currentSection.subtitle}
-                </Typography>
-              )}
+              {/* Section title with accent */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{
+                  width: 4, height: 28, borderRadius: 2,
+                  background: ft.gradient, flexShrink: 0,
+                }} />
+                <Box>
+                  <Typography sx={{
+                    fontWeight: 800, fontSize: '21px', color: TEXT_PRIMARY,
+                    lineHeight: 1.2, letterSpacing: '-0.02em',
+                  }}>
+                    {currentSection?.title}
+                  </Typography>
+                  {currentSection?.subtitle && (
+                    <Typography sx={{ fontSize: '13px', color: TEXT_MUTED, mt: 0.5, lineHeight: 1.4 }}>
+                      {currentSection.subtitle}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
             </Box>
 
             {/* ── Fields — grouped in a surface container ── */}
             <Box sx={{
-              bgcolor: SURFACE,
+              bgcolor: ft.surface,
               borderRadius: '16px',
               overflow: 'hidden',
+              border: `1px solid ${alpha(ft.brand, 0.06)}`,
             }}>
               {currentSection?.fields?.map((field, idx) => {
                 if (!isFieldVisible(field)) return null;

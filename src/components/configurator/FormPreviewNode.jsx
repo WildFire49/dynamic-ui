@@ -317,18 +317,26 @@ const FormPreviewNode = memo(({ id, data, isConnectable, selected }) => {
       </Box>
 
       {/* Stats */}
-      <Box sx={statsBgSx}>
-        <Box sx={statItemFirstSx}>
-          <GridView sx={statIcoSx} />
-          <Typography sx={statNumSx}>{totalSections}</Typography>
-          <Typography sx={statLblSx}>Sections</Typography>
+      {schema ? (
+        <Box sx={statsBgSx}>
+          <Box sx={statItemFirstSx}>
+            <GridView sx={statIcoSx} />
+            <Typography sx={statNumSx}>{totalSections}</Typography>
+            <Typography sx={statLblSx}>Sections</Typography>
+          </Box>
+          <Box sx={statItemSecondSx}>
+            <InputRounded sx={statIcoSx} />
+            <Typography sx={statNumSx}>{totalFields}</Typography>
+            <Typography sx={statLblSx}>Fields</Typography>
+          </Box>
         </Box>
-        <Box sx={statItemSecondSx}>
-          <InputRounded sx={statIcoSx} />
-          <Typography sx={statNumSx}>{totalFields}</Typography>
-          <Typography sx={statLblSx}>Fields</Typography>
+      ) : (
+        <Box sx={{ mx: 1.75, mb: 1.25, py: 0.75, px: 1, borderRadius: '8px', bgcolor: alpha(BRAND, 0.03), border: `1px dashed ${alpha(BRAND, 0.15)}` }}>
+          <Typography sx={{ fontSize: '9px', color: '#6b7280', textAlign: 'center', fontWeight: 500 }}>
+            {data.order != null ? `Step ${data.order}` : 'Click preview to load schema'}
+          </Typography>
         </Box>
-      </Box>
+      )}
 
       {/* Expanded */}
       <Collapse in={expanded}>

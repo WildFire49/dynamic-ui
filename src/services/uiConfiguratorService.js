@@ -5,10 +5,11 @@
  * Handles all API calls for the UI Component Builder
  */
 
-import apiClient from './apiClient';
+import apiClient from "./apiClient";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  // process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "http://localhost:8000";
 const UI_CONFIGURATOR_BASE = `${API_BASE_URL}/api/v1/configurator/ui-configurator`;
 
 class UIConfiguratorService {
@@ -21,7 +22,14 @@ class UIConfiguratorService {
    * @param {string} [params.formId] - Optional form ID for editing
    * @returns {Promise<Object>} API response
    */
-  async generateForm({ prompt, userId, conversationId, formId }) {
+  async generateForm({
+    prompt,
+    userId,
+    conversationId,
+    formId,
+    version,
+    stepId,
+  }) {
     try {
       const requestBody = {
         prompt,
@@ -32,11 +40,24 @@ class UIConfiguratorService {
         requestBody.conversation_id = conversationId;
       }
 
-      if (formId) {
-        requestBody.form_id = formId;
+      // Beta mode: pass version and use step_id (or formId as fallback)
+      if (version === "beta") {
+        requestBody.version = "beta";
+        const id = stepId || formId;
+        if (id) {
+          requestBody.form_id = id;
+        }
+      } else {
+        // Alpha mode: use form_id as before
+        if (formId) {
+          requestBody.form_id = formId;
+        }
       }
 
-      return await apiClient.post(`${UI_CONFIGURATOR_BASE}/generate`, requestBody);
+      return await apiClient.post(
+        `${UI_CONFIGURATOR_BASE}/generate`,
+        requestBody,
+      );
     } catch (error) {
       console.error("Error generating form:", error);
       throw error;
@@ -51,7 +72,7 @@ class UIConfiguratorService {
   async getConversationHistory(userId) {
     try {
       const data = await apiClient.get(
-        `${UI_CONFIGURATOR_BASE}/component-library/${userId}?non_empty_only=true`
+        `${UI_CONFIGURATOR_BASE}/component-library/${userId}?non_empty_only=true`,
       );
       return data.success && data.data ? data.data.conversations || [] : [];
     } catch (error) {
@@ -68,7 +89,7 @@ class UIConfiguratorService {
   async loadConversation(conversationId) {
     try {
       const data = await apiClient.get(
-        `${UI_CONFIGURATOR_BASE}/conversations/${conversationId}`
+        `${UI_CONFIGURATOR_BASE}/conversations/${conversationId}`,
       );
       return data.success && data.data ? data.data : null;
     } catch (error) {
@@ -85,7 +106,7 @@ class UIConfiguratorService {
   async deleteConversation(conversationId) {
     try {
       await apiClient.delete(
-        `${UI_CONFIGURATOR_BASE}/conversations/${conversationId}`
+        `${UI_CONFIGURATOR_BASE}/conversations/${conversationId}`,
       );
       return true;
     } catch (error) {
@@ -103,7 +124,7 @@ class UIConfiguratorService {
   async getComponentLibrary(userId) {
     try {
       const data = await apiClient.get(
-        `${UI_CONFIGURATOR_BASE}/component-library/${userId}?non_empty_only=true`
+        `${UI_CONFIGURATOR_BASE}/component-library/${userId}?non_empty_only=true`,
       );
       // Return full data structure with conversations, forms, and stats
       return data.success && data.data
@@ -132,7 +153,7 @@ class UIConfiguratorService {
     try {
       return await apiClient.post(
         `${API_BASE_URL}/api/v1/configurator/workflows/canvas`,
-        workflowData
+        workflowData,
       );
     } catch (error) {
       console.error("Error saving workflow:", error);
@@ -150,7 +171,7 @@ class UIConfiguratorService {
     try {
       return await apiClient.put(
         `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}`,
-        workflowData
+        workflowData,
       );
     } catch (error) {
       console.error("Error updating workflow:", error);
@@ -166,7 +187,7 @@ class UIConfiguratorService {
   async getWorkflow(workflowId) {
     try {
       return await apiClient.get(
-        `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}`
+        `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}`,
       );
     } catch (error) {
       console.error("Error fetching workflow:", error);
@@ -183,7 +204,7 @@ class UIConfiguratorService {
   async getUserWorkflows(userId, productId = "loan_app") {
     try {
       const data = await apiClient.get(
-        `${API_BASE_URL}/api/v1/configurator/workflows/canvas?user_id=${userId}&product_id=${productId}`
+        `${API_BASE_URL}/api/v1/configurator/workflows/canvas?user_id=${userId}&product_id=${productId}`,
       );
       return data.success && data.data
         ? data.data
@@ -201,9 +222,7 @@ class UIConfiguratorService {
    */
   async deleteComponent(componentId) {
     try {
-      await apiClient.delete(
-        `${UI_CONFIGURATOR_BASE}/schemas/${componentId}`
-      );
+      await apiClient.delete(`${UI_CONFIGURATOR_BASE}/schemas/${componentId}`);
       return true;
     } catch (error) {
       console.error("Error deleting component:", error);
@@ -219,7 +238,7 @@ class UIConfiguratorService {
   async deleteWorkflow(workflowId, userId) {
     try {
       await apiClient.delete(
-        `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}?user_id=${userId}`
+        `${API_BASE_URL}/api/v1/configurator/workflows/canvas/${workflowId}?user_id=${userId}`,
       );
       return true;
     } catch (error) {

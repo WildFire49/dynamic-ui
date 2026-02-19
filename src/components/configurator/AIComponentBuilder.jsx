@@ -32,6 +32,7 @@ import {
   AccountTree as WorkflowIcon,
 } from "@mui/icons-material";
 import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
+import UnifiedFormRenderer from "../dynamic-form/UnifiedFormRenderer";
 import WorkflowFlowViewer from "./WorkflowFlowViewer";
 import uiConfiguratorService from "@/services/uiConfiguratorService";
 import { useConversationHistory } from "@/hooks/useConversationHistory";
@@ -253,7 +254,7 @@ const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
         // Success callback
         (responseData) => {
           // Handle workflow creation
-          if (responseData.action === "create_workflow" || responseData.canvas_state) {
+          if (responseData.action === "create_workflow" || responseData.canvas_state || responseData.steps) {
             addMessage({
               type: "workflow_created",
               content: responseData.message || "Workflow has been generated!",
@@ -468,8 +469,8 @@ const AIComponentBuilder = ({ onAddToCanvas, onWorkflowGenerated }) => {
               mb: 1.5,
             }}
           >
-            <DynamicUIRenderer
-              data={{ response: { schema: message.schema } }}
+            <UnifiedFormRenderer
+              schema={message.schema}
               onSubmit={(data) => {
                 console.log("Form submitted:", data);
               }}

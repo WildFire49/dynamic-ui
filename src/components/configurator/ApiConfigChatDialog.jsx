@@ -28,8 +28,10 @@ import {
   Refresh,
 } from "@mui/icons-material";
 import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
+import WorkflowUIRenderer from "../dynamic-form/WorkflowUIRenderer";
 import apiClient from "@/services/apiClient";
 import authService from "@/services/authService";
+import { getApiVersion } from "@/lib/api/workflowService";
 
 /**
  * API Configuration Chat Dialog
@@ -51,9 +53,9 @@ const ApiConfigChatDialog = ({
   const [showPreview, setShowPreview] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Fetch component schema when dialog opens
+  // Fetch component schema when dialog opens (Alpha mode only)
   useEffect(() => {
-    if (open && formId) {
+    if (open && formId && getApiVersion() !== 'beta') {
       fetchComponentSchema();
     }
   }, [open, formId]);
@@ -148,22 +150,32 @@ const ApiConfigChatDialog = ({
       // Get user_id from authService
       const userId = authService.getUserId();
       
+      const version = getApiVersion();
+      const requestBody = {
+        prompt: input,
+        user_id: userId,
+        form_id: formId,
+      };
+      if (version === 'beta') {
+        requestBody.version = 'beta';
+      }
+
       const data = await apiClient.post(
         `/api/v1/configurator/ui-configurator/generate`,
-        {
-          prompt: input,
-          user_id: userId,
-          form_id: formId,
-        }
+        requestBody
       );
 
-      if (data.success) {
-        // Check if this is a form schema generation
-        const isFormSchema =
-          data.data?.type === "form_schema" && data.data?.schema;
+      // Check if this is a form schema generation (alpha)
+      const isFormSchema =
+        data.success && data.data?.type === "form_schema" && data.data?.schema;
 
+      // Check if this is a beta response with ui_config (direct or nested in schema)
+      const isBetaUiConfig = data.data?.ui_config || data.data?.schema?.ui_config;
+      const betaUiConfigData = data.data?.ui_config || data.data?.schema?.ui_config;
+
+      if (isFormSchema || isBetaUiConfig) {
         // Refresh workflow list after successful generation
-        if (isFormSchema && onWorkflowRefresh) {
+        if (onWorkflowRefresh) {
           onWorkflowRefresh();
         }
 
@@ -171,26 +183,45 @@ const ApiConfigChatDialog = ({
         const assistantMessage = {
           id: Date.now() + 1,
           type: "assistant",
-          content: data.data.message || "Configuration updated successfully!",
-          config: data.data.config,
+          content: data.data?.message || "Configuration updated successfully!",
+          config: data.data?.config,
           schema: isFormSchema ? data.data.schema : null,
           formId: isFormSchema ? data.data.form_id : null,
+          betaUiConfig: isBetaUiConfig ? betaUiConfigData : null,
           timestamp: new Date(),
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
 
         // Call parent callback with updated config
-        if (onConfigUpdate && data.data.config) {
+        if (onConfigUpdate && data.data?.config) {
           onConfigUpdate(data.data.config);
         }
 
-        // If form schema, also update parent with the schema
+        // If form schema (alpha), update parent with the schema
         if (isFormSchema && onConfigUpdate) {
           onConfigUpdate(data.data.schema);
         }
+
+        // If beta ui_config, update parent node schema
+        if (isBetaUiConfig && onConfigUpdate) {
+          onConfigUpdate(betaUiConfigData);
+        }
+      } else if (data.success) {
+        // Other successful responses
+        const assistantMessage = {
+          id: Date.now() + 1,
+          type: "assistant",
+          content: data.data?.message || "Configuration updated successfully!",
+          config: data.data?.config,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        if (onConfigUpdate && data.data?.config) {
+          onConfigUpdate(data.data.config);
+        }
       } else {
-        throw new Error(data.message || "Configuration failed");
+        throw new Error(data.message || data.error || "Configuration failed");
       }
     } catch (error) {
       console.error("Error configuring API:", error);
@@ -311,6 +342,62 @@ const ApiConfigChatDialog = ({
                 }}
               >
                 <DynamicUIRenderer data={message.schema} />
+              </Box>
+            </Box>
+          )}
+
+          {/* Show beta UI config preview if present */}
+          {message.betaUiConfig && (
+            <Box
+              sx={{
+                mt: 2,
+                border: "2px solid",
+                borderColor: alpha("#1976d2", 0.3),
+                borderRadius: 2,
+                overflow: "hidden",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                  p: 1.5,
+                  bgcolor: alpha("#1976d2", 0.1),
+                  borderBottom: "1px solid",
+                  borderColor: alpha("#1976d2", 0.2),
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Visibility fontSize="small" sx={{ color: "#1976d2" }} />
+                  <Typography
+                    variant="caption"
+                    fontWeight="bold"
+                    color="#1976d2"
+                  >
+                    Updated UI Preview
+                  </Typography>
+                </Box>
+                <Chip
+                  label="Beta"
+                  size="small"
+                  sx={{
+                    fontSize: "10px",
+                    height: 20,
+                    bgcolor: alpha("#1976d2", 0.2),
+                    color: "#1976d2",
+                  }}
+                />
+              </Box>
+              <Box
+                sx={{
+                  maxHeight: "400px",
+                  overflowY: "auto",
+                  bgcolor: "#fafafa",
+                }}
+              >
+                <WorkflowUIRenderer uiConfig={message.betaUiConfig} />
               </Box>
             </Box>
           )}

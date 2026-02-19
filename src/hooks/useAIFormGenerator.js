@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import uiConfiguratorService from '@/services/uiConfiguratorService';
 import authService from '@/services/authService';
+import { getApiVersion } from '@/lib/api/workflowService';
 
 /**
  * Custom hook for AI form generation
@@ -13,6 +14,7 @@ export const useAIFormGenerator = () => {
   const [error, setError] = useState(null);
   const [conversationId, setConversationId] = useState(null);
   const [currentFormId, setCurrentFormId] = useState(null);
+  const [currentStepId, setCurrentStepId] = useState(null);
 
   /**
    * Generate or update a form
@@ -27,18 +29,24 @@ export const useAIFormGenerator = () => {
     try {
       const username = authService.getUsername();
       
+      const version = getApiVersion();
+
       const response = await uiConfiguratorService.generateForm({
         prompt,
         userId: username || 'anonymous',
         conversationId,
         formId: currentFormId,
+        version,
+        stepId: currentStepId,
       });
 
       // Handle both form generation and workflow creation responses
       const isWorkflow = response.action === 'create_workflow' || response.data?.canvas_state;
       const isFormSchema = response.success && response.data?.schema;
+      // Beta API may return success:false (alpha validation) but still have valid ui_config
+      const isBetaSchema = response.data?.schema?.ui_config;
 
-      if (isFormSchema || isWorkflow) {
+      if (isFormSchema || isWorkflow || isBetaSchema) {
         // Update conversation ID if this is a new conversation
         const convId = response.conversation_id || response.data?.conversation_id;
         if (convId && !conversationId) {
@@ -48,6 +56,11 @@ export const useAIFormGenerator = () => {
         // Update current form ID (only for form responses)
         if (response.data?.form_id) {
           setCurrentFormId(response.data.form_id);
+        }
+
+        // Update current step ID (for beta mode)
+        if (response.data?.step_id) {
+          setCurrentStepId(response.data.step_id);
         }
 
         // Call success callback
@@ -71,7 +84,7 @@ export const useAIFormGenerator = () => {
     } finally {
       setLoading(false);
     }
-  }, [conversationId, currentFormId]);
+  }, [conversationId, currentFormId, currentStepId]);
 
   /**
    * Reset conversation state
@@ -79,6 +92,7 @@ export const useAIFormGenerator = () => {
   const resetConversation = useCallback(() => {
     setConversationId(null);
     setCurrentFormId(null);
+    setCurrentStepId(null);
     setError(null);
   }, []);
 
@@ -87,9 +101,10 @@ export const useAIFormGenerator = () => {
    * @param {string} convId - Conversation ID
    * @param {string} formId - Form ID
    */
-  const loadConversation = useCallback((convId, formId) => {
+  const loadConversation = useCallback((convId, formId, stepId) => {
     setConversationId(convId);
     setCurrentFormId(formId);
+    if (stepId) setCurrentStepId(stepId);
   }, []);
 
   return {
@@ -100,5 +115,7 @@ export const useAIFormGenerator = () => {
     generateForm,
     resetConversation,
     loadConversation,
+    currentStepId,
+    setCurrentStepId,
   };
 };

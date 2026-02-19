@@ -1,0 +1,715 @@
+# WORKFLOW UI SCHEMA GENERATION TEMPLATE
+
+Purpose: Generate workflow UI JSON for recursive React renderer (WorkflowUIRenderer)
+Version: 2.0.0
+Renderer: Recursive renderNode() — every node maps to a styled MUI component
+
+---
+
+## LLM INSTRUCTIONS
+
+1. Return ONLY valid JSON matching structure below
+2. Use ONLY node types from SUPPORTED TYPES section
+3. Use ONLY style/orientation/padding tokens listed — NO custom values
+4. Structure is a recursive tree: sections → containers → children → fields
+5. Use snake_case for all IDs
+6. Every screen MUST have: header section, title section, subtitle section, card with fields, submit section
+7. Wrap form fields inside: card > container (columnStartLargeSpaced) > fields
+8. Every textField/dropdown/date MUST have action with validation
+9. State key in globalConfig.stateInitiation MUST match action[].target on all fields
+
+---
+
+## ROOT STRUCTURE
+
+```json
+{
+  "has_ui_data": true,
+  "step_id": "step_{workflow}_{screen_name}",
+  "step_name": "Screen Name",
+  "success": true,
+  "ui_config": {
+    "forms": {
+      "globalConfig": {
+        "apiConfigInitialisation": [<API_CONFIG>],
+        "errorConfig": { "error": "", "id": "API_ERROR", "message": "" },
+        "stateInitiation": { "<formStateKey>": [] }
+      },
+      "screenId": "WORKFLOW_STAGE_N",
+      "ui": {
+        "overlays": [],
+        "sections": [<SECTIONS>],
+        "sectionsStyle": {
+          "padding": { "horizontal": "large" },
+          "style": "filledBackground"
+        }
+      }
+    }
+  },
+  "ui_id": "ui_{workflow}_{screen_name}"
+}
+```
+
+### API CONFIG
+
+```json
+{
+  "body": {
+    "category": "<workflow_category>",
+    "input": {
+      "action": "$action.id",
+      "form": "$state.<formStateKey>"
+    },
+    "user_id": "$state.employeeId"
+  },
+  "id": "API_SUBMIT_<SCREEN_NAME>",
+  "method": "POST",
+  "target": "forms",
+  "url": "workflow-ui"
+}
+```
+
+---
+
+## SECTIONS LAYOUT (ordered top-to-bottom)
+
+Every form screen follows this exact section order:
+
+1. `header` — app bar (back button + logo). ALWAYS use this exact block.
+2. `container` (title_section) — displayLarge main title
+3. `container` (subtitle_section) — displayMedium screen subtitle
+4. `card` — form fields wrapped in container
+5. `container` (submit_section) — CTA button
+
+Success/completion screens replace sections 2-4 with a centered success container.
+
+---
+
+## HEADER SECTION (copy exactly)
+
+```json
+{
+  "children": [
+    {
+      "children": [
+        {
+          "action": [{ "id": "ACTION_GO_BACK", "target": "back", "type": "navigate" }],
+          "data": { "icon": "arrow_back" },
+          "id": "back_button",
+          "style": "mediumPrimary",
+          "type": "icon"
+        },
+        {
+          "data": { "contentDescription": "Mifix Logo", "src": "ic_mifix_logo" },
+          "id": "header_logo",
+          "style": "small",
+          "type": "image"
+        },
+        { "children": [], "id": "header_spacer", "style": "spacerMedium", "type": "container" }
+      ],
+      "id": "header_content",
+      "orientation": "rowSpaceBetween",
+      "padding": { "end": "large", "start": "large", "top": "xl" },
+      "style": "fullWidth",
+      "type": "container"
+    },
+    { "id": "header_divider", "style": "light", "type": "divider" }
+  ],
+  "id": "header_bar",
+  "orientation": "columnStart",
+  "style": "filledBackground",
+  "type": "header"
+}
+```
+
+---
+
+## TITLE + SUBTITLE SECTIONS (copy pattern)
+
+```json
+{
+  "children": [
+    { "data": { "label": "<Main App Title>" }, "id": "main_title", "style": "displayLarge", "type": "text" }
+  ],
+  "id": "title_section",
+  "orientation": "columnStart",
+  "padding": { "bottom": "small", "end": "large", "start": "large", "top": "large" },
+  "type": "container"
+},
+{
+  "children": [
+    { "data": { "label": "<Screen Subtitle>" }, "id": "screen_title", "style": "displayMedium", "type": "text" }
+  ],
+  "id": "subtitle_section",
+  "orientation": "columnStart",
+  "padding": { "bottom": "small", "end": "large", "start": "large", "top": "small" },
+  "type": "container"
+}
+```
+
+---
+
+## CARD + FORM BODY PATTERN
+
+```json
+{
+  "children": [
+    {
+      "children": [<FIELD_NODES>],
+      "id": "<form_name>_form_body",
+      "orientation": "columnStartLargeSpaced",
+      "padding": { "all": "large" },
+      "style": "fullWidth",
+      "type": "container"
+    }
+  ],
+  "id": "<form_name>_form_card",
+  "style": "outlinedRounded",
+  "type": "card"
+}
+```
+
+---
+
+## SUBMIT SECTION PATTERN
+
+```json
+{
+  "children": [
+    {
+      "action": [
+        {
+          "apiId": "API_SUBMIT_<NAME>",
+          "id": "ACTION_SUBMIT_<NAME>",
+          "type": "api_call",
+          "validate": "<formStateKey>"
+        }
+      ],
+      "data": { "icon": "arrow_forward", "text": "Continue  \u203a" },
+      "id": "continue_button",
+      "style": "primaryFull",
+      "type": "button"
+    }
+  ],
+  "id": "submit_section",
+  "orientation": "rowCenter",
+  "padding": { "bottom": "large", "end": "xl", "start": "xl", "top": "xl" },
+  "style": "fullWidth",
+  "type": "container"
+}
+```
+
+For final submit buttons, use: `"text": "Submit Application"`, `"icon": "check_circle"`
+For large bottom spacing: `"bottom": "xxxxl"`
+
+---
+
+## NODE TYPES
+
+### text
+Renders styled typography.
+
+| style | renders as |
+|-------|-----------|
+| displayLarge | 22px bold black, single line, ellipsis overflow. Use for main app title. |
+| displayMedium | 17px bold black. Use for screen/section subtitle. |
+| labelLarge | 14px bold black, trailing * rendered as blue asterisk. Use for field section headers. |
+| labelLargeBold | Same as labelLarge. Use for standalone bold labels. |
+| successTitle | 20px bold centered. Use for success screen heading. |
+| successSubtitle | 15px gray centered. Use for success screen message. |
+
+```json
+{ "data": { "label": "Text content" }, "id": "unique_id", "style": "<style>", "type": "text" }
+```
+
+Optional: `"padding": { "top": "<token>" }`
+
+### container
+Flex layout wrapper. Holds child nodes.
+
+| style | behavior |
+|-------|---------|
+| fullWidth | Standard container |
+| spacerMedium | Renders nothing (skip) |
+| spacerLarge | Renders nothing (skip) |
+| filledBackground | Background surface |
+| successIconBox | 88px green gradient circle (for success icon) |
+
+```json
+{
+  "children": [<CHILD_NODES>],
+  "id": "unique_id",
+  "orientation": "<orientation_token>",
+  "padding": { "<side>": "<padding_token>" },
+  "style": "<style>",
+  "type": "container"
+}
+```
+
+### card
+Bordered white card with rounded corners.
+
+| style | behavior |
+|-------|---------|
+| outlinedRounded | 16px radius, 1px #D0D0D0 border, white bg |
+
+```json
+{
+  "children": [<CHILD_NODES>],
+  "id": "unique_id",
+  "style": "outlinedRounded",
+  "type": "card"
+}
+```
+
+### divider
+Thin separator line.
+
+| style | behavior |
+|-------|---------|
+| light | 1px #F0F0F0 line |
+
+```json
+{ "id": "unique_id", "style": "light", "type": "divider" }
+```
+
+### icon
+Icon element. `arrow_back` is skipped by renderer.
+
+| style | behavior |
+|-------|---------|
+| mediumPrimary | Standard icon (used in header) |
+| largeWhite | 48px white icon (used inside successIconBox) |
+
+```json
+{ "data": { "icon": "<icon_name>" }, "id": "unique_id", "style": "<style>", "type": "icon" }
+```
+
+### image
+Image element. Skipped by renderer (used in header for logo only).
+
+```json
+{ "data": { "contentDescription": "desc", "src": "image_key" }, "id": "unique_id", "style": "small", "type": "image" }
+```
+
+### header
+Top app bar wrapper. Skipped by renderer (phone mockup has its own header).
+
+```json
+{ "children": [<HEADER_CHILDREN>], "id": "header_bar", "orientation": "columnStart", "style": "filledBackground", "type": "header" }
+```
+
+### button
+CTA action button. Rendered as sticky bottom button by renderer.
+
+```json
+{
+  "action": [{ "apiId": "<API_ID>", "id": "<ACTION_ID>", "type": "api_call", "validate": "<formStateKey>" }],
+  "data": { "icon": "<icon_name>", "text": "Button Label" },
+  "id": "unique_id",
+  "style": "primaryFull",
+  "type": "button"
+}
+```
+
+---
+
+## FIELD TYPES (inside card > container)
+
+### textField
+Text input with label, placeholder, validation.
+
+```json
+{
+  "action": [
+    {
+      "target": "<formStateKey>",
+      "type": "update_array_item",
+      "value": {
+        "field": "value",
+        "id": "<fieldDataId>",
+        "validation": {
+          "message": "Error message",
+          "regex": "^pattern$"
+        },
+        "value": "$input"
+      }
+    }
+  ],
+  "data": {
+    "keyboardType": "text|number|phone|email",
+    "label": { "data": "Field Label *", "style": "labelLarge" },
+    "placeholder": { "data": "Placeholder text", "style": "placeholder" },
+    "value": { "data": "$action.value.value", "style": "labelMediumSemibold" }
+  },
+  "id": "<field_id>",
+  "padding": { "all": "slarge" },
+  "required": true,
+  "style": "filledOutlined",
+  "type": "textField"
+}
+```
+
+keyboardType values: `text` (default), `number`, `phone`, `email`
+
+### radioGroup
+Radio button selection with icon options.
+
+```json
+{
+  "action": [
+    {
+      "target": "<formStateKey>",
+      "type": "update_array_item",
+      "value": {
+        "field": "value",
+        "id": "<fieldDataId>",
+        "value": "$input"
+      }
+    }
+  ],
+  "data": {
+    "label": { "data": "Selection Label *", "style": "labelLarge" },
+    "options": [
+      { "icon": "<icon_name>", "label": "Option A", "value": "option_a" },
+      { "icon": "<icon_name>", "label": "Option B", "value": "option_b" }
+    ]
+  },
+  "id": "<field_id>",
+  "padding": { "all": "slarge" },
+  "required": true,
+  "style": "filledOutlined",
+  "type": "radioGroup"
+}
+```
+
+### dropdown
+Select dropdown with static options.
+
+```json
+{
+  "action": [
+    {
+      "target": "<formStateKey>",
+      "type": "update_array_item",
+      "value": {
+        "field": "value",
+        "id": "<fieldDataId>",
+        "value": "$input"
+      }
+    }
+  ],
+  "data": {
+    "label": { "data": "Dropdown Label *", "style": "labelLarge" },
+    "options": [
+      { "label": "Option A", "value": "option_a" },
+      { "label": "Option B", "value": "option_b" }
+    ],
+    "placeholder": { "data": "Select item", "style": "placeholder" }
+  },
+  "id": "<field_id>",
+  "padding": { "all": "slarge" },
+  "required": true,
+  "style": "filledDropdown",
+  "type": "dropdown"
+}
+```
+
+### date
+Date picker field.
+
+```json
+{
+  "action": [
+    {
+      "target": "<formStateKey>",
+      "type": "update_array_item",
+      "value": {
+        "field": "value",
+        "id": "<fieldDataId>",
+        "value": "$input"
+      }
+    }
+  ],
+  "data": {
+    "label": { "data": "Date Label *", "style": "labelLarge" },
+    "placeholder": { "data": "dd / mm / yyyy", "style": "placeholder" }
+  },
+  "id": "<field_id>",
+  "padding": { "all": "slarge" },
+  "required": true,
+  "style": "filledDate",
+  "type": "date"
+}
+```
+
+### checkbox
+Toggle checkbox with label.
+
+```json
+{
+  "action": [
+    {
+      "target": "<formStateKey>",
+      "type": "update_array_item",
+      "value": {
+        "field": "value",
+        "id": "<fieldDataId>",
+        "validation": { "message": "You must accept this" },
+        "value": "$input"
+      }
+    }
+  ],
+  "data": { "label": "Checkbox label text" },
+  "id": "<field_id>",
+  "required": true,
+  "type": "checkbox"
+}
+```
+
+### fileUpload
+File/image upload with camera + file picker.
+
+```json
+{
+  "action": [
+    {
+      "target": "<formStateKey>",
+      "type": "update_array_item",
+      "value": { "field": "value", "id": "<fieldDataId>", "value": "$input" }
+    }
+  ],
+  "data": {
+    "allowedTypes": ["image/jpeg", "image/png"],
+    "icon": "camera_alt",
+    "maxSize": 5,
+    "primaryButton": { "text": "Open Camera" },
+    "secondaryButton": { "text": "Upload File" },
+    "subtitle": "Take a photo using your camera or upload from device",
+    "title": "Capture or upload"
+  },
+  "id": "<field_id>",
+  "required": true,
+  "style": "dashedUpload",
+  "type": "fileUpload"
+}
+```
+
+Pair with a text label above:
+```json
+{ "data": { "label": "Upload Label*" }, "id": "<label_id>", "padding": { "top": "small" }, "style": "labelLarge", "type": "text" }
+```
+
+### image_capture
+Same as fileUpload but specifically for camera capture. Uses identical structure.
+
+---
+
+## STYLE TOKENS (exhaustive list)
+
+### Text styles
+`displayLarge` `displayMedium` `labelLarge` `labelLargeBold` `labelMedium` `labelMediumSemibold` `placeholder` `placeholderLarge` `successTitle` `successSubtitle`
+
+### Container styles
+`fullWidth` `spacerMedium` `spacerLarge` `filledBackground` `successIconBox`
+
+### Card styles
+`outlinedRounded`
+
+### Input styles
+`filledOutlined` (textField) `filledDate` (date) `filledDropdown` (dropdown)
+
+### Button styles
+`primaryFull`
+
+### Icon styles
+`mediumPrimary` `small` `largeWhite`
+
+### Divider styles
+`light`
+
+### Upload styles
+`dashedUpload`
+
+---
+
+## ORIENTATION TOKENS (exhaustive list)
+
+| token | layout |
+|-------|--------|
+| columnStart | column, align-start |
+| columnStartLargeSpaced | column, stretch, gap 14px (USE for form field lists) |
+| columnCenter | column, center-aligned (USE for success screens) |
+| rowSpaceBetween | row, space-between (USE for header) |
+| rowCenter | row, centered (USE for submit button wrapper) |
+| rowStart | row, align-start |
+
+---
+
+## PADDING TOKENS (exhaustive list)
+
+| token | px value |
+|-------|---------|
+| none | 0 |
+| xxsmall | 2 |
+| xsmall | 4 |
+| small | 8 |
+| slarge | 12 |
+| medium | 16 |
+| large | 20 |
+| xl | 24 |
+| xxl | 32 |
+| xxxl | 40 |
+| xxxxl | 48 |
+
+Padding properties: `all`, `top`, `bottom`, `start` (left), `end` (right), `horizontal`, `vertical`
+
+---
+
+## ICON NAMES (supported)
+
+`male` `female` `transgender` `person` `phone` `email` `home` `bank` `fingerprint` `document` `badge` `location` `work` `business` `credit_card` `calendar` `camera` `upload` `family` `wc` `cake` `cow` `pets` `lock` `account` `verified` `shield` `car` `bike` `trophy` `celebration` `check_circle` `arrow_forward` `arrow_back` `married` `single` `divorced` `widowed`
+
+---
+
+## VALIDATION PATTERNS
+
+```
+Phone (10-digit):  "^[0-9]{10}$"
+Email:             "^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$"
+Aadhaar (12-digit):"^[0-9]{12}$"
+PAN:               "^[A-Z]{5}[0-9]{4}[A-Z]{1}$"
+IFSC:              "^[A-Z]{4}0[A-Z0-9]{6}$"
+Pincode:           "^[1-9][0-9]{5}$"
+Number only:       "^[0-9]{1,10}$"
+Alphabets only:    "^[A-Za-z\\s]+$"
+Alphanumeric:      "^[A-Za-z0-9]+$"
+```
+
+---
+
+## ACTION TYPES
+
+### navigate
+```json
+{ "id": "ACTION_GO_BACK", "target": "back", "type": "navigate" }
+```
+
+### update_array_item (form field binding)
+```json
+{
+  "target": "<formStateKey>",
+  "type": "update_array_item",
+  "value": {
+    "field": "value",
+    "id": "<fieldDataId>",
+    "validation": { "message": "Error text", "regex": "^pattern$" },
+    "value": "$input"
+  }
+}
+```
+- `target` MUST match the key in `stateInitiation`
+- `id` is the data field name (camelCase)
+- `validation.regex` is optional (omit for checkboxes, fileUpload)
+- `validation.message` is the error shown on invalid input
+
+### api_call (submit)
+```json
+{
+  "apiId": "API_SUBMIT_<NAME>",
+  "id": "ACTION_SUBMIT_<NAME>",
+  "type": "api_call",
+  "validate": "<formStateKey>"
+}
+```
+
+---
+
+## SCREEN TEMPLATES
+
+### FORM SCREEN (contact, personal, income, address, etc.)
+
+sections order:
+1. HEADER_SECTION (copy exact)
+2. title_section container (displayLarge)
+3. subtitle_section container (displayMedium)
+4. card (outlinedRounded) > container (columnStartLargeSpaced) > [fields]
+5. submit_section container (rowCenter) > button (primaryFull)
+
+### SUCCESS/COMPLETION SCREEN
+
+sections order:
+1. HEADER_SECTION (copy exact)
+2. success_content container (columnCenter, large padding) containing:
+   - container (successIconBox) > icon (largeWhite, icon: "trophy")
+   - text (successTitle, with top padding xxl)
+   - text (successSubtitle, with top padding medium)
+3. submit_section container (rowCenter) > button (primaryFull, text: "Continue to Next Stage  ›")
+
+Success content section:
+```json
+{
+  "children": [
+    {
+      "children": [
+        { "data": { "icon": "trophy" }, "id": "trophy_icon", "style": "largeWhite", "type": "icon" }
+      ],
+      "id": "trophy_icon_bg",
+      "orientation": "columnCenter",
+      "style": "successIconBox",
+      "type": "container"
+    },
+    {
+      "data": { "label": "Stage Complete!" },
+      "id": "success_title",
+      "padding": { "top": "xxl" },
+      "style": "successTitle",
+      "type": "text"
+    },
+    {
+      "data": { "label": "All information has been saved and verified successfully." },
+      "id": "success_subtitle",
+      "padding": { "top": "medium" },
+      "style": "successSubtitle",
+      "type": "text"
+    }
+  ],
+  "id": "success_content",
+  "orientation": "columnCenter",
+  "padding": { "bottom": "xl", "end": "xl", "start": "xl", "top": "xxxxl" },
+  "type": "container"
+}
+```
+
+---
+
+## FIELD COMPOSITION RULES
+
+1. Place fields INSIDE: card > container(columnStartLargeSpaced, padding all large) > fields
+2. For field groups with labels, use dividers between logical groups
+3. For fileUpload, place a `text` (labelLarge) label ABOVE the fileUpload node
+4. Checkbox nodes do NOT need a separate label — label is in `data.label`
+5. All textField/dropdown/date fields MUST have `action` array with `update_array_item`
+6. Required fields: append ` *` to label data string AND set `"required": true`
+7. Field `padding` for textField/dropdown/date: `{ "all": "slarge" }`
+8. Form body container orientation: ALWAYS `columnStartLargeSpaced`
+
+---
+
+## CHECKLIST
+
+- [ ] All IDs are unique snake_case
+- [ ] stateInitiation key matches all action[].target values
+- [ ] Every required field has validation.message
+- [ ] Header section is exact copy of template
+- [ ] Card uses style "outlinedRounded"
+- [ ] Form body uses orientation "columnStartLargeSpaced"
+- [ ] Submit button apiId matches globalConfig API id
+- [ ] Only supported node types, styles, orientations, padding tokens used
+- [ ] No hallucinated properties or tokens
+
+---
+
+Generate JSON matching above structure. Return ONLY valid JSON.
+
+END OF TEMPLATE
