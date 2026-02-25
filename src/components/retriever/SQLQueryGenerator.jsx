@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Paper,
@@ -54,12 +54,22 @@ import {
   ThumbDown as ThumbDownIcon,
   Edit as EditIcon,
   Close as CloseIcon,
+  AutoAwesome as SparkleIcon,
+  Keyboard as KeyboardIcon,
+  TipsAndUpdates as TipsIcon,
+  Search as SearchIcon,
+  Bolt as BoltIcon,
+  DataObject as DataObjectIcon,
+  ArrowForward as ArrowForwardIcon,
+  BuildCircle as FixIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from "@mui/icons-material";
 import fastKgService from "../../services/fastKgService";
 import connectionService from "../../services/connectionService";
 import queryLearningService from "../../services/queryLearningService";
 import useRetrieverStore from "../../store/retrieverStore";
-import DynamicDataVisualization from "../mui/DynamicDataVisualization";
+import EnhancedDataGrid from "../widgets/EnhancedDataGrid";
 import { useAuth } from "../../contexts/AuthContext";
 
 const SQLQueryGenerator = React.memo(() => {
@@ -85,6 +95,7 @@ const SQLQueryGenerator = React.memo(() => {
   const [testingCorrection, setTestingCorrection] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [markingFeedback, setMarkingFeedback] = useState(false);
+  const [sqlCollapsed, setSqlCollapsed] = useState(false);
   const [validationError, setValidationError] = useState(null);
   const [failedQueryId, setFailedQueryId] = useState(null);
   const [snackbar, setSnackbar] = useState({
@@ -95,6 +106,51 @@ const SQLQueryGenerator = React.memo(() => {
   const [templateVersions, setTemplateVersions] = useState(null);
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState(""); // Selected template version
+
+  // Animated placeholder examples
+  const PLACEHOLDER_EXAMPLES = useMemo(() => [
+    "Show me all customers who got disbursed today...",
+    "What was the total collection amount this month by branch?",
+    "List top 10 overdue loans with customer details and amounts...",
+    "Compare disbursement trends between Q3 and Q4 2024...",
+    "Which agents had the highest recovery rate last week?",
+    "Show me the daily transaction summary for the past 30 days...",
+  ], []);
+
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [placeholderText, setPlaceholderText] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+  const typingTimeoutRef = useRef(null);
+
+  // Animated typing effect for placeholder
+  useEffect(() => {
+    if (query) return; // Don't animate when user is typing
+
+    const currentExample = PLACEHOLDER_EXAMPLES[placeholderIndex];
+    let charIndex = 0;
+    setIsTyping(true);
+    setPlaceholderText("");
+
+    const typeChar = () => {
+      if (charIndex <= currentExample.length) {
+        setPlaceholderText(currentExample.slice(0, charIndex));
+        charIndex++;
+        typingTimeoutRef.current = setTimeout(typeChar, 35);
+      } else {
+        setIsTyping(false);
+        // Pause then move to next example
+        typingTimeoutRef.current = setTimeout(() => {
+          setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDER_EXAMPLES.length);
+        }, 2500);
+      }
+    };
+
+    typingTimeoutRef.current = setTimeout(typeChar, 500);
+
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [placeholderIndex, query, PLACEHOLDER_EXAMPLES]);
 
   // SQL Keywords for syntax highlighting
   const SQL_KEYWORDS = [
@@ -497,21 +553,43 @@ const SQLQueryGenerator = React.memo(() => {
     [handleGenerateSQL]
   );
 
-  // Optimized styles with performance-focused properties
+  // Apple-grade textarea styles — no label, clean border
   const textFieldStyles = useMemo(
     () => ({
       "& .MuiOutlinedInput-root": {
-        fontSize: "1.1rem",
-        lineHeight: 1.6,
-        // Performance optimizations
+        fontSize: "1.05rem",
+        lineHeight: 1.7,
+        borderRadius: "14px",
+        bgcolor: "#fafbfc",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         willChange: "contents",
-        transform: "translateZ(0)", // Force GPU acceleration
+        transform: "translateZ(0)",
+        "& fieldset": {
+          borderColor: "#e5e7eb",
+          borderWidth: "1.5px",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          // Remove the notch gap entirely
+          "& legend": {
+            display: "none",
+          },
+        },
+        "&:hover fieldset": {
+          borderColor: "#cbd5e1",
+        },
+        "&.Mui-focused": {
+          bgcolor: "#fff",
+          boxShadow: "0 0 0 4px rgba(0, 120, 215, 0.07), 0 4px 16px rgba(0, 120, 215, 0.05)",
+          "& fieldset": {
+            borderColor: "#0078d7 !important",
+            borderWidth: "1.5px",
+          },
+        },
       },
+      // Hide the floating label completely
       "& .MuiInputLabel-root": {
-        fontSize: "1rem",
+        display: "none",
       },
       "& textarea": {
-        // Optimize textarea specifically for fast typing/backspace
         resize: "none",
         outline: "none",
         willChange: "contents",
@@ -551,47 +629,7 @@ const SQLQueryGenerator = React.memo(() => {
     return savedConnections.find((c) => c.id === selectedConnection);
   }, [savedConnections, selectedConnection]);
 
-  const memoizedTransformResultsForVisualization = useMemo(() => {
-    if (!result?.execution?.results) return null;
 
-    // Extract SQL query for dashboard widget refresh
-    const generatedSql = result.query?.generated_sql || result.sql || "";
-
-    return {
-      analysis_result: {
-        supporting_data: result.execution.results,
-        summary: {
-          total_records: result.execution.row_count,
-          query: result.query?.natural_language || "",
-          execution_time: result.execution.execution_time_ms,
-        },
-        generated_sql: generatedSql,
-      },
-      question: result.query?.natural_language || "",
-      natural_language_query: result.query?.natural_language || "",
-      generated_sql: generatedSql,
-      content: {
-        generated_sql: generatedSql,
-      },
-      metadata: {
-        query_id: result.query?.query_id,
-        timestamp: result.timestamp,
-        sql: generatedSql,
-      },
-    };
-  }, [result]);
-
-  // Memoized helper text to prevent recreation
-  const helperText = useMemo(
-    () =>
-      "Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to generate and execute SQL",
-    []
-  );
-  const placeholderText = useMemo(
-    () =>
-      "e.g., Show me all customers who got disbursed today in federal bank with their amounts",
-    []
-  );
   const labelText = useMemo(() => "Natural language query", []);
 
   // Memoized helper functions to prevent recalculation
@@ -605,94 +643,140 @@ const SQLQueryGenerator = React.memo(() => {
   const resultsSection = useMemo(() => {
     if (!result || loading) return null;
 
+    const totalTimeMs = result.performance?.total_time_ms || result.execution?.execution_time_ms || 0;
+    const totalTimeSec = (totalTimeMs / 1000).toFixed(1);
+    const isFast = totalTimeMs <= 6000;
+    const isSlow = totalTimeMs > 10000;
+
     return (
       <Fade in timeout={300}>
         <Box>
-          {/* Success Message */}
-          <Alert severity="success" sx={{ mb: 3 }}>
+          {/* Rocket speed overlay toast — only for fast queries */}
+          {isFast && !isSlow && (
             <Box
               sx={{
+                position: "fixed",
+                top: 80,
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 9999,
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
+                gap: 1.5,
+                px: 3,
+                py: 1.5,
+                borderRadius: 100,
+                bgcolor: "#fff",
+                border: "1px solid #d1fae5",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(16, 185, 129, 0.1)",
+                animation: "toastSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both, toastFadeOut 0.4s ease 3.5s forwards",
+                pointerEvents: "none",
               }}
             >
-              <Box>
-                <Typography variant="body2" fontWeight="medium">
-                  {result.message}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Query ID: {result.query_id} •{" "}
-                  {new Date(result.timestamp).toLocaleString()}
-                </Typography>
+              <Box
+                component="span"
+                sx={{
+                  fontSize: "1.4rem",
+                  animation: "rocketLaunch 0.8s ease-out both",
+                  display: "inline-block",
+                }}
+              >
+                🚀
               </Box>
+              <Typography sx={{ fontSize: "0.9rem", fontWeight: 600, color: "#065f46", whiteSpace: "nowrap" }}>
+                Query executed in {totalTimeSec}s
+              </Typography>
+              <BoltIcon sx={{ fontSize: 16, color: "#10b981" }} />
             </Box>
-          </Alert>
+          )}
 
-          {/* Generated SQL */}
+          {/* SQL Editor — light pgAdmin style */}
           <Paper
             sx={{
-              p: 4,
-              mb: 4,
-              borderRadius: 3,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+              mb: 3,
+              borderRadius: 2.5,
+              overflow: "hidden",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
             }}
           >
+            {/* Editor title bar */}
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                mb: 3,
+                px: 2,
+                py: 0.85,
+                bgcolor: "#f8fafc",
+                borderBottom: "1px solid #e2e8f0",
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <CodeIcon sx={{ mr: 1.5, color: "#0078d7", fontSize: 28 }} />
-                <Box>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 600, color: "#1a202c" }}
-                  >
-                    Generated SQL Query
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#64748b" }}>
-                    Optimized query based on your natural language input
-                  </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                {/* Traffic light dots */}
+                <Box sx={{ display: "flex", gap: 0.6, mr: 0.5 }}>
+                  <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: "#f87171" }} />
+                  <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: "#fbbf24" }} />
+                  <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: "#34d399" }} />
                 </Box>
+                <CodeIcon sx={{ fontSize: 18, color: "#64748b" }} />
+                <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "#334155", letterSpacing: "0.02em" }}>
+                  SQL Query
+                </Typography>
               </Box>
-              <Tooltip title={copied ? "Copied!" : "Copy SQL"}>
-                <IconButton
-                  onClick={handleCopySQL}
-                  sx={{
-                    bgcolor: copied ? "#48bb7815" : "#0078d715",
-                    color: copied ? "#48bb78" : "#0078d7",
-                    "&:hover": {
-                      bgcolor: copied ? "#48bb7825" : "#0078d725",
-                    },
-                  }}
-                >
-                  {copied ? <CheckIcon /> : <CopyIcon />}
-                </IconButton>
-              </Tooltip>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <Tooltip title={copied ? "Copied!" : "Copy SQL"}>
+                  <IconButton
+                    onClick={handleCopySQL}
+                    size="small"
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      color: copied ? "#059669" : "#64748b",
+                      "&:hover": { bgcolor: "#f1f5f9" },
+                    }}
+                  >
+                    {copied ? <CheckIcon sx={{ fontSize: 18 }} /> : <CopyIcon sx={{ fontSize: 18 }} />}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title={sqlCollapsed ? "Expand SQL" : "Collapse SQL"}>
+                  <IconButton
+                    onClick={() => setSqlCollapsed((prev) => !prev)}
+                    size="small"
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      color: "#64748b",
+                      "&:hover": { bgcolor: "#f1f5f9" },
+                    }}
+                  >
+                    {sqlCollapsed ? <ExpandMoreIcon sx={{ fontSize: 20 }} /> : <ExpandLessIcon sx={{ fontSize: 20 }} />}
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
 
+            {/* SQL code — light editor, collapsible */}
             <Box
               sx={{
-                background: "#f8fafc",
-                border: "2px solid #e2e8f0",
-                borderRadius: 2,
-                p: 3,
+                px: 2.5,
+                py: sqlCollapsed ? 0 : 2,
+                bgcolor: "#fff",
+                overflow: "hidden",
+                maxHeight: sqlCollapsed ? 0 : 2000,
+                opacity: sqlCollapsed ? 0 : 1,
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               }}
             >
               <div
                 style={{
-                  fontFamily: "monospace",
-                  fontSize: "1rem",
-                  lineHeight: 1.6,
-                  overflow: "auto",
+                  fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace",
+                  fontSize: "0.88rem",
+                  lineHeight: 1.8,
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
-                  color: "#1a202c",
+                  color: "#1e293b",
+                  tabSize: 2,
                 }}
                 dangerouslySetInnerHTML={{
                   __html: highlightSQL(
@@ -701,178 +785,57 @@ const SQLQueryGenerator = React.memo(() => {
                 }}
               />
               <style>{`
-                .sql-keyword {
-                  color: #0078d7;
-                  font-weight: 600;
+                .sql-keyword { color: #0078d7; font-weight: 600; }
+                .sql-string { color: #16a34a; }
+                .sql-number { color: #ea580c; }
+                @keyframes toastSlideIn {
+                  0% { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(0.9); }
+                  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
                 }
-                .sql-string {
-                  color: #48bb78;
+                @keyframes toastFadeOut {
+                  0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                  100% { opacity: 0; transform: translateX(-50%) translateY(-12px); }
                 }
-                .sql-number {
-                  color: #ed8936;
+                @keyframes rocketLaunch {
+                  0% { transform: translateY(10px) rotate(45deg) scale(0.5); opacity: 0; }
+                  40% { transform: translateY(-4px) rotate(0deg) scale(1.3); opacity: 1; }
+                  100% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
                 }
               `}</style>
             </Box>
-
-            {/* Query Performance Info */}
-            <Box sx={{ mt: 3, display: "flex", gap: 3, flexWrap: "wrap" }}>
-              <Chip
-                label={`${result.execution?.row_count || 0} records returned`}
-                sx={{
-                  bgcolor:
-                    result.execution?.row_count > 0 ? "#48bb7815" : "#ed893615",
-                  color:
-                    result.execution?.row_count > 0 ? "#48bb78" : "#ed8936",
-                  fontWeight: 600,
-                }}
-              />
-              <Chip
-                label={`Executed in ${
-                  result.execution?.execution_time_ms || 0
-                }ms`}
-                sx={{
-                  bgcolor: "#0078d715",
-                  color: "#0078d7",
-                  fontWeight: 600,
-                }}
-              />
-              {result.performance?.total_time_ms && (
-                <Chip
-                  label={`Total time: ${result.performance.total_time_ms}ms`}
-                  sx={{
-                    bgcolor: "#64748b15",
-                    color: "#64748b",
-                    fontWeight: 600,
-                  }}
-                />
-              )}
-            </Box>
           </Paper>
 
-          {/* Data Visualization Results */}
+          {/* Query Results Data Grid — minimal */}
           {result.execution && (
-            <Paper
-              sx={{
-                borderRadius: 2,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              <Box
-                sx={{
-                  p: 3,
-                  borderBottom: "1px solid #e2e8f0",
-                  bgcolor: "#f8fafc",
-                  flexShrink: 0,
-                }}
-              >
-                <Box
+            <>
+              {result.execution.results &&
+              result.execution.results.length > 0 ? (
+                <EnhancedDataGrid
+                  title="Results"
+                  data={result.execution.results}
+                  height={420}
+                  exportFileName={`query_results_${result.query_id || "export"}`}
+                />
+              ) : (
+                <Paper
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    textAlign: "center",
+                    py: 5,
+                    px: 4,
+                    borderRadius: 3,
+                    border: "1px solid #e5e7eb",
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <ChartIcon
-                      sx={{ mr: 1.5, color: "#9c27b0", fontSize: 28 }}
-                    />
-                    <Box>
-                      <Typography
-                        variant="h6"
-                        sx={{ fontWeight: 600, color: "#1a202c" }}
-                      >
-                        Data Visualization
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: "#64748b" }}>
-                        Interactive charts and insights from your query
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Chip
-                    label={`${result.execution.row_count} record${
-                      result.execution.row_count !== 1 ? "s" : ""
-                    }`}
-                    sx={{
-                      bgcolor:
-                        result.execution.row_count > 0
-                          ? "#48bb7815"
-                          : "#ed893615",
-                      color:
-                        result.execution.row_count > 0 ? "#48bb78" : "#ed8936",
-                      fontWeight: 600,
-                    }}
-                  />
-                </Box>
-              </Box>
-
-              <Box
-                sx={{
-                  p: 0,
-                  overflow: "auto",
-                  flex: 1,
-                }}
-              >
-                {result.execution.results &&
-                result.execution.results.length > 0 ? (
-                  <DynamicDataVisualization
-                    analysisResult={memoizedTransformResultsForVisualization}
-                    loading={false}
-                  />
-                ) : (
-                  <Box sx={{ textAlign: "center", py: 8, px: 4 }}>
-                    <Box
-                      sx={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: "50%",
-                        bgcolor: "#ed893615",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        mx: "auto",
-                        mb: 3,
-                      }}
-                    >
-                      <DatabaseIcon sx={{ fontSize: 40, color: "#ed8936" }} />
-                    </Box>
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
-                    >
-                      No Data Found
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color: "#64748b",
-                        maxWidth: 400,
-                        mx: "auto",
-                        mb: 3,
-                      }}
-                    >
-                      Your query executed successfully but returned no results.
-                      Try adjusting your query parameters.
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#64748b",
-                        fontFamily: "monospace",
-                        bgcolor: "#f8fafc",
-                        p: 2,
-                        borderRadius: 1,
-                        maxWidth: 600,
-                        mx: "auto",
-                      }}
-                    >
-                      Execution time: {result.execution.execution_time_ms}ms
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </Paper>
+                  <DatabaseIcon sx={{ fontSize: 36, color: "#d97706", mb: 1.5 }} />
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: "#1e293b", mb: 0.5 }}>
+                    No Data Found
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#64748b" }}>
+                    Query ran successfully but returned no results.
+                  </Typography>
+                </Paper>
+              )}
+            </>
           )}
 
           {/* Reasoning Steps */}
@@ -992,7 +955,7 @@ const SQLQueryGenerator = React.memo(() => {
         </Box>
       </Fade>
     );
-  }, [result, loading, copied, memoizedTransformResultsForVisualization]);
+  }, [result, loading, copied, sqlCollapsed]);
 
   const getSelectedConnectionDetails = () => {
     return savedConnections.find((c) => c.id === selectedConnection);
@@ -1010,16 +973,32 @@ const SQLQueryGenerator = React.memo(() => {
     >
       {/* Header Section */}
       <Box sx={{ mb: 4 }}>
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            color: "#1a202c",
-            fontSize: { xs: "1.75rem", md: "2.25rem" },
-          }}
-        >
-          Ask Questions
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
+          <img
+            src="/retrieval.png"
+            alt="Data Retrieval"
+            style={{ width: 40, height: 40, objectFit: "contain" }}
+          />
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                color: "#1a202c",
+                fontSize: { xs: "1.75rem", md: "2rem" },
+                lineHeight: 1.2,
+              }}
+            >
+              Data Retriever Configurator
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: "#64748b", mt: 0.25, fontSize: "0.875rem" }}
+            >
+              Query your data using natural language — powered by MiFiX.ai
+            </Typography>
+          </Box>
+        </Box>
       </Box>
 
       {/* Connection Selection & Query Input */}
@@ -1033,12 +1012,15 @@ const SQLQueryGenerator = React.memo(() => {
       >
         {/* Connection Selector */}
         <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
-          >
-            Database Connection
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+            <DatabaseIcon sx={{ color: "#0078d7", fontSize: 20 }} />
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 600, color: "#1a202c" }}
+            >
+              Database Connection
+            </Typography>
+          </Box>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth size="medium">
@@ -1244,49 +1226,126 @@ const SQLQueryGenerator = React.memo(() => {
 
         {/* Query Input */}
         <Box>
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
-          >
-            Ask Your Question
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={6}
-            label={labelText}
-            placeholder={placeholderText}
-            value={query}
-            onChange={handleQueryChange}
-            onKeyDown={handleKeyDown}
-            disabled={loading}
-            helperText={helperText}
-            sx={textFieldStyles}
-            InputProps={{
-              // Disable spell check and autocomplete for better performance
-              spellCheck: false,
-              autoComplete: "off",
-              autoCorrect: "off",
-              autoCapitalize: "off",
-              // Additional performance props
-              inputProps: {
-                style: {
-                  // Force hardware acceleration
-                  transform: "translateZ(0)",
-                  willChange: "contents",
-                  // Optimize for fast text editing
-                  textRendering: "optimizeSpeed",
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <SearchIcon sx={{ color: "#9c27b0", fontSize: 20 }} />
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 600, color: "#1a202c" }}
+              >
+                Ask Your Question
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Query textarea with animated placeholder */}
+          <Box sx={{ position: "relative", mb: 5 }}>
+            <TextField
+              fullWidth
+              multiline
+              rows={5}
+              placeholder={query ? "Type your question here..." : placeholderText}
+              value={query}
+              onChange={handleQueryChange}
+              onKeyDown={handleKeyDown}
+              disabled={loading}
+              sx={{
+                ...textFieldStyles,
+                "& .MuiInputBase-input::placeholder": {
+                  opacity: 0.45,
+                  fontStyle: "italic",
+                  color: "#94a3b8",
                 },
-              },
-            }}
-          />
+              }}
+              InputProps={{
+                spellCheck: false,
+                autoComplete: "off",
+                autoCorrect: "off",
+                autoCapitalize: "off",
+                inputProps: {
+                  style: {
+                    transform: "translateZ(0)",
+                    willChange: "contents",
+                    textRendering: "optimizeSpeed",
+                  },
+                },
+              }}
+            />
+            {/* Keyboard shortcut — positioned below textarea */}
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: -44,
+                right: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+              }}
+            >
+              <Typography sx={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 500, whiteSpace: "nowrap" }}>
+                Press
+              </Typography>
+              {/* Modifier keycap */}
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  px: 0.85,
+                  py: 0.35,
+                  borderRadius: 1.25,
+                  bgcolor: "#f8fafc",
+                  border: "1px solid #d4d4d8",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.08), inset 0 -1px 0 rgba(0,0,0,0.06)",
+                  fontFamily: '-apple-system, "SF Pro Display", system-ui, monospace',
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "#334155",
+                  minWidth: 28,
+                  height: 24,
+                  lineHeight: 1,
+                }}
+              >
+                {typeof navigator !== 'undefined' && /Mac/i.test(navigator.userAgent) ? '⌘' : 'Ctrl'}
+              </Box>
+              <Typography sx={{ color: "#cbd5e1", fontSize: "0.75rem", fontWeight: 600, lineHeight: 1 }}>+</Typography>
+              {/* Enter keycap */}
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  px: 1,
+                  py: 0.35,
+                  borderRadius: 1.25,
+                  bgcolor: "#f8fafc",
+                  border: "1px solid #d4d4d8",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.08), inset 0 -1px 0 rgba(0,0,0,0.06)",
+                  fontFamily: '-apple-system, "SF Pro Display", system-ui, monospace',
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                  color: "#334155",
+                  height: 24,
+                  lineHeight: 1,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Enter
+              </Box>
+              <Typography sx={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 500, whiteSpace: "nowrap" }}>
+                to fire up your query
+              </Typography>
+              <BoltIcon sx={{ fontSize: 15, color: "#0078d7", ml: -0.25 }} />
+            </Box>
+          </Box>
 
           <Box
             sx={{
-              mt: 3,
+              mt: 2.5,
               display: "flex",
               gap: 2,
               justifyContent: "center",
+              alignItems: "center",
             }}
           >
             <Button
@@ -1295,9 +1354,24 @@ const SQLQueryGenerator = React.memo(() => {
               onClick={handleGenerateSQL}
               disabled={!canGenerate}
               startIcon={
-                loading ? <CircularProgress size={20} /> : <PlayIcon />
+                loading ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <BoltIcon />
+                )
               }
-              sx={buttonStyles}
+              sx={{
+                ...buttonStyles,
+                borderRadius: 2,
+                textTransform: "none",
+                boxShadow: canGenerate ? "0 4px 14px rgba(0, 120, 215, 0.35)" : "none",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  bgcolor: "#005a9e",
+                  boxShadow: "0 6px 20px rgba(0, 120, 215, 0.45)",
+                  transform: "translateY(-1px)",
+                },
+              }}
             >
               {loading ? "Analyzing..." : "Generate & Execute"}
             </Button>
@@ -1312,7 +1386,17 @@ const SQLQueryGenerator = React.memo(() => {
                   setError(null);
                 }}
                 startIcon={<RefreshIcon />}
-                sx={newQueryButtonStyles}
+                sx={{
+                  ...newQueryButtonStyles,
+                  textTransform: "none",
+                  borderColor: "#cbd5e1",
+                  color: "#64748b",
+                  "&:hover": {
+                    borderColor: "#0078d7",
+                    color: "#0078d7",
+                    bgcolor: "#0078d708",
+                  },
+                }}
               >
                 New Query
               </Button>
@@ -1371,58 +1455,140 @@ const SQLQueryGenerator = React.memo(() => {
         </Paper>
       )}
 
-      {/* Loading State */}
+      {/* Loading State — AI brain animation */}
       {loading && (
-        <Fade in timeout={300}>
-          <Box>
-            {/* Loading Stats Cards */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              {[1, 2, 3, 4].map((i) => (
-                <Grid item xs={12} sm={6} md={3} key={i}>
-                  <Card>
-                    <CardContent>
-                      <Skeleton
-                        variant="text"
-                        height={20}
-                        width="60%"
-                        sx={{ mb: 1 }}
-                      />
-                      <Skeleton variant="text" height={40} width="80%" />
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-
-            {/* Loading SQL */}
-            <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-              <Skeleton variant="text" height={30} width="40%" sx={{ mb: 2 }} />
-              <Skeleton
-                variant="rectangular"
-                height={120}
-                sx={{ borderRadius: 1 }}
-              />
-            </Paper>
-
-            {/* Loading Visualization */}
-            <Paper sx={{ borderRadius: 2, overflow: "hidden" }}>
+        <Fade in timeout={400}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              py: 8,
+            }}
+          >
+            {/* Pulsing brain icon with orbiting dots */}
+            <Box
+              sx={{
+                position: "relative",
+                width: 100,
+                height: 100,
+                mb: 4,
+              }}
+            >
+              {/* Outer ring */}
               <Box
                 sx={{
-                  p: 3,
-                  borderBottom: "1px solid #e2e8f0",
-                  bgcolor: "#f8fafc",
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "50%",
+                  border: "2px solid transparent",
+                  borderTopColor: "#0078d7",
+                  borderRightColor: "#0078d740",
+                  animation: "spinRing 1.5s linear infinite",
+                }}
+              />
+              {/* Inner ring — counter rotation */}
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 8,
+                  borderRadius: "50%",
+                  border: "2px solid transparent",
+                  borderBottomColor: "#9c27b0",
+                  borderLeftColor: "#9c27b040",
+                  animation: "spinRing 2s linear infinite reverse",
+                }}
+              />
+              {/* Center brain icon */}
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  animation: "brainPulse 2s ease-in-out infinite",
                 }}
               >
-                <Skeleton variant="text" height={30} width="50%" />
+                <BrainIcon sx={{ fontSize: 36, color: "#0078d7" }} />
               </Box>
-              <Box sx={{ p: 4 }}>
-                <Skeleton
-                  variant="rectangular"
-                  height={400}
-                  sx={{ borderRadius: 2 }}
-                />
-              </Box>
-            </Paper>
+            </Box>
+
+            {/* Animated status messages */}
+            <Typography
+              sx={{
+                fontSize: "1.1rem",
+                fontWeight: 600,
+                color: "#1e293b",
+                mb: 1.5,
+              }}
+            >
+              Generating your query
+            </Typography>
+
+            {/* Cycling status steps */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              {[
+                { text: "Analyzing knowledge graph", delay: "0s" },
+                { text: "Mapping table relationships", delay: "0.15s" },
+                { text: "Optimizing SQL query", delay: "0.3s" },
+              ].map((step, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    animation: `stepFadeIn 0.5s ease both`,
+                    animationDelay: step.delay,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      bgcolor: "#0078d7",
+                      animation: "dotPulse 1.4s ease-in-out infinite",
+                      animationDelay: step.delay,
+                    }}
+                  />
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "#64748b", fontSize: "0.85rem" }}
+                  >
+                    {step.text}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+
+            <style>{`
+              @keyframes spinRing {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+              @keyframes brainPulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.08); opacity: 0.8; }
+              }
+              @keyframes dotPulse {
+                0%, 100% { opacity: 0.4; transform: scale(0.8); }
+                50% { opacity: 1; transform: scale(1.2); }
+              }
+              @keyframes stepFadeIn {
+                0% { opacity: 0; transform: translateY(8px); }
+                100% { opacity: 1; transform: translateY(0); }
+              }
+            `}</style>
           </Box>
         </Fade>
       )}
@@ -1430,63 +1596,6 @@ const SQLQueryGenerator = React.memo(() => {
       {/* Results Section */}
       {resultsSection}
 
-      {/* Empty State */}
-      {!result && !loading && !error && (
-        <Card sx={{ borderRadius: 3, overflow: "hidden" }}>
-          <CardContent sx={{ textAlign: "center", py: 8, px: 4 }}>
-            <Box
-              sx={{
-                width: 100,
-                height: 100,
-                borderRadius: "50%",
-                bgcolor: "#9c27b015",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mx: "auto",
-                mb: 3,
-              }}
-            >
-              <BrainIcon sx={{ fontSize: 48, color: "#9c27b0" }} />
-            </Box>
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 600, color: "#1a202c", mb: 2 }}
-            >
-              Ready to Analyze Your Data
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{ color: "#64748b", maxWidth: 500, mx: "auto", mb: 4 }}
-            >
-              Select a database connection and ask your question in natural
-              language. I'll generate the SQL and create beautiful
-              visualizations for you.
-            </Typography>
-            <Box
-              sx={{
-                display: "flex",
-                gap: 2,
-                justifyContent: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <Chip
-                label="Natural Language Processing"
-                sx={{ bgcolor: "#0078d715", color: "#0078d7", fontWeight: 600 }}
-              />
-              <Chip
-                label="Automatic Visualizations"
-                sx={{ bgcolor: "#48bb7815", color: "#48bb78", fontWeight: 600 }}
-              />
-              <Chip
-                label="Smart SQL Generation"
-                sx={{ bgcolor: "#9c27b015", color: "#9c27b0", fontWeight: 600 }}
-              />
-            </Box>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Floating Feedback Buttons - Always show when there's a result or error */}
       {(result || error || validationError) && !loading && (
@@ -1504,41 +1613,51 @@ const SQLQueryGenerator = React.memo(() => {
           {result && (
             <Tooltip title="Mark as Correct" placement="left">
               <Fab
-                color="success"
                 onClick={handleMarkCorrect}
                 disabled={markingFeedback}
+                size="large"
                 sx={{
-                  boxShadow: "0 8px 16px rgba(72, 187, 120, 0.3)",
+                  width: 60,
+                  height: 60,
+                  bgcolor: "#16a34a",
+                  color: "#fff",
+                  boxShadow: "0 8px 16px rgba(22, 163, 74, 0.3)",
                   "&:hover": {
+                    bgcolor: "#15803d",
                     transform: "scale(1.1)",
-                    boxShadow: "0 12px 24px rgba(72, 187, 120, 0.4)",
+                    boxShadow: "0 12px 24px rgba(22, 163, 74, 0.4)",
                   },
                   transition: "all 0.2s ease-in-out",
                 }}
               >
-                <ThumbUpIcon />
+                <ThumbUpIcon sx={{ color: "#fff", fontSize: 28 }} />
               </Fab>
             </Tooltip>
           )}
-          <Tooltip title="Provide Correction" placement="left">
+          <Tooltip title="Fix & Train" placement="left">
             <Fab
-              color="error"
               onClick={() => {
                 setCorrectedSql(result?.query?.generated_sql || validationError?.generated_sql || "");
                 setFailedQueryId(result?.query?.query_id || validationError?.query_id || null);
                 setShowCorrectionDialog(true);
               }}
               disabled={markingFeedback}
+              size="large"
               sx={{
-                boxShadow: "0 8px 16px rgba(244, 67, 54, 0.3)",
+                width: 60,
+                height: 60,
+                bgcolor: "#dc2626",
+                color: "#fff",
+                boxShadow: "0 8px 16px rgba(220, 38, 38, 0.3)",
                 "&:hover": {
+                  bgcolor: "#b91c1c",
                   transform: "scale(1.1)",
-                  boxShadow: "0 12px 24px rgba(244, 67, 54, 0.4)",
+                  boxShadow: "0 12px 24px rgba(220, 38, 38, 0.4)",
                 },
                 transition: "all 0.2s ease-in-out",
               }}
             >
-              <EditIcon />
+              <ThumbDownIcon sx={{ color: "#fff", fontSize: 28 }} />
             </Fab>
           </Tooltip>
         </Box>

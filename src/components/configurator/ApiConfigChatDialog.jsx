@@ -31,7 +31,7 @@ import DynamicUIRenderer from "../dynamic-form/DynamicUIRenderer";
 import WorkflowUIRenderer from "../dynamic-form/WorkflowUIRenderer";
 import apiClient from "@/services/apiClient";
 import authService from "@/services/authService";
-import { getApiVersion } from "@/lib/api/workflowService";
+import { getApiVersion, saveBetaUIComponent, attachUIToStep } from "@/lib/api/workflowService";
 
 /**
  * API Configuration Chat Dialog
@@ -42,6 +42,7 @@ const ApiConfigChatDialog = ({
   onClose,
   component,
   formId,
+  workflowId,
   onConfigUpdate,
   onWorkflowRefresh,
 }) => {
@@ -203,9 +204,49 @@ const ApiConfigChatDialog = ({
           onConfigUpdate(data.data.schema);
         }
 
-        // If beta ui_config, update parent node schema
+        // If beta ui_config, save to backend, attach to step, and update parent node
         if (isBetaUiConfig && onConfigUpdate) {
           onConfigUpdate(betaUiConfigData);
+
+          // Persist the UI component and attach to step in the background
+          const betaUiId = data.data?.ui_id || data.data?.schema?.ui_id;
+          if (betaUiId) {
+            const userId = authService.getUserId();
+            try {
+              await saveBetaUIComponent({
+                userId,
+                uiId: betaUiId,
+                uiConfig: betaUiConfigData,
+              });
+              console.log("✅ Beta UI component saved:", betaUiId);
+
+              // If we have a step ID (formId) and workflow, attach the UI to it
+              if (formId && workflowId) {
+                try {
+                  await attachUIToStep({
+                    stepId: formId,
+                    userId,
+                    uiId: betaUiId,
+                    uiConfig: betaUiConfigData,
+                    workflowId,
+                    stepName: component?.name || component?.title || formId,
+                    stepDescription: component?.description || '',
+                  });
+                  console.log("✅ UI attached to step:", formId);
+                } catch (attachErr) {
+                  // If step/sub-step already exists (duplicate key), the UI component was already saved — not a real error
+                  if (attachErr.message?.includes('duplicate key') || attachErr.message?.includes('already exists')) {
+                    console.log("ℹ️ Step already exists, UI component saved successfully:", formId);
+                  } else {
+                    console.warn("⚠️ attachUIToStep failed (non-blocking):", attachErr.message);
+                  }
+                }
+              }
+            } catch (saveErr) {
+              console.error("Failed to save/attach beta UI component:", saveErr);
+              // Non-blocking: the in-memory update already succeeded
+            }
+          }
         }
       } else if (data.success) {
         // Other successful responses

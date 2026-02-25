@@ -4,6 +4,11 @@
  * Supports both Alpha and Beta API versions
  */
 
+import apiClient from '@/services/apiClient';
+
+// Beta proxy base path (routed through our own backend)
+const BETA_PROXY_BASE = '/api/v1/configurator/beta';
+
 // API Configuration
 const API_CONFIG = {
   alpha: {
@@ -14,17 +19,6 @@ const API_CONFIG = {
     headers: {
       'accept': '*/*',
       'content-type': 'application/json',
-    },
-  },
-  beta: {
-    baseUrl: process.env.NEXT_PUBLIC_BETA_API_URL || 'http://139.84.131.54:5000',
-    endpoints: {
-      workflows: '/workflows',
-      workflowSteps: '/workflow/:workflowId/steps',
-      stepUI: '/workflow/step/:stepId/ui',
-    },
-    headers: {
-      'Content-Type': 'application/json',
     },
   },
 };
@@ -58,33 +52,18 @@ const getAuthToken = () => {
 };
 
 /**
- * Build fetch headers based on API version
+ * Build fetch headers for Alpha API
  */
-const getHeaders = (version) => {
-  const config = API_CONFIG[version];
+const getAlphaHeaders = () => {
+  const config = API_CONFIG.alpha;
   const headers = { ...config.headers };
 
-  if (version === 'alpha') {
-    const token = getAuthToken();
-    if (token) {
-      headers['authorization'] = `Bearer ${token}`;
-    }
+  const token = getAuthToken();
+  if (token) {
+    headers['authorization'] = `Bearer ${token}`;
   }
 
   return headers;
-};
-
-/**
- * Replace path parameters in endpoint
- * @param {string} endpoint - Endpoint with :param placeholders
- * @param {object} params - Parameters to replace
- */
-const replacePathParams = (endpoint, params = {}) => {
-  let url = endpoint;
-  Object.keys(params).forEach(key => {
-    url = url.replace(`:${key}`, params[key]);
-  });
-  return url;
 };
 
 /**
@@ -101,7 +80,7 @@ const fetchWorkflowsAlpha = async (userId, productId) => {
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: getHeaders('alpha'),
+    headers: getAlphaHeaders(),
     cache: 'no-cache',
   });
 
@@ -113,26 +92,16 @@ const fetchWorkflowsAlpha = async (userId, productId) => {
 };
 
 /**
- * Fetch workflows (Beta API)
+ * Fetch workflows (Beta API) via proxy
+ * GET /beta/workflows
  */
 const fetchWorkflowsBeta = async () => {
-  const config = API_CONFIG.beta;
-  const url = `${config.baseUrl}${config.endpoints.workflows}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: getHeaders('beta'),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Beta API error: ${response.status} ${response.statusText}`);
-  }
-
-  return await response.json();
+  return apiClient.get(`${BETA_PROXY_BASE}/workflows`);
 };
 
 /**
- * Fetch workflow steps (Beta API only)
+ * Fetch workflow steps (Beta API only) via proxy
+ * GET /beta/workflow/{workflowId}/steps
  * @param {string} workflowId - Workflow ID
  */
 export const fetchWorkflowSteps = async (workflowId) => {
@@ -142,24 +111,12 @@ export const fetchWorkflowSteps = async (workflowId) => {
     throw new Error('fetchWorkflowSteps is only available in Beta API');
   }
 
-  const config = API_CONFIG.beta;
-  const endpoint = replacePathParams(config.endpoints.workflowSteps, { workflowId });
-  const url = `${config.baseUrl}${endpoint}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: getHeaders('beta'),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Beta API error: ${response.status} ${response.statusText}`);
-  }
-
-  return await response.json();
+  return apiClient.get(`${BETA_PROXY_BASE}/workflow/${workflowId}/steps`);
 };
 
 /**
- * Fetch step UI configuration (Beta API only)
+ * Fetch step UI configuration (Beta API only) via proxy
+ * GET /beta/workflow/step/{stepId}/ui
  * @param {string} stepId - Step ID
  */
 export const fetchStepUI = async (stepId) => {
@@ -169,20 +126,7 @@ export const fetchStepUI = async (stepId) => {
     throw new Error('fetchStepUI is only available in Beta API');
   }
 
-  const config = API_CONFIG.beta;
-  const endpoint = replacePathParams(config.endpoints.stepUI, { stepId });
-  const url = `${config.baseUrl}${endpoint}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: getHeaders('beta'),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Beta API error: ${response.status} ${response.statusText}`);
-  }
-
-  return await response.json();
+  return apiClient.get(`${BETA_PROXY_BASE}/workflow/step/${stepId}/ui`);
 };
 
 /**
@@ -240,7 +184,10 @@ export const transformBetaWorkflow = (betaData) => {
  */
 export const getBaseUrl = () => {
   const version = getApiVersion();
-  return API_CONFIG[version].baseUrl;
+  if (version === 'beta') {
+    return BETA_PROXY_BASE;
+  }
+  return API_CONFIG.alpha.baseUrl;
 };
 
 /**
@@ -248,6 +195,123 @@ export const getBaseUrl = () => {
  */
 export const isBetaVersion = () => {
   return getApiVersion() === 'beta';
+};
+
+// ==================== Beta Proxy API Functions ====================
+
+/**
+ * Create a new workflow (Beta API)
+ * POST /beta/workflow/create
+ * @param {object} params
+ * @param {string} params.userId - User ID (required)
+ * @param {string} params.name - Workflow name (required)
+ * @param {string} [params.description] - Optional description
+ * @param {Array} [params.steps] - Optional initial steps
+ * @returns {Promise<{success: boolean, workflow_id: string, data: object}>}
+ */
+export const createBetaWorkflow = async ({ userId, name, description = '', steps = [] }) => {
+  return apiClient.post(`${BETA_PROXY_BASE}/workflow/create`, {
+    user_id: userId,
+    name,
+    description,
+    steps,
+  });
+};
+
+/**
+ * Delete a workflow (Beta API)
+ * DELETE /beta/workflow/{workflow_id}
+ * @param {string} workflowId - Workflow ID to delete
+ * @returns {Promise<{success: boolean, data: object}>}
+ */
+export const deleteBetaWorkflow = async (workflowId) => {
+  return apiClient.delete(`${BETA_PROXY_BASE}/workflow/${workflowId}`);
+};
+
+/**
+ * Save a UI component (Beta API)
+ * POST /beta/ui-component/save
+ * @param {object} params
+ * @param {string} params.userId - User ID (required)
+ * @param {string} params.uiId - UI ID from /generate response (required)
+ * @param {object} params.uiConfig - UI configuration with forms (required)
+ * @returns {Promise<{success: boolean, data: object}>}
+ */
+export const saveBetaUIComponent = async ({ userId, uiId, uiConfig }) => {
+  let sanitizedUiConfig = uiConfig;
+  try {
+    const raw = JSON.stringify(uiConfig);
+    const cleaned = raw.replace(/\\'/g, "'");
+    sanitizedUiConfig = JSON.parse(cleaned);
+  } catch (e) {
+    console.warn('⚠️ saveBetaUIComponent: failed to sanitize uiConfig, using original', e);
+  }
+  return apiClient.post(`${BETA_PROXY_BASE}/ui-component/save`, {
+    user_id: userId,
+    ui_id: uiId,
+    ui_config: sanitizedUiConfig,
+  });
+};
+
+/**
+ * Get all UI components for a user (Beta API)
+ * GET /beta/ui-components/{user_id}
+ * @param {string} userId - User ID
+ * @returns {Promise<{success: boolean, data: {total: number, ui_configs: Array, user_id: string}}>}
+ */
+export const getBetaUIComponents = async (userId) => {
+  return apiClient.get(`${BETA_PROXY_BASE}/ui-components/${userId}`);
+};
+
+/**
+ * Attach a UI component to a workflow step (Beta API)
+ * POST /beta/workflow/step/{step_id}/attach-ui
+ * All body fields are required by the backend:
+ *   user_id, workflow_id, ui_id, step_name, ui_config
+ * @param {object} params
+ * @param {string} params.stepId - Step ID to attach to (required, used in URL)
+ * @param {string} params.userId - User ID (required)
+ * @param {string} params.workflowId - Workflow ID (required)
+ * @param {string} params.uiId - UI ID to attach (required)
+ * @param {string} params.stepName - Human-readable step name (required)
+ * @param {object} params.uiConfig - UI configuration with forms (required)
+ * @param {string} [params.stepDescription] - Step description
+ * @returns {Promise<{success: boolean, data: object}>}
+ */
+export const attachUIToStep = async ({ stepId, userId, workflowId, uiId, stepName, stepDescription, uiConfig }) => {
+  // Validate all required fields before calling the API
+  const missing = [];
+  if (!userId) missing.push('user_id');
+  if (!workflowId) missing.push('workflow_id');
+  if (!uiId) missing.push('ui_id');
+  if (!stepName) missing.push('step_name');
+  if (!uiConfig) missing.push('ui_config');
+  if (missing.length > 0) {
+    console.error(`❌ attachUIToStep: missing required fields: ${missing.join(', ')}`, { stepId, userId, workflowId, uiId, stepName, uiConfig: !!uiConfig });
+    throw new Error(`attachUIToStep: missing required fields: ${missing.join(', ')}`);
+  }
+
+  // Sanitize uiConfig: round-trip through JSON to strip invalid escapes like \'
+  let sanitizedUiConfig = uiConfig;
+  try {
+    const raw = JSON.stringify(uiConfig);
+    // Remove backslash-escaped single quotes (\') which are invalid in JSON
+    const cleaned = raw.replace(/\\'/g, "'");
+    sanitizedUiConfig = JSON.parse(cleaned);
+  } catch (e) {
+    console.warn('⚠️ attachUIToStep: failed to sanitize uiConfig, using original', e);
+  }
+
+  const body = {
+    user_id: userId,
+    workflow_id: workflowId,
+    ui_id: uiId,
+    step_name: stepName,
+    step_description: stepDescription || '',
+    ui_config: sanitizedUiConfig,
+  };
+  console.log('📤 attachUIToStep request:', { stepId, body: JSON.stringify(body).substring(0, 500) });
+  return apiClient.post(`${BETA_PROXY_BASE}/workflow/step/${stepId}/attach-ui`, body);
 };
 
 export default {
@@ -259,4 +323,9 @@ export default {
   transformBetaWorkflow,
   getBaseUrl,
   isBetaVersion,
+  createBetaWorkflow,
+  deleteBetaWorkflow,
+  saveBetaUIComponent,
+  getBetaUIComponents,
+  attachUIToStep,
 };

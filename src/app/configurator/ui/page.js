@@ -96,7 +96,11 @@ import {
   getApiVersion,
   isBetaVersion,
   fetchWorkflowSteps,
-  fetchStepUI
+  fetchStepUI,
+  createBetaWorkflow,
+  deleteBetaWorkflow,
+  getBetaUIComponents,
+  attachUIToStep,
 } from "@/lib/api/workflowService";
 
 // Helper function to get icon based on category
@@ -254,71 +258,75 @@ const UIConfiguratorPage = () => {
     // iPhone Mockup
     iphoneMockup: {
       width: { xs: 340, sm: 390 },
-      height: { xs: 720, sm: 780 },
+      height: { xs: 720, sm: 812 }, // Proportions of iPhone 17 Pro Max
       maxWidth: "100%",
       position: "relative",
-      borderRadius: "42px",
-      bgcolor: "#000",
-      padding: "8px",
+      borderRadius: "48px",
+      backgroundColor: "#171717", // True thin black bezel
+      padding: "8px", // Reduced padding for ultra-thin bezel
       boxShadow: `
-        0 0 0 1px ${alpha("#000", 0.1)},
-        0 12px 40px ${alpha("#000", 0.2)},
-        inset 0 0 0 1px ${alpha("#fff", 0.1)}
+        0 0 0 2px #e2e8f0,
+        0 20px 60px rgba(0,0,0,0.15),
+        inset 0 0 0 1px rgba(255,255,255,0.05)
       `,
-      "&::before": {
+      "&::before": { // dynamic island
         content: '""',
         position: "absolute",
-        top: 14,
+        top: 12,
         left: "50%",
         transform: "translateX(-50%)",
-        width: 110,
-        height: 28,
-        bgcolor: "#000",
-        borderRadius: "0 0 18px 18px",
-        zIndex: 10,
+        width: 100,
+        height: 30,
+        backgroundColor: "#171717",
+        borderRadius: "15px",
+        zIndex: 20,
       },
-      "&::after": {
+      "&::after": { // camera dot
         content: '""',
         position: "absolute",
-        top: 22,
+        top: 21,
         left: "50%",
-        transform: "translateX(-50%)",
-        width: 7,
-        height: 7,
-        bgcolor: alpha("#1a1a1a", 0.9),
+        transform: "translateX(24px)",
+        width: 10,
+        height: 10,
+        backgroundColor: "#0a0a0a",
         borderRadius: "50%",
-        zIndex: 11,
+        zIndex: 21,
+        boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.05)`,
       },
     },
 
     mobileScreen: {
       width: "100%",
       height: "100%",
-      bgcolor: "#fff",
-      borderRadius: "36px",
+      bgcolor: "#f8fafc",
+      borderRadius: "40px", // Matched with outer 48px - 8px padding
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
+      position: "relative",
     },
 
     mobileHeader: {
-      height: 70,
-      bgcolor: "#fff",
-      borderBottom: `1px solid ${alpha("#000", 0.08)}`,
+      minHeight: "76px",
+      backgroundColor: "rgba(248, 250, 252, 0.85)",
+      backdropFilter: "blur(16px)",
+      borderBottom: `1px solid rgba(0,0,0,0.05)`,
       display: "flex",
-      alignItems: "flex-end",
+      alignItems: "center",
       justifyContent: "space-between",
-      px: 2,
-      pb: 1.5,
-      pt: 3,
+      px: 3,
+      pt: "34px", // Safe area below dynamic island
+      pb: "8px",
+      zIndex: 10,
     },
 
     backButton: {
-      width: 32,
-      height: 32,
-      bgcolor: alpha("#000", 0.04),
+      width: 36,
+      height: 36,
+      bgcolor: alpha("#0f172a", 0.04),
       "&:hover": {
-        bgcolor: alpha("#000", 0.08),
+        bgcolor: alpha("#0f172a", 0.08),
       },
     },
 
@@ -372,31 +380,24 @@ const UIConfiguratorPage = () => {
     // Form Content
     formContent: {
       flex: 1,
+      display: "flex",
+      flexDirection: "column",
       overflowY: "auto",
       overflowX: "hidden",
-      px: 2,
-      py: 2,
+      pt: "16px", // natural spacing below header
+      px: 0,
+      pb: 4,
       "&::-webkit-scrollbar": {
-        width: "8px",
-      },
-      "&::-webkit-scrollbar-track": {
-        background: alpha("#000", 0.03),
-        borderRadius: "4px",
-      },
-      "&::-webkit-scrollbar-thumb": {
-        background: alpha(theme.palette.primary.main, 0.4),
-        borderRadius: "4px",
-        "&:hover": {
-          background: alpha(theme.palette.primary.main, 0.6),
-        },
+        width: "0px", // Hide scrollbar for a cleaner mobile feel
       },
     },
 
     // Dialog
     dialogPaper: {
       maxHeight: "95vh",
-      bgcolor: alpha(theme.palette.grey[100], 0.5),
-      borderRadius: 3,
+      backgroundColor: "transparent",
+      boxShadow: "none",
+      borderRadius: 0,
       position: "relative",
     },
 
@@ -404,8 +405,8 @@ const UIConfiguratorPage = () => {
       p: { xs: 2, sm: 4 },
       display: "flex",
       justifyContent: "center",
-      alignItems: "center",
-      minHeight: "90vh",
+      alignItems: "flex-start", // Prevents top cutoff when content is taller than viewport
+      minHeight: "100vh",
       overflowY: "auto",
       overflowX: "hidden",
       "&::-webkit-scrollbar": {
@@ -426,13 +427,16 @@ const UIConfiguratorPage = () => {
 
     closeButton: {
       position: "absolute",
-      right: 16,
-      top: 16,
-      zIndex: 1,
-      bgcolor: "white",
-      boxShadow: 2,
+      right: { xs: 16, sm: -64 },
+      top: { xs: 16, sm: 0 },
+      zIndex: 100,
+      backgroundColor: "rgba(255, 255, 255, 0.3)",
+      color: "#000",
+      backdropFilter: "blur(12px)",
+      border: "1px solid rgba(255, 255, 255, 0.4)",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
       "&:hover": {
-        bgcolor: alpha("#fff", 0.9),
+        backgroundColor: "rgba(255, 255, 255, 0.5)",
       },
     },
 
@@ -914,54 +918,73 @@ const UIConfiguratorPage = () => {
 
   const loadComponentLibrary = useCallback(async () => {
     try {
-      // Fetch component library from API
       const username = authService.getUsername() || authService.getUserId();
-      const libraryData = await uiConfiguratorService.getComponentLibrary(
-        username
-      );
-
-      console.log("📚 Component Library Data:", libraryData);
-
-      // Transform API data to component format for the drawer
+      const apiVersion = getApiVersion();
       const components = [];
 
-      // Add forms from conversations
-      if (libraryData.conversations && libraryData.conversations.length > 0) {
-        libraryData.conversations.forEach((conversation) => {
-          if (conversation.forms && conversation.forms.length > 0) {
-            conversation.forms.forEach((form) => {
-              components.push({
-                id: form.form_id,
-                name: form.title,
-                description:
-                  form.description || `Part of ${conversation.conversation_id}`,
-                category: form.category || "general",
-                icon: getCategoryIcon(form.category),
-                color: getCategoryColor(form.category),
-                schema: form.schema,
-                conversation_id: conversation.conversation_id,
-              });
-            });
-          }
-        });
-      }
+      if (apiVersion === 'beta') {
+        // Beta API: fetch UI components for user
+        const response = await getBetaUIComponents(username);
+        console.log("📚 Beta UI Components Data:", response);
 
-      // Add orphaned forms
-      if (
-        libraryData.forms_without_conversation &&
-        libraryData.forms_without_conversation.length > 0
-      ) {
-        libraryData.forms_without_conversation.forEach((form) => {
+        const uiConfigs = response.data?.ui_configs || [];
+        uiConfigs.forEach((item) => {
           components.push({
-            id: form.form_id,
-            name: form.title,
-            description: form.description || "Standalone form",
-            category: form.category || "general",
-            icon: getCategoryIcon(form.category),
-            color: getCategoryColor(form.category),
-            schema: form.schema,
+            id: item.ui_id,
+            name: item.name || item.ui_id,
+            description: item.description || "Beta UI component",
+            category: "workflow",
+            icon: getCategoryIcon("general"),
+            color: getCategoryColor("general"),
+            schema: item.config_data,
           });
         });
+      } else {
+        // Alpha API: fetch component library
+        const libraryData = await uiConfiguratorService.getComponentLibrary(
+          username
+        );
+
+        console.log("📚 Component Library Data:", libraryData);
+
+        // Add forms from conversations
+        if (libraryData.conversations && libraryData.conversations.length > 0) {
+          libraryData.conversations.forEach((conversation) => {
+            if (conversation.forms && conversation.forms.length > 0) {
+              conversation.forms.forEach((form) => {
+                components.push({
+                  id: form.form_id,
+                  name: form.title,
+                  description:
+                    form.description || `Part of ${conversation.conversation_id}`,
+                  category: form.category || "general",
+                  icon: getCategoryIcon(form.category),
+                  color: getCategoryColor(form.category),
+                  schema: form.schema,
+                  conversation_id: conversation.conversation_id,
+                });
+              });
+            }
+          });
+        }
+
+        // Add orphaned forms
+        if (
+          libraryData.forms_without_conversation &&
+          libraryData.forms_without_conversation.length > 0
+        ) {
+          libraryData.forms_without_conversation.forEach((form) => {
+            components.push({
+              id: form.form_id,
+              name: form.title,
+              description: form.description || "Standalone form",
+              category: form.category || "general",
+              icon: getCategoryIcon(form.category),
+              color: getCategoryColor(form.category),
+              schema: form.schema,
+            });
+          });
+        }
       }
 
       console.log("✅ Transformed components:", components);
@@ -997,81 +1020,161 @@ const UIConfiguratorPage = () => {
       try {
         const username = authService.getUsername() || authService.getUserId();
         const productId = "loan_app"; // Get from context or props
+        const apiVersion = getApiVersion();
 
         // Use custom name if provided, otherwise use state
         const nameToUse = customWorkflowName || workflowName;
 
-        // Prepare workflow data matching backend structure
-        const workflowData = {
-          workflow_name: nameToUse,
-          description: `Workflow with ${nodes.length} components and ${edges.length} connections`,
-          user_id: username,
-          product_id: productId,
-          canvas_state: {
-            viewport: {
-              x: 0,
-              y: 0,
-              zoom: 1,
-            },
-            nodes: nodes.map((node) => ({
-              id: node.id,
-              type: node.type,
-              position: node.position,
-              data: {
-                form_id: node.data.schema?.id || node.data.id,
-                title: node.data.schema?.title || node.data.title,
-                description:
-                  node.data.schema?.description || node.data.description,
-                category: node.data.category || "general",
-                schema: node.data.schema,
-              },
-              width: node.width || 400,
-              height: node.height || 200,
-            })),
-            edges: edges.map((edge) => ({
-              id: edge.id,
-              source: edge.source,
-              target: edge.target,
-              sourceHandle: edge.sourceHandle,
-              targetHandle: edge.targetHandle,
-              type: "smoothstep",
-              animated: edge.animated !== false,
-              style: edge.style || { stroke: "#1976d2", strokeWidth: 2 },
-              data: {
-                transition_type: "on_submit",
-                condition: null,
-                data_mapping: {
-                  pass_all_fields: true,
-                  field_mappings: [],
-                },
-              },
-            })),
-          },
-          metadata: {
-            total_nodes: nodes.length,
-            total_edges: edges.length,
-            tags: ["workflow"],
-          },
-        };
-
-        // Call API to save workflow
         let response;
-        if (workflowId) {
-          // Update existing workflow
-          response = await uiConfiguratorService.updateWorkflow(
-            workflowId,
-            workflowData
-          );
+
+        if (apiVersion === 'beta') {
+          // Beta API: steps must be an array of step ID strings
+          // Only include nodes that have a real step_id (from a loaded workflow)
+          // Library/AI nodes without form_id are excluded — they need to be
+          // attached to existing steps via the connect (edge) flow instead
+          const workflowNodes = nodes.filter((node) => node.data.form_id);
+          const steps = workflowNodes.map((node) => node.data.form_id);
+
+          response = await createBetaWorkflow({
+            userId: username,
+            name: nameToUse,
+            description: `Workflow with ${nodes.length} components and ${edges.length} connections`,
+            steps,
+          });
+
+          console.log("✅ Beta workflow created:", response);
+
+          // Store workflow ID from beta response
+          const newWorkflowId = response.workflow_id || response.data?.workflow_id;
+          if (response.success && newWorkflowId) {
+            setCurrentWorkflowId(newWorkflowId);
+
+            // After workflow is created, attach UI configs to steps that have schemas
+            try {
+              const stepsResponse = await fetchWorkflowSteps(newWorkflowId);
+              if (stepsResponse.success && stepsResponse.steps) {
+                const createdSteps = stepsResponse.steps;
+                // Build a lookup by step_id for reliable matching
+                const stepMap = {};
+                createdSteps.forEach((s) => { stepMap[s.step_id] = s; });
+
+                const attachPromises = workflowNodes
+                  .map((node) => {
+                    const schema = node.data.schema || node.data.component?.schema;
+                    const uiId = node.data.ui_id || node.data.component?.id || '';
+                    const createdStep = stepMap[node.data.form_id];
+                    const stepName = node.data.title || node.data.component?.name || createdStep?.name || '';
+                    const stepDescription = node.data.description || node.data.component?.description || '';
+
+                    if (schema && createdStep?.step_id) {
+                      const uiConfig = {
+                        name: stepName,
+                        uiId: uiId,
+                        forms: schema.forms || schema,
+                      };
+
+                      return attachUIToStep({
+                        stepId: createdStep.step_id,
+                        userId: username,
+                        uiId,
+                        uiConfig,
+                        workflowId: newWorkflowId,
+                        stepName,
+                        stepDescription,
+                      })
+                        .then(() => {
+                          console.log(`✅ Attached UI to step: ${createdStep.step_id}`);
+                          setNodes((nds) =>
+                            nds.map((n) =>
+                              n.id === node.id
+                                ? { ...n, data: { ...n.data, form_id: createdStep.step_id, ui_id: createdStep.ui_id || uiId } }
+                                : n
+                            )
+                          );
+                        })
+                        .catch((err) => {
+                          console.error(`❌ Failed to attach UI to step ${createdStep.step_id}:`, err);
+                        });
+                    }
+                    return null;
+                  })
+                  .filter(Boolean);
+
+                await Promise.allSettled(attachPromises);
+                console.log("✅ All UI attachments processed");
+              }
+            } catch (err) {
+              console.error("❌ Failed to fetch steps for UI attachment:", err);
+            }
+          }
         } else {
-          // Create new workflow
-          response = await uiConfiguratorService.saveWorkflow(workflowData);
-        }
+          // Alpha API: save full canvas state
+          const workflowData = {
+            workflow_name: nameToUse,
+            description: `Workflow with ${nodes.length} components and ${edges.length} connections`,
+            user_id: username,
+            product_id: productId,
+            canvas_state: {
+              viewport: {
+                x: 0,
+                y: 0,
+                zoom: 1,
+              },
+              nodes: nodes.map((node) => ({
+                id: node.id,
+                type: node.type,
+                position: node.position,
+                data: {
+                  form_id: node.data.schema?.id || node.data.id,
+                  title: node.data.schema?.title || node.data.title,
+                  description:
+                    node.data.schema?.description || node.data.description,
+                  category: node.data.category || "general",
+                  schema: node.data.schema,
+                },
+                width: node.width || 400,
+                height: node.height || 200,
+              })),
+              edges: edges.map((edge) => ({
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                sourceHandle: edge.sourceHandle,
+                targetHandle: edge.targetHandle,
+                type: "smoothstep",
+                animated: edge.animated !== false,
+                style: edge.style || { stroke: "#1976d2", strokeWidth: 2 },
+                data: {
+                  transition_type: "on_submit",
+                  condition: null,
+                  data_mapping: {
+                    pass_all_fields: true,
+                    field_mappings: [],
+                  },
+                },
+              })),
+            },
+            metadata: {
+              total_nodes: nodes.length,
+              total_edges: edges.length,
+              tags: ["workflow"],
+            },
+          };
 
-        console.log("✅ Workflow saved:", response);
+          if (workflowId) {
+            response = await uiConfiguratorService.updateWorkflow(
+              workflowId,
+              workflowData
+            );
+          } else {
+            response = await uiConfiguratorService.saveWorkflow(workflowData);
+          }
 
-        // Store workflow ID for future updates
-        if (response.success && response.data && response.data.workflow_id) {
-          setCurrentWorkflowId(response.data.workflow_id);
+          console.log("✅ Alpha workflow saved:", response);
+
+          if (response.success && response.data && response.data.workflow_id) {
+            setCurrentWorkflowId(response.data.workflow_id);
+          }
         }
 
         setSnackbar({
@@ -1718,6 +1821,13 @@ const UIConfiguratorPage = () => {
       data: {
         component: component,
         schema: schema,
+        title: component.name || component.title,
+        description: component.description,
+        category: component.category || "general",
+        // form_id holds a real step_id from the backend workflow.
+        // Library / AI-generated components don't have one yet.
+        form_id: null,
+        ui_id: component.id,
         onDelete: () => handleDeleteNode(nodeId),
         onConfigure: (comp) => handleConfigureNode(comp),
         onPreview: (comp) => handleFullPreview(comp),
@@ -1782,8 +1892,15 @@ const UIConfiguratorPage = () => {
     const { workflowId } = deleteWorkflowDialog;
     setDeleteWorkflowDialog({ open: false, workflowId: null, workflowName: "" });
     try {
-      const username = authService.getUsername() || authService.getUserId();
-      await uiConfiguratorService.deleteWorkflow(workflowId, username);
+      const apiVersion = getApiVersion();
+
+      if (apiVersion === 'beta') {
+        await deleteBetaWorkflow(workflowId);
+      } else {
+        const username = authService.getUsername() || authService.getUserId();
+        await uiConfiguratorService.deleteWorkflow(workflowId, username);
+      }
+
       // If this was the currently loaded workflow, clear the canvas
       if (currentWorkflowId === workflowId) {
         setNodes([]);
@@ -1998,22 +2115,152 @@ const UIConfiguratorPage = () => {
     setDraggedComponent(null);
   };
 
-  const handleConnect = (params) => {
-    const newEdge = {
-      ...params,
-      type: "smoothstep",
-      animated: true,
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: theme.palette.primary.main,
-      },
-      style: {
-        strokeWidth: 2,
-        stroke: theme.palette.primary.main,
-      },
-    };
-    setEdges((eds) => addEdge(newEdge, eds));
-  };
+  const handleConnect = useCallback(
+    (params) => {
+      const newEdge = {
+        ...params,
+        type: "smoothstep",
+        animated: true,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: theme.palette.primary.main,
+        },
+        style: {
+          strokeWidth: 2,
+          stroke: theme.palette.primary.main,
+        },
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+
+      // In beta mode, link the steps via the backend
+      const apiVersion = getApiVersion();
+      if (apiVersion === 'beta') {
+        const sourceNode = nodes.find((n) => n.id === params.source);
+        const targetNode = nodes.find((n) => n.id === params.target);
+
+        const sourceStepId = sourceNode?.data?.form_id;
+        const targetStepId = targetNode?.data?.form_id;
+        const sourceUiId = sourceNode?.data?.ui_id || '';
+        const targetUiId = targetNode?.data?.ui_id || '';
+        const username = authService.getUsername() || authService.getUserId();
+
+        // Case 1: Both nodes are workflow steps — link them together
+        if (sourceStepId && targetStepId) {
+          attachUIToStep({
+            stepId: sourceStepId,
+            userId: username,
+            uiId: sourceUiId,
+            uiConfig: { next_step_id: targetStepId },
+            workflowId: currentWorkflowId,
+            stepName: sourceNode?.data?.title || sourceNode?.data?.component?.name || sourceStepId,
+            stepDescription: sourceNode?.data?.description || '',
+          })
+            .then(() => {
+              console.log(`✅ Linked step ${sourceStepId} → ${targetStepId}`);
+              setSnackbar({
+                open: true,
+                message: `Linked: ${sourceNode?.data?.title || sourceStepId} → ${targetNode?.data?.title || targetStepId}`,
+                severity: "success",
+              });
+            })
+            .catch((err) => {
+              console.error(`❌ Failed to link steps:`, err);
+              setSnackbar({
+                open: true,
+                message: `Failed to link steps: ${err.message}`,
+                severity: "error",
+              });
+            });
+
+          attachUIToStep({
+            stepId: targetStepId,
+            userId: username,
+            uiId: targetUiId,
+            uiConfig: { previous_step_id: sourceStepId },
+            workflowId: currentWorkflowId,
+            stepName: targetNode?.data?.title || targetNode?.data?.component?.name || targetStepId,
+            stepDescription: targetNode?.data?.description || '',
+          })
+            .then(() => {
+              console.log(`✅ Linked step ${targetStepId} ← ${sourceStepId}`);
+            })
+            .catch((err) => {
+              console.error(`❌ Failed to link previous step:`, err);
+            });
+
+        // Case 2: One node is a workflow step, the other is a library/AI form — create a new step for the form
+        } else if (sourceStepId || targetStepId) {
+          const formNode = sourceStepId ? targetNode : sourceNode;
+          const formUiId = formNode?.data?.ui_id || formNode?.data?.component?.id || '';
+          const formSchema = formNode?.data?.schema || formNode?.data?.component?.schema;
+          const formName = formNode?.data?.title || formNode?.data?.component?.name || 'New Step';
+          const formDescription = formNode?.data?.description || formNode?.data?.component?.description || '';
+          // Generate a new step_id from the form name
+          const newStepId = `step_${(formName).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_+$/, '')}`;
+
+          if (formUiId || formSchema) {
+            const uiConfig = {
+              name: formName,
+              description: formDescription,
+              uiId: formUiId,
+              forms: formSchema?.forms || formSchema || {},
+            };
+
+            attachUIToStep({
+              stepId: newStepId,
+              userId: username,
+              uiId: formUiId,
+              uiConfig,
+              workflowId: currentWorkflowId,
+              stepName: formName,
+              stepDescription: formDescription,
+            })
+              .then(() => {
+                console.log(`✅ Attached UI "${formName}" as new step ${newStepId}`);
+                // Update the form node with its new step_id
+                setNodes((nds) =>
+                  nds.map((n) =>
+                    n.id === formNode.id
+                      ? {
+                          ...n,
+                          data: {
+                            ...n.data,
+                            form_id: newStepId,
+                            ui_id: formUiId,
+                            has_ui_data: true,
+                          },
+                        }
+                      : n
+                  )
+                );
+                setSnackbar({
+                  open: true,
+                  message: `Attached "${formName}" as step "${newStepId}" in workflow`,
+                  severity: "success",
+                });
+              })
+              .catch((err) => {
+                console.error(`❌ Failed to attach UI as new step:`, err);
+                setSnackbar({
+                  open: true,
+                  message: `Failed to attach UI: ${err.message}`,
+                  severity: "error",
+                });
+              });
+          } else {
+            console.info('ℹ️ Edge created visually. Cannot attach — form node has no UI data.', {
+              newStepId,
+              formUiId,
+              hasSchema: !!formSchema,
+            });
+          }
+        } else {
+          console.info('ℹ️ Edge created visually. Backend linking skipped — neither node has a workflow step_id.');
+        }
+      }
+    },
+    [nodes, theme.palette.primary.main, setEdges, setNodes, currentWorkflowId]
+  );
 
   const handleSaveWorkflow = () => {
     // Open dialog to edit workflow name before saving
@@ -3179,6 +3426,7 @@ const UIConfiguratorPage = () => {
         }}
         component={selectedComponent}
         formId={selectedComponent?.id}
+        workflowId={currentWorkflowId}
         onConfigUpdate={handleApiConfigUpdate}
         onWorkflowRefresh={loadWorkflowsList}
       />

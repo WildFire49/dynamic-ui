@@ -114,63 +114,80 @@ const getIconComponent = (iconName) => ICON_MAP[iconName?.toLowerCase()] || Pers
 
 const buildInputSx = (t) => ({
   '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
-    backgroundColor: '#fff',
-    fontSize: '15px',
+    borderRadius: '20px',
+    backgroundColor: '#f8fafc',
+    fontSize: '16px',
     color: TEXT_PRIMARY,
     fontWeight: 500,
-    transition: 'all 0.2s ease',
-    '& fieldset': { borderColor: BORDER },
-    '&:hover fieldset': { borderColor: alpha(t.brand, 0.4) },
-    '&.Mui-focused': {
-      '& fieldset': { borderColor: t.brand, borderWidth: 2 },
-      boxShadow: `0 0 0 3px ${t.brandGlow}`,
+    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+    height: '60px',
+    '& fieldset': { borderColor: 'transparent', borderWidth: 1 },
+    '&:hover': {
+      backgroundColor: '#f1f5f9',
+      '& fieldset': { borderColor: 'transparent' },
     },
-    '& input': { color: TEXT_PRIMARY, fontWeight: 500 },
+    '&.Mui-focused': {
+      backgroundColor: '#ffffff',
+      '& fieldset': { borderColor: t.brand, borderWidth: 2 },
+      boxShadow: `0 0 0 4px ${alpha(t.brand, 0.15)}`,
+    },
+    '& input': { px: '20px' },
     '& input::placeholder': { color: TEXT_MUTED, opacity: 1 },
   },
   '& .MuiInputLabel-root': {
-    fontSize: '14px', fontWeight: 500, color: TEXT_SECONDARY,
+    fontSize: '15px', fontWeight: 500, color: TEXT_SECONDARY,
     '&.Mui-focused': { color: t.brand, fontWeight: 600 },
   },
-  '& .MuiFormHelperText-root': { fontSize: '12px', ml: 0.5, mt: 0.5 },
+  '& .MuiFormHelperText-root': { fontSize: '13px', ml: 0.5, mt: 0.5, fontWeight: 500 },
 });
 
 const buildDatePickerSx = (t) => ({
   width: '100%',
   '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
-    backgroundColor: '#fff',
-    fontSize: '15px',
+    borderRadius: '20px',
+    backgroundColor: '#f8fafc',
+    fontSize: '16px',
     color: TEXT_PRIMARY,
     fontWeight: 500,
-    transition: 'all 0.2s ease',
-    '& fieldset': { borderColor: BORDER },
-    '&:hover fieldset': { borderColor: alpha(t.brand, 0.4) },
-    '&.Mui-focused': {
-      '& fieldset': { borderColor: t.brand, borderWidth: 2 },
-      boxShadow: `0 0 0 3px ${t.brandGlow}`,
+    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+    height: '60px',
+    '& fieldset': { borderColor: 'transparent', borderWidth: 1 },
+    '&:hover': {
+      backgroundColor: '#f1f5f9',
+      '& fieldset': { borderColor: 'transparent' },
     },
-    '& input': { color: TEXT_PRIMARY, fontWeight: 500 },
+    '&.Mui-focused': {
+      backgroundColor: '#ffffff',
+      '& fieldset': { borderColor: t.brand, borderWidth: 2 },
+      boxShadow: `0 0 0 4px ${alpha(t.brand, 0.15)}`,
+    },
+    '& input': { px: '20px' },
   },
   '& .MuiInputLabel-root': {
-    fontSize: '14px', fontWeight: 500, color: TEXT_SECONDARY,
+    fontSize: '15px', fontWeight: 500, color: TEXT_SECONDARY,
     '&.Mui-focused': { color: t.brand, fontWeight: 600 },
   },
 });
 
 const buildSelectSx = (t) => ({
-  borderRadius: '12px',
-  backgroundColor: '#fff',
-  fontSize: '15px',
+  borderRadius: '20px',
+  backgroundColor: '#f8fafc',
+  fontSize: '16px',
   color: TEXT_PRIMARY,
   fontWeight: 500,
-  transition: 'all 0.2s ease',
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: BORDER },
-  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: alpha(t.brand, 0.4) },
+  transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  height: '60px',
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent', borderWidth: 1 },
+  '&:hover': {
+    backgroundColor: '#f1f5f9',
+  },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+  '&.Mui-focused': {
+    backgroundColor: '#ffffff',
+    boxShadow: `0 0 0 4px ${alpha(t.brand, 0.15)}`,
+  },
   '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: t.brand, borderWidth: 2 },
-  '&.Mui-focused': { boxShadow: `0 0 0 3px ${t.brandGlow}` },
-  '& .MuiSelect-select': { color: TEXT_PRIMARY },
+  '& .MuiSelect-select': { display: 'flex', alignItems: 'center', px: '20px' },
 });
 
 const buildMenuPaperSx = (t) => ({
@@ -189,27 +206,27 @@ const buildMenuPaperSx = (t) => ({
 // Radio — compact pill style with themed colors
 const buildRadioSx = (selected, t) => ({
   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75,
-  py: 1.75, px: 1,
-  bgcolor: selected ? alpha(t.brand, 0.06) : '#fff',
-  borderRadius: '14px', cursor: 'pointer',
+  py: 2.5, px: 2,
+  bgcolor: selected ? alpha(t.brand, 0.04) : '#f8fafc',
+  borderRadius: '20px', cursor: 'pointer',
   border: '2px solid',
-  borderColor: selected ? t.brand : BORDER,
-  boxShadow: selected ? `0 0 0 3px ${t.brandGlow}` : 'none',
-  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  borderColor: selected ? t.brand : 'transparent',
+  boxShadow: selected ? `0 12px 32px ${alpha(t.brand, 0.15)}` : 'none',
+  transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
   position: 'relative',
   '&:hover': {
-    borderColor: selected ? t.brand : alpha(t.brand, 0.3),
-    bgcolor: selected ? alpha(t.brand, 0.08) : alpha(t.brand, 0.02),
+    bgcolor: selected ? alpha(t.brand, 0.06) : '#f1f5f9',
+    transform: 'translateY(-2px)'
   },
-  '&:active': { transform: 'scale(0.96)' },
 });
 
 const buildRadioAvatarSx = (selected, t) => ({
-  width: 44, height: 44,
+  width: 48, height: 48,
   bgcolor: selected ? t.brand : alpha(t.brand, 0.08),
   color: selected ? '#fff' : t.brand,
-  transition: 'all 0.2s ease',
-  boxShadow: selected ? `0 4px 12px ${alpha(t.brand, 0.25)}` : 'none',
+  transition: 'all 0.3s ease',
+  boxShadow: selected ? `0 8px 20px ${alpha(t.brand, 0.3)}` : 'none',
+  borderRadius: '14px',
 });
 
 const buildRadioCheckSx = (t) => ({
@@ -244,16 +261,17 @@ const buildBiometricCircleSx = (captured, successColor, successDark, t) => ({
 
 // CTA button
 const buildContinueBtnSx = (t) => ({
-  py: 1.75, borderRadius: '16px', textTransform: 'none',
-  fontSize: '16px', fontWeight: 700, letterSpacing: '-0.01em',
-  background: t.gradient, color: '#fff',
-  boxShadow: t.shadowBrand,
-  transition: 'all 0.2s ease',
+  py: '20px', borderRadius: '24px', textTransform: 'none',
+  fontSize: '18px', fontWeight: 700, letterSpacing: '-0.01em',
+  background: `linear-gradient(135deg, ${t.brand}, #0ea5e9)`,
+  color: '#fff',
+  boxShadow: `0 12px 32px ${alpha(t.brand, 0.3)}, 0 4px 12px ${alpha(t.brand, 0.1)}`,
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   '&:hover': {
-    background: t.gradient,
-    filter: 'brightness(0.92)',
-    boxShadow: `0 8px 32px ${alpha(t.brand, 0.4)}`,
-    transform: 'translateY(-1px)',
+    background: `linear-gradient(135deg, ${t.brand}, #0ea5e9)`,
+    filter: 'brightness(1.1)',
+    boxShadow: `0 16px 40px ${alpha(t.brand, 0.4)}, 0 6px 16px ${alpha(t.brand, 0.2)}`,
+    transform: 'translateY(-2px)',
   },
   '&:active': { transform: 'scale(0.98) translateY(0)' },
   '&.Mui-disabled': { background: '#e2e5ea', boxShadow: 'none', color: '#a0a8b4' },

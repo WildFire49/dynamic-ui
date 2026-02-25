@@ -66,14 +66,19 @@ const getContainerSx = (selected, isStart, isEnd) => ({
       ? `2px solid ${END_COLOR}`
       : selected
         ? `2px solid ${BRAND}`
-        : '1px solid #e2e6ec',
+        : `1px solid ${alpha('#0f172a', 0.1)}`,
   boxShadow: selected
-    ? `0 0 0 3px ${alpha(BRAND, 0.1)}, 0 6px 20px ${alpha(BRAND, 0.12)}`
-    : '0 1px 3px rgba(0,0,0,0.04), 0 4px 14px rgba(0,0,0,0.03)',
-  transition: 'all 0.25s ease',
+    ? `0 0 0 4px ${alpha(BRAND, 0.15)}, 0 20px 48px ${alpha(BRAND, 0.2)}`
+    : `0 12px 32px ${alpha('#0f172a', 0.05)}, 0 4px 12px ${alpha('#0f172a', 0.02)}`,
+  borderRadius: '24px',
+  background: 'rgba(255, 255, 255, 0.95)',
+  backdropFilter: 'blur(20px)',
+  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  transform: selected ? 'scale(1.02)' : 'scale(1)',
   '&:hover': {
-    boxShadow: `0 6px 22px ${alpha(BRAND, 0.12)}`,
-    borderColor: selected ? BRAND : alpha(BRAND, 0.3),
+    boxShadow: `0 24px 56px ${alpha(BRAND, 0.15)}, 0 8px 24px ${alpha(BRAND, 0.05)}`,
+    borderColor: selected ? BRAND : alpha(BRAND, 0.4),
+    transform: selected ? 'scale(1.02) translateY(-4px)' : 'translateY(-4px)'
   },
 });
 
@@ -96,19 +101,22 @@ const headerSx = {
 };
 
 const iconAvatarSx = {
-  width: 36,
-  height: 36,
-  borderRadius: '10px',
-  background: `linear-gradient(145deg, ${BRAND}, ${BRAND_DARK})`,
+  width: 44,
+  height: 44,
+  borderRadius: '14px',
+  background: `linear-gradient(135deg, ${BRAND}, #0ea5e9)`,
   color: '#fff',
-  boxShadow: `0 2px 8px ${alpha(BRAND, 0.25)}`,
+  boxShadow: `0 8px 20px ${alpha(BRAND, 0.3)}, inset 0 2px 0 ${alpha('#fff', 0.2)}`,
   flexShrink: 0,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
 };
 
 const titleSx = {
-  fontWeight: 700,
-  fontSize: '12px',
-  color: '#0f1b2d',
+  fontWeight: 800,
+  fontSize: '14px',
+  color: '#0f172a',
   lineHeight: 1.35,
   mb: 0.5,
   overflow: 'hidden',
@@ -116,6 +124,7 @@ const titleSx = {
   display: '-webkit-box',
   WebkitLineClamp: 2,
   WebkitBoxOrient: 'vertical',
+  letterSpacing: '-0.01em',
 };
 
 const chipRowSx = { display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' };
