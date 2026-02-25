@@ -100,7 +100,7 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$USER@$HOST" << EOF
   docker run -d \
     --name dynamic-ui-container \
     -p 3500:3000 \
-    --read-only \
+    --tmpfs /tmp:rw,noexec,nosuid \
     --restart unless-stopped \
     -e NODE_ENV=production \
     -e NEXT_PUBLIC_API_BASE_URL=$API_BASE_URL \
@@ -113,12 +113,20 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$USER@$HOST" << EOF
     -e NEXT_PUBLIC_CHROMA_HOST=3.6.132.24 \
     -e NEXT_PUBLIC_CHROMA_PORT=8000 \
     "$DOCKER_REGISTRY/$DOCKER_IMAGE_NAME:$DOCKER_TAG"
-  
-  echo "✅ Container started successfully!"
-  
+
+  echo "⏳ Waiting for container to be healthy..."
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -sf http://localhost:3500 > /dev/null 2>&1; then
+      echo "✅ Container is responding!"
+      break
+    fi
+    echo "   Attempt \$i/10 - waiting 3s..."
+    sleep 3
+  done
+
   echo "📊 Container status:"
   docker ps | grep dynamic-ui-container
-  
+
   echo "📝 Container logs (last 20 lines):"
   docker logs --tail 20 dynamic-ui-container
 EOF
